@@ -274,6 +274,27 @@ const ok = (cond, txt, detalle) => {
   const amAv = RE.anotarManual(sAv.pick_id, { odds: 1.9, stake: 30 });
   ok(!amAv.error && RE.load().bets.find((b) => b.pick_id === sAv.pick_id).via === 'manual', 'y la anotación manual la cierra', amAv.error || 'ok');
 
+  console.log('\n17f. el canal CS2: nace manual, la API jamás la toca, y liquida con nuestro resultado');
+  const sbCs2 = { pick_id: 'es_cs2_demo_RONDAS_HANDICAP_home_-7.5_1', id: 'sh_cs2_1', segment: 'cs2_rounds_v1',
+    family: 'RONDAS_HANDICAP', side: 'home', line: -7.5, book: 'cloudbet', league: 'ESL Challenger',
+    match: 'Imperial vs paiN Academy', odds: 3.25, model_prob: 0.56,
+    kickoff_at: new Date(Date.now() + 2 * 3600e3).toISOString() };
+  const fCs = RE.crearManualCs2(sbCs2, { stake: 30 });
+  ok(fCs && fCs.status === 'PENDIENTE' && fCs.motivo === 'solo_manual', 'nace PENDIENTE solo_manual', fCs && fCs.status);
+  ok(fCs.seleccion === 'Imperial -7.5 rondas · mapa 1', 'la selección se lee como se apuesta', fCs.seleccion);
+  ok(RE.crearManualCs2(sbCs2) === null, 'no se crea dos veces');
+  ok(RE.crearManualCs2({ ...sbCs2, pick_id: 'es_cs2_otro', book: 'pinnacle' }) === null, 'otra casa no entra');
+  ok(RE.crearManualCs2({ ...sbCs2, pick_id: 'es_cs2_otro2', segment: 'cards_under_v1' }) === null, 'otro segmento no entra');
+  casa.respuestaPlace = (pC) => ({ ok: true, status: 200, betStatus: 'ACCEPTED', body: { betStatus: 'ACCEPTED', price: pC.price, stake: pC.stake } });
+  await RE.reintentar({ cbIdx: IDX });
+  ok(RE.load().bets.find((b) => b.pick_id === sbCs2.pick_id).status === 'PENDIENTE', 'el reintento no la toca aunque la casa aceptaría');
+  const amCs = RE.anotarManual(sbCs2.pick_id, { odds: 3.25, stake: 20 });
+  ok(!amCs.error, 'se anota con la cuota y el monto REALES (el tope de la casa manda)', amCs.error || 'ok');
+  await RE.liquidar({ [sbCs2.pick_id]: { result_code: 'WIN' } });
+  const fCsFin = RE.load().bets.find((b) => b.pick_id === sbCs2.pick_id);
+  ok(fCsFin.status === 'SETTLED' && fCsFin.resultado === 'WIN' && fCsFin.pnl === +(20 * 2.25).toFixed(2),
+    'liquida con nuestro resultado y el P&L de la cuota real', [fCsFin.status, fCsFin.pnl]);
+
   console.log('\n18. la misma señal nunca entra dos veces');
   const dup = await RE.intentar(s1, pick, { cbIdx: IDX });
   ok(dup === null, 'la puerta la rechaza por pick repetida');
@@ -317,7 +338,7 @@ const ok = (cond, txt, detalle) => {
   const b = RE.board({ limit: 5 });
   ok(typeof b.roi_pct === 'number', 'ROI calculado', b.roi_pct);
   ok(b.descuadres === 1, 'descuadres a la vista', b.descuadres);
-  ok(b.liquidadas === 4, 'cuatro liquidadas (tres por API y la manual)', b.liquidadas);
+  ok(b.liquidadas === 5, 'cinco liquidadas (tres por API y las dos manuales — tarjetas y CS2)', b.liquidadas);
   ok(b.cortafuegos && b.cortafuegos.seguidos === 0, 'cortafuegos a la vista y reabierto', b.cortafuegos);
   const sumaPnl = RE.load().bets.filter((x) => x.status === 'SETTLED').reduce((a, x) => a + x.pnl, 0);
   ok(Math.abs(sumaPnl - RE.load().realizado) < 0.01, 'el realizado cuadra con la suma', [sumaPnl, RE.load().realizado]);

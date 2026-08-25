@@ -308,6 +308,9 @@ function resolverDiag(fila, slate) {
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
 async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
   const C = CFG(), L = load();
+  // cinturón además del filtro de reintentar: una fila de otra familia (CS2 manual) apostaría al mercado
+  // de tarjetas del partido equivocado. Jamás pasa de aquí.
+  if (fila.familia && fila.familia !== FAMILIA) return fila;
   fila.intentos = (fila.intentos || 0) + 1;
   fila.ultimo_intento_at = new Date().toISOString();
   fila.dry = C.dry;
@@ -557,6 +560,7 @@ async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
   const ahora = Date.now();
   const cola = L.bets.filter((b) => b.status === 'PENDIENTE'
     && !b.aviso_manual // ya salió por correo al canal manual: si la API la recolocara habría DOS apuestas vivas
+    && b.motivo !== 'solo_manual' // filas de canal manual puro (CS2): la API no tiene su mercado
     && (!b.kickoff_at || Date.parse(b.kickoff_at) > ahora))
     .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0))
     .slice(0, max);
@@ -706,6 +710,41 @@ async function liquidar(resultados = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// CS2 POR EL CANAL MANUAL (25-ago, decisión de Alexis tras colocar las primeras cuatro él mismo)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// La familia cs2_rounds_v1 (hándicap de rondas, mejor cuota en Cloudbet) entra al libro real SOLO a mano
+// mientras la API siga restringida. Estas filas nacen FUERA del perímetro de tarjetas a propósito: sin
+// referencia y con motivo 'solo_manual', porque la API JAMÁS debe tocarlas — un hándicap de rondas no es
+// soccer.total_bookings, y colocarlo por el circuito de tarjetas apostaría al mercado equivocado. El correo
+// de "colocar a mano" las avisa, anotarManual las cierra con la cuota y el monto reales, y liquidar() las
+// resuelve con nuestro resultado (las picks de esports ya viajan en el mapa de resultados del barrido).
+// El dato que motivó todo esto queda medido en cada fila: la casa capó a Alexis a ~20 USDT por apuesta en
+// estos mercados — ese techo de capacidad ES la explicación de por qué la ineficiencia sobrevive.
+function crearManualCs2(sb, { stake = 30 } = {}) {
+  if (!sb || sb.segment !== 'cs2_rounds_v1' || sb.book !== CASA) return null;
+  const L = load();
+  if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro
+  const mapa = (m => (m ? +m[1] : null))(String(sb.pick_id).match(/_(\d)$/));
+  const [homeN, awayN] = String(sb.match || ' vs ').split(' vs ');
+  const equipo = sb.side === 'away' ? awayN : homeN;
+  // la línea viaja en perspectiva del LOCAL: away con línea +6.5 significa que el visitante da −6.5
+  const hcp = sb.side === 'away' ? -Number(sb.line) : Number(sb.line);
+  const fila = {
+    pick_id: sb.pick_id, shadow_id: sb.id || null,
+    familia: 'CS2_RONDAS', canal: 'manual',
+    match: sb.match, league: sb.league || null, mapa,
+    seleccion: `${equipo} ${hcp > 0 ? '+' + hcp : hcp} rondas · mapa ${mapa != null ? mapa : '?'}`,
+    line: sb.line, side: sb.side, kickoff_at: sb.kickoff_at || null,
+    odds_sombra: sb.odds, model_prob: sb.model_prob != null ? sb.model_prob : null,
+    stake, status: 'PENDIENTE', motivo: 'solo_manual',
+    at: new Date().toISOString(), envios: 0, intentos: 0,
+  };
+  L.bets.push(fila);
+  save();
+  return fila;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // ANOTAR UNA APUESTA COLOCADA A MANO
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // La fila de esa pick ya existe en el libro —el ejecutor la intentó y la casa la rechazó por la cuenta—,
@@ -801,5 +840,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

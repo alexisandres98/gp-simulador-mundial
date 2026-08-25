@@ -12276,6 +12276,17 @@ async function shadowSweep() {
       }
       const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
       real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
+      // CS2 A MANO (25-ago, pedido de Alexis tras colocar las primeras cuatro): cada señal nueva de
+      // cs2_rounds_v1 con mejor cuota en Cloudbet entra al libro real como fila de canal manual; el correo
+      // de abajo la reparte y Alexis la coloca. Hasta que la API se desbloquee, ese es el único camino de
+      // esta familia al dinero — y el tope de ~20 USDT que la casa le puso a mano es un dato que el libro mide.
+      let cs2Manual = 0;
+      for (const sb of S.bets) {
+        if (sb.segment !== 'cs2_rounds_v1' || sb.book !== 'cloudbet' || sb.status !== 'OPEN') continue;
+        if (!sb.kickoff_at || Date.parse(sb.kickoff_at) <= Date.now() + 10 * 60e3) continue;
+        try { if (RE.crearManualCs2(sb)) cs2Manual++; } catch { /* la siguiente pasada la coge */ }
+      }
+      if (cs2Manual) real.cs2_manual_nuevas = cs2Manual;
       await realAvisoApuestaManual().catch(() => {});
       await realAvisoPrimera().catch(() => {});
       await realAvisoDivergencia().catch(() => {});
@@ -12427,21 +12438,28 @@ async function realAvisoApuestaManual() {
     const ko = b.kickoff_at ? Date.parse(b.kickoff_at) : 0;
     if (!(ko > ahora + 10 * 60e3)) return false;                        // con menos de 10 min no da tiempo
     if (MOTIVOS_CUENTA.test(String(b.motivo || ''))) return true;
+    if (b.motivo === 'solo_manual') return true;                        // canal manual puro (CS2): avisa al nacer
     return MOTIVOS_INVISIBLES.test(String(b.motivo || '')) && ko < ahora + 3 * 3600e3;
   });
   if (!filas.length) return;
   const C = RE.CFG();
   const cuerpo = ['APUESTAS PARA COLOCAR A MANO EN CLOUDBET', '',
     'Estas señales no pueden salir por la API (cada una dice por qué), así que van a mano. Mismas reglas',
-    'que el ejecutor: si la cuota que ves es MENOR que la mínima, déjala pasar — la ventaja ya no está.', ''];
+    'que el ejecutor: si la cuota que ves es MENOR que la mínima, déjala pasar — la ventaja ya no está.',
+    'Si la casa te deja meter MENOS del monto, mete el máximo que deje y dime el monto real al anotarla.', ''];
   for (const b of filas) {
     const minimo = +(b.odds_sombra * (1 - C.minOddsSlipPct)).toFixed(2);
-    const porQue = MOTIVOS_CUENTA.test(String(b.motivo || ''))
-      ? 'cuenta restringida en la API'
-      : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
+    const esCs2 = b.familia === 'CS2_RONDAS';
+    const porQue = esCs2 ? 'familia CS2 — solo va a mano mientras la API siga cerrada'
+      : MOTIVOS_CUENTA.test(String(b.motivo || ''))
+        ? 'cuenta restringida en la API'
+        : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
     cuerpo.push(
       `▸ ${b.match}  (${b.league || '?'})`,
-      `  Mercado: Total de tarjetas (Bookings) — UNDER ${b.line}`,
+      esCs2
+        ? `  Mercado: CS2 — Hándicap de rondas (incl. prórroga) · mapa ${b.mapa != null ? b.mapa : '?'}`
+        : `  Mercado: Total de tarjetas (Bookings) — UNDER ${b.line}`,
+      ...(esCs2 ? [`  Apuesta: ${b.seleccion}`] : []),
       `  Monto: ${Number(b.stake || 30).toFixed(0)} USDT · Cuota mínima: ${minimo} (papel ${b.odds_sombra})`,
       `  Saque: ${b.kickoff_at} · Por qué a mano: ${porQue}`,
       '');
@@ -12454,7 +12472,7 @@ async function realAvisoApuestaManual() {
   if (!mailer.isConfigured()) return;
   try {
     await mailer.sendMail({ to: adminTo, noListUnsub: true,
-      subject: `[GP Real] PARA COLOCAR A MANO: ${filas.length} apuesta${filas.length > 1 ? 's' : ''} de tarjetas`,
+      subject: `[GP Real] PARA COLOCAR A MANO: ${filas.length} apuesta${filas.length > 1 ? 's' : ''}`,
       text: cuerpo.join('\n'),
       html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.join('\n').replace(/</g, '&lt;')}</pre>` });
     console.log('[real] aviso manual enviado:', filas.length);
@@ -12481,7 +12499,9 @@ async function realAvisoDivergencia() {
   const desde = Math.max(Date.now() - 24 * 3600e3, nacimiento);
   const S = shadowInit();
   const papel = S.bets.filter((b) => b.segment === RE.SEGMENTO && Date.parse(b.placed_at || 0) >= desde).length;
-  const dinero = L.bets.filter((b) => (b.status === 'PLACED' || b.status === 'SETTLED')
+  // solo tarjetas en el lado del dinero: una colocación manual de CS2 no puede tapar una divergencia de
+  // la familia que la alarma vigila (las filas de tarjetas no llevan `familia`; las de CS2 sí)
+  const dinero = L.bets.filter((b) => !b.familia && (b.status === 'PLACED' || b.status === 'SETTLED')
     && Date.parse(b.placed_at || b.at || 0) >= desde).length;
   if (!papel || dinero) return;            // sin papel no hay con qué comparar; con dinero, todo en orden
   const clave = 'divergencia:' + new Date().toISOString().slice(0, 13);   // como mucho una por hora
@@ -19617,6 +19637,22 @@ const server = http.createServer(async (req, res) => {
         // Anotar una apuesta que Alexis colocó A MANO por la web, mientras la cuenta no puede por API.
         // `?pick=<pick_id>&odds=<cuota real>&stake=<monto>` — convierte la fila ya existente del libro.
         if (run === 'aviso_manual') { await realAvisoApuestaManual(); return json(res, 200, { ok: true }); }
+        // BOOTSTRAP del canal CS2 (25-ago): crea las filas de las señales OPEN de cs2_rounds_v1 con mejor
+        // cuota en Cloudbet. Con `silencio=1` nacen ya marcadas como avisadas — para las que Alexis colocó
+        // por su cuenta ANTES de que el circuito existiera; sin marca, el correo del barrido las repartiría
+        // como si estuvieran por colocar. Después se cierran una a una con run=anotar_manual.
+        if (run === 'cs2_registrar') {
+          const S6 = shadowInit();
+          const silencio = url.searchParams.get('silencio') === '1';
+          const creadas = [];
+          for (const sb of (S6.bets || [])) {
+            if (sb.segment !== 'cs2_rounds_v1' || sb.book !== 'cloudbet' || sb.status !== 'OPEN') continue;
+            const f6 = RE.crearManualCs2(sb);
+            if (f6) { if (silencio) f6.aviso_manual = new Date().toISOString(); creadas.push({ pick: f6.pick_id, seleccion: f6.seleccion, cuota_sombra: f6.odds_sombra, saque: f6.kickoff_at }); }
+          }
+          if (creadas.length) RE.save();
+          return json(res, 200, { creadas: creadas.length, filas: creadas });
+        }
         if (run === 'anotar_manual') {
           const out5 = RE.anotarManual(String(url.searchParams.get('pick') || ''),
             { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
@@ -19778,15 +19814,19 @@ const server = http.createServer(async (req, res) => {
         const papel24 = S4.bets.filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.placed_at || 0) >= desde4);
         const unex24 = (S4.unexec || []).filter((x) => x.segment === RE.SEGMENTO && Date.parse(x.at || 0) >= desde4);
         const motivos = {}; for (const x of unex24) motivos[x.reason || '?'] = (motivos[x.reason || '?'] || 0) + 1;
+        // el lado del dinero se filtra a TARJETAS (las filas CS2 llevan `familia`): la comparación es por
+        // segmento, y una colocación manual de CS2 no puede tapar un cero de la familia vigilada
+        const dinero24 = L4.bets.filter((x) => !x.familia && (x.status === 'PLACED' || x.status === 'SETTLED')
+          && Date.parse(x.placed_at || x.at || 0) >= desde4).length;
         b.papel_vs_dinero_24h = {
           sombra_coloco: papel24.length,
           sombra_no_ejecutables: unex24.length,
           por_que_no_ejecutable: motivos,
-          real_coloco: b.colocadas,
+          real_coloco: dinero24,
           desde: new Date(desde4).toISOString(),
           lectura: papel24.length === 0
             ? 'el sombra tampoco colocó: no hubo señal con precio en una casa conectable. No hay nada roto, hay que esperar.'
-            : (b.colocadas ? 'los dos colocaron' : 'EL PAPEL COLOCÓ Y EL DINERO NO — hay que mirarlo'),
+            : (dinero24 ? 'los dos colocaron' : 'EL PAPEL COLOCÓ Y EL DINERO NO — hay que mirarlo'),
         };
       } catch (e) { b.papel_vs_dinero_24h = { error: e.message }; }
       return json(res, 200, b);

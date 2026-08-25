@@ -9091,6 +9091,20 @@ function combatLoad(org) {
   // F1b→R4: fitElo con fighters (físico/edad/chin/racha/oficio) + finas (striking/grappling 2022+,
   // backtest subset P=0.983); methodModel = KO/Sub/Dec + rounds (skill +0.020 vs división)
   C.elo = CE.fitElo(sorted, C.fighters, { history: true, fine: finePF, weighins: C.wi });
+  // PRIOR DE DEBUTANTE (25-ago, reporte Alexis: dos desconocidos salían 50-50 aunque uno venga 15-1 del
+  // circuito regional). Para ids SIN ninguna pelea fiteada, el récord de carrera previo (ESPN/Wikipedia,
+  // en el overlay) siembra un Elo prior: 1500 + 250·(winrate−0,5)·(n/(n+6)), acotado a ±60 (~8pp máximo).
+  // Deliberadamente tímido —los récords regionales vienen inflados— y JAMÁS pisa un rating fiteado: si el
+  // peleador tiene una sola pelea en el pool, manda el fit. Anotado en C.elo.PRIOR para poder auditarlo.
+  for (const [idP, vP] of Object.entries((db.combatExtraFighters || {})[O.file] || {})) {
+    if (!vP || C.elo.R[idP] != null) continue;
+    const rp = vP.record_pre;
+    if (!rp || !(rp.w + rp.l > 0)) continue;
+    const nP = rp.w + rp.l + (rp.d || 0);
+    const wr = rp.w / (rp.w + rp.l);
+    C.elo.R[idP] = Math.round(1500 + Math.max(-60, Math.min(60, 250 * (wr - 0.5) * (nP / (nP + 6)))));
+    (C.elo.PRIOR = C.elo.PRIOR || {})[idP] = { record: `${rp.w}-${rp.l}${rp.d ? '-' + rp.d : ''}`, elo: C.elo.R[idP], src: rp.src || 'overlay' };
+  }
   C.mm = CE.methodModel(sorted);
   // índice por peleador (una pasada): historial, división actual, racha, KO losses, minutos de jaula
   C.idx = {};
@@ -12921,6 +12935,13 @@ function combatRecordOf(C, id) { // récord W-L derivado del histórico (UFC-onl
     if (me.winner) { w++; const n = ((f.method || {}).name || '').toLowerCase(); if (/ko|tko/.test(n) && !/decision/.test(n)) ko++; if (/submission/.test(n)) sub++; }
     else l++;
   }
+  // DEBUTANTE (25-ago): cero peleas en nuestro histórico no es cero carrera. Si el overlay trae el récord
+  // de ANTES de la organización (ESPN para MMA, Wikipedia para boxeo), la ficha enseña ese en vez del 0-0
+  // que se leía como "no hay información". Marcado con su origen: es carrera previa, no historial nuestro.
+  if (w + l === 0) {
+    const pre = (((db.combatExtraFighters || {})[C.org] || {})[id] || {}).record_pre;
+    if (pre && (pre.w + pre.l > 0)) return { w: pre.w, l: pre.l, ko: pre.ko || 0, sub: pre.sub || 0, pre_org: true };
+  }
   return { w, l, ko, sub };
 }
 // matcher nombre-Odds→id-ESPN: PUNTAJE y null ante empate (regla gp-regla-matcher-desambiguar)
@@ -13145,9 +13166,12 @@ async function combatFillMissingFighters(C, { max = 12 } = {}) {
     for (const s of [f.f1, f.f2]) {
       if (!s || !s.id || vistos.has(s.id)) continue;
       vistos.add(s.id);
-      if (C.names[s.id] && (C.fighters[s.id] || {}).headshot) continue;
       const prev = O2[s.id];
-      if (prev && prev.headshot) continue;
+      const esNuestro = !!(C.elo && (C.elo.N[s.id] || 0) > 0); // con peleas fiteadas no hace falta récord previo
+      // le falta ficha (nombre/foto), o es debutante sin récord previo anotado → a la cola
+      const faltaFicha = !(C.names[s.id] && (C.fighters[s.id] || {}).headshot) && !(prev && prev.headshot);
+      const faltaRecord = !esNuestro && !(prev && prev.record_pre);
+      if (!faltaFicha && !faltaRecord) continue;
       if (prev && (prev.tries || 0) >= 3 && Date.now() - Date.parse(prev.at || 0) < 7 * 864e5) continue;
       need.push(s);
     }
@@ -13162,12 +13186,26 @@ async function combatFillMissingFighters(C, { max = 12 } = {}) {
         O2[s.id] = { ...prev, name: prev.name || s.name || null, tries: (prev.tries || 0) + 1, at: new Date().toISOString() };
         out.sin_datos++; continue;
       }
+      // el RÉCORD DE CARRERA (25-ago): ESPN lo publica aunque las peleas previas no estén en ningún feed
+      // ("7-0-0" del circuito regional). Es lo que separa "debutante" de "no hay información": la ficha lo
+      // enseña y el modelo lo usa como prior en vez del 50-50 de dos desconocidos.
+      let recPre = prev.record_pre || null;
+      if (!recPre) {
+        try {
+          const rj = await fetch(`https://sports.core.api.espn.com/v2/sports/mma/leagues/${lg}/athletes/${s.id}/records?lang=en`,
+            { signal: AbortSignal.timeout(12000) }).then(r => r.ok ? r.json() : null);
+          const it = rj && rj.items && rj.items.find(x => x.type === 'total' || x.name === 'overall');
+          const m9 = it && String(it.summary || '').match(/^(\d+)-(\d+)(?:-(\d+))?$/);
+          if (m9) recPre = { w: +m9[1], l: +m9[2], d: +(m9[3] || 0), src: 'espn-records' };
+        } catch { /* sin récord esta pasada */ }
+      }
       O2[s.id] = {
         name: a.displayName, nick: a.nickname || null,
         headshot: (a.headshot && a.headshot.href) || prev.headshot || null,
         reach_in: a.reach || null, height_in: a.height || null, weight_lb: a.weight || null,
         stance: (a.stance && (a.stance.text || a.stance.name)) || null,
-        dob: a.dateOfBirth || null, src: 'espn-core', tries: (prev.tries || 0) + 1, at: new Date().toISOString(),
+        dob: a.dateOfBirth || null, record_pre: recPre,
+        src: 'espn-core', tries: (prev.tries || 0) + 1, at: new Date().toISOString(),
       };
       out.rellenados++;
     } catch { out.sin_datos++; }
@@ -13211,15 +13249,27 @@ async function boxingPhotoSync({ max = 20 } = {}) {
       const w = await BR.wikitext(title);
       const esBoxeador = w && /==+\s*Professional (boxing )?record\s*==+/i.test(w) && BR.nameMatch(title, nombre);
       if (!esBoxeador) { out.sin_pagina++; continue; }
+      // el RÉCORD DE CARRERA sale de la MISMA tabla ya validada (25-ago): para el debutante sin peleas en
+      // nuestro pool es lo que llena la ficha y siembra el prior del modelo en vez del 50-50.
+      let recPre = null;
+      try {
+        const rows = BR.parseRecord(w);
+        const w9 = rows.filter(r => r.result === 'win').length, l9 = rows.filter(r => r.result === 'loss').length;
+        const d9 = rows.filter(r => r.result === 'draw').length;
+        const ko9 = rows.filter(r => r.result === 'win' && r.method && /^(ko|tko)$/.test(r.method.name || '')).length;
+        if (w9 + l9 > 0) recPre = { w: w9, l: l9, d: d9, ko: ko9, src: 'wikipedia-record' };
+      } catch { /* sin récord */ }
       const j = await fetch('https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=original&titles='
         + encodeURIComponent(title) + '&redirects=1&format=json&formatversion=2',
         { headers: { 'User-Agent': 'GPSimulador/1.0 (sports research; soporte@gpsimulador.com)' }, signal: AbortSignal.timeout(15000) })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       const img = j && j.query && j.query.pages && j.query.pages[0] && j.query.pages[0].original && j.query.pages[0].original.source;
-      if (!img) { SC.checked[id] = { ok: true, at: new Date().toISOString() }; out.sin_imagen++; continue; } // boxeador validado, su página no tiene imagen
       const actual = (C.fighters[id] || {}).headshot || null;
-      O2[id] = { name: nombre, headshot: img, wiki: title, verified: true, src: 'wikipedia', at: new Date().toISOString() };
+      const prevO = O2[id] || {};
+      O2[id] = { ...prevO, name: nombre, wiki: title, record_pre: recPre || prevO.record_pre || null,
+        ...(img ? { headshot: img, verified: true } : {}), src: 'wikipedia', at: new Date().toISOString() };
       SC.checked[id] = { ok: true, at: new Date().toISOString() };
+      if (!img) { out.sin_imagen++; continue; } // boxeador validado, su página no tiene imagen
       out.verificadas++;
       if (actual && actual !== img) out.corregidas++;
     } catch { /* siguiente pasada */ }

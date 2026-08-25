@@ -12487,15 +12487,24 @@ async function realAvisoApuestaManual() {
   cuerpo.push('Cuando las coloques, dile a Claude la cuota y el monto de cada una y las anota en el libro.',
     '', 'Estimaciones de un modelo estadístico, no consejo financiero.');
   RE.save();
+  // LA MARCA SOLO SOBREVIVE SI EL CORREO SALIÓ (25-ago, autopsia Isurus-ODDIK): antes se marcaba, se
+  // guardaba y LUEGO se intentaba enviar — un fallo del envío dejaba la fila como "avisada" y esa señal no
+  // volvía a salir nunca. Si falla, se revierte la marca y el próximo barrido lo reintenta. El coste del
+  // otro lado (un crash entre enviar y guardar → correo repetido) es un duplicado inofensivo; una señal
+  // perdida en silencio no lo es.
+  const revertir = () => { for (const b of filas) delete b.aviso_manual; RE.save(); };
   const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
-  if (!mailer.isConfigured()) return;
+  if (!mailer.isConfigured()) { revertir(); return; }
   try {
     await mailer.sendMail({ to: adminTo, noListUnsub: true,
       subject: `[GP Real] PARA COLOCAR A MANO: ${filas.length} apuesta${filas.length > 1 ? 's' : ''}`,
       text: cuerpo.join('\n'),
       html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.join('\n').replace(/</g, '&lt;')}</pre>` });
     console.log('[real] aviso manual enviado:', filas.length);
-  } catch (e) { console.error('[real] aviso manual:', e.message); }
+  } catch (e) {
+    console.error('[real] aviso manual FALLÓ (se reintenta el próximo barrido):', e.message);
+    revertir();
+  }
 }
 
 // LA ALARMA DE DIVERGENCIA (25-ago). La pregunta que hizo Alexis —"¿está roto o simplemente no hay nada que
@@ -19813,6 +19822,15 @@ const server = http.createServer(async (req, res) => {
         // Anotar una apuesta que Alexis colocó A MANO por la web, mientras la cuenta no puede por API.
         // `?pick=<pick_id>&odds=<cuota real>&stake=<monto>` — convierte la fila ya existente del libro.
         if (run === 'aviso_manual') { await realAvisoApuestaManual(); return json(res, 200, { ok: true }); }
+        // `run=reavisar&pick=`: borra la marca de avisada de UNA fila (correo que se perdió, o que Alexis
+        // quiere recibir de nuevo) — el siguiente run=aviso_manual o el barrido la vuelve a mandar.
+        if (run === 'reavisar') {
+          const LR = RE.load();
+          const fR = LR.bets.find((b) => b.pick_id === String(url.searchParams.get('pick') || ''));
+          if (!fR) return json(res, 200, { error: 'sin fila con esa pick' });
+          delete fR.aviso_manual; RE.save();
+          return json(res, 200, { reavisada: fR.match, estado: fR.status });
+        }
         // BOOTSTRAP del canal CS2 (25-ago): crea las filas de las señales OPEN de cs2_rounds_v1 con mejor
         // cuota en Cloudbet. Con `silencio=1` nacen ya marcadas como avisadas — para las que Alexis colocó
         // por su cuenta ANTES de que el circuito existiera; sin marca, el correo del barrido las repartiría

@@ -9008,7 +9008,11 @@ function combatLoad(org) {
 
   let liveBox = [];
   if (O.file === 'boxing') {
-    liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id);
+    // dos esquemas de id (25-ago): el archivo del harvest usa `bx-<cid>` y el resultado vivo `<cid>` a
+    // secas. Sin normalizar, el resultado no PISABA al fantasma del archivo: se sumaba como pelea aparte.
+    const idsBase = new Set(C.own.map((f) => f.comp_id));
+    liveBox = Object.values(db.boxingResults || {}).filter(f => f && f.comp_id)
+      .map((f) => (!idsBase.has(f.comp_id) && idsBase.has('bx-' + f.comp_id)) ? { ...f, comp_id: 'bx-' + f.comp_id } : f);
     C.own = fusionar(C.own, liveBox);
   }
   // MMA: la misma punta viva que boxeo ya tenía, y que aquí faltaba (25-ago). Sin esto, un peleador que
@@ -13995,7 +13999,9 @@ async function settleCombatPicks() {
     const mcOf = (m) => { const n = String((m || {}).name || '').toLowerCase(); return /^(ko|tko)$/.test(n) ? 'ko' : n === 'decision' ? 'dec' : null; };
     for (const p2 of boxPend) {
       const compId2 = p2.event.canonical_event_id.replace(/^cb-/, '');
-      const w = (db.boxingResults || {})[compId2];
+      // dos esquemas de id conviven en boxeo (25-ago, autopsia Romero-Teofimo): la pick del harvest lleva
+      // prefijo `bx-`, el resultado vivo del pending no. Se pregunta por los dos.
+      const w = (db.boxingResults || {})[compId2] || (db.boxingResults || {})[compId2.replace(/^bx-/, '')];
       if (!w || results[compId2]) continue;
       const winner_id = w.f1.winner ? w.f1.id : w.f2.winner ? w.f2.id : null; // empate/NC → sin ganador → VOID
       results[compId2] = { winner_id, event_id: null, period: w.end_round || null, clock: w.end_clock || null, method_class: mcOf(w.method) };

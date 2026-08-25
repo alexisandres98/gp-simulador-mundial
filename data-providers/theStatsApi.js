@@ -1,5 +1,6 @@
 // theStatsApi.js — Provider server-side de TheStatsAPI (xG observado, stats y shotmap por partido).
-// USO ACOTADO: el plan es 12 req/min → este provider SOLO se usa para partidos TERMINADOS y el resultado
+// USO ACOTADO: plan de PAGO desde el 23-ago (x-ratelimit-limit: 120, antes free 12) — aun así este
+// provider SOLO se usa para partidos TERMINADOS y el resultado
 // se cachea PERMANENTE en db.json (1 fetch por partido en toda la vida del server; el índice de partidos se
 // refresca cada 6h como mucho). La key vive en env THESTATSAPI_KEY; sin key todo devuelve null sin romper.
 'use strict';

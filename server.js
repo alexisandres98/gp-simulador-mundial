@@ -5821,6 +5821,52 @@ async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
   if (out.added || out.live || out.error) console.log('[clubs] TSA sync:', JSON.stringify({ mode, leagues: out.leagues, live: out.live, final: out.added, error: out.error || null }));
   return out;
 }
+// ===== STATS DE PARTIDO VÍA TSA (25-ago, plan de pago activo) — SEGUNDA FUENTE córners/tarjetas =====
+// La cuenta de API-Football no devuelve /fixtures/statistics (comprobado 20-ago: el partido aparece
+// terminado pero las stats vienen vacías) → las picks de CORNERS/CARDS de clubes se quedaban sin dato y
+// morían en VOID. TSA sí publica el overview por partido (yellow_cards/red_cards/corner_kicks) y los ids
+// de equipo de nuestro motor de clubes SON los de TSA (clubResultsTsaSync los escribe tal cual) → localizar
+// el partido es cruzar los dos ids en el calendario de la liga. 2 requests por partido, resultado cacheado
+// PERMANENTE en db.clubTsaStats (una consulta por partido en toda la vida del server; poda a 45 días).
+// Devuelve TOTALES del partido (over/under no necesita orientación): { cards: amarillas+rojas, corners }.
+async function clubStatsTsa(lgKey, homeId, awayId, kickoffMs) {
+  const tsaKey = process.env.THESTATSAPI_KEY || '';
+  if (!tsaKey || !lgKey || !homeId || !awayId || !isFinite(kickoffMs) || !kickoffMs) return null;
+  db.clubTsaStats = db.clubTsaStats || {};
+  const ck = `${lgKey}|${homeId}|${awayId}|${new Date(kickoffMs).toISOString().slice(0, 10)}`;
+  const hit = db.clubTsaStats[ck];
+  if (hit) return hit.miss ? null : hit;
+  if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { leagues: {} }; } }
+  const L = ((global._clubsRatings || {}).leagues || {})[lgKey];
+  if (!L || !L.comp || !L.season) return null;
+  const tsa = async (pathQs) => {
+    const r = await fetch(`https://api.thestatsapi.com/api/football/${pathQs}`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`TSA HTTP ${r.status}`);
+    const j = await r.json().catch(() => null);
+    return j && j.data != null ? j.data : null;
+  };
+  const day = (off) => new Date(kickoffMs + off * 86400e3).toISOString().slice(0, 10);
+  const rows = await tsa(`matches?competition_id=${L.comp}&season_id=${L.season}&date_from=${day(-1)}&date_to=${day(1)}&per_page=40`) || [];
+  const m = rows.find(x => x && x.home_team && x.away_team
+    && ((String(x.home_team.id) === String(homeId) && String(x.away_team.id) === String(awayId))
+      || (String(x.home_team.id) === String(awayId) && String(x.away_team.id) === String(homeId))));
+  const fin = m && ['finished', 'final', 'ft', 'complete'].includes(String(m.status || '').toLowerCase());
+  if (!fin) return null; // sin partido terminado todavía → NO cachear: puede aparecer en la próxima pasada
+  const st = await tsa(`matches/${m.id}/stats`);
+  const ov = st && st.overview;
+  const tot = (sec) => { const a = sec && sec.all; const h = a ? Number(a.home) : NaN, w = a ? Number(a.away) : NaN; return (Number.isFinite(h) && Number.isFinite(w)) ? h + w : null; };
+  const y = tot(ov && ov.yellow_cards), rj = tot(ov && ov.red_cards), c = tot(ov && ov.corner_kicks);
+  if (y == null && c == null) {
+    // terminado pero sin overview: a las 48h del KO se da por miss DEFINITIVO para no preguntar por siempre
+    if (Date.now() - kickoffMs > 48 * 3600e3) { db.clubTsaStats[ck] = { miss: true, at: Date.now() }; save(); }
+    return null;
+  }
+  const out = { match_id: m.id, yellows: y, reds: rj, corners: c, cards: y != null ? y + (rj || 0) : null, at: Date.now() };
+  db.clubTsaStats[ck] = out;
+  for (const [k2, v] of Object.entries(db.clubTsaStats)) { if (Date.now() - (v.at || 0) > 45 * 86400e3) delete db.clubTsaStats[k2]; }
+  save();
+  return out;
+}
 // FASE CLUBES F0.3: SNAPSHOT DIARIO de posición+Elo+pts por liga → serie temporal para la Evolución por liga
 // (patrón renderEvo del Mundial). Con el Elo dinámico (F0.4) la serie tiene señal real cuando las ligas juegan.
 // db.clubHistory[liga] = [{ d:'YYYY-MM-DD', teams:{ tm_id:{pos,elo,pts} } }], una entrada por día (dedupe),
@@ -7746,7 +7792,7 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
     if (!fx) { out.sin_dato++; out.faltantes.push({ ...etiqueta, necesita: 'el partido no aparece terminado en API-Football' }); continue; }
     // orientar al local de la pick: API-Football tiene su propio local y puede no ser el nuestro
     const flip = String((fx.teams || {}).home && fx.teams.home.id) !== String(afH);
-    let code = null;
+    let code = null, fuente = 'api-football';
     if (p.family === 'SOLID') {
       const g = fx.goals || {};
       const hg = Number(flip ? g.away : g.home), ag = Number(flip ? g.home : g.away);
@@ -7767,6 +7813,15 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
       if (p.family === 'CORNERS') { if (hayTipo('corner kicks')) tot = valor('corner kicks'); }
       else if (hayTipo('yellow cards') || hayTipo('red cards')) tot = valor('yellow cards') + valor('red cards');
       const line = Number(p.line);
+      if (tot == null) {
+        // SEGUNDA FUENTE (25-ago, plan de pago de TSA): overview del partido con tarjetas y córners.
+        // Nuestros ids de club SON los de TSA → el cruce no depende del mapeo a API-Football.
+        try {
+          const t = await clubStatsTsa(p.league, p.event.home_team_id, p.event.away_team_id, +new Date(p.event.kickoff_at || 0));
+          const v = t ? (p.family === 'CORNERS' ? t.corners : t.cards) : null;
+          if (v != null) { tot = v; fuente = 'thestatsapi'; out.llamadas += 2; }
+        } catch { /* se anota abajo con el motivo completo */ }
+      }
       if (tot == null || !Number.isFinite(line)) {
         out.sin_dato++;
         // EL MOTIVO TIENE QUE SER EL DE VERDAD. Comprobado el 20-ago contra un partido concreto de la MLS
@@ -7777,7 +7832,7 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
         // mandaría a buscar donde no es.
         out.faltantes.push({ ...etiqueta,
           necesita: tot == null
-            ? `${p.family === 'CORNERS' ? 'córners' : 'tarjetas'}: la cuenta de API-Football no devuelve estadística de partido (/fixtures/statistics vacío, comprobado también con la ruta de contexto)`
+            ? `${p.family === 'CORNERS' ? 'córners' : 'tarjetas'}: la cuenta de API-Football no devuelve estadística de partido (/fixtures/statistics vacío) y TSA tampoco tiene el overview de este partido`
             : 'la pick no tiene línea guardada' });
         continue;
       }
@@ -7787,11 +7842,11 @@ async function recoverVoidClubPicksAF({ apply = false, limit = 80 } = {}) {
     out.recuperadas++;
     out.por_familia[p.family] = (out.por_familia[p.family] || 0) + 1;
     out.por_liga[etiqueta.liga] = (out.por_liga[etiqueta.liga] || 0) + 1;
-    if (out.cambios.length < 60) out.cambios.push({ ...etiqueta, de: 'VOID', a: code, cuota: p.best_odds, fuente: 'api-football' });
+    if (out.cambios.length < 60) out.cambios.push({ ...etiqueta, de: 'VOID', a: code, cuota: p.best_odds, fuente });
     if (apply) {
       p.result_code = code;
       p.recovered_at = new Date().toISOString();
-      p.recovered_from = 'api-football';
+      p.recovered_from = fuente;
       const o = Number(p.best_odds) || 0;
       p.units = code === 'WIN' ? +(o - 1).toFixed(2) : code === 'LOSS' ? -1 : 0;
     }
@@ -7989,15 +8044,21 @@ async function settleClubPropsViaAf() {
     if (!syncFinal && Date.now() - ko < 3 * 3600e3) continue;
     try {
       const st = await clubMatchStats(p.league, p.event.home_team_id, p.event.away_team_id, +new Date(p.event.kickoff_at || 0));
-      if (!st || !st.home || !st.away) continue;
       const val = (o, k) => Number(o[k]) || 0;
-      const tot = p.family === 'CORNERS'
-        ? val(st.home, 'corners') + val(st.away, 'corners')
-        : val(st.home, 'yellowCards') + val(st.home, 'redCards') + val(st.away, 'yellowCards') + val(st.away, 'redCards'); // amarillas+rojas = mismo conteo del modelo (fit: yellows+reds)
-      if (p.family === 'CORNERS' && !(st.home.corners != null && st.away.corners != null)) continue;
-      if (p.family === 'CARDS' && !(st.home.yellowCards != null && st.away.yellowCards != null)) continue;
+      let tot = null, src = 'api-football';
+      if (st && st.home && st.away) {
+        if (p.family === 'CORNERS' && st.home.corners != null && st.away.corners != null) tot = val(st.home, 'corners') + val(st.away, 'corners');
+        if (p.family === 'CARDS' && st.home.yellowCards != null && st.away.yellowCards != null) tot = val(st.home, 'yellowCards') + val(st.home, 'redCards') + val(st.away, 'yellowCards') + val(st.away, 'redCards'); // amarillas+rojas = mismo conteo del modelo (fit: yellows+reds)
+      }
+      if (tot == null) {
+        // SEGUNDA FUENTE (25-ago): la cuenta de AF no devuelve stats de partido → overview de TSA
+        const t = await clubStatsTsa(p.league, p.event.home_team_id, p.event.away_team_id, ko);
+        const v = t ? (p.family === 'CORNERS' ? t.corners : t.cards) : null;
+        if (v != null) { tot = v; src = 'thestatsapi'; }
+      }
+      if (tot == null) continue;
       const over = tot > Number(p.line);
-      p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); settled++;
+      p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); p.settled_src = src; settled++;
     } catch { /* siguiente pasada */ }
   }
   if (settled) save();

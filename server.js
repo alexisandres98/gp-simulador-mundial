@@ -13173,7 +13173,7 @@ async function combatFillMissingFighters(C, { max = 12 } = {}) {
 // BOXEADOR: un homónimo cualquiera colaba su foto. Este barrido VALIDA: la página tiene que tener la tabla
 // "Professional record" y casar el nombre; solo entonces su imagen vale, y entra como `verified` (pisa a
 // la del archivo). Presupuestado por pasada; prioridad a los de la cartelera y a los que no tienen foto. ═══
-async function boxingPhotoSync({ max = 10 } = {}) {
+async function boxingPhotoSync({ max = 20 } = {}) {
   const C = combatLoad('boxing');
   const BR = require('./combat-engine/boxing-results');
   const X = db.combatExtraFighters = db.combatExtraFighters || {};
@@ -13190,7 +13190,7 @@ async function boxingPhotoSync({ max = 10 } = {}) {
     const sc = (id) => (enCartel.has(id) ? 0 : 2) + (((C.fighters[id] || {}).headshot || (O2[id] || {}).headshot) ? 1 : 0);
     return sc(a) - sc(b);
   }).slice(0, max);
-  const out = { revisados: 0, verificadas: 0, corregidas: 0, sin_pagina: 0 };
+  const out = { revisados: 0, verificadas: 0, corregidas: 0, sin_pagina: 0, sin_imagen: 0 };
   for (const id of cands) {
     out.revisados++;
     SC.checked[id] = { ok: false, at: new Date().toISOString() };
@@ -13207,7 +13207,7 @@ async function boxingPhotoSync({ max = 10 } = {}) {
         { headers: { 'User-Agent': 'GPSimulador/1.0 (sports research; soporte@gpsimulador.com)' }, signal: AbortSignal.timeout(15000) })
         .then(r => r.ok ? r.json() : null).catch(() => null);
       const img = j && j.query && j.query.pages && j.query.pages[0] && j.query.pages[0].original && j.query.pages[0].original.source;
-      if (!img) { SC.checked[id] = { ok: true, at: new Date().toISOString() }; continue; } // boxeador validado, sin imagen en su página
+      if (!img) { SC.checked[id] = { ok: true, at: new Date().toISOString() }; out.sin_imagen++; continue; } // boxeador validado, su página no tiene imagen
       const actual = (C.fighters[id] || {}).headshot || null;
       O2[id] = { name: nombre, headshot: img, wiki: title, verified: true, src: 'wikipedia', at: new Date().toISOString() };
       SC.checked[id] = { ok: true, at: new Date().toISOString() };

@@ -7117,6 +7117,44 @@ async function derivadasJob({ force = false } = {}) {
 setTimeout(() => { derivadasJob().catch((e) => console.error('[derivadas]', e.message)); }, 5 * 60e3);
 setInterval(() => { derivadasJob().catch((e) => console.error('[derivadas]', e.message)); }, 20 * 60e3);
 
+// ===== DESCANSO AL 1X2 DE CLUBES (25-ago, F2.3 parcial) ==================================================
+// La ventaja de descanso entra al MODELO de clubes, pero SOLO al 1X2 (SOLID y la pata 1X2 del combo).
+// Fórmula IDÉNTICA a la del eje REST del Mundial, ya validada y testeada (tests/gp-intelligence caso 6):
+// c = clamp(diff_dias × 2.5, ±10 Elo), y solo cuenta si |c| ≥ 3 (diferencia ≥ 1.2 días).
+// Dos decisiones propias de clubes:
+//   · los días se saturan a 7 — de una semana en adelante todos llegan descansados; sin el tope, la vuelta
+//     de un parón (15-30 días sin jugar) se leería como ventaja enorme, y un parón no es descanso: es falta
+//     de ritmo. Mismo espíritu que el clamp a 4 días del baloncesto.
+//   · último partido a >45 días o sin dato → señal NULA (pretemporada o hueco de datos, no descanso).
+// DECISIÓN EXPLÍCITA (Alexis, 25-ago): tarjetas, córners, goles y props NO tocan esto — siguen leyendo el
+// Elo crudo. La familia con dinero real (cards under) y corners over no se contaminan: el ajuste vive
+// LOCAL en el ramal 1X2 de buildClubDailyPicks, jamás dentro de clubElo ni en los λ ni en closeness1x2.
+// El ajuste queda anotado en la pick (rest_ctx) para poder medir su efecto en el track record.
+function clubRestContext(lgKey, hId, aId, kickoffMs) {
+  try {
+    if (!isFinite(kickoffMs) || !kickoffMs) return null;
+    global._clubsResults = global._clubsResults || {};
+    if (!global._clubsResults[lgKey]) {
+      try { global._clubsResults[lgKey] = JSON.parse(fs.readFileSync(clubDataFile(`results-${lgKey}.json`), 'utf8')).rows || []; }
+      catch { global._clubsResults[lgKey] = []; }
+    }
+    const rows = global._clubsResults[lgKey];
+    const lastOf = (tid) => {
+      let best = null;
+      for (const r of rows) {
+        if (r.hg == null || (String(r.home_id) !== String(tid) && String(r.away_id) !== String(tid))) continue;
+        const t = +new Date(r.date || 0);
+        if (t && t < kickoffMs && (!best || t > best)) best = t;
+      }
+      return best ? (kickoffMs - best) / 86400e3 : null;
+    };
+    const dh = lastOf(hId), da = lastOf(aId);
+    if (dh == null || da == null || dh > 45 || da > 45) return null;
+    const c = Math.max(-10, Math.min(10, (Math.min(dh, 7) - Math.min(da, 7)) * 2.5));
+    if (Math.abs(c) < 3) return null;
+    return { home_days: +dh.toFixed(1), away_days: +da.toFixed(1), elo: Math.round(c) };
+  } catch { return null; }
+}
 async function buildClubDailyPicks({ dryRun = false } = {}) {
   // ANTES de cualquier early-return: el freeze depende del reloj, no de que el sweep traiga mercados.
   const published = clubFreezePublished();
@@ -7158,10 +7196,11 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       // la pick (gate_status) y el track record privado del admin separa approved vs shadow. NADA de esto toca
       // el rendimiento público (db.clubDailyPicks vive aparte y picks-record no lo incluye).
       const rh = clubElo(lg, hId), ra = clubElo(lg, aId);
-      const pr = matchProbs(rh + (L.hfa || 60), ra); // MISMO modelo 1X2 del cockpit (Elo dinámico + hfa de liga)
+      const rc = clubRestContext(lg, hId, aId, +new Date(kickoff)); // descanso: SOLO acá (ver clubRestContext)
+      const pr = matchProbs(rh + (L.hfa || 60) + (rc ? rc.elo : 0), ra); // MISMO modelo 1X2 del cockpit (Elo dinámico + hfa de liga) + descanso
       const sel = {};
       for (const o of ['home', 'draw', 'away']) { const b = bestOf(o); sel[o] = { model: pr[o], market: cons.fair[o], bestOdds: b.odds, bestBook: b.book, books: booksOf(o) }; }
-      events.push({ eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff, selections: sel });
+      events.push({ eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff, selections: sel, restCtx: rc });
       out.events_1x2++; st.events++;
     } else if (mk.market_family === 'match_total') {
       // MISMO goal engine del cockpit: λ ataque/defensa de la liga (fallback Elo) + ajuste del observer si activo
@@ -7365,7 +7404,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   // dry-run: devolver candidatos + bloqueos sin persistir (verificación del mecanismo con cuotas reales)
   if (dryRun) {
     out.candidates = {
-      solid: res.all.solid.map(s => ({ league: (events.find(e => e.eventId === s.eventId) || {}).league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, eligible: s.eligible, blockers: s.blockers })),
+      solid: res.all.solid.map(s => { const e2 = events.find(e => e.eventId === s.eventId) || {}; return { league: e2.league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, rest: e2.restCtx || null, eligible: s.eligible, blockers: s.blockers }; }),
       goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, regime: g.regime, efficiency: g.efficiency, eligible: g.eligible, blockers: g.blockers })),
       props: res.all.props.map(g => ({ league: (propMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, books: g.books, eligible: g.eligible, blockers: g.blockers })),
     };
@@ -7395,6 +7434,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
     why_es: fields.why && fields.why.es, why_en: fields.why && fields.why.en,
     regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
+    rest_ctx: fields.rest_ctx || null, // descanso aplicado al 1X2 (clubRestContext) — solo SOLID; auditoría del efecto
     solid_lever: fields.solid_lever || false, // SOLID que pasa SOLO por la palanca ajustada (modelo<mercado) — monitoreo
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
   });
@@ -7423,7 +7463,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const f = S[fav]; const m = Number(f.model || 0), k = Number(f.market || 0);
     if (!(m > 0 && k > 0 && k < 1)) continue;
     const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100; // = (modelo−mercado)/2 en pp
-    const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff };
+    const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff, rest_ctx: ev.restCtx || null };
     if (bandE === 'eficiente') {
       if (k < 0.55 || (f.books || 0) < 5 || !(f.bestOdds > 1)) continue;
       if (blendEdge < -2) continue; // el modelo contradice al ancla → no se ancla

@@ -556,6 +556,7 @@ async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
   const L = load();
   const ahora = Date.now();
   const cola = L.bets.filter((b) => b.status === 'PENDIENTE'
+    && !b.aviso_manual // ya salió por correo al canal manual: si la API la recolocara habría DOS apuestas vivas
     && (!b.kickoff_at || Date.parse(b.kickoff_at) > ahora))
     .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0))
     .slice(0, max);

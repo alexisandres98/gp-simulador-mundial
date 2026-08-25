@@ -257,6 +257,23 @@ const ok = (cond, txt, detalle) => {
   // limpiar el contador de rechazos que dejo el RESTRICTED de esta prueba
   RE.load().rechazos_cuenta = { seguidos: 0 };
 
+  console.log('\n17e. una fila avisada al canal manual NO se reintenta por API (doble colocación)');
+  casa.respuestaPlace = () => ({ ok: false, status: 0, body: null, raw: 'timeout' });
+  const sAv = senal();
+  await RE.intentar(sAv, pick, { cbIdx: IDX });           // queda PENDIENTE (no llegó a la casa)
+  const fAv = RE.load().bets.find((b) => b.pick_id === sAv.pick_id);
+  fAv.aviso_manual = new Date().toISOString();            // el correo ya salió: la apuesta es del canal manual
+  RE.save();
+  casa.respuestaPlace = (p) => ({ ok: true, status: 200, betStatus: 'ACCEPTED', body: { betStatus: 'ACCEPTED', price: p.price, stake: p.stake } });
+  const refAv = fAv.ref_id;
+  const enviosAvAntes = casa.colocaciones.filter((c) => c.referenceId === refAv).length; // el timeout inicial también quedó registrado
+  await RE.reintentar({ cbIdx: IDX });
+  ok(casa.colocaciones.filter((c) => c.referenceId === refAv).length === enviosAvAntes, 'el reintento NO la toca aunque la casa ya aceptaría (otras pendientes sí pueden salir)', refAv);
+  const fAv2 = RE.load().bets.find((b) => b.pick_id === sAv.pick_id);
+  ok(fAv2.status === 'PENDIENTE', 'sigue esperando la anotación manual', fAv2.status);
+  const amAv = RE.anotarManual(sAv.pick_id, { odds: 1.9, stake: 30 });
+  ok(!amAv.error && RE.load().bets.find((b) => b.pick_id === sAv.pick_id).via === 'manual', 'y la anotación manual la cierra', amAv.error || 'ok');
+
   console.log('\n18. la misma señal nunca entra dos veces');
   const dup = await RE.intentar(s1, pick, { cbIdx: IDX });
   ok(dup === null, 'la puerta la rechaza por pick repetida');

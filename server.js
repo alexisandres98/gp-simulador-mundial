@@ -12414,22 +12414,36 @@ async function realAvisoApuestaManual() {
   if (!RE.CFG().enabled) return;
   const L = RE.load();
   const ahora = Date.now();
-  const filas = L.bets.filter((b) => !b.aviso_manual
-    && (b.status === 'PENDIENTE' || b.status === 'DESCARTADA')
-    && /cuenta_o_peticion:|cuenta_restringida/.test(String(b.motivo || ''))
-    && b.kickoff_at && Date.parse(b.kickoff_at) > ahora + 10 * 60e3);   // con menos de 10 min no da tiempo
+  // Dos clases de fila salen por correo (25-ago, autopsia de Málaga-Dépor y Botafogo-Paranaense: dos
+  // señales del domingo murieron caducadas SIN aviso porque su motivo no era de cuenta):
+  //   · de CUENTA (restringida/rechazo) — avisan en cuanto ocurren: la API no va a poder nunca.
+  //   · INVISIBLES para la API (sin id del evento, evento ilegible, línea no cotizada, sin precio) — esas
+  //     se reintentan cada barrido porque el índice puede llenarse solo… pero si a <3h del saque siguen
+  //     igual, ya no es "esperar al índice": es una apuesta que solo saldrá a mano, y calla = se pierde.
+  const MOTIVOS_CUENTA = /cuenta_o_peticion:|cuenta_restringida/;
+  const MOTIVOS_INVISIBLES = /^(sin_id_de_evento|evento_ilegible|linea_no_cotizada|sin_precio|sin_market_url)$/;
+  const filas = L.bets.filter((b) => {
+    if (b.aviso_manual || !(b.status === 'PENDIENTE' || b.status === 'DESCARTADA')) return false;
+    const ko = b.kickoff_at ? Date.parse(b.kickoff_at) : 0;
+    if (!(ko > ahora + 10 * 60e3)) return false;                        // con menos de 10 min no da tiempo
+    if (MOTIVOS_CUENTA.test(String(b.motivo || ''))) return true;
+    return MOTIVOS_INVISIBLES.test(String(b.motivo || '')) && ko < ahora + 3 * 3600e3;
+  });
   if (!filas.length) return;
   const C = RE.CFG();
   const cuerpo = ['APUESTAS PARA COLOCAR A MANO EN CLOUDBET', '',
-    'La API sigue restringida para la cuenta, así que estas van a mano. Mismas reglas que el ejecutor:',
-    'si la cuota que ves es MENOR que la mínima, déjala pasar — a ese precio la ventaja ya no está.', ''];
+    'Estas señales no pueden salir por la API (cada una dice por qué), así que van a mano. Mismas reglas',
+    'que el ejecutor: si la cuota que ves es MENOR que la mínima, déjala pasar — la ventaja ya no está.', ''];
   for (const b of filas) {
     const minimo = +(b.odds_sombra * (1 - C.minOddsSlipPct)).toFixed(2);
+    const porQue = MOTIVOS_CUENTA.test(String(b.motivo || ''))
+      ? 'cuenta restringida en la API'
+      : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
     cuerpo.push(
       `▸ ${b.match}  (${b.league || '?'})`,
       `  Mercado: Total de tarjetas (Bookings) — UNDER ${b.line}`,
       `  Monto: ${Number(b.stake || 30).toFixed(0)} USDT · Cuota mínima: ${minimo} (papel ${b.odds_sombra})`,
-      `  Saque: ${b.kickoff_at}`,
+      `  Saque: ${b.kickoff_at} · Por qué a mano: ${porQue}`,
       '');
     b.aviso_manual = new Date().toISOString();
   }

@@ -490,6 +490,34 @@ async function lolHarvestJob() {
   } catch (e) { opsLog('lol_harvest', { error: e.message }); setTimeout(lolHarvestJob, 30 * 60e3); }
 }
 setTimeout(lolHarvestJob, 6 * 60e3);
+// ===== VIGILANTE DE MEMORIA (27-ago, autopsia del "exited with status 134" de anoche) =====================
+// El proceso murió con el heap en 3.061 MB tras 8h17m encendido: crecimiento SOSTENIDO (~6 MB/min), no un
+// pico — hay una fuga en el proceso principal (la cosecha LoL va en proceso hijo aparte, no es ella). Hasta
+// cazarla, dos defensas: una MUESTRA por minuto con el delta a 5 min —para que el log diga QUÉ trabajo
+// corre cuando el heap salta— y un REINICIO PREVENTIVO limpio: guardar la base y salir con exit(0) ANTES de
+// que V8 aborte a mitad de una petición o de un save() a medias, que es el único desenlace peor que
+// reiniciar. Render lo levanta solo en ~30s. Tope configurable con GP_MEM_RESTART_MB (defecto 2600).
+const MEM_TOPE_MB = Math.max(800, Number(process.env.GP_MEM_RESTART_MB) || 2600);
+const _memSerie = [];
+let _memSaliendo = false;
+setInterval(() => {
+  try {
+    if (_memSaliendo) return;
+    const mb = Math.round(process.memoryUsage().heapUsed / 1048576);
+    _memSerie.push({ t: Date.now(), mb });
+    if (_memSerie.length > 6) _memSerie.shift();
+    const hace5 = _memSerie[0];
+    const delta = hace5 ? mb - hace5.mb : 0;
+    if (delta > 120) console.error('[mem] heap', mb, 'MB · +' + delta, 'MB en', Math.max(1, Math.round((Date.now() - hace5.t) / 60000)), 'min');
+    else if (mb > MEM_TOPE_MB * 0.8) console.error('[mem] heap alto:', mb, 'MB (tope', MEM_TOPE_MB + ')');
+    if (mb > MEM_TOPE_MB) {
+      _memSaliendo = true;
+      console.error('[mem] REINICIO PREVENTIVO: heap', mb, 'MB > tope', MEM_TOPE_MB, '— guardo la base y salgo limpio');
+      try { save(); } catch { /* salir igual: quedarse es morir en 134 */ }
+      setTimeout(() => process.exit(0), 1500);
+    }
+  } catch { /* el vigilante jamás tumba nada */ }
+}, 60e3);
 // ── PandaScore: la base histórica de los TRES juegos que no la tenían (19-ago) ──────────────────────────
 // Esports declara `rating: 0` en sus cuatro juegos desde que existe. CS2 salió de ahí con cosecha propia;
 // LoL, Valorant y Dota 2 llevaban meses esperando a OpenDota, a Riot y a Liquipedia. PandaScore los cubre

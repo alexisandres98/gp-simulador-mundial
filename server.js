@@ -12498,7 +12498,8 @@ async function realAvisoApuestaManual() {
       '');
     b.aviso_manual = new Date().toISOString();
   }
-  cuerpo.push('Cuando las coloques, dile a Claude la cuota y el monto de cada una y las anota en el libro.',
+  cuerpo.push('Cuando las coloques: anótalas de un toque en tu página de anotar (la de tus marcadores),',
+    'o dile a Claude cuota y monto. Lo que no coloques se deja: caduca solo.',
     '', 'Estimaciones de un modelo estadístico, no consejo financiero.');
   RE.save();
   // LA MARCA SOLO SOBREVIVE SI EL CORREO SALIÓ (25-ago, autopsia Isurus-ODDIK): antes se marcaba, se
@@ -19856,6 +19857,73 @@ const server = http.createServer(async (req, res) => {
           pelea: `${f.f1.name} vs ${f.f2.name}`, gana: f.f1.winner ? f.f1.name : f.f2.name,
           metodo: (f.method || {}).display || null, round: f.end_round, reloj: f.end_clock })),
       });
+    }
+    // PÁGINA DE ANOTAR (26-ago, pedido de Alexis: "si hago 40 apuestas son 30 mensajes"). Una pantalla
+    // privada del admin: lista las señales avisadas por correo que siguen sin anotar, con la cuota del papel
+    // y el monto sugerido PRECARGADOS — él corrige lo que la casa capó y toca "Colocada"; cada toque llama a
+    // run=anotar_manual con la misma llave de la URL. El enlace NO viaja en ningún correo (los escáneres de
+    // correo abren enlaces): Alexis lo guarda en marcadores una vez. Caducadas de <24h también salen, por si
+    // colocó una y el reloj le ganó a la anotación.
+    if (p === '/api/internal/anotar' && req.method === 'GET') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const REa = require('./real-executor/store');
+      const La = REa.load();
+      const ahoraA = Date.now();
+      const filasA = La.bets.filter((b) => b.aviso_manual
+        && (b.status === 'PENDIENTE' || (b.status === 'CADUCADA' && ahoraA - Date.parse(b.at || 0) < 24 * 3600e3)))
+        .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0));
+      const hoyA = La.bets.filter((b) => b.via === 'manual' && (b.status === 'PLACED' || b.status === 'SETTLED')
+        && b.placed_at && ahoraA - Date.parse(b.placed_at) < 24 * 3600e3)
+        .sort((a, b) => Date.parse(b.placed_at) - Date.parse(a.placed_at));
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      const cardA = (b) => {
+        const sel = b.seleccion || `${b.match} — UNDER ${b.line} tarjetas`;
+        const min = b.odds_sombra > 1 ? (b.odds_sombra * 0.97).toFixed(2) : '';
+        return `<div class="card" id="c-${esc(encodeURIComponent(b.pick_id))}">
+          <div class="m">${esc(b.match)} <span class="lg">${esc(b.league || '')}</span></div>
+          <div class="s">${esc(sel)}</div>
+          <div class="meta">papel ${esc(b.odds_sombra)} · mínima ${esc(min)} · saque ${esc(String(b.kickoff_at || '').replace('T', ' ').slice(0, 16))}Z${b.status === 'CADUCADA' ? ' · <b>ya arrancó</b>' : ''}</div>
+          <div class="row"><label>Cuota <input type="number" step="0.01" inputmode="decimal" value="${esc(b.odds_sombra)}" id="o-${esc(encodeURIComponent(b.pick_id))}"></label>
+          <label>Monto <input type="number" step="0.01" inputmode="decimal" value="${esc(b.stake || 30)}" id="s-${esc(encodeURIComponent(b.pick_id))}"></label>
+          <button onclick="anotar('${esc(encodeURIComponent(b.pick_id))}')">✓ Colocada</button></div>
+        </div>`;
+      };
+      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Anotar apuestas — GP</title><style>
+*{box-sizing:border-box;margin:0}body{font:16px/1.45 -apple-system,'Helvetica Neue',Arial,sans-serif;background:#0a0f0d;color:#eaf1f2;padding:16px;max-width:560px;margin:0 auto}
+h1{font-size:20px;margin:6px 0 2px}p.sub{color:#7d8f88;font-size:13px;margin-bottom:14px}
+.card{background:#101915;border:1px solid #1c2a24;border-left:4px solid #2de6a3;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card.ok{opacity:.45;border-left-color:#5f747b}
+.m{font-weight:700}.lg{color:#7d8f88;font-weight:400;font-size:12px}.s{color:#2de6a3;font-weight:700;margin:2px 0}
+.meta{color:#7d8f88;font-size:12px;margin-bottom:8px}
+.row{display:flex;gap:8px;align-items:end}label{font-size:11px;color:#9db0a8;display:flex;flex-direction:column;gap:2px;flex:1}
+input{width:100%;padding:8px;border-radius:8px;border:1px solid #2a3a33;background:#0c1310;color:#fff;font-size:16px}
+button{background:#2de6a3;color:#05231a;border:0;border-radius:99px;padding:10px 16px;font-weight:800;font-size:14px}
+button:disabled{opacity:.5}.done{margin-top:18px}.done h2{font-size:14px;color:#9db0a8;margin-bottom:6px}
+.done div{font-size:13px;color:#7d8f88;padding:3px 0}.empty{color:#7d8f88;padding:24px 0;text-align:center}
+#msg{position:fixed;bottom:14px;left:16px;right:16px;background:#123328;border:1px solid #2de6a3;color:#baf3dd;padding:10px 14px;border-radius:10px;display:none;font-size:14px}</style></head><body>
+<h1>Apuestas por anotar</h1><p class="sub">Corrige cuota/monto si la casa capó, y toca Colocada. Lo no colocado se deja: caduca solo.</p>
+${filasA.length ? filasA.map(cardA).join('') : '<div class="empty">Nada pendiente de anotar ✓</div>'}
+<div class="done"><h2>Anotadas (últimas 24h)</h2>${hoyA.map((b) => `<div>✓ ${esc(b.seleccion || b.match + ' u' + b.line)} @ ${esc(b.odds_real)} × ${esc(b.stake)}</div>`).join('') || '<div>—</div>'}</div>
+<div id="msg"></div>
+<script>
+const KEY=new URLSearchParams(location.search).get('key');
+async function anotar(pid){
+  const o=document.getElementById('o-'+pid).value, s=document.getElementById('s-'+pid).value;
+  const card=document.getElementById('c-'+pid); const btn=card.querySelector('button'); btn.disabled=true;
+  try{
+    const r=await fetch('/api/internal/real?key='+encodeURIComponent(KEY)+'&run=anotar_manual&pick='+pid+'&odds='+encodeURIComponent(o)+'&stake='+encodeURIComponent(s),{method:'POST'});
+    const j=await r.json();
+    const m=document.getElementById('msg');
+    if(j&&j.anotada){card.classList.add('ok');btn.textContent='Anotada ✓';m.textContent='Anotada: '+j.anotada+' @ '+o+' × '+s;}
+    else{btn.disabled=false;m.textContent='No se pudo: '+((j&&j.error)||'error');}
+    m.style.display='block';setTimeout(()=>m.style.display='none',3500);
+  }catch(e){btn.disabled=false;}
+}
+</script></body></html>`;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(html);
     }
     if (p === '/api/internal/real') {
       const xk = process.env.GP_EXPORT_KEY || '';

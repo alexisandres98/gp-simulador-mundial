@@ -12453,6 +12453,68 @@ async function realDailyMail(cual, { force = false } = {}) {
 // un enlace clicable en el correo: los escáneres de correo abren los enlaces, y un escáner anotando
 // apuestas fantasma en el libro real es exactamente la clase de fallo silencioso que este sistema no puede
 // permitirse.
+// La cáscara de gpsimulador.com/anotar (26-ago). Sin datos dentro: el JS pide la cola con el token de
+// sesión del admin que la plataforma ya guarda en localStorage (wc_token). Sin token o sin admin, la ruta
+// de datos contesta 404 y la página lo dice. Se refresca sola cada 90s.
+const ANOTAR_SHELL = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Anotar apuestas — GP Simulador</title><style>
+*{box-sizing:border-box;margin:0}body{font:16px/1.45 -apple-system,'Helvetica Neue',Arial,sans-serif;background:#0a0f0d;color:#eaf1f2;padding:16px;max-width:560px;margin:0 auto}
+h1{font-size:20px;margin:6px 0 2px}p.sub{color:#7d8f88;font-size:13px;margin-bottom:14px}
+.card{background:#101915;border:1px solid #1c2a24;border-left:4px solid #2de6a3;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card.ok{opacity:.45;border-left-color:#5f747b}
+.m{font-weight:700}.lg{color:#7d8f88;font-weight:400;font-size:12px}.s{color:#2de6a3;font-weight:700;margin:2px 0}
+.meta{color:#7d8f88;font-size:12px;margin-bottom:8px}
+.row{display:flex;gap:8px;align-items:end}label{font-size:11px;color:#9db0a8;display:flex;flex-direction:column;gap:2px;flex:1}
+input{width:100%;padding:8px;border-radius:8px;border:1px solid #2a3a33;background:#0c1310;color:#fff;font-size:16px}
+button{background:#2de6a3;color:#05231a;border:0;border-radius:99px;padding:10px 16px;font-weight:800;font-size:14px}
+button:disabled{opacity:.5}.done{margin-top:18px}.done h2{font-size:14px;color:#9db0a8;margin-bottom:6px}
+.done div{font-size:13px;color:#7d8f88;padding:3px 0}.empty{color:#7d8f88;padding:24px 0;text-align:center}
+#msg{position:fixed;bottom:14px;left:16px;right:16px;background:#123328;border:1px solid #2de6a3;color:#baf3dd;padding:10px 14px;border-radius:10px;display:none;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:center}.top button{background:#12241c;color:#2de6a3;border:1px solid rgba(45,230,163,.4)}</style></head><body>
+<div class="top"><h1>Apuestas por anotar</h1><button onclick="cargar()">↻</button></div>
+<p class="sub">Corrige cuota/monto si la casa capó, y toca Colocada. Lo no colocado se deja: caduca solo. Se refresca sola.</p>
+<div id="lista"><div class="empty">Cargando…</div></div>
+<div class="done"><h2>Anotadas (últimas 36h)</h2><div id="hechas">—</div></div>
+<div id="msg"></div>
+<script>
+var TOK=null;try{TOK=localStorage.getItem('wc_token');}catch(e){}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function aviso(t){var m=document.getElementById('msg');m.textContent=t;m.style.display='block';setTimeout(function(){m.style.display='none';},3500);}
+function cargar(){
+  if(!TOK){document.getElementById('lista').innerHTML='<div class="empty">Inicia sesión como admin en <a href="/" style="color:#2de6a3">gpsimulador.com</a> y vuelve a esta página.</div>';return;}
+  fetch('/api/real/cola',{headers:{Authorization:'Bearer '+TOK}}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.error){document.getElementById('lista').innerHTML='<div class="empty">Sesión no válida o sin permisos. Inicia sesión como admin en <a href="/" style="color:#2de6a3">gpsimulador.com</a>.</div>';return;}
+    var pend=(j&&j.pendientes)||[];
+    if(!pend.length){document.getElementById('lista').innerHTML='<div class="empty">Nada pendiente de anotar ✓</div>';}
+    else{
+      document.getElementById('lista').innerHTML=pend.map(function(b){
+        var id=encodeURIComponent(b.pick);
+        return '<div class="card" id="c-'+id+'">'
+          +'<div class="m">'+esc(b.match)+' <span class="lg">'+esc(b.league||'')+'</span></div>'
+          +'<div class="s">'+esc(b.seleccion)+'</div>'
+          +'<div class="meta">papel '+esc(b.papel)+' · mínima '+esc(b.minima||'—')+' · saque '+esc(String(b.kickoff||'').replace('T',' ').slice(0,16))+'Z'+(b.arranco?' · <b>ya arrancó</b>':'')+'</div>'
+          +'<div class="row"><label>Cuota <input type="number" step="0.01" inputmode="decimal" value="'+esc(b.papel)+'" id="o-'+id+'"></label>'
+          +'<label>Monto <input type="number" step="0.01" inputmode="decimal" value="'+esc(b.stake)+'" id="s-'+id+'"></label>'
+          +'<button onclick="anotar(\\''+id+'\\')">✓ Colocada</button></div></div>';
+      }).join('');
+    }
+    var h=(j&&j.anotadas)||[];
+    document.getElementById('hechas').innerHTML=h.length?h.map(function(b){
+      return '<div>✓ '+esc(b.seleccion)+' @ '+esc(b.odds)+' × '+esc(b.stake)+(b.resultado?' · '+esc(b.resultado)+(b.pnl!=null?' ('+(b.pnl>0?'+':'')+esc(b.pnl)+')':''):'')+'</div>';
+    }).join(''):'—';
+  }).catch(function(){aviso('No se pudo cargar. Reintenta.');});
+}
+function anotar(pid){
+  var o=document.getElementById('o-'+pid).value,s=document.getElementById('s-'+pid).value;
+  var card=document.getElementById('c-'+pid),btn=card.querySelector('button');btn.disabled=true;
+  fetch('/api/real/anotar?pick='+pid+'&odds='+encodeURIComponent(o)+'&stake='+encodeURIComponent(s),{method:'POST',headers:{Authorization:'Bearer '+TOK}})
+    .then(function(r){return r.json();}).then(function(j){
+      if(j&&j.anotada){card.classList.add('ok');btn.textContent='Anotada ✓';aviso('Anotada: '+j.anotada+' @ '+o+' × '+s);}
+      else{btn.disabled=false;aviso('No se pudo: '+((j&&j.error)||'error'));}
+    }).catch(function(){btn.disabled=false;aviso('Red caída, reintenta.');});
+}
+cargar();setInterval(cargar,90000);
+</script></body></html>`;
 async function realAvisoApuestaManual() {
   const RE = require('./real-executor/store');
   if (!RE.CFG().enabled) return;
@@ -12498,7 +12560,9 @@ async function realAvisoApuestaManual() {
       '');
     b.aviso_manual = new Date().toISOString();
   }
-  cuerpo.push('Cuando las coloques: anótalas de un toque en tu página de anotar (la de tus marcadores),',
+  // el enlace de la página ya puede viajar en el correo: no lleva llave — un escáner que lo abra recibe la
+  // cáscara vacía y su petición de datos muere en 404 sin sesión de admin.
+  cuerpo.push('Cuando las coloques: anótalas de un toque en gpsimulador.com/anotar (con tu sesión de admin),',
     'o dile a Claude cuota y monto. Lo que no coloques se deja: caduca solo.',
     '', 'Estimaciones de un modelo estadístico, no consejo financiero.');
   RE.save();
@@ -19864,6 +19928,44 @@ const server = http.createServer(async (req, res) => {
     // run=anotar_manual con la misma llave de la URL. El enlace NO viaja en ningún correo (los escáneres de
     // correo abren enlaces): Alexis lo guarda en marcadores una vez. Caducadas de <24h también salen, por si
     // colocó una y el reloj le ganó a la anotación.
+    // ── ANOTAR CON SESIÓN DE ADMIN (26-ago, pedido de Alexis: sin llave, dentro de la plataforma) ──────
+    // gpsimulador.com/anotar es la ventana; estas dos rutas son sus datos. El navegador manda el token de
+    // sesión del propio dominio (localStorage wc_token) — solo admin, jamás una llave en la URL.
+    if (p === '/api/real/cola' && req.method === 'GET') {
+      const uA = getUser(req);
+      if (!uA || !uA.isAdmin) return json(res, 404, { error: 'No encontrado' });
+      const REc = require('./real-executor/store');
+      const Lc = REc.load();
+      const ahoraC = Date.now();
+      const pendC = Lc.bets.filter((b) => b.aviso_manual
+        && (b.status === 'PENDIENTE' || (b.status === 'CADUCADA' && ahoraC - Date.parse(b.at || 0) < 24 * 3600e3)))
+        .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0))
+        .map((b) => ({ pick: b.pick_id, match: b.match, league: b.league || null,
+          seleccion: b.seleccion || (b.match + ' — UNDER ' + b.line + ' tarjetas'),
+          papel: b.odds_sombra, minima: b.odds_sombra > 1 ? +(b.odds_sombra * 0.97).toFixed(2) : null,
+          stake: b.stake || 30, kickoff: b.kickoff_at,
+          arranco: b.status === 'CADUCADA' || !!(b.kickoff_at && Date.parse(b.kickoff_at) < ahoraC) }));
+      const hechasC = Lc.bets.filter((b) => b.via === 'manual' && (b.status === 'PLACED' || b.status === 'SETTLED')
+        && b.placed_at && ahoraC - Date.parse(b.placed_at) < 36 * 3600e3)
+        .sort((a, b) => Date.parse(b.placed_at) - Date.parse(a.placed_at))
+        .map((b) => ({ seleccion: b.seleccion || (b.match + ' u' + b.line), odds: b.odds_real, stake: b.stake,
+          resultado: b.resultado || null, pnl: b.pnl != null ? b.pnl : null }));
+      return json(res, 200, { pendientes: pendC, anotadas: hechasC });
+    }
+    if (p === '/api/real/anotar' && req.method === 'POST') {
+      const uA = getUser(req);
+      if (!uA || !uA.isAdmin) return json(res, 404, { error: 'No encontrado' });
+      const REc = require('./real-executor/store');
+      const outA = REc.anotarManual(String(url.searchParams.get('pick') || ''),
+        { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
+      return json(res, 200, outA);
+    }
+    // la ventana en sí: cáscara SIN datos (no necesita auth para servirse; los datos sí la piden). El JS
+    // usa el token de sesión que la plataforma ya guarda en este dominio.
+    if (p === '/anotar' || p === '/anotar/') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(ANOTAR_SHELL);
+    }
     if (p === '/api/internal/anotar' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

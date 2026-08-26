@@ -1316,6 +1316,8 @@
     // público existe desde el 5-ago pero el ítem del menú seguía invisible para no-admins (syncAdminUI
     // solo revela gx-admin-only a admins). El acceso real lo gobierna cbCanSee/el server; acá solo la nav.
     var nav2 = NAV_B.map(function (n) { var clk = live.indexOf(n[0]) >= 0; var adminOnly = (n[0] === 'admin' || n[0] === 'registry' || n[0] === 'method') ? ' gx-admin-only' : (FEAT_NAV[n[0]] ? ' ' + FEAT_NAV[n[0]] : ''); var hid = adminOnly ? ' style="display:none"' : ''; return '<div class="gx-nav' + adminOnly + (n[0] === cur ? ' on' : '') + '"' + hid + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
+    // Anotar (26-ago, solo admin): acceso directo del lateral a la cola del canal manual (gpsimulador.com/anotar)
+    nav2 += '<a class="gx-nav gx-admin-only" style="display:none;text-decoration:none;color:inherit" href="/anotar" target="_blank" rel="noopener">' + ic('file-check') + '<span>' + (LANG === 'en' ? 'Log bets' : 'Anotar') + '</span></a>';
     // TENIS Y F1 NO TENÍAN LISTA DE "MÁS" (19-ago): caían a la de fútbol, así que sus vistas propias no
     // aparecían por ningún lado en móvil — ni en la barra de abajo ni en el menú de More.
     var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books']
@@ -16236,7 +16238,9 @@
     var users = admUsersHtml(uj);
     // ---- Actividad/retención (lazy: carga al montar) ----
     var analytics = '<div class="gx-panel gx-mv-panel gx-adm"><div class="gx-ph"><span class="gx-label">' + esc(t('adm_ana')) + '</span></div><div class="gx-mod-body gx-adm-body" id="gxa-ana">' + mvLoading() + '</div></div>';
-    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + analytics + matchCorrect + affAdm + users + broadcast + telegram + '</div></div>';
+    // Anotar (26-ago): el botón del canal manual, arriba del todo — en móvil este ES el camino a la cola
+    var anotarBtn = '<a class="gx-panel gx-mv-panel" style="display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none;color:inherit" href="/anotar" target="_blank" rel="noopener"><div><b>📝 ' + (LANG === 'en' ? 'Log manual bets' : 'Anotar apuestas manuales') + '</b><div class="gx-dim" style="font-size:12px;margin-top:2px">' + (LANG === 'en' ? 'The manual-channel queue: tap to log what you placed at the book.' : 'La cola del canal manual: marca de un toque lo que colocaste en la casa.') + '</div></div><span style="color:#1FE3A4;font-weight:800;font-size:20px">→</span></a>';
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content" style="gap:14px">' + viewHead(t('nav_admin')) + anotarBtn + analytics + matchCorrect + affAdm + users + broadcast + telegram + '</div></div>';
     wireAdmin();
     fetch('/api/admin/analytics', { headers: hdrs() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (a) {
       var el = $('#gxa-ana'); if (!el) return;

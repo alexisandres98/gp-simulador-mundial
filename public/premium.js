@@ -7536,13 +7536,13 @@
   // problema —cabecera con estados, agrupación por día, tabla densa en escritorio y tarjetas en móvil— y
   // el usuario navega los dos deportes en la misma sesión. Se reusa el markup y las clases; lo único que
   // cambia es la gramática del deporte: dos salidas en vez de tres, y la señal es la línea justa.
-  var BB_GTABS = [['all', 'Todos'], ['live', 'En vivo'], ['upcoming', 'Próximos'], ['finished', 'Finalizados']];
+  var BB_GTABS = [['all', 'Todos', 'All'], ['live', 'En vivo', 'Live'], ['upcoming', 'Próximos', 'Upcoming'], ['finished', 'Finalizados', 'Finished']];
   function bbDayKey(d) { var t = new Date(d); return isNaN(t) ? '?' : t.getFullYear() + '-' + (t.getMonth() + 1) + '-' + t.getDate(); }
   function bbDayLabel(d) {
     var t = new Date(d); if (isNaN(t)) return '—';
     var hoy = new Date(), man = new Date(Date.now() + 864e5);
-    if (t.toDateString() === hoy.toDateString()) return 'Hoy';
-    if (t.toDateString() === man.toDateString()) return 'Mañana';
+    if (t.toDateString() === hoy.toDateString()) return esT('Hoy', 'Today');
+    if (t.toDateString() === man.toDateString()) return esT('Mañana', 'Tomorrow');
     return t.toLocaleDateString(S.lang === 'en' ? 'en-GB' : 'es-ES', { weekday: 'short', day: '2-digit', month: 'short' });
   }
   function bbTime(d) { var t = new Date(d); return isNaN(t) ? '' : ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2); }
@@ -7611,7 +7611,7 @@
     var counts = { all: all.length, live: C.live, upcoming: C.upcoming, finished: C.finished };
     var head = '<div class="gx-ohead"><h1>Partidos</h1>' +
       '<div class="gx-seg" id="gx-bbtabs">' + BB_GTABS.map(function (x) {
-        return '<button data-bbgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
+        return '<button data-bbgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(S.lang === 'en' && x[2] ? x[2] : x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
       }).join('') + '</div>' +
       '<select class="gx-select" id="gx-bblg">' + BB_LEAGUES.map(function (x) { return '<option value="' + x[0] + '"' + (lg === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>' +
       '<div class="gx-msearch">' + ic('search') + '<input id="gx-bbsearch" placeholder="Buscar equipo…" value="' + esc(S.bb.gQ || '') + '"></div>' +
@@ -7646,7 +7646,8 @@
   // cuatro familias que se leen distinto no ayuda a decidir, y en fútbol nunca existió.
   // Value, arbitraje, caídas y middles NO dependen del modelo (salen de precios entre casas). Las PICKS sí,
   // y por eso viven en un monitor privado con su etiqueta puesta: el modelo aún no bate al cierre.
-  var BB_OPPF = [['picks', 'Picks'], ['value', 'Value'], ['arbs', 'Arbitraje'], ['dropping', 'Caídas'], ['middles', 'Middles']];
+  // etiquetas resueltas al PINTAR (t() depende del idioma vivo, y este array se evalúa una sola vez al cargar)
+  var BB_OPPF = [['picks', 'Picks'], ['value', 'Value'], ['arbs', function () { return t('arb'); }], ['dropping', function () { return t('drop_tab'); }], ['middles', function () { return t('mid_tab'); }]];
   function bbOppLg() { return (S.bb && S.bb.oppLg) || 'all'; }
   function bbBookLab(b) { return String(b || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function bbWhen(d) {
@@ -7654,10 +7655,10 @@
     var t = new Date(d); if (isNaN(t)) return '';
     var hoy = new Date();
     var hh = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
-    return (t.toDateString() === hoy.toDateString() ? 'Hoy ' : ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + ' ') + hh;
+    return (t.toDateString() === hoy.toDateString() ? esT('Hoy ', 'Today ') : ('0' + t.getDate()).slice(-2) + '/' + ('0' + (t.getMonth() + 1)).slice(-2) + ' ') + hh;
   }
   function bbEvLine(ev) {
-    return '<div class="gx-bb-ovent"><b>' + esc(ev.away) + '</b><i>en</i><b>' + esc(ev.home) + '</b>' +
+    return '<div class="gx-bb-ovent"><b>' + esc(ev.away) + '</b><i>' + esT('en', 'at') + '</i><b>' + esc(ev.home) + '</b>' +
       '<span class="gx-dim">' + esc(ev.league_name || '') + (ev.kickoff ? ' · ' + esc(bbWhen(ev.kickoff)) : '') + '</span></div>';
   }
   // ── PICKS DEL MONITOR ──
@@ -7825,13 +7826,13 @@
     // `gx-cb-tab`— así que las dos filas parecían el mismo control repetido.
     // Se pasa a `gx-prodchip`, que es el chip de familia de la casa: el mismo que ya usan los otros tres.
     var chips = '<div class="gx-bb-oppfams">' + BB_OPPF.map(function (x) {
-      return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(x[1]) + '</span>';
+      return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(typeof x[1] === 'function' ? x[1]() : x[1]) + '</span>';
     }).join('') + '</div>';
-    if (f === 'picks') { bbShell('Oportunidades · baloncesto', tabs + chips + bbPicksPanel()); return; }
+    if (f === 'picks') { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + bbPicksPanel()); return; }
 
     var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
-    if (!d) { bbShell('Oportunidades · baloncesto', tabs + chips + mvLoading()); return; }
-    if (d._err) { bbShell('Oportunidades · baloncesto', tabs + chips + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
+    if (!d) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + mvLoading()); return; }
+    if (d._err) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
 
     var body = '';
     if (f === 'value') body = bbValueBoard(d.value || []);
@@ -7851,7 +7852,7 @@
     var head = '<div class="gx-panel gx-bb-modelbar"><div><span class="gx-label">Partidos con cuotas</span><b>' + (d.events || 0) + '</b></div>' +
       (d.counts ? '<div><span class="gx-label">Mercados</span><b>' + d.counts.markets + '</b></div><div><span class="gx-label">Precios</span><b>' + d.counts.quotes + '</b></div>' : '') +
       '<div><span class="gx-label">Actualizado</span><b>' + esc(String(d.refreshed_at || '').slice(11, 16)) + '</b></div></div>';
-    bbShell('Oportunidades · baloncesto', tabs + chips + head + body);
+    bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + head + body);
   }
 
   // ── BRIEF DE LA JORNADA ──────────────────────────────────────────────────────────────────────────────
@@ -7862,7 +7863,7 @@
     if (d._err) { bbShell('Brief', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
     var intro = d.intro && d.intro[lang]
-      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
+      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">' + esT('La lectura de hoy', 'Today\'s read') + '</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
         String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
       : (d.intro_error ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir (' + esc(d.intro_error) + '). El tablero de abajo no depende de ella.</span></div>' : '');
     var games = (d.games || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>La jornada</span><span class="gx-dim">' + d.games.length + '</span></div>' +
@@ -8976,10 +8977,40 @@
   }
   // La primera carga de un juego pide la agenda y los mercados de hasta catorce partidas, así que se ven
   // unos segundos de espera: conviene que digan lo que está pasando en vez del genérico "Cargando partido".
+  // ── IDIOMA (27-ago, reporte Alexis: "seleccionas inglés y Oportunidades de Esport sigue en español") ──
+  // Dos piezas: esT elige el texto de interfaz por idioma en el momento de PINTAR (nunca al cargar el
+  // script — el idioma puede cambiar en caliente), y esEnTxt traduce los textos que vienen COMPUESTOS del
+  // servidor (tickets, etiquetas de familia: "Hándicap de rondas · mapa 2"). El server habla español por
+  // diseño; traducir aquí evita duplicar la composición de tickets en dos idiomas en el backend.
+  function esT(es, en) { return S.lang === 'en' ? en : es; }
+  var ES_EN_FRASES = [
+    ['Hándicap de rondas', 'Round handicap'], ['Total de rondas', 'Round total'], ['Rondas de equipo', 'Team rounds'],
+    ['Hándicap de kills', 'Kill handicap'], ['Total de kills', 'Kill total'], ['Kills de equipo', 'Team kills'],
+    ['Total de mapas', 'Map total'], ['Hándicap de mapas', 'Map handicap'], ['Ganador de la serie', 'Series winner'],
+    ['Duración', 'Duration'], ['Más de', 'Over'], ['Menos de', 'Under'],
+    ['Hánd. rondas', 'Round hcp.'], ['Hánd. mapas', 'Map hcp.'], ['Hánd. kills', 'Kill hcp.'],
+    ['Rondas equipo', 'Team rounds'], ['Kills equipo', 'Team kills'], ['Total mapas', 'Map total'],
+    ['Prórroga', 'Overtime'], ['Rondas', 'Rounds'],
+  ];
+  function esEnTxt(txt) {
+    if (S.lang !== 'en' || !txt) return txt;
+    var s = String(txt);
+    ES_EN_FRASES.forEach(function (p) { s = s.split(p[0]).join(p[1]); });
+    return s.replace(/\brondas\b/g, 'rounds').replace(/\bronda\b/g, 'round')
+      .replace(/\bmapas\b/g, 'maps').replace(/\bmapa\b/g, 'map')
+      .replace(/\bHándicap\b/g, 'Handicap').replace(/\bLocal\b/g, 'Home').replace(/\bVisitante\b/g, 'Away');
+  }
+  // copia superficial de una pick con su texto visible traducido, para pasarla a la card compartida
+  function esEnPick(e) {
+    if (S.lang !== 'en') return e;
+    var c = Object.assign({}, e);
+    ['ticket', 'label', 'family_label', 'thesis', 'selection_name'].forEach(function (k) { if (c[k]) c[k] = esEnTxt(c[k]); });
+    return c;
+  }
   function esLoading() {
     return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') +
-      '<b>Leyendo la agenda y los mercados de ' + esc(esGameLab()) + '…</b>' +
-      '<span class="gx-dim">La primera vez tarda unos segundos: se consultan los precios de cada partida una a una.</span></div></div>';
+      '<b>' + esT('Leyendo la agenda y los mercados de ', 'Reading the schedule and markets for ') + esc(esGameLab()) + '…</b>' +
+      '<span class="gx-dim">' + esT('La primera vez tarda unos segundos: se consultan los precios de cada partida una a una.', 'The first load takes a few seconds: prices are fetched match by match.') + '</span></div></div>';
   }
   function esShell(title, inner) {
     var mv = $('#gx-matchview'); if (!mv) return;
@@ -9081,17 +9112,18 @@
       '<div class="gx-seg">' + [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]].map(function (x) {
         return '<button data-esoppfilt="' + x[0] + '" class="' + (oppFilt === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
       }).join('') + '</div>' +
-      '<div class="gx-es-oppfams">' + [['picks', t('picks')], ['arb', t('arb')], ['drop', 'Caídas'], ['mid', 'Middles']].map(function (x) {
+      '<div class="gx-es-oppfams">' + [['picks', t('picks')], ['arb', t('arb')], ['drop', t('drop_tab')], ['mid', t('mid_tab')]].map(function (x) {
         return '<span class="gx-prodchip' + (oppSub === x[0] ? ' on' : '') + '" data-esoppsub="' + x[0] + '">' + esc(x[1]) + '</span>';
       }).join('') + '</div></div>';
     var hero = '<div class="gx-es-hero"><div><b>' + esc(d.label) + '</b>' +
       '<span class="gx-dim">' + esc((d.native || []).join(' · ')) + '</span></div>' +
       '<span class="gx-spacer"></span>' +
-      '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>partidas</span></div>' +
-      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>con ventaja</span></div></div>' +
+      '<div class="gx-es-hero-n"><b>' + (d.items || []).length + '</b><span>' + esT('partidas', 'matches') + '</span></div>' +
+      '<div class="gx-es-hero-n"><b>' + rows.length + '</b><span>' + esT('con ventaja', 'with edge') + '</span></div></div>' +
       esTopStrip(d, rows) +
-      (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden + ' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : '') +
-        ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? 'volver a esconderlas' : 'mostrarlas') + '</a></div>' : '');
+      (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden +
+        esT(' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : ''), ' hidden pick' + (hidden > 1 ? 's' : '')) +
+        ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? esT('volver a esconderlas', 'hide again') : esT('mostrarlas', 'show them')) + '</a></div>' : '');
     var inner;
     if (oppSub === 'arb') {
       inner = esArbs(d, { filter: inWindow }) ||
@@ -9103,14 +9135,14 @@
       var shown = rows.filter(function (r) { return inWindow((r.it.event || {}).start_at); });
       var body;
       if (!shown.length) {
-        body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>Ninguna ventaja pasa el listón ahora mismo.</b>' +
-          '<span class="gx-dim">' + esc((d.items || []).length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.' : 'La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.') + '</span></div></div>';
+        body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Ninguna ventaja pasa el listón ahora mismo.', 'No edge clears the bar right now.') + '</b>' +
+          '<span class="gx-dim">' + esc((d.items || []).length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.', 'The engine valued the open lines and none beats its own noise. Saying NO PICK is a result too.') : esT('La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.', 'The books have not opened derivative markets for these matches yet: they usually open in the hours before start.')) + '</span></div></div>';
       } else {
         // LA MISMA CARD QUE FÚTBOL, COMBATE Y BALONCESTO. No una parecida: `pickCard()` tal cual, con los
         // campos que el motor ya emite con esa forma. El usuario aprende a leer una pick UNA vez —chip de
         // familia, ticket, porqué desplegable, cuota con su casa, confianza, señales y calculadora de stake—
         // y esa lectura le vale en los cuatro deportes. Una tabla propia aquí no era personalidad, era deuda.
-        body = '<div class="gx-picks-feed">' + shown.map(function (r) { return pickCard(r.e, {}); }).join('') + '</div>';
+        body = '<div class="gx-picks-feed">' + shown.map(function (r) { return pickCard(esEnPick(r.e), {}); }).join('') + '</div>';
       }
       inner = body + esWhyNot(d);
     }
@@ -9132,21 +9164,21 @@
     var pickBox;
     if (top) {
       var e = top.e, ev = top.it.event || {};
-      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(e.ticket || e.label || e.family || '—') + '</div>' +
+      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(esEnTxt(e.ticket || e.label || e.family) || '—') + '</div>' +
         '<div class="gx-estop-sub">' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</div></div>' +
         '<div class="gx-estop-foot"><span class="gx-mono">' + (e.odds != null ? odd(e.odds) : '—') + '</span>' +
         (e.edge_pp != null ? '<span class="gx-pp gx-pos">+' + e.edge_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
     } else {
       pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('none_active_pick')) + '</div>' +
-        '<div class="gx-estop-sub">decir NO PICK también es un resultado</div></div>';
+        '<div class="gx-estop-sub">' + esT('decir NO PICK también es un resultado', 'saying NO PICK is a result too') + '</div></div>';
     }
     var arbBox;
     if (arb) {
       var ae = arb.it.event || {};
-      arbBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(arb.a.label || arb.a.family || 'Arbitraje') + '</div>' +
+      arbBox = '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(esEnTxt(arb.a.label || arb.a.family) || t('arb')) + '</div>' +
         '<div class="gx-estop-sub">' + esc((ae.home && ae.home.name) || '') + ' vs ' + esc((ae.away && ae.away.name) || '') + '</div></div>' +
         '<div class="gx-estop-foot"><span class="gx-mono">' + ((arb.a.margin_pct != null) ? arb.a.margin_pct.toFixed(2) + '%' : '—') + '</span>' +
-        '<span class="gx-pp gx-blue">sin modelo</span></div>';
+        '<span class="gx-pp gx-blue">' + esT('sin modelo', 'model-free') + '</span></div>';
     } else {
       arbBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('no_arb')) + '</div>' +
         '<div class="gx-estop-sub">' + esc(t('no_arb_sub')) + '</div></div>';
@@ -9181,7 +9213,7 @@
           '<span class="gx-arb-leg-book"><span class="gx-es-book' + (l.book === 'pinnacle' ? ' sharp' : '') + '">' + esc(l.book.slice(0, 3).toUpperCase()) + '</span> ' + esc(prettyBook(l.book) || l.book) + '</span>' +
           '<span class="gx-arb-leg-stake">' + esc(t('arb_stake')) + ' ' + Math.round(100 * inv[li] / invSum) + '%</span></div>';
       }).join('');
-      var mkt = esc(a.family_label || a.family) + (a.line != null ? ' ' + a.line : '') + (a.map ? ' · mapa ' + a.map : '');
+      var mkt = esc(esEnTxt(a.family_label || a.family)) + (a.line != null ? ' ' + a.line : '') + (a.map ? esT(' · mapa ', ' · map ') + a.map : '');
       return '<div class="gx-arb-card gx-pick-clickable gx-arb-exe" data-esmatch="' + esc(ev.id) + '">' +
         '<div class="gx-pick-top"><span class="gx-pick-fam gx-fam-pure">' + ic('arrows-left-right') + esc(t('arb_fam_pure')) + '</span>' +
         '<span class="gx-pick-time">' + mkt + ' · ' + esc(fmtDateTime(ev.start_at)) + '</span></div>' +
@@ -9191,9 +9223,9 @@
         '<div class="gx-arb-fresh gx-dim">' + esc(t('arb_detail_cta')) + ' ' + ic('arrow-right') + '</div></div>' +
         '</div>';
     }).join('');
-    return esPanel('Arbitraje puro', '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
+    return esPanel(t('arb_fam_pure'), '<span class="gx-chip gx-chip-alta">' + esT('no depende del modelo', 'model-free') + '</span>',
       cards +
-      '<div class="gx-dim gx-es-note">Los límites de apuesta y la velocidad a la que la casa mueve el precio mandan: un arbitraje sobre el papel no es un arbitraje ejecutado.</div>');
+      '<div class="gx-dim gx-es-note">' + esT('Los límites de apuesta y la velocidad a la que la casa mueve el precio mandan: un arbitraje sobre el papel no es un arbitraje ejecutado.', 'Bet limits and how fast the book moves its price rule here: an arbitrage on paper is not an executed arbitrage.') + '</div>');
   }
 
   // ── CAÍDAS Y MIDDLES: LAS OTRAS DOS QUE NO PASAN POR EL MODELO ─────────────────────────────────────────
@@ -9208,7 +9240,7 @@
   var ES_HCP_F = { HANDICAP: 1, RONDAS_HANDICAP: 1, KILLS_HANDICAP: 1 };
   var ES_UNIT = { RONDAS: 'rondas', RONDAS_EQUIPO: 'rondas', KILLS: 'kills', KILLS_EQUIPO: 'kills', TOTAL_MAPAS: 'mapas' };
   function esLadoTxt(r, side, line, ev) {
-    var eq = function (w) { return w === 'home' ? ((ev.home && ev.home.name) || 'Local') : ((ev.away && ev.away.name) || 'Visitante'); };
+    var eq = function (w) { return w === 'home' ? ((ev.home && ev.home.name) || esT('Local', 'Home')) : ((ev.away && ev.away.name) || esT('Visitante', 'Away')); };
     if (ES_HCP_F[r.family]) {
       // la línea viaja SIEMPRE referida al local: el lado visitante es el signo contrario, y enseñarla tal
       // cual mandaría al lado opuesto del mercado
@@ -9216,13 +9248,15 @@
       return eq(side) + ' ' + (L > 0 ? '+' : '') + L;
     }
     if (side === 'over' || side === 'under') {
-      var quien = r.team ? ' de ' + eq(r.team) : '';
-      return (side === 'over' ? 'Más de ' : 'Menos de ') + line + ' ' + (ES_UNIT[r.family] || '') + quien;
+      var quien = r.team ? esT(' de ', ' · ') + eq(r.team) : '';
+      var unidad = ES_UNIT[r.family] || '';
+      if (S.lang === 'en') unidad = { rondas: 'rounds', mapas: 'maps' }[unidad] || unidad;
+      return (side === 'over' ? esT('Más de ', 'Over ') : esT('Menos de ', 'Under ')) + line + ' ' + unidad + quien;
     }
     return eq(side);
   }
   function esCtx(r, ev) {
-    return esc(r.family_label || r.family) + (r.map ? ' · mapa ' + r.map : '') + ' · ' + esc(fmtDateTime(ev.start_at));
+    return esc(esEnTxt(r.family_label || r.family)) + (r.map ? esT(' · mapa ', ' · map ') + r.map : '') + ' · ' + esc(fmtDateTime(ev.start_at));
   }
   function esSurface(d, cual, inWindow) {
     var sur = d.surfaces || {};
@@ -9230,10 +9264,10 @@
     rows = rows.filter(function (r) { return inWindow((r.event || {}).start_at); });
     if (!rows.length) {
       var por = sur.why || (cual === 'drop'
-        ? 'No hay ninguna línea que la casa de referencia haya movido lo bastante desde que la vimos por primera vez.'
-        : 'Ninguna pareja de líneas deja hueco suficiente a un coste razonable ahora mismo.');
+        ? esT('No hay ninguna línea que la casa de referencia haya movido lo bastante desde que la vimos por primera vez.', 'No line has been moved far enough by the reference book since we first saw it.')
+        : esT('Ninguna pareja de líneas deja hueco suficiente a un coste razonable ahora mismo.', 'No pair of lines leaves enough of a gap at a reasonable cost right now.'));
       return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>' + esc(cual === 'drop' ? 'Sin caídas ahora mismo' : 'Sin middles baratos ahora') + '</b>' +
+        '<b>' + esc(cual === 'drop' ? esT('Sin caídas ahora mismo', 'No drops right now') : esT('Sin middles baratos ahora', 'No cheap middles right now')) + '</b>' +
         '<span class="gx-dim">' + esc(por) + '</span></div></div>';
     }
     var cards = rows.slice(0, 24).map(function (r) {
@@ -9243,7 +9277,7 @@
           return '<span class="gx-val-bk">' + esc(prettyBook(x.book) || x.book) + ' <b>' + Number(x.odds).toFixed(2) + '</b></span>';
         }).join('');
         return '<div class="gx-mcard gx-pick-clickable" data-esmatch="' + esc(ev.id) + '">' +
-          '<div class="gx-mcard-top"><span class="gx-pick-fam">' + esc(r.family_label || r.family) + '</span>' +
+          '<div class="gx-mcard-top"><span class="gx-pick-fam">' + esc(esEnTxt(r.family_label || r.family)) + '</span>' +
           '<span class="gx-dim" style="font-size:10.5px">' + esCtx(r, ev) + '</span><span class="gx-spacer"></span>' +
           '<span class="gx-edge gx-pos">−' + r.drop_pct + '%</span></div>' +
           '<div class="gx-cell-team" style="margin:6px 0"><div class="gx-teamnames">' +
@@ -9252,12 +9286,12 @@
           '<div class="gx-mcard-foot"><span class="gx-mono gx-dim"><s>' + Number(r.sharp_before).toFixed(2) + '</s> → ' +
           '<b style="color:var(--gx-text,#EDF2F4)">' + Number(r.sharp_now).toFixed(2) + '</b> · ' + esc(prettyBook(r.sharp_book) || r.sharp_book) + '</span>' +
           '<span class="gx-mono gx-pos">+' + r.move_pp + 'pp</span></div>' +
-          (stale ? '<div class="gx-val-line"><span class="gx-val-bk fair">rezagadas</span>' + stale + '</div>'
-            : '<div class="gx-dim" style="font-size:10.5px;margin-top:5px">El resto ya siguió el movimiento: queda como señal, no como precio aprovechable.</div>') +
+          (stale ? '<div class="gx-val-line"><span class="gx-val-bk fair">' + esT('rezagadas', 'lagging') + '</span>' + stale + '</div>'
+            : '<div class="gx-dim" style="font-size:10.5px;margin-top:5px">' + esT('El resto ya siguió el movimiento: queda como señal, no como precio aprovechable.', 'The rest already followed the move: it remains a signal, not a usable price.') + '</div>') +
           '</div>';
       }
       return '<div class="gx-arb-card gx-mcard gx-pick-clickable" data-esmatch="' + esc(ev.id) + '">' +
-        '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(r.family_label || r.family) + '</span>' +
+        '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(esEnTxt(r.family_label || r.family)) + '</span>' +
         '<span class="gx-pick-time">' + esCtx(r, ev) + '</span></div>' +
         '<div class="gx-arb-match"><b>' + esc((ev.home && ev.home.name) || '') + ' vs ' + esc((ev.away && ev.away.name) || '') + '</b></div>' +
         '<div class="gx-arb-legs">' +
@@ -9268,16 +9302,16 @@
         '<span class="gx-arb-leg-odds gx-mono">' + Number(r.high.odds).toFixed(2) + '</span>' +
         '<span class="gx-arb-leg-book">' + esc(prettyBook(r.high.book) || r.high.book) + '</span></div>' +
         '</div>' +
-        '<div class="gx-pick-foot"><span class="gx-mono ' + (r.cost_pct <= 0 ? 'gx-pos' : 'gx-dim') + '">costo ' +
+        '<div class="gx-pick-foot"><span class="gx-mono ' + (r.cost_pct <= 0 ? 'gx-pos' : 'gx-dim') + '">' + esT('costo ', 'cost ') +
         (r.cost_pct >= 0 ? '' : '+') + Math.abs(r.cost_pct) + '%' + (r.cost_pct <= 0 ? ' · surebet' : '') + '</span>' +
-        '<span class="gx-mono gx-pos">zona doble ' + esc(r.zone) + '</span></div>' +
+        '<span class="gx-mono gx-pos">' + esT('zona doble ', 'double zone ') + esc(r.zone) + '</span></div>' +
         '</div>';
     }).join('');
     var nota = cual === 'drop'
-      ? 'La casa de referencia baja el precio cuando entra dinero informado. Lo aprovechable son las rezagadas: las casas que todavía no lo movieron.'
-      : 'En un middle se pagan las dos patas y las dos cobran si el resultado cae en la franja. El costo es lo que se pierde si no cae.';
-    return esPanel(cual === 'drop' ? 'Caídas de cuota' : 'Middles entre casas',
-      '<span class="gx-chip gx-chip-alta">no depende del modelo</span>',
+      ? esT('La casa de referencia baja el precio cuando entra dinero informado. Lo aprovechable son las rezagadas: las casas que todavía no lo movieron.', 'The reference book cuts the price when informed money comes in. The usable part is the laggards: the books that have not moved it yet.')
+      : esT('En un middle se pagan las dos patas y las dos cobran si el resultado cae en la franja. El costo es lo que se pierde si no cae.', 'In a middle you pay both legs and both cash if the result lands in the band. The cost is what you lose if it does not.');
+    return esPanel(cual === 'drop' ? esT('Caídas de cuota', 'Odds drops') : esT('Middles entre casas', 'Middles across books'),
+      '<span class="gx-chip gx-chip-alta">' + esT('no depende del modelo', 'model-free') + '</span>',
       cards + '<div class="gx-dim gx-es-note">' + esc(nota) + '</div>');
   }
 
@@ -9292,6 +9326,13 @@
     ventaja_bajo_ruido: ['Ventaja por debajo del ruido', 'la diferencia no supera la incertidumbre del propio modelo.'],
     precio_viejo: ['Precio viejo', 'la cotización tiene más de 90 minutos.'],
   };
+  var ES_REASON_EN = {
+    estructura_no_medida: ['Structure not measured', 'this family leans on a circuit profile and not on our own measurement yet: a gap with the market here does not mean the market is wrong. Families with measured structure are valued and shown above.'],
+    ventaja_explicada_por_calibracion: ['Explained by our own error', 'the residual of the round fit for that map is enough to produce the whole gap. You do not bet against your own error.'],
+    ventaja_insuficiente: ['Edge below the bar', 'it does not reach the required minimum (3 pp, and 5.5 if only one book quotes it).'],
+    ventaja_bajo_ruido: ['Edge below the noise', 'the gap does not exceed the model’s own uncertainty.'],
+    precio_viejo: ['Stale price', 'the quote is more than 90 minutes old.'],
+  };
   function esWhyNot(d) {
     if (!perfOK()) return '';
     var agg = {}, valued = 0;
@@ -9302,13 +9343,13 @@
     });
     var keys = Object.keys(agg).sort(function (a, b) { return agg[b] - agg[a]; });
     if (!keys.length) return '';
-    return esPanel('Por qué no hay más', '<span class="gx-dim">' + valued + ' líneas valoradas</span>',
+    return esPanel(esT('Por qué no hay más', 'Why not more'), '<span class="gx-dim">' + valued + esT(' líneas valoradas', ' lines valued') + '</span>',
       '<div class="gx-es-why-rows">' + keys.map(function (k) {
-        var m = ES_REASON[k] || [k.replace(/_/g, ' '), ''];
+        var m = (S.lang === 'en' ? ES_REASON_EN[k] : ES_REASON[k]) || [k.replace(/_/g, ' '), ''];
         return '<div class="gx-es-whyr"><b>' + esc(m[0]) + '</b><em>' + agg[k] + '</em>' +
           '<span>' + esc(m[1]) + '</span></div>';
       }).join('') + '</div>' +
-      '<div class="gx-dim gx-es-note">Una línea puede caer por varios motivos a la vez, así que la suma pasa del total. Todos estos filtros nacieron de una medición, no de una intuición.</div>');
+      '<div class="gx-dim gx-es-note">' + esT('Una línea puede caer por varios motivos a la vez, así que la suma pasa del total. Todos estos filtros nacieron de una medición, no de una intuición.', 'A line can fail for several reasons at once, so the sum exceeds the total. Every one of these filters was born from a measurement, not an intuition.') + '</div>');
   }
   // La línea que se muestra tiene que ser la DEL LADO QUE SE APUESTA. El proveedor publica la línea siempre
   // referida al local, así que enseñarla tal cual junto a "Visitante" decía lo contrario de lo que la
@@ -9316,16 +9357,18 @@
   // Un signo mal puesto aquí manda a alguien al lado equivocado del mercado.
   var ES_HCP = { HANDICAP: 1, RONDAS_HANDICAP: 1, KILLS_HANDICAP: 1 };
   function esEdgeLabel(e) {
-    var side = { home: 'Local', away: 'Visitante', over: 'Más de', under: 'Menos de', yes: 'Sí', no: 'No' }[e.side] || e.side;
-    var team = e.team ? (e.team === 'home' ? ' (local)' : ' (visitante)') : '';
+    var side = (S.lang === 'en'
+      ? { home: 'Home', away: 'Away', over: 'Over', under: 'Under', yes: 'Yes', no: 'No' }
+      : { home: 'Local', away: 'Visitante', over: 'Más de', under: 'Menos de', yes: 'Sí', no: 'No' })[e.side] || e.side;
+    var team = e.team ? (e.team === 'home' ? esT(' (local)', ' (home)') : esT(' (visitante)', ' (away)')) : '';
     var line = e.line;
     if (line != null && ES_HCP[e.family] && e.side === 'away') line = -line;
     var lineTxt = line == null ? '' : ' ' + (ES_HCP[e.family] && line > 0 ? '+' : '') + line;
-    return (e.label || e.family) + ' · ' + side + lineTxt + team + (e.map ? ' · mapa ' + e.map : '');
+    return esEnTxt(e.label || e.family) + ' · ' + side + lineTxt + team + (e.map ? esT(' · mapa ', ' · map ') + e.map : '');
   }
   function esDoctrine(txt) {
     if (!txt) return '';
-    return '<div class="gx-panel gx-es-doct">' + ic('shield') + '<div><b>Por qué no verás picks al ganador</b><span>' + esc(txt) + '</span></div></div>';
+    return '<div class="gx-panel gx-es-doct">' + ic('shield') + '<div><b>' + esT('Por qué no verás picks al ganador', 'Why you will not see series-winner picks') + '</b><span>' + esc(txt) + '</span></div></div>';
   }
 
   // ---- 2) PARTIDAS: EL CALENDARIO, CON EL MISMO FORMATO QUE EL RESTO DE LA CASA -------------------------
@@ -9343,7 +9386,7 @@
   // Lo único que NO se copia es la columna de estado, porque este deporte es distinto y disimularlo sería
   // peor: ninguna de las tres casas publica resultados, así que aquí no hay "Final" con marcador. Un partido
   // que empezó se marca EN VIVO y uno que terminó simplemente desaparece del catálogo. Se dice en la vista.
-  var ES_GTABS = [['all', 'Todas'], ['live', 'En vivo'], ['up', 'Próximas'], ['fin', 'Finalizados']];
+  var ES_GTABS = [['all', 'Todas', 'All'], ['live', 'En vivo', 'Live'], ['up', 'Próximas', 'Upcoming'], ['fin', 'Finalizados', 'Finished']];
   function esIsLive(it) {
     var t0 = Date.parse((it.event && it.event.start_at) || 0);
     return !!t0 && t0 <= Date.now();
@@ -9358,7 +9401,7 @@
     }).join('') + (bs.length > 1 ? '' : '<i class="gx-es-book-one" title="una sola casa: sin consenso, el listón de la pick sube 2,5 pp">1</i>') + '</span>';
   }
   function esStateCell(it) {
-    if (esIsLive(it)) return '<span class="gx-live-pill">EN VIVO</span>';
+    if (esIsLive(it)) return '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>';
     return '<span class="gx-dim" style="font-size:11px">BO' + it.bo + '</span>';
   }
   function esDuoCell(it) {
@@ -9369,7 +9412,7 @@
   }
   function esSignalCell(it) {
     if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
-    if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + ' con ventaja</span>';
+    if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + esT(' con ventaja', ' with edge') + '</span>';
     if (it.highlight) return '<span class="gx-es-hl">' + esc(it.highlight) + '</span>';
     return '<span class="gx-dim" style="font-size:11px">' + (it.markets_n ? it.markets_n + ' líneas' : 'mercado cerrado') + '</span>';
   }
@@ -9535,14 +9578,14 @@
     // Los controles sí van en una `gx-ohead`, que es la fila donde esta casa pone segmentos y buscador.
     var head = '<div class="gx-ohead">' +
       '<div class="gx-seg" id="gx-esgtabs">' + ES_GTABS.map(function (x) {
-        return '<button data-esgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
+        return '<button data-esgtab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(S.lang === 'en' && x[2] ? x[2] : x[1]) + (counts[x[0]] ? ' <em class="gx-segn">' + counts[x[0]] + '</em>' : '') + '</button>';
       }).join('') + '</div>' +
-      '<div class="gx-msearch">' + ic('search') + '<input id="gx-essearch" placeholder="Buscar equipo o liga…" value="' + esc(S.es.gQ || '') + '"></div>' +
-      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' partidas · ' + (d.books || 0) + ' casas</span></div>';
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-essearch" placeholder="' + esT('Buscar equipo o liga…', 'Search team or league…') + '" value="' + esc(S.es.gQ || '') + '"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + esT(' partidas · ', ' matches · ') + (d.books || 0) + esT(' casas', ' books') + '</span></div>';
     var body;
     if (!rows.length) {
-      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>Sin partidas en esta vista.</b>' +
-        '<span class="gx-dim">' + esc(all.length ? 'Prueba con otro segmento o limpia la búsqueda.' : 'Ninguna de las casas tiene agenda abierta para ' + d.label + ' en los próximos días.') + '</span></div></div>';
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esT('Sin partidas en esta vista.', 'No matches in this view.') + '</b>' +
+        '<span class="gx-dim">' + esc(all.length ? esT('Prueba con otro segmento o limpia la búsqueda.', 'Try another segment or clear the search.') : esT('Ninguna de las casas tiene agenda abierta para ', 'No book has an open schedule for ') + d.label + esT(' en los próximos días.', ' in the coming days.')) + '</span></div></div>';
     } else {
       var groups = [], gmap = {};
       rows.forEach(function (it) {
@@ -9558,8 +9601,8 @@
     }
     // por qué no hay resultados en este calendario: hay que decirlo o se lee como un calendario roto
     var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') +
-      '<span>Las casas no publican resultados: una partida terminada sale de este calendario. Los marcadores reales viven en la pestaña «Finalizados», que sale de la fuente propia de GP, no de las casas.</span></div>';
-    var trunc = d.truncated ? '<div class="gx-dim gx-es-trunc">Se muestran ' + d.shown + ' de ' + d.total + ' partidas: quedan ' + d.truncated + ' fuera de esta vista.</div>' : '';
+      '<span>' + esT('Las casas no publican resultados: una partida terminada sale de este calendario. Los marcadores reales viven en la pestaña «Finalizados», que sale de la fuente propia de GP, no de las casas.', 'Books do not publish results: a finished match drops off this calendar. Real scores live in the “Finished” tab, built from GP\'s own source, not the books.') + '</span></div>';
+    var trunc = d.truncated ? '<div class="gx-dim gx-es-trunc">' + esT('Se muestran ', 'Showing ') + d.shown + esT(' de ', ' of ') + d.total + esT(' partidas: quedan ', ' matches: ') + d.truncated + esT(' fuera de esta vista.', ' outside this view.') + '</div>' : '';
     esShell(t('es_nav_board'), esTabs() + head + body + trunc + note);
     var si = $('#gx-essearch');
     if (si) si.addEventListener('input', function () {
@@ -10647,12 +10690,12 @@
   function esResultBar(p) {
     if (!p.result_code) return '';
     var cls = p.result_code === 'WIN' ? 'win' : p.result_code === 'LOSS' ? 'loss' : 'void';
-    var txt = p.result_code === 'WIN' ? '✓ Ganada' : p.result_code === 'LOSS' ? '✗ Perdida' : 'Push (devuelta)';
+    var txt = p.result_code === 'WIN' ? esT('✓ Ganada', '✓ Won') : p.result_code === 'LOSS' ? esT('✗ Perdida', '✗ Lost') : esT('Push (devuelta)', 'Push (refunded)');
     return '<div class="gx-bb-resbar ' + cls + '"><b>' + txt + '</b>' +
       (p.units != null ? '<span>' + (p.units > 0 ? '+' : '') + p.units.toFixed(2) + ' u</span>' : '') +
       (p.final && p.final.maps ? '<span>' + esc(p.final.maps) + '</span>' : '') +
       (p.clv_pct != null ? '<span class="' + (p.clv_pct >= 0 ? 'gx-bb-clvup' : 'gx-bb-clvdn') + '">CLV ' + (p.clv_pct > 0 ? '+' : '') + p.clv_pct.toFixed(2) + '%</span>'
-        : '<span class="gx-dim">sin CLV</span>') + '</div>';
+        : '<span class="gx-dim">' + esT('sin CLV', 'no CLV') + '</span>') + '</div>';
   }
   // La pick guardada viene con la familia CRUDA (la que sabe liquidar), así que aquí se le vuelve a poner la
   // forma de card para reusar `pickCard()` — la misma pieza de los otros tres deportes, también en el historial.
@@ -10663,8 +10706,8 @@
     KILLS_HANDICAP: 'Hánd. kills', PRORROGA: 'Prórroga' };
   function esStoredCard(p) {
     return {
-      family: ES_CARD_FAM[p.family] || 'TOTAL', fam_label: ES_CARD_LAB[p.family] || p.family,
-      selection_name: p.selection_name, home: p.home, away: p.away,
+      family: ES_CARD_FAM[p.family] || 'TOTAL', fam_label: esEnTxt(ES_CARD_LAB[p.family] || p.family),
+      selection_name: esEnTxt(p.selection_name), home: p.home, away: p.away,
       home_team_id: null, away_team_id: null,
       competition_name: p.competition, kickoff: p.start_at,
       odds: p.odds, book: p.book, confidence: p.p_gp, line: p.line, side: p.side,
@@ -10680,52 +10723,52 @@
     if (!d) { esShell(t('nav_perf'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('nav_perf'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
 
-    var kpi = '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">Monitor privado de ' + esc(esGameLab()) + '</span>' +
-      '<span class="gx-ph-extra"><span class="gx-dim">liquida ' + esc(d.source || '—') + '</span></span></div>' +
+    var kpi = '<div class="gx-panel gx-es-model"><div class="gx-ph"><span class="gx-label">' + esT('Monitor privado de ', 'Private monitor · ') + esc(esGameLab()) + '</span>' +
+      '<span class="gx-ph-extra"><span class="gx-dim">' + esT('liquida ', 'settles via ') + esc(d.source || '—') + '</span></span></div>' +
       '<div class="gx-es-kpis">' +
-        '<div><span>Liquidadas</span><b>' + d.settled + '</b></div>' +
-        '<div><span>Ganadas / perdidas</span><b>' + d.w + ' / ' + d.l + (d.push ? ' <i style="font-style:normal;font-size:11px;opacity:.6">+' + d.push + ' push</i>' : '') + '</b></div>' +
-        '<div><span>Acierto</span><b>' + (d.hit_pct == null ? '—' : d.hit_pct + '%') + '</b></div>' +
-        '<div><span>Unidades</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + d.units + '</b></div>' +
+        '<div><span>' + esT('Liquidadas', 'Settled') + '</span><b>' + d.settled + '</b></div>' +
+        '<div><span>' + esT('Ganadas / perdidas', 'Won / lost') + '</span><b>' + d.w + ' / ' + d.l + (d.push ? ' <i style="font-style:normal;font-size:11px;opacity:.6">+' + d.push + ' push</i>' : '') + '</b></div>' +
+        '<div><span>' + esT('Acierto', 'Hit rate') + '</span><b>' + (d.hit_pct == null ? '—' : d.hit_pct + '%') + '</b></div>' +
+        '<div><span>' + esT('Unidades', 'Units') + '</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + d.units + '</b></div>' +
         '<div><span>ROI</span><b class="' + (d.roi_pct > 0 ? 'gx-up' : d.roi_pct < 0 ? 'gx-down' : '') + '">' + (d.roi_pct == null ? '—' : (d.roi_pct > 0 ? '+' : '') + d.roi_pct + '%') + '</b></div>' +
-        '<div><span>CLV medio</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' +
-          (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">sobre ' + d.clv_n + '</i>' : '') + '</div>' +
-        '<div><span>Abiertas</span><b>' + d.active + '</b></div>' +
+        '<div><span>' + esT('CLV medio', 'Avg CLV') + '</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' +
+          (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">' + esT('sobre ', 'over ') + d.clv_n + '</i>' : '') + '</div>' +
+        '<div><span>' + esT('Abiertas', 'Open') + '</span><b>' + d.active + '</b></div>' +
       '</div>' +
       // LA ADVERTENCIA VA PEGADA A LOS NÚMEROS, no en una nota al pie: con esta muestra el ROI es ruido y
       // enseñarlo grande sin decirlo es exactamente cómo se construye una expectativa falsa.
       '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.reading || '') + '</span></div></div>';
 
     var diag = d.clv_diag && d.clv_diag.sin_clv
-      ? esPanel('Por qué faltan CLV', '<span class="gx-dim">' + d.clv_diag.con_clv + ' con · ' + d.clv_diag.sin_clv + ' sin</span>',
+      ? esPanel(esT('Por qué faltan CLV', 'Why some CLV is missing'), '<span class="gx-dim">' + d.clv_diag.con_clv + esT(' con · ', ' with · ') + d.clv_diag.sin_clv + esT(' sin', ' without') + '</span>',
         '<div class="gx-es-why-rows">' +
-          '<div class="gx-es-whyr"><b>Sin cierre guardado</b><em>' + d.clv_diag.sin_cierre_guardado + '</em><span>no se llegó a guardar el cierre de mercado de ese partido.</span></div>' +
-          '<div class="gx-es-whyr"><b>El cierre no tenía esa línea</b><em>' + d.clv_diag.cierre_sin_esa_linea + '</em><span>el cierre existe pero la casa ya no cotizaba esa línea al guardarlo.</span></div>' +
+          '<div class="gx-es-whyr"><b>' + esT('Sin cierre guardado', 'No close stored') + '</b><em>' + d.clv_diag.sin_cierre_guardado + '</em><span>' + esT('no se llegó a guardar el cierre de mercado de ese partido.', 'the market close for that match was never stored.') + '</span></div>' +
+          '<div class="gx-es-whyr"><b>' + esT('El cierre no tenía esa línea', 'The close lacked that line') + '</b><em>' + d.clv_diag.cierre_sin_esa_linea + '</em><span>' + esT('el cierre existe pero la casa ya no cotizaba esa línea al guardarlo.', 'the close exists but the book no longer quoted that line when it was stored.') + '</span></div>' +
         '</div><div class="gx-dim gx-es-note">' + esc(d.clv_diag.nota || '') + '</div>')
       : '';
 
     var fams = Object.keys(d.by_family || {});
-    var byFam = fams.length ? esPanel('Por familia', '', '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
-      '<th>Familia</th><th class="r">Liquidadas</th><th class="r">Acierto</th><th class="r">Unidades</th><th class="r">CLV</th></tr></thead><tbody>' +
+    var byFam = fams.length ? esPanel(esT('Por familia', 'By family'), '', '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
+      '<th>' + esT('Familia', 'Family') + '</th><th class="r">' + esT('Liquidadas', 'Settled') + '</th><th class="r">' + esT('Acierto', 'Hit rate') + '</th><th class="r">' + esT('Unidades', 'Units') + '</th><th class="r">CLV</th></tr></thead><tbody>' +
       fams.map(function (f) {
         var v = d.by_family[f];
-        return '<tr><td>' + esc((ES_CARD_LAB[f] || f).replace(/_/g, ' ')) + '</td>' +
+        return '<tr><td>' + esc(esEnTxt(ES_CARD_LAB[f] || f).replace(/_/g, ' ')) + '</td>' +
           '<td class="r gx-mono">' + v.n + '</td><td class="r gx-mono">' + (v.hit_pct == null ? '—' : v.hit_pct + '%') + '</td>' +
           '<td class="r gx-mono ' + (v.units > 0 ? 'gx-up' : v.units < 0 ? 'gx-down' : '') + '">' + (v.units > 0 ? '+' : '') + v.units + '</td>' +
           '<td class="r gx-mono">' + (v.clv_avg_pct == null ? '—' : v.clv_avg_pct + '%') + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<div class="gx-dim gx-es-note">Con esta muestra ninguna familia tiene todavía significación: la tabla existe para ver DÓNDE se está acumulando, no para decidir con ella.</div>') : '';
+      '<div class="gx-dim gx-es-note">' + esT('Con esta muestra ninguna familia tiene todavía significación: la tabla existe para ver DÓNDE se está acumulando, no para decidir con ella.', 'At this sample size no family is significant yet: the table exists to see WHERE it is accumulating, not to decide with it.') + '</div>') : '';
 
     var lista = (d.recent || []).length
-      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Liquidadas</span><span class="gx-dim">' + d.recent.length + '</span></div>' +
+      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esT('Liquidadas', 'Settled') + '</span><span class="gx-dim">' + d.recent.length + '</span></div>' +
         '<div class="gx-picks-feed">' + d.recent.map(function (p) {
           return '<div class="gx-bb-pickwrap">' + pickCard(esStoredCard(p), {}) + esResultBar(p) + '</div>';
         }).join('') + '</div></div>'
-      : '<div class="gx-panel"><div class="gx-empty">' + illo('chart') + '<b>Todavía no hay picks liquidadas.</b>' +
-        '<span class="gx-dim">Las picks se guardan al nacer y se liquidan cuando el partido termina, contra ' + esc(d.source || 'la fuente de resultados') + '.</span></div></div>';
+      : '<div class="gx-panel"><div class="gx-empty">' + illo('chart') + '<b>' + esT('Todavía no hay picks liquidadas.', 'No settled picks yet.') + '</b>' +
+        '<span class="gx-dim">' + esT('Las picks se guardan al nacer y se liquidan cuando el partido termina, contra ', 'Picks are stored at birth and settled when the match ends, against ') + esc(d.source || esT('la fuente de resultados', 'the results source')) + '.</span></div></div>';
 
     var abiertas = (d.open || []).length
-      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Abiertas</span><span class="gx-dim">' + d.open.length + '</span></div>' +
+      ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esT('Abiertas', 'Open') + '</span><span class="gx-dim">' + d.open.length + '</span></div>' +
         '<div class="gx-picks-feed">' + visiblePicks(d.open.map(esStoredCard)).map(function (p) { return pickCard(p, {}); }).join('') + '</div>' +
         hiddenNote(d.open.map(esStoredCard)) + '</div>'
       : '';
@@ -10743,12 +10786,12 @@
     var cov = d.coverage || {}, mv = d.movement || {};
     var books = Object.entries(d.clv_by_book || {});
     var covB = '<div class="gx-es-kpis">' +
-      '<div><span>Cierres guardados</span><b>' + (cov.closes || 0) + '</b></div>' +
-      '<div><span>Con apertura y cierre</span><b>' + (cov.with_open_and_close || 0) + '</b></div>' +
-      '<div><span>Pasadas por evento</span><b>' + (cov.avg_passes != null ? cov.avg_passes : '—') + '</b></div>' +
-      '<div><span>Movimiento medio</span><b>' + (mv.avg_abs_shift_pp != null ? mv.avg_abs_shift_pp + ' pp' : '—') + '</b></div></div>';
+      '<div><span>' + esT('Cierres guardados', 'Closes stored') + '</span><b>' + (cov.closes || 0) + '</b></div>' +
+      '<div><span>' + esT('Con apertura y cierre', 'With open and close') + '</span><b>' + (cov.with_open_and_close || 0) + '</b></div>' +
+      '<div><span>' + esT('Pasadas por evento', 'Passes per event') + '</span><b>' + (cov.avg_passes != null ? cov.avg_passes : '—') + '</b></div>' +
+      '<div><span>' + esT('Movimiento medio', 'Avg movement') + '</span><b>' + (mv.avg_abs_shift_pp != null ? mv.avg_abs_shift_pp + ' pp' : '—') + '</b></div></div>';
     var movB = (mv.top || []).length ? '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr>' +
-      '<th>Serie</th><th class="r">Apertura</th><th class="r">Cierre</th><th class="r">Movimiento</th><th class="r">Pasadas</th></tr></thead><tbody>' +
+      '<th>' + esT('Serie', 'Series') + '</th><th class="r">' + esT('Apertura', 'Open') + '</th><th class="r">' + esT('Cierre', 'Close') + '</th><th class="r">' + esT('Movimiento', 'Move') + '</th><th class="r">' + esT('Pasadas', 'Passes') + '</th></tr></thead><tbody>' +
       mv.top.map(function (m) {
         return '<tr><td><b>' + esc(m.home || '—') + '</b> <span class="gx-dim">vs</span> <b>' + esc(m.away || '—') + '</b>' +
           (m.competition ? '<div class="gx-dim" style="font-size:10.5px">' + esc(m.competition) + '</div>' : '') + '</td>' +
@@ -10758,13 +10801,13 @@
           '<td class="r gx-mono">' + (m.moves || 1) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       '<div class="gx-dim gx-es-note">' + esc(mv.note || '') + '</div>'
-      : '<div class="gx-dim gx-es-note">' + esc(cov.note || 'la apertura se congela desde el 17-ago; el movimiento aparecerá cuando los eventos nuevos tengan las dos puntas.') + '</div>';
+      : '<div class="gx-dim gx-es-note">' + esc(cov.note || esT('la apertura se congela desde el 17-ago; el movimiento aparecerá cuando los eventos nuevos tengan las dos puntas.', 'openings are frozen since Aug 17; movement will appear once new events have both ends.')) + '</div>';
     var bookB = books.length ? '<div class="gx-es-why-rows">' + books.map(function (e2) {
       var v = e2[1];
       return '<div class="gx-es-whyr"><b>' + esc(prettyBook(e2[0])) + '</b><em class="' + (v.clv_avg_pct > 0 ? 'gx-up' : 'gx-down') + '">' +
-        (v.clv_avg_pct > 0 ? '+' : '') + v.clv_avg_pct + '%</em><span>CLV medio sobre ' + v.n + ' picks liquidadas con cierre de esa casa.</span></div>';
+        (v.clv_avg_pct > 0 ? '+' : '') + v.clv_avg_pct + '%</em><span>' + esT('CLV medio sobre ', 'Avg CLV over ') + v.n + esT(' picks liquidadas con cierre de esa casa.', " settled picks with that book's close.") + '</span></div>';
     }).join('') + '</div>' : '';
-    return esPanel('Evidencia de mercado', '<span class="gx-dim">apertura → cierre, point-in-time</span>',
+    return esPanel(esT('Evidencia de mercado', 'Market evidence'), '<span class="gx-dim">' + esT('apertura → cierre, point-in-time', 'open → close, point-in-time') + '</span>',
       covB + movB + bookB +
       '<div class="gx-dim gx-es-note">' + esc(d.doctrine || '') + '</div>');
   }
@@ -10830,9 +10873,9 @@
     var g = esGame();
     var head = '<div class="gx-ohead">' +
       '<div class="gx-seg" id="gx-esgtabs">' + ES_GTABS.map(function (x) {
-        return '<button data-esgtab="' + x[0] + '"' + (x[0] === 'fin' ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+        return '<button data-esgtab="' + x[0] + '"' + (x[0] === 'fin' ? ' class="on"' : '') + '>' + esc(S.lang === 'en' && x[2] ? x[2] : x[1]) + '</button>';
       }).join('') + '</div>' +
-      esSearchBox('gx-esfsearch', S.es.fQ, 'Buscar equipo…') + '<span class="gx-spacer"></span></div>';
+      esSearchBox('gx-esfsearch', S.es.fQ, esT('Buscar equipo…', 'Search team…')) + '<span class="gx-spacer"></span></div>';
     if (g !== 'cs2') {
       esShell(t('es_nav_board'), esTabs() + head + '<div class="gx-panel">' + esGap('Solo CS2 tiene fuente propia de resultados (bo3). ' + esGameLab() + ' liquidará picks el día que tenga la suya, y este segmento se abrirá solo.') + '</div>');
       return;
@@ -10877,11 +10920,11 @@
   }
 
   // ---- EQUIPOS: Directorio · Ranking GP · Jugadores -------------------------------------------------------
-  var ES_TTABS = [['dir', 'Directorio'], ['rank', 'Ranking GP'], ['players', 'Jugadores']];
+  var ES_TTABS = [['dir', 'Directorio', 'Directory'], ['rank', 'Ranking GP', 'GP Ranking'], ['players', 'Jugadores', 'Players']];
   function renderESTeams() {
     var g = esGame(), tab = S.es.tTab || 'dir';
     var segs = '<div class="gx-seg">' + ES_TTABS.map(function (x) {
-      return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+      return '<button data-estab="' + x[0] + '"' + (tab === x[0] ? ' class="on"' : '') + '>' + esc(S.lang === 'en' && x[2] ? x[2] : x[1]) + '</button>';
     }).join('') + '</div>';
     // los CUATRO juegos tienen base propia desde el 18-ago; si alguna no cargó, el API lo dice con su porqué
     if (tab === 'rank') { renderESRanking(segs); return; }
@@ -11191,18 +11234,18 @@
   // delta vs parche anterior); en Valorant agentes por VENTANA de 90 días (vlr no publica el parche y no
   // se finge). Texto-first a propósito: la política de Riot prohíbe usar sus assets en producto de
   // apuestas (LOL-0043 / V-0026), así que aquí no hay arte, hay números.
-  var LOL_ROLES = [['', 'Todos'], ['Top', 'Top'], ['Jungle', 'Jungla'], ['Mid', 'Mid'], ['Bot', 'Bot'], ['Support', 'Soporte']];
-  var VAL_CLASSES = [['', 'Todos'], ['Duelist', 'Duelistas'], ['Initiator', 'Iniciadores'], ['Controller', 'Controladores'], ['Sentinel', 'Centinelas']];
-  var DOTA_ROLES = [['', 'Todos'], ['Carry', 'Carries'], ['Support', 'Supports'], ['Nuker', 'Nukers'], ['Initiator', 'Iniciadores']];
+  var LOL_ROLES = [['', 'Todos', 'All'], ['Top', 'Top', 'Top'], ['Jungle', 'Jungla', 'Jungle'], ['Mid', 'Mid', 'Mid'], ['Bot', 'Bot', 'Bot'], ['Support', 'Soporte', 'Support']];
+  var VAL_CLASSES = [['', 'Todos', 'All'], ['Duelist', 'Duelistas', 'Duelists'], ['Initiator', 'Iniciadores', 'Initiators'], ['Controller', 'Controladores', 'Controllers'], ['Sentinel', 'Centinelas', 'Sentinels']];
+  var DOTA_ROLES = [['', 'Todos', 'All'], ['Carry', 'Carries', 'Carries'], ['Support', 'Supports', 'Supports'], ['Nuker', 'Nukers', 'Nukers'], ['Initiator', 'Iniciadores', 'Initiators']];
   function renderESChampions() {
     var g = esGame(), isVal = g === 'valorant', isDota = g === 'dota2';
     var CHIPS = isVal ? VAL_CLASSES : isDota ? DOTA_ROLES : LOL_ROLES;
-    var title = isVal ? 'Agentes' : isDota ? 'Héroes' : 'Campeones';
+    var title = isVal ? esT('Agentes', 'Agents') : isDota ? esT('Héroes', 'Heroes') : esT('Campeones', 'Champions');
     var role = S.es.lolRole || '';
     if (role && !CHIPS.some(function (x) { return x[0] === role; })) role = '';   // filtro del otro juego
     var d = esGet('champs_' + g, '/api/esports/champions?game=' + g, 900000);
     var chips = '<div class="gx-cb-tabs gx-lolrole-tabs">' + CHIPS.map(function (x) {
-      return '<span class="gx-cb-tab' + (role === x[0] ? ' on' : '') + '" data-esrole="' + x[0] + '">' + x[1] + '</span>';
+      return '<span class="gx-cb-tab' + (role === x[0] ? ' on' : '') + '" data-esrole="' + x[0] + '">' + (S.lang === 'en' && x[2] ? x[2] : x[1]) + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
     if (!d) { esShell(title, esTabs() + esLoading()); return; }
     if (d._err || !d.available) {
@@ -11707,8 +11750,7 @@
         '. Es un <b>exchange</b>, no una casa: el precio lo sostiene otro participante, así que cada pick enseña su interés abierto — un precio que nadie sostiene no es una cuota. ' +
         'Lo demás siguen siendo <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>'
       : '<div class="gx-panel gx-f1-nomkt">' + ic('alert-triangle') +
-        '<span><b>Sin precio utilizable en esta carrera.</b> Hoy no hay ningún mercado de carrera con horquilla lo bastante estrecha para medir ventaja contra él. ' +
-        'Sin precio no hay ventaja que calcular, así que aquí no hay picks: hay <b>llamadas del modelo</b>, anotadas antes de la carrera y liquidadas después.</span></div>';
+        '<span><b>' + esT('Sin precio utilizable en esta carrera.', 'No usable price for this race.') + '</b> ' + esT('Hoy no hay ningún mercado de carrera con horquilla lo bastante estrecha para medir ventaja contra él. Sin precio no hay ventaja que calcular, así que aquí no hay picks: hay ', 'No race market today has a spread tight enough to measure edge against. With no price there is no edge to compute, so there are no picks here: there are ') + '<b>' + esT('llamadas del modelo', 'model calls') + '</b>' + esT(', anotadas antes de la carrera y liquidadas después.', ', logged before the race and settled after.') + '</span></div>';
     var body;
     if (tk.available === false && tk.state === 'POST_QUALI') {
       // El usuario no necesita el acta del holdout para entender una pantalla vacía. Ve el vacío de
@@ -12139,13 +12181,13 @@
         : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna tesis pasa el listón</div>' +
           '<div class="gx-estop-sub">decir NO también es un resultado</div></div>') + '</div>' +
       '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + (perfOK() ? 'Régimen' : 'En juego') + '</div>' +
-      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (perfOK() ? 'Todo en sombra' : theses.length + (theses.length === 1 ? ' tesis' : ' tesis')) + '</div>' +
-      '<div class="gx-estop-sub">' + (perfOK() ? theses.length + ' tesis vivas · ' + rows.length + ' partidos' : rows.length + ' partidos en la ventana') + '</div></div></div></div>';
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (perfOK() ? esT('Todo en sombra', 'All in shadow') : theses.length + (theses.length === 1 ? esT(' tesis', ' thesis') : esT(' tesis', ' theses'))) + '</div>' +
+      '<div class="gx-estop-sub">' + (perfOK() ? theses.length + esT(' tesis vivas · ', ' live theses · ') + rows.length + esT(' partidos', ' matches') : rows.length + esT(' partidos en la ventana', ' matches in the window')) + '</div></div></div></div>';
     var body;
     if (!theses.length) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>' + (rows.length ? 'Ninguna línea pasa el listón ahora mismo.' : 'Sin torneos con cuotas activas en la ventana.') + '</b>' +
-        '<span class="gx-dim">' + esc(rows.length ? 'El motor valoró las líneas abiertas y ninguna supera su propio ruido.' : (d.note || '')) + '</span></div></div>';
+        '<b>' + (rows.length ? esT('Ninguna línea pasa el listón ahora mismo.', 'No line clears the bar right now.') : esT('Sin torneos con cuotas activas en la ventana.', 'No tournaments with active odds in the window.')) + '</b>' +
+        '<span class="gx-dim">' + esc(rows.length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido.', 'The engine valued the open lines and none beats its own noise.') : (d.note || '')) + '</span></div></div>';
     } else {
       // LA MISMA CARD QUE FÚTBOL, COMBATE, BALONCESTO Y ESPORTS: `pickCard()` tal cual. El motor ya emite
       // los campos con esa forma (`row.picks`), así que aquí no se traduce nada.
@@ -12159,9 +12201,9 @@
   }
 
   function tenFamLabel(c) {
-    if (c.family === 'ML') return 'Ganador del partido';
-    if (c.family === 'TOTAL') return (c.side === 'over' ? 'Más de ' : 'Menos de ') + c.line + ' juegos';
-    if (c.family === 'SPREAD') return 'Hándicap de juegos ' + (c.line > 0 ? '+' : '') + c.line;
+    if (c.family === 'ML') return esT('Ganador del partido', 'Match winner');
+    if (c.family === 'TOTAL') return (c.side === 'over' ? esT('Más de ', 'Over ') : esT('Menos de ', 'Under ')) + c.line + esT(' juegos', ' games');
+    if (c.family === 'SPREAD') return esT('Hándicap de juegos ', 'Game handicap ') + (c.line > 0 ? '+' : '') + c.line;
     return c.family;
   }
 
@@ -12169,11 +12211,11 @@
   function tenThesisCard(r, c) {
     var who = c.side === 'a' ? r.a : c.side === 'b' ? r.b : null;
     var sel = c.family === 'ML' ? who
-      : c.family === 'SPREAD' ? who + ' ' + (c.line > 0 ? '+' : '') + c.line + ' juegos'
-      : (c.side === 'over' ? 'Más de ' : 'Menos de ') + c.line + ' juegos';
+      : c.family === 'SPREAD' ? who + ' ' + (c.line > 0 ? '+' : '') + c.line + esT(' juegos', ' games')
+      : (c.side === 'over' ? esT('Más de ', 'Over ') : esT('Menos de ', 'Under ')) + c.line + esT(' juegos', ' games');
     return '<div class="gx-panel gx-ten-thesis" data-tenmatch="' + esc(r.id) + '">' +
       '<div class="gx-ten-head"><span class="gx-chip">' + esc(tenFamLabel(c)) + '</span>' +
-      '<span class="gx-ten-shadow">sombra</span><span class="gx-spacer"></span>' +
+      '<span class="gx-ten-shadow">' + esT('sombra', 'shadow') + '</span><span class="gx-spacer"></span>' +
       '<span class="gx-dim gx-mono" style="font-size:10.5px">' + esc(r.tourney || '') + '</span></div>' +
       '<div class="gx-ten-sel"><b>' + esc(sel) + '</b><span class="gx-dim">' + esc(r.a) + ' vs ' + esc(r.b) + '</span></div>' +
       '<div class="gx-ten-thfoot">' +
@@ -13322,8 +13364,8 @@
         '<div class="gx-picks-feed">' + visiblePicks(open.map(amfStoredCard)).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' +
         soloAdmin('<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks públicas — el chip MONITOR de cada card lo dice.</div>') + '</div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('tickets') + '<b>' + (perfOK()
-        ? 'La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.'
-        : 'Todavía no hay jugadas en fútbol americano.') + '</b>' +
+        ? esT('La sombra registrará sus primeros candidatos cuando abran los mercados de la Semana 1.', 'The shadow will log its first candidates when Week 1 markets open.')
+        : esT('Todavía no hay jugadas en fútbol americano.', 'No plays in American football yet.')) + '</b>' +
         soloAdmin('<span class="gx-dim">Los veredictos se pintan con la misma card que los demás deportes, marcados como MONITOR: se registran y se liquidan en privado. Cuando una familia gane CLV fuera de muestra con muestra suficiente, se quita esa marca y pasan a ser picks públicas. Antes, no.</span>') + '</div></div>';
     // CABECERA = LA MISMA GRAMÁTICA DEL BOARD DE FÚTBOL (pedido de Alexis, 18-ago), el espejo que ya
     // tienen combate, baloncesto y esports. Los chips dicen la verdad de cada producto: Picks es el estado
@@ -13353,7 +13395,7 @@
   }
 
   // ---- 1c) JUGADORES: directorio por posición ------------------------------------------------------------
-  var NFL_POS = [['all', 'Todos'], ['qb', 'QB'], ['rb', 'RB'], ['wr', 'WR'], ['te', 'TE']];
+  var NFL_POS = [['all', 'Todos', 'All'], ['qb', 'QB'], ['rb', 'RB'], ['wr', 'WR'], ['te', 'TE']];
   // ── PLANTILLAS DE COLLEGE Y CFL ─────────────────────────────────────────────────────────────────────
   // Identidad, no medición: este motor puntúa EQUIPOS. La ficha da nombre, dorsal, posición, físico,
   // procedencia y cara — y el rating del equipo al que pertenece, diciendo que es del equipo. Inventar un
@@ -13376,7 +13418,7 @@
     // llevaba la liga, así que las dos ligas guardaban por separado exactamente los mismos jugadores, que
     // es la forma más difícil de darse cuenta.
     var d = nflGet('amfp_' + lg + '_' + q, '/api/amfoot/players?league=' + lg + '&limit=140' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
-    var head = '<div class="gx-ohead">' + esSearchBox('gx-nflpsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
+    var head = '<div class="gx-ohead">' + esSearchBox('gx-nflpsearch', q, esT('Buscar jugador o equipo…', 'Search player or team…')) + '<span class="gx-spacer"></span>' +
       (d && d.available ? '<span class="gx-dim" style="font-size:11.5px">' + d.n + ' en ' + d.teams + ' equipos</span>' : '') + '</div>';
     var bind = function () { esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderAmfPlayers); };
     if (!d) { nflShell(t('sr_players'), head + nflLoading()); bind(); return; }
@@ -13438,10 +13480,10 @@
     var q = (S.nfl.pQ || '').trim();
     var d = nflGet('players_' + pos + '_' + q, '/api/nfl/players?pos=' + pos + '&limit=60' + (q ? '&q=' + encodeURIComponent(q) : ''), 600000);
     var segs = '<div class="gx-seg">' + NFL_POS.map(function (x) {
-      return '<button data-nflpos="' + x[0] + '"' + (pos === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+      return '<button data-nflpos="' + x[0] + '"' + (pos === x[0] ? ' class="on"' : '') + '>' + esc(S.lang === 'en' && x[2] ? x[2] : x[1]) + '</button>';
     }).join('') + '</div>';
-    var head = '<div class="gx-ohead">' + segs + esSearchBox('gx-nflpsearch', q, 'Buscar jugador o equipo…') + '<span class="gx-spacer"></span>' +
-      (d && d.total ? '<span class="gx-dim" style="font-size:11.5px">' + d.total + ' jugadores con volumen</span>' : '') + '</div>';
+    var head = '<div class="gx-ohead">' + segs + esSearchBox('gx-nflpsearch', q, esT('Buscar jugador o equipo…', 'Search player or team…')) + '<span class="gx-spacer"></span>' +
+      (d && d.total ? '<span class="gx-dim" style="font-size:11.5px">' + d.total + esT(' jugadores con volumen', ' players with volume') + '</span>' : '') + '</div>';
     if (!d) { nflShell(t('sr_players'), head + nflLoading()); esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderNflPlayers); return; }
     if (d._err || !d.available) { nflShell(t('sr_players'), head + nflErr); esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderNflPlayers); return; }
     var rows = d.players || [];
@@ -13894,8 +13936,8 @@
         '<div><span>Abiertas</span><b>' + d.open + '</b></div>' +
         '<div><span>Liquidadas</span><b>' + d.settled + '</b></div>' +
         '<div><span>Ganadas / perdidas</span><b>' + d.w + ' / ' + d.l + '</b></div>' +
-        '<div><span>Unidades</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + (d.units || 0) + '</b></div>' +
-        '<div><span>CLV medio</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' + (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">sobre ' + d.clv_n + '</i>' : '') + '</div>' +
+        '<div><span>' + esT('Unidades', 'Units') + '</span><b class="' + (d.units > 0 ? 'gx-up' : d.units < 0 ? 'gx-down' : '') + '">' + (d.units > 0 ? '+' : '') + (d.units || 0) + '</b></div>' +
+        '<div><span>' + esT('CLV medio', 'Avg CLV') + '</span><b class="' + (d.clv_avg_pct > 0 ? 'gx-up' : d.clv_avg_pct < 0 ? 'gx-down' : '') + '">' + (d.clv_avg_pct == null ? '—' : (d.clv_avg_pct > 0 ? '+' : '') + d.clv_avg_pct + '%') + '</b>' + (d.clv_n ? '<i style="font-style:normal;font-size:10px;opacity:.55;display:block">' + esT('sobre ', 'over ') + d.clv_n + '</i>' : '') + '</div>' +
       '</div>' +
       '<div class="gx-cs-warn">' + ic('alert-triangle') + '<span>' + esc(d.reading || '') + '</span></div></div>';
     var famRow = function (kv) {
@@ -13917,7 +13959,7 @@
         '<em class="gx-dim">' + esc(String(p.kickoff || '').slice(5, 10)) + '</em></div>';
     };
     var openB = (d.open_list || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Abiertas (sombra)</span><span class="gx-dim">' + d.open_list.length + '</span></div><div class="gx-panel"><div class="gx-est-form">' + d.open_list.map(rowOf).join('') + '</div></div></div>' : '';
-    var doneB = (d.recent || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Liquidadas</span><span class="gx-dim">' + d.recent.length + '</span></div><div class="gx-panel"><div class="gx-est-form">' + d.recent.map(rowOf).join('') + '</div></div></div>'
+    var doneB = (d.recent || []).length ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esT('Liquidadas', 'Settled') + '</span><span class="gx-dim">' + d.recent.length + '</span></div><div class="gx-panel"><div class="gx-est-form">' + d.recent.map(rowOf).join('') + '</div></div></div>'
       : '<div class="gx-panel"><div class="gx-empty">' + illo('chart') + '<b>Todavía no hay registro liquidado.</b><span class="gx-dim">El bucle de sombra nace, cierra y liquida solo — la temporada arranca el 9 de septiembre.</span></div></div>';
     nflShell(t('nav_perf'), kpi + byFam + openB + doneB);
   }
@@ -14210,18 +14252,18 @@
 
     // 1) la tira: la jornada y lo que se ve entre casas
     var strip = '<div class="gx-estop">' +
-      '<div class="gx-panel gx-estop-c' + (items.length ? ' on' : '') + '"><div class="gx-label">' + ic('device-gamepad') + 'La jornada</div>' +
-      '<div class="gx-estop-main"><div class="gx-estop-sel">' + items.length + ' partidas</div>' +
-      '<div class="gx-estop-sub">' + esc((d.sources || []).map(function (x) { return prettyBook(x.book || x) || (x.book || x); }).join(' · ') || (d.books ? d.books + ' casas' : 'sin precio todavía')) + '</div></div></div>' +
-      '<div class="gx-panel gx-estop-c' + (mk && (mk.arbs || mk.middles || mk.dropping) ? ' on' : '') + '"><div class="gx-label">' + ic('scale') + 'Entre casas</div>' +
-      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (mk ? (mk.arbs + ' arb · ' + mk.middles + ' mid · ' + mk.dropping + ' caídas') : '—') + '</div>' +
-      '<div class="gx-estop-sub">' + esc(mk && mk.why ? mk.why : 'no depende del modelo: sale de que las casas discrepen') + '</div></div>' +
-      '<div class="gx-estop-foot"><span class="gx-dim">ver en Oportunidades ' + ic('arrow-right') + '</span></div></div>' +
+      '<div class="gx-panel gx-estop-c' + (items.length ? ' on' : '') + '"><div class="gx-label">' + ic('device-gamepad') + esT('La jornada', 'Today\'s slate') + '</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + items.length + esT(' partidas', ' matches') + '</div>' +
+      '<div class="gx-estop-sub">' + esc((d.sources || []).map(function (x) { return prettyBook(x.book || x) || (x.book || x); }).join(' · ') || (d.books ? d.books + esT(' casas', ' books') : esT('sin precio todavía', 'no price yet'))) + '</div></div></div>' +
+      '<div class="gx-panel gx-estop-c' + (mk && (mk.arbs || mk.middles || mk.dropping) ? ' on' : '') + '"><div class="gx-label">' + ic('scale') + esT('Entre casas', 'Across books') + '</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (mk ? (mk.arbs + ' arb · ' + mk.middles + ' mid · ' + mk.dropping + esT(' caídas', ' drops')) : '—') + '</div>' +
+      '<div class="gx-estop-sub">' + esc(mk && mk.why ? mk.why : esT('no depende del modelo: sale de que las casas discrepen', 'model-free: it comes from books disagreeing')) + '</div></div>' +
+      '<div class="gx-estop-foot"><span class="gx-dim">' + esT('ver en Oportunidades ', 'see in Opportunities ') + ic('arrow-right') + '</span></div></div>' +
       '</div>';
 
     // 2) la lectura narrada
     var intro = d.intro && d.intro[lang]
-      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">La lectura de hoy</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
+      ? '<div class="gx-panel gx-bb-intro"><div class="gx-ph"><span class="gx-label">' + esT('La lectura de hoy', 'Today\'s read') + '</span><span class="gx-ph-extra">GP Intelligence</span></div>' +
         String(d.intro[lang]).split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>'
       : (d.intro_error && d.intro_error !== 'llm_off' ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>La apertura narrada no se pudo escribir. Todo lo de abajo sale del motor y no depende de ella.</span></div>' : '');
 

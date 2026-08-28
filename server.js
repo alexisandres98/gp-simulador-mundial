@@ -20145,7 +20145,40 @@ async function anotar(pid){
         }
         if (run === 'plan') return json(res, 200, await realDailyMail('plan', { force: true }));
         if (run === 'parte') return json(res, 200, await realDailyMail('parte', { force: true }));
-        return json(res, 400, { error: 'run=saldo|liquidar|plan|parte' });
+        // `run=cs2_diag` (28-ago, autopsia "no me llegó ninguna alerta de CS2"): replica el gate del
+        // barrido sobre CADA fila cloudbet de la sombra —cualquier estado— y dice qué condición la dejó
+        // fuera. Existe porque el catch del barrido se traga los errores de creación a propósito (una fila
+        // no puede tumbar el barrido) y eso convierte cualquier fallo en un silencio indistinguible de
+        // "no hubo señales". Solo lee; no crea nada.
+        if (run === 'cs2_diag') {
+          const S9 = shadowInit();
+          const L9 = RE.load();
+          const ahora9 = Date.now();
+          const filas9 = [];
+          for (const sb of S9.bets) {
+            if (sb.segment !== 'cs2_rounds_v1' || sb.book !== 'cloudbet') continue;
+            const enLibro = L9.bets.some((b) => b.pick_id === sb.pick_id);
+            let creariaError = null;
+            if (!enLibro) {
+              try {
+                // réplica del cuerpo de crearManualCs2 SIN guardar: si algo lanza, aquí se ve
+                const mapa9 = (m => (m ? +m[1] : null))(String(sb.pick_id).match(/_(\d)$/));
+                const [h9, a9] = String(sb.match || ' vs ').split(' vs ');
+                void (sb.side === 'away' ? a9 : h9); void mapa9; void (sb.side === 'away' ? -Number(sb.line) : Number(sb.line));
+              } catch (e9) { creariaError = e9.message; }
+            }
+            filas9.push({
+              pick: sb.pick_id, match: sb.match, status_sombra: sb.status,
+              placed_at: sb.placed_at, kickoff_at: sb.kickoff_at,
+              ya_en_libro: enLibro,
+              gate_ko_ok: !!(sb.kickoff_at && Date.parse(sb.kickoff_at) > ahora9 + 10 * 60e3),
+              seria_creada_hoy: !enLibro && sb.status === 'OPEN' && !!(sb.kickoff_at && Date.parse(sb.kickoff_at) > ahora9 + 10 * 60e3),
+              error_replica: creariaError,
+            });
+          }
+          return json(res, 200, { total_cloudbet: filas9.length, en_libro: filas9.filter(f => f.ya_en_libro).length, filas: filas9 });
+        }
+        return json(res, 400, { error: 'run=saldo|liquidar|plan|parte|cs2_diag' });
       }
       // `?diag=1`: qué contesta la casa en cada ruta de cuenta. El saldo volvió null en el primer intento y
       // "null" tapa tres cosas distintas —la ruta no es esa, la llave no tiene permiso de cuenta, o la

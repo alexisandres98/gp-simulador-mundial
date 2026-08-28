@@ -10,6 +10,7 @@ const state = { started: false, timer: null, running: false, lastRunAt: null };
 async function tick(opts = {}) {
   if (state.running) { log.warn('arb: ciclo omitido por solape'); return { skipped: 'overlap' }; }
   state.running = true;
+  const _h0 = Math.round(process.memoryUsage().heapUsed / 1048576);
   try {
     const lr = await locks.withLock('arb-engine', 'evaluate', async () => {
       const candidates = await require('./candidateGenerator').generateFromDB().catch(() => []);
@@ -19,7 +20,11 @@ async function tick(opts = {}) {
     if (!lr.acquired) return { skipped: lr.skipped };
     return lr.result;
   } catch (e) { log.error('arb: error en ciclo', { error: e.message }); return { error: 'cycle_error' }; }
-  finally { state.running = false; }
+  finally {
+    state.running = false;
+    const _h1 = Math.round(process.memoryUsage().heapUsed / 1048576);
+    if (_h1 - _h0 > 200) log.warn('arb: ciclo con salto de memoria', { heap_antes_mb: _h0, heap_despues_mb: _h1 });
+  }
 }
 
 function start() {

@@ -18,9 +18,14 @@ async function tick(provider, opts = {}) {
     return { provider, skipped: 'overlap' };
   }
   state.running[provider] = true;
+  // vigilancia de memoria (28-ago): los picos de 2.5 GB que matan el proceso llegan SIN etiqueta de trabajo.
+  // Cada ciclo mide su heap antes y despues; un delta grande se loguea con su dueño y deja de ser anonimo.
+  const _h0 = Math.round(process.memoryUsage().heapUsed / 1048576);
   try {
     const res = await pipeline.runProviderCycle(provider, opts);
     state.lastRunAt[provider] = new Date().toISOString();
+    const _h1 = Math.round(process.memoryUsage().heapUsed / 1048576);
+    if (_h1 - _h0 > 200) log.warn('ingesta: ciclo con salto de memoria', { provider, heap_antes_mb: _h0, heap_despues_mb: _h1 });
     return res;
   } catch (e) {
     log.error('scheduler: error en ciclo', { provider, error: e.message });

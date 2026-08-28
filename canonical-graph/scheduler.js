@@ -35,6 +35,7 @@ async function loadMarkets(providerCode) {
 async function tick() {
   if (state.running) { log.warn('canonical: ciclo omitido por solape'); return { skipped: 'overlap' }; }
   state.running = true;
+  const _h0 = Math.round(process.memoryUsage().heapUsed / 1048576);
   try {
     const lr = await locks.withLock('canonical-graph', 'match', async () => {
       const a = await loadMarkets(PA), b = await loadMarkets(PB);
@@ -44,6 +45,8 @@ async function tick() {
       return { analyzed: res.results.length, persisted };
     });
     state.lastRunAt = new Date().toISOString();
+    const _h1 = Math.round(process.memoryUsage().heapUsed / 1048576);
+    if (_h1 - _h0 > 200) log.warn('canonical: ciclo con salto de memoria', { heap_antes_mb: _h0, heap_despues_mb: _h1 });
     return lr.acquired ? lr.result : { skipped: lr.skipped };
   } catch (e) { log.error('canonical: error en ciclo', { error: e.message }); return { error: 'cycle_error' }; }
   finally { state.running = false; }

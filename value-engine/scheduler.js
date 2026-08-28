@@ -21,6 +21,7 @@ function setShadowResultResolver(fn) { _shadowResultResolver = fn; }
 async function valueTick() {
   if (state.value.running) return { skipped: 'overlap' };
   state.value.running = true;
+  const _h0 = Math.round(process.memoryUsage().heapUsed / 1048576);
   try {
     return await locks.withLock(cfg.ADVISORY.value.resource, cfg.ADVISORY.value.op, async () => {
       const startedAt = Date.now();
@@ -41,7 +42,11 @@ async function valueTick() {
       return { value, candidates, shadow, duration_ms: Date.now() - startedAt };
     });
   } catch (e) { log.error('value: error ciclo', { error: e.message }); return { error: 'cycle_error' }; }
-  finally { state.value.running = false; }
+  finally {
+    state.value.running = false;
+    const _h1 = Math.round(process.memoryUsage().heapUsed / 1048576);
+    if (_h1 - _h0 > 200) log.warn('value: ciclo con salto de memoria', { heap_antes_mb: _h0, heap_despues_mb: _h1 });
+  }
 }
 
 // monitor de precio: marca price_moved las picks publicadas cuya cuota actual cae bajo el mínimo.

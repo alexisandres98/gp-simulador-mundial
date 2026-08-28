@@ -19651,6 +19651,45 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, await mig.status());
       } catch (e) { return json(res, 200, { error: e.message }); }
     }
+    // MANTENIMIENTO DE LA TELEMETRÍA v2 (28-ago, alerta de Render: la DB al 90% del disco — el MISMO
+    // incidente de jun-28 repetido, porque la purga vive detrás de una env que estaba apagada).
+    // ?run=sizes → las 12 tablas más pesadas (el mapa de qué llena el disco).
+    // ?run=prune → la purga de retención YA existente, disparada a mano (respeta su propia env y ventana).
+    // ?run=vacuum&tabla=<nombre> → VACUUM FULL de UNA tabla de telemetría (lista blanca): es lo único que
+    // devuelve el disco al sistema tras el DELETE — un DELETE solo deja hueco interno y Render sigue
+    // contando los archivos. Bloquea la tabla mientras corre; solo telemetría regenerable, jamás usuarios.
+    if (p === '/api/internal/telemetry') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try {
+        const dbc = require('./database/client');
+        const run = String(url.searchParams.get('run') || 'sizes');
+        if (run === 'sizes') {
+          const r = await dbc.query(`SELECT relname tabla, pg_size_pretty(pg_total_relation_size(c.oid)) total,
+              pg_total_relation_size(c.oid) bytes
+            FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind = 'r'
+            ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 12`);
+          const tot = await dbc.query(`SELECT pg_size_pretty(pg_database_size(current_database())) db_total`);
+          return json(res, 200, { db_total: tot.rows[0].db_total, tablas: r.rows });
+        }
+        if (run === 'prune' && req.method === 'POST') {
+          const ret = require('./market-data/retention');
+          return json(res, 200, await ret.pruneTelemetry(dbc));
+        }
+        if (run === 'vacuum' && req.method === 'POST') {
+          const PERMITIDAS = new Set(['raw_market_snapshots', 'normalized_market_snapshots',
+            'normalized_orderbook_levels', 'arb_evaluations', 'arb_evaluation_legs', 'ingestion_runs']);
+          const tabla = String(url.searchParams.get('tabla') || '');
+          if (!PERMITIDAS.has(tabla)) return json(res, 400, { error: 'tabla fuera de la lista blanca', permitidas: [...PERMITIDAS] });
+          const t0v = Date.now();
+          await dbc.query(`VACUUM FULL ${tabla}`);
+          const sz = await dbc.query(`SELECT pg_size_pretty(pg_total_relation_size($1::regclass)) total`, [tabla]);
+          return json(res, 200, { tabla, total_ahora: sz.rows[0].total, ms: Date.now() - t0v });
+        }
+        return json(res, 400, { error: 'run=sizes|prune|vacuum' });
+      } catch (e) { return json(res, 200, { error: e.message }); }
+    }
     if (p === '/api/internal/venues') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

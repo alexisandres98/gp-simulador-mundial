@@ -228,6 +228,9 @@ setInterval(backupDbDaily, 6 * 3600 * 1000);     // chequeo cada 6h (escribe sol
 // trabajo de datos jamás debe poder tumbarlo — si el hijo se pasa, muere él, no la plataforma.
 db.ops = db.ops || {};
 const OPS = { running: {}, log: [] };
+// Trabajos largos de mantenimiento de la base (VACUUM FULL / podas masivas) lanzados desde
+// /api/internal/telemetry: corren en segundo plano y aquí queda su avance para consultarlo.
+const TELEMETRY_JOBS = {};
 const opsLog = (what, extra) => { OPS.log.push({ at: new Date().toISOString(), what, ...extra }); if (OPS.log.length > 40) OPS.log.shift(); };
 const opsToday = () => new Date().toISOString().slice(0, 10);
 const opsRssMb = () => Math.round(process.memoryUsage().rss / 1048576);
@@ -19665,29 +19668,69 @@ const server = http.createServer(async (req, res) => {
         const dbc = require('./database/client');
         const run = String(url.searchParams.get('run') || 'sizes');
         if (run === 'sizes') {
-          const r = await dbc.query(`SELECT relname tabla, pg_size_pretty(pg_total_relation_size(c.oid)) total,
-              pg_total_relation_size(c.oid) bytes
+          const r = await dbc.query(`SELECT s.relname tabla, pg_size_pretty(pg_total_relation_size(c.oid)) total,
+              pg_total_relation_size(c.oid) bytes, s.n_live_tup vivas, s.n_dead_tup muertas
             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
             WHERE n.nspname = 'public' AND c.relkind = 'r'
             ORDER BY pg_total_relation_size(c.oid) DESC LIMIT 12`);
           const tot = await dbc.query(`SELECT pg_size_pretty(pg_database_size(current_database())) db_total`);
-          return json(res, 200, { db_total: tot.rows[0].db_total, tablas: r.rows });
+          let bases = [];
+          try { bases = (await dbc.query(`SELECT datname base, pg_size_pretty(pg_database_size(datname)) total FROM pg_database WHERE NOT datistemplate`)).rows; } catch { }
+          return json(res, 200, { db_total: tot.rows[0].db_total, bases, tareas: TELEMETRY_JOBS, tablas: r.rows });
         }
         if (run === 'prune' && req.method === 'POST') {
           const ret = require('./market-data/retention');
           return json(res, 200, await ret.pruneTelemetry(dbc));
         }
+        // Poda del historial de decisiones del grafo canónico: el auto-match escribe una fila con evidence
+        // JSONB por decisión, cada 5 min, desde julio → 16GB. Solo borra decision_source='auto' (las
+        // manuales son contadas y valiosas). En lotes cortos y en segundo plano — millones de filas.
+        if (run === 'prune_decisiones' && req.method === 'POST') {
+          const dias = Math.max(1, parseInt(url.searchParams.get('dias'), 10) || 14);
+          if (TELEMETRY_JOBS.prune_decisiones && TELEMETRY_JOBS.prune_decisiones.estado === 'corriendo')
+            return json(res, 200, TELEMETRY_JOBS.prune_decisiones);
+          const job = TELEMETRY_JOBS.prune_decisiones = { estado: 'corriendo', dias, borradas: 0, empezado: new Date().toISOString() };
+          (async () => {
+            try {
+              for (;;) {
+                const r = await dbc.query(`DELETE FROM mapping_decision_history WHERE ctid IN
+                  (SELECT ctid FROM mapping_decision_history WHERE decision_source='auto'
+                    AND created_at < now() - ($1 || ' days')::interval LIMIT 5000)`, [dias]);
+                job.borradas += r.rowCount;
+                if (r.rowCount < 5000) break;
+              }
+              job.estado = 'hecho'; job.terminado = new Date().toISOString();
+            } catch (e) { job.estado = 'error'; job.error = e.message; }
+          })();
+          return json(res, 200, job);
+        }
         if (run === 'vacuum' && req.method === 'POST') {
           const PERMITIDAS = new Set(['raw_market_snapshots', 'normalized_market_snapshots',
-            'normalized_orderbook_levels', 'arb_evaluations', 'arb_evaluation_legs', 'ingestion_runs']);
+            'normalized_orderbook_levels', 'arb_evaluations', 'arb_evaluation_legs', 'ingestion_runs',
+            'mapping_decision_history', 'sportsbook_goal_quote_current', 'sportsbook_quotes',
+            'sportsbook_quote_history', 'value_evaluations', 'arb_engine_runs']);
           const tabla = String(url.searchParams.get('tabla') || '');
           if (!PERMITIDAS.has(tabla)) return json(res, 400, { error: 'tabla fuera de la lista blanca', permitidas: [...PERMITIDAS] });
-          const t0v = Date.now();
-          await dbc.query(`VACUUM FULL ${tabla}`);
-          const sz = await dbc.query(`SELECT pg_size_pretty(pg_total_relation_size($1::regclass)) total`, [tabla]);
-          return json(res, 200, { tabla, total_ahora: sz.rows[0].total, ms: Date.now() - t0v });
+          const jk = 'vacuum:' + tabla;
+          if (TELEMETRY_JOBS[jk] && TELEMETRY_JOBS[jk].estado === 'corriendo') return json(res, 200, TELEMETRY_JOBS[jk]);
+          const job = TELEMETRY_JOBS[jk] = { estado: 'corriendo', tabla, empezado: new Date().toISOString() };
+          // VACUUM FULL no puede ir en transacción y tarda minutos: conexión dedicada con timeout 0,
+          // en segundo plano (la respuesta HTTP vuelve ya; el avance se consulta en run=sizes → tareas).
+          (async () => {
+            const t0v = Date.now();
+            const c = await dbc.getPool().connect();
+            try {
+              await c.query(`SET statement_timeout = 0`);
+              await c.query(`VACUUM FULL ${tabla}`);
+              const sz = await c.query(`SELECT pg_size_pretty(pg_total_relation_size($1::regclass)) total`, [tabla]);
+              job.estado = 'hecho'; job.total_ahora = sz.rows[0].total; job.ms = Date.now() - t0v;
+            } catch (e) { job.estado = 'error'; job.error = e.message; job.ms = Date.now() - t0v; }
+            finally { c.release(); }
+          })();
+          return json(res, 200, job);
         }
-        return json(res, 400, { error: 'run=sizes|prune|vacuum' });
+        return json(res, 400, { error: 'run=sizes|prune|prune_decisiones|vacuum' });
       } catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/internal/venues') {
@@ -24120,6 +24163,30 @@ server.listen(PORT, () => {
         .then(r => console.log('[goal-retention]', JSON.stringify(r))).catch(e => console.error('[goal-retention]', e.message));
       setTimeout(runGoalRetention, 2 * 60 * 1000);
       setInterval(runGoalRetention, 6 * 60 * 60 * 1000);
+    }
+  } catch { /* aislado */ }
+  // Poda del historial de decisiones del grafo canónico (28-ago): el auto-match deja una fila con evidence
+  // JSONB por decisión cada ciclo de 5 min y NADA la podaba — 16GB y la base de 60GB al 90% (aviso de
+  // Render). Solo borra decision_source='auto' (las manuales/reeval quedan); ENCENDIDA por defecto porque
+  // apagada es exactamente el incidente. GP_DECISIONS_RETENTION_DAYS=0 la desactiva; default 14 días.
+  try {
+    const decDays = process.env.GP_DECISIONS_RETENTION_DAYS === undefined ? 14
+      : Math.max(0, parseInt(process.env.GP_DECISIONS_RETENTION_DAYS, 10) || 0);
+    const dbcRet = require('./database/client');
+    if (decDays > 0 && dbcRet.isConfigured()) {
+      const runDecRetention = async () => {
+        let borradas = 0;
+        for (;;) {
+          const r = await dbcRet.query(`DELETE FROM mapping_decision_history WHERE ctid IN
+            (SELECT ctid FROM mapping_decision_history WHERE decision_source='auto'
+              AND created_at < now() - ($1 || ' days')::interval LIMIT 5000)`, [decDays]);
+          borradas += r.rowCount;
+          if (r.rowCount < 5000) break;
+        }
+        if (borradas) console.log(`[dec-retention] borradas ${borradas} decisiones auto > ${decDays}d`);
+      };
+      setTimeout(() => { runDecRetention().catch(e => console.error('[dec-retention]', e.message)); }, 4 * 60 * 1000);
+      setInterval(() => { runDecRetention().catch(e => console.error('[dec-retention]', e.message)); }, 6 * 60 * 60 * 1000);
     }
   } catch { /* aislado */ }
   // Motores de contexto y goles con CADENCIA ADAPTATIVA (2-jul): los loops pre-computan snapshots — la navegación

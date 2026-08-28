@@ -295,6 +295,40 @@ const ok = (cond, txt, detalle) => {
   ok(fCsFin.status === 'SETTLED' && fCsFin.resultado === 'WIN' && fCsFin.pnl === +(20 * 2.25).toFixed(2),
     'liquida con nuestro resultado y el P&L de la cuota real', [fCsFin.status, fCsFin.pnl]);
 
+  console.log('\n17g. el ensayo del gemelo CS2: arma el payload exacto y JAMÁS coloca con la llave apagada');
+  delete process.env.GP_REAL_CS2_AUTO;
+  const sbEns = { pick_id: 'es_cs2_ens_RONDAS_HANDICAP_away_6.5_2', id: 'sh_cs2_2', segment: 'cs2_rounds_v1',
+    family: 'RONDAS_HANDICAP', side: 'away', line: 6.5, book: 'cloudbet', league: 'CCT',
+    match: 'MASONIC vs Galorys', odds: 2.1, model_prob: 0.55,
+    kickoff_at: new Date(Date.now() + 2 * 3600e3).toISOString() };
+  const fEns = RE.crearManualCs2(sbEns, { stake: 30 });
+  const evRawCs2 = { markets: { 'counter-strike.map_round_handicap': { submarkets: {
+    'period=map2': { selections: [
+      { outcome: 'home', params: 'handicap=-6.5&map=2', price: 1.75, marketUrl: 'counter-strike.map_round_handicap/home?map=2', maxStake: 20 },
+      { outcome: 'away', params: 'handicap=6.5&map=2', price: 2.12, marketUrl: 'counter-strike.map_round_handicap/away?map=2', maxStake: 20 },
+      { outcome: 'away', params: 'handicap=8.5&map=2', price: 1.6, marketUrl: 'counter-strike.map_round_handicap/away85?map=2', maxStake: 20 },
+    ] },
+    'period=map1': { selections: [
+      { outcome: 'away', params: 'handicap=6.5&map=1', price: 2.4, marketUrl: 'counter-strike.map_round_handicap/away?map=1', maxStake: 20 },
+    ] },
+  } } } };
+  const selE = RE.selectionForCs2(evRawCs2, { map: 2, line: 6.5, side: 'away' });
+  ok(selE && selE.marketUrl === 'counter-strike.map_round_handicap/away?map=2', 'casa la selección EXACTA (línea, lado y mapa)', selE && selE.marketUrl);
+  ok(RE.selectionForCs2(evRawCs2, { map: 3, line: 6.5, side: 'away' }) === null, 'otro mapa no casa');
+  ok(RE.selectionForCs2(evRawCs2, { map: 2, line: 5.5, side: 'away' }) === null, 'otra línea no casa');
+  const antesEns = casa.colocaciones.length;
+  await RE.ensayoCs2(fEns, { eventoId: 'ev-ens-1', evRaw: evRawCs2 });
+  ok(fEns.ensayo_payload && fEns.ensayo_payload.marketUrl === 'counter-strike.map_round_handicap/away?map=2'
+    && fEns.ensayo_payload.price === 2.12 && fEns.ensayo_payload.stake === 20,
+    'el payload queda armado con precio vivo y el tope de 20 de la casa', fEns.ensayo_payload);
+  ok(fEns.status === 'PENDIENTE' && fEns.motivo === 'solo_manual', 'la fila sigue siendo del canal manual', [fEns.status, fEns.motivo]);
+  ok(casa.colocaciones.length === antesEns, 'con la llave apagada NO se envió nada a la casa', casa.colocaciones.length - antesEns);
+  const fEnsSin = RE.crearManualCs2({ ...sbEns, pick_id: 'es_cs2_ens2_RONDAS_HANDICAP_home_-3.5_1', side: 'home', line: -3.5 }, { stake: 30 });
+  await RE.ensayoCs2(fEnsSin, { eventoId: null });
+  ok(!fEnsSin.ensayo_payload && fEnsSin.ensayo_motivo === 'sin_id_de_evento', 'sin id de evento lo dice y no inventa', fEnsSin.ensayo_motivo);
+  const fCards = RE.load().bets.find((b) => !b.familia && b.status === 'PLACED');
+  ok(!fCards || !fCards.ensayo_payload, 'el ensayo no toca ninguna fila de tarjetas');
+
   console.log('\n18. la misma señal nunca entra dos veces');
   const dup = await RE.intentar(s1, pick, { cbIdx: IDX });
   ok(dup === null, 'la puerta la rechaza por pick repetida');

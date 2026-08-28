@@ -2083,6 +2083,80 @@ Estimaciones de un modelo estadístico, no consejo financiero. Apostá con respo
   return { subject, text, html };
 }
 
+// ── CIERRE DE LA SEMANA ABIERTA (28-ago, pedido de Alexis: correo masivo de conversión) ──────────────────
+// Estilo personal (bandeja Principal): texto plano, sin <a>, sin List-Unsubscribe — el precedente que mejor
+// entregabilidad midió (18-jul). El número de la semana se calcula EN VIVO del registro de combate (familias
+// públicas; el monitor FIGHT no cuenta) para que el correo nunca prometa nada que el track público no enseñe.
+function combatSemanaStats() {
+  const desde = Date.now() - 7 * 864e5;
+  const liq = (db.combatPicks || []).filter(p => p.status === 'SETTLED'
+    && (p.result_code === 'WIN' || p.result_code === 'LOSS')
+    && Date.parse(p.settled_at || 0) >= desde && (p.family || 'FIGHT') !== 'FIGHT');
+  const w = liq.filter(p => p.result_code === 'WIN').length;
+  const units = liq.reduce((a, p) => a + (p.units || 0), 0);
+  return { n: liq.length, w, units: +units.toFixed(2), positivo: liq.length >= 3 && units > 0 };
+}
+function openSportsCloseEmail(lang) {
+  const en = lang === 'en';
+  const st = combatSemanaStats();
+  if (en) {
+    const subject = 'the five sports close on Sunday night';
+    const parCombate = st.positivo
+      ? `While the door was open, the public record kept doing its job. This week alone, the combat register (every pick published with its price, win or lose) went ${st.w} for ${st.n} and finished ${st.units > 0 ? '+' : ''}${st.units} units up. That is not a screenshot of a lucky night — it is the same public track you can scroll yourself, losses included.`
+      : `While the door was open, the public record kept doing its job — every pick published with its price, win or lose, losses included, there for you to scroll.`;
+    const text = `Hi,
+
+Alexis here, from GP Simulador. A quick heads-up, because I said I would tell you before it happened and not after.
+
+The five new sports — basketball, esports, American football, tennis and Formula 1 — have been open on every plan for the last week. That window closes this Sunday at midnight. From Monday they are part of Pro and Sharp, alongside everything those plans already include. Football and combat stay as they are.
+
+${parCombate}
+
+And the timing matters more than usual: college football kicks off this Saturday and the NFL starts September 9. The American football engine — with its own ratings and 22 books compared per game — is exactly the kind of thing you want open BEFORE the season, not after week 3.
+
+If you have been using the new sports this week and want to keep them, upgrade to Pro or Sharp from your profile at gpsimulador.com before Sunday. If you only ever look at football, do nothing — nothing changes for you.
+
+Any question about which plan fits you, just reply. I read every answer.
+
+Alexis
+GP Simulador
+
+Estimates from a statistical model, not financial advice. Bet responsibly. 18+.
+
+(If you'd rather not get my emails, reply "unsubscribe" and I'll take you off the list.)`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'los cinco deportes se cierran el domingo a la noche';
+  const parCombate = st.positivo
+    ? `Mientras la puerta estuvo abierta, el registro público siguió haciendo su trabajo. Solo esta semana, el track de combate (cada pick publicada con su cuota, se gane o se pierda) fue ${st.w} de ${st.n} y cerró con ${st.units > 0 ? '+' : ''}${st.units} unidades. No es la captura de una noche con suerte: es el mismo historial público que podés recorrer vos, con las perdidas incluidas.`
+    : `Mientras la puerta estuvo abierta, el registro público siguió haciendo su trabajo: cada pick publicada con su cuota, se gane o se pierda, con las perdidas incluidas, ahí para que lo recorras vos.`;
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. Un aviso corto, porque dije que te lo contaría antes de que pasara y no después.
+
+Los cinco deportes nuevos — baloncesto, esports, fútbol americano, tenis y Fórmula 1 — estuvieron abiertos en todos los planes esta última semana. Esa ventana se cierra este domingo a la medianoche. Desde el lunes pasan a Pro y Sharp, junto a todo lo que esos planes ya incluyen. Fútbol y combate siguen igual que están.
+
+${parCombate}
+
+Y el momento importa más que de costumbre: el fútbol americano universitario arranca este sábado y la NFL el 9 de septiembre. El motor de americano — con ratings propios y 22 casas comparadas por partido — es exactamente lo que conviene tener abierto ANTES de la temporada, no en la semana 3.
+
+Si estuviste usando los deportes nuevos esta semana y querés conservarlos, pasate a Pro o Sharp desde tu perfil en gpsimulador.com antes del domingo. Si solo mirás fútbol, no hagas nada: para vos no cambia nada.
+
+Cualquier duda sobre qué plan te conviene, respondé este correo. Leo todas las respuestas.
+
+Alexis
+GP Simulador
+
+Estimaciones de un modelo estadístico, no consejo financiero. Apostá con responsabilidad. 18+.
+
+(Si preferís no recibir mis correos, respondé "baja" y te saco de la lista.)`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 function launchPersonalEmail(lang) {
   const en = lang === 'en';
   const tr = dailyPicksTrackRecord().overall || {};
@@ -12348,6 +12422,34 @@ async function shadowSweep() {
         try { if (RE.crearManualCs2(sb)) cs2Manual++; } catch { /* la siguiente pasada la coge */ }
       }
       if (cs2Manual) real.cs2_manual_nuevas = cs2Manual;
+      // ENSAYO DEL GEMELO AUTOMÁTICO (28-ago): por cada fila del canal manual sin payload armado, resolver
+      // el id del evento en la casa (via la agenda de esports, que ya lo trae) y dejar la colocación LISTA.
+      // Con GP_REAL_CS2_AUTO apagada (defecto) nada se envía: se mide cuántas señales el circuito podría
+      // colocar solo — el dato que decide si el día del desbloqueo se enciende con confianza.
+      try {
+        const LR2 = RE.load();
+        const filasEns = LR2.bets.filter(b => b.familia === 'CS2_RONDAS' && b.status === 'PENDIENTE'
+          && !b.ensayo_payload && b.kickoff_at && Date.parse(b.kickoff_at) > Date.now() + 5 * 60e3
+          && (b.ensayo_intentos || 0) <= 12);
+        if (filasEns.length) {
+          const ESS = require('./esports-engine/store');
+          const picksAll = {}; try { for (const p2 of ESS.picksRaw('cs2')) picksAll[p2.pick_id] = p2; } catch { }
+          const sl2 = await ESS.slate('cs2', { days: 3 }).catch(() => null);
+          const evPid = {};
+          for (const ev2 of ((sl2 && sl2.events) || [])) {
+            if (ev2.provider_id) evPid[ev2.id] = String(ev2.provider_id);
+            for (const src2 of (ev2.sources || [])) if (src2.provider === 'cloudbet' && src2.provider_id) evPid[ev2.id] = String(src2.provider_id);
+          }
+          let armadas = 0;
+          for (const fb of filasEns) {
+            const pk = picksAll[fb.pick_id];
+            const pid = pk && pk.event_id ? evPid[pk.event_id] : null;
+            await RE.ensayoCs2(fb, { eventoId: pid || null });
+            if (fb.ensayo_payload) armadas++;
+          }
+          if (armadas) real.cs2_ensayo_armadas = armadas;
+        }
+      } catch { /* el ensayo jamás rompe el barrido */ }
       await realAvisoApuestaManual().catch(() => {});
       await realAvisoPrimera().catch(() => {});
       await realAvisoDivergencia().catch(() => {});
@@ -17561,6 +17663,12 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { count: rows.length, picks: rows, exported_at: new Date().toISOString() });
       }
+      // ?combat=1 (28-ago): las picks de combate, para análisis y contenido sin sesión de admin — mismo
+      // criterio que ?clubs=1. Son la fuente del número del correo masivo (familias públicas, sin FIGHT).
+      if (url.searchParams.get('combat')) {
+        const rows = db.combatPicks || [];
+        return json(res, 200, { count: rows.length, picks: rows, exported_at: new Date().toISOString() });
+      }
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
     }
     // REEMPLAZO EDITORIAL de una pick ACTIVE (one-off, misma key): la vieja queda SUPERSEDED (fuera del feed y
@@ -22376,7 +22484,7 @@ async function anotar(pid){
         const leads = uk.filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true).length;
         const unverified = uk.filter(e => db.users[e] && db.users[e].verified !== true).length;
         const verified = uk.filter(e => db.users[e] && db.users[e].verified === true).length;
-        const isReactivate = /^reactivate_(es|en)$/.test(variant || '');
+        const isReactivate = /^(reactivate|opensports)_(es|en)$/.test(variant || '');
         const freeNoSub = uk.filter(e => planFor(e) === 'free').length; // sin Pro/Sharp (incluye leads); admin=sharp queda fuera
         const wouldSend = variant === 'leads_magic' ? leads : isReactivate ? freeNoSub : uk.length;
         return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, suppressed, verified, unverified, leads, free_no_sub: freeNoSub });
@@ -22421,6 +22529,9 @@ async function anotar(pid){
                                   // last call (cierre founder 19-jul): idioma FIJO, estilo personal anti-Promociones.
                                   : (variant === 'lastcall_en') ? () => ({ ...lastCallEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                     : (variant === 'lastcall_es') ? () => ({ ...lastCallEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                      // cierre de la semana abierta (28-ago): idioma FIJO, estilo personal anti-Promociones
+                                      : (variant === 'opensports_es') ? () => ({ ...openSportsCloseEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                        : (variant === 'opensports_en') ? () => ({ ...openSportsCloseEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                       // reactivación post-Mundial (idioma FIJO, estilo personal anti-Promociones)
                                       : (variant === 'reactivate_en') ? () => ({ ...reactivateEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                         : (variant === 'reactivate_es') ? () => ({ ...reactivateEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
@@ -22454,7 +22565,7 @@ async function anotar(pid){
       // nunca a un verificado.
       const targets = (variant === 'leads_magic'
         ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true)
-        : /^reactivate_(es|en)$/.test(variant || '')
+        : /^(reactivate|opensports)_(es|en)$/.test(variant || '')
           ? Object.keys(db.users).filter(e => planFor(e) === 'free') // SIN Pro/Sharp (free + leads); admin=sharp fuera
           : Object.keys(db.users)
       ).filter(notSuppressed); // la lista de supresión gana SIEMPRE, en todos los variants

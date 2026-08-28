@@ -745,6 +745,90 @@ function crearManualCs2(sb, { stake = 30 } = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// CS2 EN ENSAYO (28-ago): EL GEMELO AUTOMÁTICO, CONSTRUIDO ANTES DE PODER USARLO
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// El día que Cloudbet desbloquee la API, hoy solo tarjetas se automatiza — CS2 seguiría manual otra semana
+// mientras se construye y audita su circuito. Esto lo construye AHORA: por cada fila del canal manual, el
+// barrido resuelve el evento en la casa, localiza la selección exacta (mercado de hándicap de rondas del
+// mapa, línea y lado de la señal) y deja el payload de colocación COMPLETO guardado en la fila — todo lo
+// que placeBet necesita, verificado contra el precio vivo. Con GP_REAL_CS2_AUTO sin poner (el defecto),
+// jamás se envía nada: es un ensayo. El día del desbloqueo, encender la env convierte el mismo camino
+// auditado en colocación real, con el tope de ~20 USDT que la casa impone en estos mercados como techo.
+const CS2_MARKET_RE = /(^|\.)map_round_handicap$/;
+const CS2_STAKE_TOPE = 20;   // el techo que la casa le puso a Alexis a mano: el ensayo lo respeta desde ya
+// Busca la selección del hándicap de rondas en el evento CRUDO de la casa. La línea de la señal nació de
+// estos mismos mercados, así que se casa EXACTA (línea, lado y mapa) — sin flips de signo: el flip es solo
+// de display. Devuelve las coordenadas de colocación o null.
+function selectionForCs2(evRaw, { map, line, side }) {
+  for (const [mk, m] of Object.entries((evRaw && evRaw.markets) || {})) {
+    if (!CS2_MARKET_RE.test(mk) || !m || !m.submarkets) continue;
+    for (const [smKey, sm] of Object.entries(m.submarkets)) {
+      for (const s of ((sm && sm.selections) || [])) {
+        const params = String(smKey || '') + '&' + String(s.params || '');
+        const l = Number((params.match(/handicap=(-?[\d.]+)/) || [])[1]);
+        if (!Number.isFinite(l) || Math.abs(l - Number(line)) > 1e-9) continue;
+        if (map != null) {
+          const pm = (params.match(/map=(\d+)/) || params.match(/period=map(\d+)/) || [])[1];
+          if (String(pm) !== String(map)) continue;
+        }
+        const out = String(s.outcome || '').toLowerCase();
+        if (out !== String(side) && !out.endsWith('=' + side)) continue;
+        if (!(Number(s.price) > 1) || !s.marketUrl) continue;
+        return { marketUrl: s.marketUrl, price: Number(s.price),
+          maxStake: Number(s.maxStake) > 0 ? Number(s.maxStake) : null,
+          minStake: Number(s.minStake) > 0 ? Number(s.minStake) : null };
+      }
+    }
+  }
+  return null;
+}
+// ensayoCs2(fila, { eventoId, evRaw }) — arma (y guarda) el payload de colocación de una fila del canal
+// manual. `evRaw` inyectable para la auditoría (sin red). Devuelve la fila; nunca lanza.
+async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
+  try {
+    if (!fila || fila.familia !== 'CS2_RONDAS' || fila.status !== 'PENDIENTE') return fila;
+    if (fila.ensayo_payload) return fila;                       // ya está armado
+    const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
+    if (!ko || ko <= Date.now()) return fila;                   // sin KO futuro no hay nada que ensayar
+    fila.ensayo_intentos = (fila.ensayo_intentos || 0) + 1;
+    if (fila.ensayo_intentos > 12) return fila;                 // ~2 horas de barridos; después se deja
+    if (!eventoId) { fila.ensayo_motivo = 'sin_id_de_evento'; save(); return fila; }
+    const ev = evRaw || await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', eventoId).catch(() => null);
+    if (!ev) { fila.ensayo_motivo = 'evento_ilegible'; save(); return fila; }
+    const sel = selectionForCs2(ev, { map: fila.mapa, line: fila.line, side: fila.side });
+    if (!sel) { fila.ensayo_motivo = 'linea_no_cotizada_ahora'; save(); return fila; }
+    const C = CFG();
+    const stake = Math.min(fila.stake || CS2_STAKE_TOPE, sel.maxStake || CS2_STAKE_TOPE, CS2_STAKE_TOPE);
+    fila.ensayo_payload = {
+      currency: C.currency, eventId: String(eventoId), marketUrl: sel.marketUrl,
+      price: sel.price, stake, referenceId: refIdDe(fila.pick_id, 0),
+    };
+    fila.ensayo_motivo = null;
+    fila.ensayo_at = new Date().toISOString();
+    // LA LLAVE DEL DÍA DEL DESBLOQUEO. Sin la env (el defecto) esto es un ensayo y aquí termina. Con
+    // GP_REAL_CS2_AUTO=true el MISMO payload auditado se envía de verdad — un solo interruptor, cero
+    // código nuevo ese día. El resultado se anota con la misma forma que anotarManual para que el libro
+    // no distinga cómo entró el dinero, solo que entró.
+    if (String(process.env.GP_REAL_CS2_AUTO) === 'true') {
+      const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', fila.ensayo_payload);
+      fila.intentos = (fila.intentos || 0) + 1;
+      if (r && r.ok && !/REJECTED/i.test(String((r.body || {}).status || ''))) {
+        fila.status = 'PLACED'; fila.via = 'auto'; fila.motivo = null;
+        fila.odds_real = fila.ensayo_payload.price; fila.stake = stake;
+        fila.placed_at = new Date().toISOString();
+        fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.ensayo_payload.price / fila.odds_sombra - 1)).toFixed(2) : null;
+        fila.referencia = fila.ensayo_payload.referenceId;
+      } else {
+        fila.ensayo_motivo = 'colocacion_rechazada';
+        fila.ultimo_rechazo = (r && (r.why || (r.body && r.body.status))) || 'sin_detalle';
+      }
+    }
+    save();
+    return fila;
+  } catch (e) { try { fila.ensayo_motivo = 'error:' + e.message; save(); } catch { } return fila; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // ANOTAR UNA APUESTA COLOCADA A MANO
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // La fila de esa pick ya existe en el libro —el ejecutor la intentó y la casa la rechazó por la cuenta—,
@@ -840,5 +924,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

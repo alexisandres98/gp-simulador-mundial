@@ -12662,9 +12662,16 @@ async function realAvisoApuestaManual() {
   const MOTIVOS_CUENTA = /cuenta_o_peticion:|cuenta_restringida/;
   const MOTIVOS_INVISIBLES = /^(sin_id_de_evento|evento_ilegible|linea_no_cotizada|sin_precio|sin_market_url)$/;
   const filas = L.bets.filter((b) => {
-    if (b.aviso_manual || !(b.status === 'PENDIENTE' || b.status === 'DESCARTADA')) return false;
+    if (b.aviso_manual) return false;
     const ko = b.kickoff_at ? Date.parse(b.kickoff_at) : 0;
     if (!(ko > ahora + 10 * 60e3)) return false;                        // con menos de 10 min no da tiempo
+    // TOPE DE EXPOSICIÓN (29-ago, pedido de Alexis): el freno es regla nuestra, no imposibilidad de la
+    // API — pero callar convertía el tope en señales perdidas sin que nadie decidiera. Ahora avisan, y el
+    // aviso las pasa al canal manual (aviso_manual ⇒ el barrido ya no las coloca): decide él. Rescata
+    // también las que el tope dejó morir reintentando (CADUCADA por intentos agotados, partido futuro).
+    if ((b.motivo === 'exposicion_maxima' || b.motivo === 'demasiados_intentos')
+      && (b.status === 'PENDIENTE' || b.status === 'CADUCADA')) return true;
+    if (!(b.status === 'PENDIENTE' || b.status === 'DESCARTADA')) return false;
     if (MOTIVOS_CUENTA.test(String(b.motivo || ''))) return true;
     if (b.motivo === 'solo_manual') return true;                        // canal manual puro (CS2): avisa al nacer
     return MOTIVOS_INVISIBLES.test(String(b.motivo || '')) && ko < ahora + 3 * 3600e3;
@@ -12679,9 +12686,11 @@ async function realAvisoApuestaManual() {
     const minimo = +(b.odds_sombra * (1 - C.minOddsSlipPct)).toFixed(2);
     const esCs2 = b.familia === 'CS2_RONDAS';
     const porQue = esCs2 ? 'familia CS2 — solo va a mano mientras la API siga cerrada'
-      : MOTIVOS_CUENTA.test(String(b.motivo || ''))
-        ? 'cuenta restringida en la API'
-        : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
+      : (b.motivo === 'exposicion_maxima' || b.motivo === 'demasiados_intentos')
+        ? 'tope de exposición del ejecutor — el auto no la colocará; decide tú si va a mano'
+        : MOTIVOS_CUENTA.test(String(b.motivo || ''))
+          ? 'cuenta restringida en la API'
+          : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
     cuerpo.push(
       `▸ ${b.match}  (${b.league || '?'})`,
       esCs2

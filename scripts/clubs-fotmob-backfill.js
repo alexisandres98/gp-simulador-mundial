@@ -19,7 +19,7 @@ const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colomb
   // GOTCHA: superettan NO es 8815 (esa es la Super League 2 GRIEGA) — es 168.
   paraguay: 199, j1: 223, premier: 47, laliga: 87, bundesliga: 54, seriea: 55, ligue1: 53,
   liga3: 208, ligue2: 110, bundesliga2: 146, eredivisie: 57, superettan: 168, austria: 38, escocia: 64,
-  championship: 48, league1: 108, league2: 109, serieb: 86, laliga2: 140, portugal: 61, belgica: 40, turquia: 71, grecia: 135 };
+  championship: 48, league1: 108, league2: 109, serieb: 86, laliga2: 140, portugal: 61, belgica: 40, turquia: 71, grecia: 135, frauen: 9676 };
 
 const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|sc|ec|ac|afc|cd|club|de|do|da)\b/g, ' ').replace(/\s+/g, ' ').trim();
 

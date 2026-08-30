@@ -24,6 +24,10 @@ const LOGOS = path.join(__dirname, '..', 'public', 'logos');
 const AF_LEAGUES = [
   { key: 'saudi', af: 307, name: 'Saudi Pro League', country: 'Arabia Saudita', seasons: [2024, 2025, 2026], odds_key: 'soccer_saudi_arabia_pro_league' },
   { key: 'aleague', af: 188, name: 'A-League', country: 'Australia', seasons: [2024, 2025], odds_key: 'soccer_australia_aleague' },
+  // 30-ago (discovery del 29-ago): Frauen-Bundesliga con cuotas activas en Odds API. TSA no la tiene
+  // (verificado: catálogo y search sin resultado) y ESPN tampoco (hay eng.w.1/esp.w.1, Alemania no) →
+  // entra por AF como saudi/aleague. Sin ESPN, sus resultados llegan por la rama AF del sync de marcadores.
+  { key: 'frauen', af: 82, name: 'Frauen-Bundesliga', country: 'Alemania', seasons: [2024, 2025, 2026], odds_key: 'soccer_germany_bundesliga_women' },
 ];
 
 async function af(pathq) {
@@ -64,8 +68,10 @@ async function downloadLogo(id, url) {
 }
 
 (async () => {
+  // filtro opcional por argv (como los demás scripts de la casa): sin args = todas
+  const only = process.argv.slice(2);
   const cur = JSON.parse(fs.readFileSync(OUT, 'utf8'));
-  for (const L of AF_LEAGUES) {
+  for (const L of AF_LEAGUES.filter(l => !only.length || only.includes(l.key))) {
     const logos = {};
     let matches = [];
     const bySeason = {};

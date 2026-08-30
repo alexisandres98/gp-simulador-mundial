@@ -5872,14 +5872,41 @@ async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
     const inPlay = isLive ? new Set(clubLeaguesInPlay()) : null;
     let anyChange = false, anyFinal = false;
     for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
-      if (L.starts || !L.comp || !L.season) continue; // pretemporada
+      // 30-ago (alta frauen): las ligas AF-fit SIN ESPN también entran — sus marcadores salen de la rama
+      // AF de abajo. Las AF-fit CON ESPN (saudi/aleague) siguen cerrando por la rama ESPN, como siempre.
+      const afSinEspn = !L.comp && L.af_league && !CLUB_ESPN[lgKey];
+      if (L.starts || (!L.comp && !afSinEspn) || !L.season) continue; // pretemporada / sin fuente propia
       if (inPlay && !inPlay.has(lgKey)) continue;     // modo live: solo ligas con partido en curso
       let rows = [];
       try {
-        // SIN filtro de status: trae live Y finished del día (TSA reporta ambos con marcador real)
-        const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&date_from=${day(-1)}&date_to=${day(1)}&per_page=40`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
-        const j = r.ok ? await r.json().catch(() => null) : null;
-        rows = (j && j.data) || [];
+        if (afSinEspn) {
+          // Rama AF: fixtures de ayer..mañana con marcador. Ids en el formato del fit (tm_af<id>) para
+          // que Elo dinámico, clubResults y settle crucen con ratings.json sin traducción.
+          const afk2 = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+          const snAf = (String(L.season).match(/_(\d{4})$/) || [])[1];
+          if (afk2 && snAf) {
+            const rAf = await fetch(`https://${process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io'}/fixtures?league=${L.af_league}&season=${snAf}&from=${day(-1)}&to=${day(1)}`,
+              { headers: { 'x-apisports-key': afk2 }, signal: AbortSignal.timeout(15000) });
+            const jAf = rAf.ok ? await rAf.json().catch(() => null) : null;
+            rows = ((jAf && jAf.response) || []).map(fx => {
+              const stx = String((fx.fixture && fx.fixture.status && fx.fixture.status.short) || '');
+              const fin2 = ['FT', 'AET', 'PEN'].includes(stx);
+              const live2 = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'SUSP', 'INT'].includes(stx);
+              const th = fx.teams && fx.teams.home, ta = fx.teams && fx.teams.away;
+              if (!th || !ta || (!fin2 && !live2)) return null;
+              return {
+                id: `af${fx.fixture.id}`, status: fin2 ? 'finished' : 'live', utc_date: fx.fixture.date,
+                score: { home: fx.goals && fx.goals.home, away: fx.goals && fx.goals.away },
+                home_team: { id: `tm_af${th.id}`, name: th.name }, away_team: { id: `tm_af${ta.id}`, name: ta.name },
+              };
+            }).filter(Boolean);
+          }
+        } else {
+          // SIN filtro de status: trae live Y finished del día (TSA reporta ambos con marcador real)
+          const r = await fetch(`https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&date_from=${day(-1)}&date_to=${day(1)}&per_page=40`, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(15000) });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          rows = (j && j.data) || [];
+        }
       } catch { rows = []; }
       out.leagues++;
       for (const m of rows) {
@@ -6334,7 +6361,7 @@ const PUBLIC_SEGMENTS = String(process.env.GP_PUBLIC_SEGMENTS || 'CARDS:under,SO
 // Idiomas LOCALES del observer por liga (26-jul): la prensa local publica bajas horas antes que la global.
 const LEAGUE_OBS_LANGS = {
   brasileirao: ['pt'], brasilb: ['pt'], finlandia: ['fi'], noruega: ['no'], suecia: ['sv'], dinamarca: ['da'],
-  polonia: ['pl'], rusia: ['ru'], suiza: ['de', 'fr'], bundesliga: ['de'], ligue1: ['fr'], seriea: ['it'], premier: [],
+  polonia: ['pl'], rusia: ['ru'], suiza: ['de', 'fr'], bundesliga: ['de'], ligue1: ['fr'], seriea: ['it'], premier: [], frauen: ['de'],
   // 8-ago (Europa despierta): la prensa LOCAL publica las bajas horas antes que la global
   portugal: ['pt'], belgica: ['nl', 'fr'], turquia: ['tr'], grecia: ['el'], serieb: ['it'], eredivisie: ['nl'],
   austria: ['de'], liga3: ['de'], bundesliga2: ['de'], ligue2: ['fr'], superettan: ['sv'],
@@ -15204,7 +15231,8 @@ const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128,
   // eflcup=48 (League Cup), facup=45, dfbpokal=81, copadelrey=143, coppaitalia=137, coupefrance=66,
   // aleague=188. leaguescup: verificar id con la key de AF activa (fallback ESPN mientras).
   libertadores: 13, sudamericana: 11, champions: 2, europa: 3, saudi: 307, uclq: 2,
-  eflcup: 48, facup: 45, dfbpokal: 81, copadelrey: 143, coppaitalia: 137, coupefrance: 66, aleague: 188 };
+  eflcup: 48, facup: 45, dfbpokal: 81, copadelrey: 143, coppaitalia: 137, coupefrance: 66, aleague: 188,
+  frauen: 82 };
 
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como

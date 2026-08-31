@@ -4333,7 +4333,10 @@
       '<div class="gx-ck-head"><span class="gx-label">' + esc(t('cockpit')) + '</span>' + (r.live ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-dim" style="font-size:11px">' + esc(fmtTime(r.kickoff)) + '</span>') + '</div>' +
       '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc(t('comp')) + '</div>' +
       '<div class="gx-ck-teams"><div class="gx-ck-side"><span class="fl">' + flag(h.home.team_id) + '</span><b>' + esc(teamName(h.home.team_id, h.home.name_fallback)) + '</b></div>' +
-      '<div class="gx-ck-mid"><div class="gx-ck-num">' + (r.live ? '0 - 1' : t('vs')) + '</div>' + (r.live ? '<div class="gx-ck-clock">45\'</div>' : '') + '</div>' +
+      // FIXTURE OLVIDADO (31-ago): esto pintaba un "0 - 1 · 45'" INVENTADO en cualquier partido en vivo —
+      // un marcador de maqueta que sobrevivió al QA. El marcador real viaja en el header cuando existe;
+      // si no, el pill de EN VIVO ya lo dice el head de arriba y aquí va el vs de siempre.
+      '<div class="gx-ck-mid"><div class="gx-ck-num">' + (r.live && h.score && h.score.home != null ? (h.score.home + ' - ' + h.score.away) : t('vs')) + '</div>' + (r.live && h.minute != null ? '<div class="gx-ck-clock">' + h.minute + '\'</div>' : '') + '</div>' +
       '<div class="gx-ck-side"><span class="fl">' + flag(h.away.team_id) + '</span><b>' + esc(teamName(h.away.team_id, h.away.name_fallback)) + '</b></div></div>' +
       '<div class="gx-pbar"><i class="h" style="width:' + (gpH * 100) + '%"></i><i class="d" style="width:' + (gpD * 100) + '%"></i><i class="a" style="width:' + (gpA * 100) + '%"></i></div>' +
       '<div class="gx-plabels"><span>' + esc(teamName(h.home.team_id)) + ' <b>' + pct0(gpH) + '</b></span><span>X <b>' + pct0(gpD) + '</b></span><span>' + esc(teamName(h.away.team_id)) + ' <b>' + pct0(gpA) + '</b></span></div>' +
@@ -5466,7 +5469,15 @@
     var likely = (gi && gi.top_scores && gi.top_scores[0]) ? gi.top_scores[0].score : (fx && fx.modelProbabilities ? fx.modelProbabilities.likelyScore : null);
     var fresh = beta.analysis ? beta.analysis.data_freshness_code : null;
     var finished = fx && fx.status === 'final';
-    var score = ((live || finished) && fx && fx.score) ? (fx.score.home + ' - ' + fx.score.away) : null;
+    // EN VIVO los goles pueden llegar null (reporte de Alexis: "null - null" al minuto 8 en Villa-Arsenal —
+    // la ventana entre el kickoff y la primera pasada del feed, donde el estado lo pone el reloj). Recién
+    // empezado, el marcador ES 0-0; a minuto alto sin feed, no se inventa: se omite. Finalizado sin
+    // marcador tampoco se inventa jamás.
+    var scNul = fx && fx.score && (fx.score.home == null || fx.score.away == null);
+    var score = ((live || finished) && fx && fx.score)
+      ? (!scNul ? (fx.score.home + ' - ' + fx.score.away)
+        : (live && fx.minute != null && fx.minute <= 20) ? '0 - 0' : null)
+      : null;
     var minute = (live && fx && fx.minute != null) ? (fx.minute + "'") : null;
     // eliminatoria: prórroga / penales / ganador (no se corta a los 90')
     var koLine = '';
@@ -5938,7 +5949,9 @@
       lcNote = '<p class="gx-mod-note gx-live-ctx">' + ic('square-rounded-filled') + ' ' + esc(t('live_ctx_red', { team: redTeam })) + '</p>';
     }
     var stale = ageFresh(fx.updatedAt) === 'STALE';
-    var sc = fx.score ? (fx.score.home + ' - ' + fx.score.away) : '—';
+    // panel EN VIVO: goles null recién empezado = 0-0 (ventana pre-feed); a minuto alto no se inventa
+    var sc = (fx.score && fx.score.home != null && fx.score.away != null) ? (fx.score.home + ' - ' + fx.score.away)
+      : (fx.score && fx.minute != null && fx.minute <= 20) ? '0 - 0' : '—';
     var evs = (fx.events || []).slice(-6).reverse();
     var st = fx.statistics;
     var statRow = function (key, label) { if (!st || !st.home || st.home[key] == null && st.away[key] == null) return ''; return '<div class="gx-livestat"><span class="gx-mono">' + (st.home[key] != null ? st.home[key] : '—') + '</span><span class="gx-label">' + esc(label) + '</span><span class="gx-mono">' + (st.away[key] != null ? st.away[key] : '—') + '</span></div>'; };

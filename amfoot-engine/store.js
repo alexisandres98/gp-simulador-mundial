@@ -799,9 +799,18 @@ function rosterOf(lg) {
   const c = RST[lg];
   if (c && c.j) return c.j;
   if (c && !c.j && Date.now() - c.at < 5 * 60e3) return null;
+  // GANA EL ARCHIVO CON JUGADORES, no el primero (31-ago). El disco persistente de Render guarda el
+  // roster-cfl.json con el GAP de ESPN (cero jugadores), y la cosecha nueva de la CFL (webs de los nueve
+  // clubes) viaja en el REPO: con la preferencia ciega disco-primero, el gap viejo taparía la plantilla
+  // real para siempre. Un archivo vacío nunca le gana a uno lleno; entre dos llenos, manda el disco.
   let j = null;
   for (const dir of [DISK_DIR, REPO_DIR]) {
-    try { j = JSON.parse(fs.readFileSync(path.join(dir, `roster-${lg}.json`), 'utf8')); break; } catch { }
+    let cand = null;
+    try { cand = JSON.parse(fs.readFileSync(path.join(dir, `roster-${lg}.json`), 'utf8')); } catch { }
+    if (!cand) continue;
+    const full = cand.players && Object.keys(cand.players).length;
+    if (full) { j = cand; break; }
+    if (!j) j = cand; // vacío/gap: solo si no aparece nada mejor
   }
   RST[lg] = { j, at: Date.now() };
   return j;
@@ -852,7 +861,9 @@ function playerProfile(lg, id) {
     .map((x) => ({ id: x.id, name: x.name, pos: x.pos, jersey: x.jersey, photo: x.photo ? `/logos/amfoot/${lg}/${x.photo}` : null }));
   // el equipo SÍ está medido, así que la ficha del jugador enseña el rating de SU equipo y dice que es eso
   let team = null;
-  try { team = teamsDirectory(lg).rows.find((t) => normName(t.name) === normName(p.team)) || null; } catch { }
+  // `.teams`, no `.rows` (31-ago): el directorio devuelve `teams` y el catch silencioso escondía que la
+  // ficha del jugador nunca llegó a enseñar el rating de su equipo
+  try { team = (teamsDirectory(lg).teams || []).find((t) => normName(t.name) === normName(p.team)) || null; } catch { }
   return {
     available: true, league: lg, label: (LEAGUES[lg] || {}).label,
     player: { ...p, photo: p.photo ? `/logos/amfoot/${lg}/${p.photo}` : null },

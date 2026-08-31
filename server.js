@@ -432,7 +432,11 @@ async function amfootRostersJob() {
     if (!todo.length) { opsLog('amf_rosters', { skipped: 'al día' }); return; }
     for (const lg of todo) {
       if (!opsMemOk('amf_rosters', 100)) { opsLog('amf_rosters', { stopped: 'techo', pending: lg }); setTimeout(amfootRostersJob, 45 * 60e3); return; }
-      const out = await opsSpawn('amf_rosters_' + lg, ['scripts/amfoot-rosters.js', '--league=' + lg], { heapMb: 200, timeoutMin: 35 });
+      // CFL por su cosecha propia (31-ago): ESPN no publica sus plantillas (gap documentado); la fuente
+      // real son las webs de los nueve clubes + Wikipedia donde el club migró al CMS nuevo. Si volviera a
+      // correr el harvester de ESPN aquí, reescribiría el gap encima de la plantilla buena cada semana.
+      const script = lg === 'cfl' ? ['scripts/cfl-rosters.js'] : ['scripts/amfoot-rosters.js', '--league=' + lg];
+      const out = await opsSpawn('amf_rosters_' + lg, script, { heapMb: 200, timeoutMin: 35 });
       opsLog('amf_rosters', { league: lg, code: out.code != null ? out.code : out.error, rss: opsRssMb() });
     }
   } catch (e) { opsLog('amf_rosters', { error: e.message }); }

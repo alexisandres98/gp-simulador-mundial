@@ -7554,7 +7554,9 @@
       '<div><span class="gx-label">Ritmo de liga</span><b>' + (m.lgPace != null ? m.lgPace.toFixed(1) : '—') + '</b> pos.</div>' +
       '<div><span class="gx-label">Ataque de liga</span><b>' + (m.lgORtg != null ? m.lgORtg.toFixed(1) : '—') + '</b> pts/100</div>' +
       '</div>';
-    var note = d.picks_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note) + '</span></div>' : '';
+    // nota de taller (31-ago, orden de Alexis): la doctrina para el público ya vive en la pestaña Picks
+    // de Oportunidades; este aviso amarillo es evidencia interna y va solo al admin
+    var note = soloAdmin(d.picks_note ? '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.picks_note) + '</span></div>' : '');
     var body = kind === 'teams' ? bbRankPanel(d, lg) : bbGamesPanel(d, lg);
     bbShell('Baloncesto · ' + bbLgLab(), bbTabs() + head + note + body);
   }
@@ -13515,9 +13517,11 @@
     var bind = function () { esBindSearch('gx-nflpsearch', function (v) { S.nfl.pQ = v; }, renderAmfPlayers); };
     if (!d) { nflShell(t('sr_players'), head + nflLoading()); bind(); return; }
     if (!d.available) {
+      // copy de cliente (31-ago, orden de Alexis): el porqué de taller (fuentes, cosechas) es solo admin
       nflShell(t('sr_players'), head + '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>La plantilla de ' + esc(d.label || lg) + ' todavía no está cosechada.</b>' +
-        '<span class="gx-dim">' + esc(d.why || '') + '</span></div></div>');
+        '<b>' + esT('Las plantillas de ' + (d.label || lg) + ' están en camino.', (d.label || lg) + ' rosters are on their way.') + '</b>' +
+        '<span class="gx-dim">' + esT('Mientras se integran, el análisis de esta liga corre a nivel de equipo: fichas y ratings completos en la pestaña Equipos.', 'While they are integrated, this league\'s analysis runs at team level: full profiles and ratings in the Teams tab.') + '</span>' +
+        soloAdmin('<span class="gx-dim" style="font-size:10.5px;opacity:.75">' + esc(d.why || '') + '</span>') + '</div></div>');
       bind(); return;
     }
     var rows = d.rows || [];

@@ -1183,13 +1183,26 @@
   // puerta que Rendimiento, y por la misma razón: son evidencia de taller, no producto.
   function soloAdmin(html) { return perfOK() ? html : ''; }
   function lockNuevos() { return lockPanel('lock_new_t', 'lock_new_s'); }
-  // qué vistas de los deportes nuevos venden y a qué plan pertenecen (misma línea que combate/fútbol):
-  // pro = picks/brief/sim/ask; sharp = lo que sale de precios entre casas (value/arb de hoops, props).
-  var NS_SHARP_VIEWS = ['bbopps', 'esprops'];
-  var NS_PRO_VIEWS = ['bbbrief', 'bbsim', 'bbask', 'esopps', 'esbrief', 'esask', 'f1opps', 'f1sim', 'f1brief', 'f1ask', 'tenopps', 'tensim', 'tenbrief', 'tenask', 'nflopps', 'nflbrief', 'nflsim', 'nflask'];
+  // candado con texto LIBRE (los deportes nuevos escriben bilingüe con esT, no con claves i18n)
+  function lockPanelTxt(title, sub) {
+    return '<div class="gx-empty gx-lockpanel">' + ic('lock') + '<b>' + esc(title) + '</b>' +
+      '<span class="gx-dim">' + esc(sub) + '</span>' +
+      '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div>';
+  }
+  // Qué vistas de los deportes nuevos se candan ENTERAS en el router (misma línea que combate/fútbol):
+  // solo el simulador y Pregúntale a GP — pantallas sin tablero propio. Todo lo demás (oportunidades,
+  // briefs, props) se canda DENTRO de su vista, conservando chips, tabs y récord como hace combate,
+  // con el mensaje de lo que de verdad está bloqueado en ese deporte.
+  var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim'];
+  var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask'];
   function nsLockHtml(v) {
-    if (NS_SHARP_VIEWS.indexOf(v) >= 0 && !nuevosSharpOK()) return lockPanel();
-    if (NS_PRO_VIEWS.indexOf(v) >= 0 && !nuevosOK()) return lockPanelPro();
+    if (!nuevosOK() && NS_SIM_VIEWS.indexOf(v) >= 0) {
+      return lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'),
+        esT('Cruzar dos equipos cualesquiera con el motor real es parte de los planes Pro y Sharp.', 'Crossing any two teams with the real engine is part of the Pro and Sharp plans.'));
+    }
+    if (!nuevosOK() && NS_ASK_VIEWS.indexOf(v) >= 0) {
+      return lockPanelTxt(t('nav_cb_ask'), t('ask_upgrade'));
+    }
     return null;
   }
 
@@ -7849,6 +7862,7 @@
 
     var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
     if (!d) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + mvLoading()); return; }
+    if (d._locked) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + '<div class="gx-panel">' + lockPanelTxt(esT('Value, arbitraje, caídas y middles — plan Sharp', 'Value, arbitrage, dropping odds and middles — Sharp plan'), esT('Salen de precios reales entre casas, no del modelo, y son parte del plan Sharp.', 'They come from real prices across books, not the model, and are part of the Sharp plan.')) + '</div>'); return; }
     if (d._err) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
 
     var body = '';
@@ -7877,6 +7891,7 @@
     var lg = bbLg();
     var d = bbGet('brief_' + lg, '/api/hoops/brief?league=' + lg, 300000);
     if (!d) { bbShell('Brief', bbTabs() + mvLoading()); return; }
+    if (d._locked) { bbShell('Brief', bbTabs() + '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
     if (d._err) { bbShell('Brief', bbTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
     var intro = d.intro && d.intro[lang]
@@ -8563,7 +8578,9 @@
     var rd = bbGet('read_' + lg + '_' + id, '/api/hoops/read?league=' + lg + '&id=' + encodeURIComponent(id), 600000);
     var lang = (S.lang === 'en') ? 'en' : 'es';
     var readHtml = '';
-    if (rd && rd.read && rd.read[lang]) {
+    if (rd && rd._locked) {
+      readHtml = '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div>' + lockPanelTxt(esT('La lectura de GP es para suscriptores', 'The GP read is for subscribers'), esT('El análisis narrado del cruce, escrito sobre el dossier del modelo, es parte de los planes Pro y Sharp.', 'The narrated read on the matchup, written from the model\'s dossier, is part of the Pro and Sharp plans.')) + '</div>';
+    } else if (rd && rd.read && rd.read[lang]) {
       readHtml = '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span><span class="gx-ph-extra">análisis del cruce</span></div>' +
         rd.read[lang].split(/\n\n+/).map(function (par) { return '<p>' + esc(par) + '</p>'; }).join('') + '</div>';
     } else if (rd && rd.llm && rd.llm.enabled) {
@@ -9080,8 +9097,7 @@
   function renderES(v) {
     if (!S.me) { esShell('Esport', esLoading()); return; }
     if (!esAllowed()) { showView('board'); return; }
-    var lkES = nsLockHtml(v === 'esmatch' || v === 'esmodel' || v === 'esperf' || v === 'esboard' || v === 'esteams' || v === 'esteam' || v === 'esplayer' || v === 'escircuit' || v === 'estour' || v === 'esprops' || v === 'esbrief' || v === 'esask' ? v : 'esopps');
-    if (lkES) { esShell('Esport', lkES); return; }
+    var lkES = nsLockHtml(v); if (lkES) { esShell('Esport', lkES); return; }
     if (v === 'esmatch') renderESMatch();
     else if (v === 'esmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESModel(); }
     else if (v === 'esperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
@@ -9143,17 +9159,28 @@
       (hidden ? '<div class="gx-dim gx-es-trunc">' + hidden +
         esT(' pick' + (hidden > 1 ? 's' : '') + ' oculta' + (hidden > 1 ? 's' : ''), ' hidden pick' + (hidden > 1 ? 's' : '')) +
         ' · <a href="#" data-showhidden style="text-decoration:underline">' + (S.showHidden ? esT('volver a esconderlas', 'hide again') : esT('mostrarlas', 'show them')) + '</a></div>' : '');
+    // el servidor recortó por plan: el candado se pinta DENTRO del tablero, con el cromo intacto
+    // (chips de juego, filtros, contadores) — la misma anatomía del candado de combate.
+    var esSurfLock = d.surfaces && d.surfaces.locked
+      ? '<div class="gx-panel">' + lockPanelTxt(esT('Arbitraje, caídas y middles — plan Sharp', 'Arbitrage, dropping odds and middles — Sharp plan'),
+        esT('Salen de precios reales entre casas, no del modelo, y son parte del plan Sharp.', 'They come from real prices across books, not the model, and are part of the Sharp plan.')) + '</div>'
+      : null;
+    var esPicksLockedN = (d.items || []).reduce(function (a, x) { return a + (x.picks_locked || 0); }, 0);
     var inner;
     if (oppSub === 'arb') {
-      inner = esArbs(d, { filter: inWindow }) ||
+      inner = esSurfLock || esArbs(d, { filter: inWindow }) ||
         '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esc(t('opp_arb_na')) + '</b>' +
         '<span class="gx-dim">' + esc(t('opp_arb_note')) + '</span></div></div>';
     } else if (oppSub === 'drop' || oppSub === 'mid') {
-      inner = esSurface(d, oppSub, inWindow);
+      inner = esSurfLock || esSurface(d, oppSub, inWindow);
     } else {
       var shown = rows.filter(function (r) { return inWindow((r.it.event || {}).start_at); });
       var body;
-      if (!shown.length) {
+      if (!shown.length && esPicksLockedN > 0) {
+        // hay picks hoy y el plan no las ve: candado claro, jamás un "sin señal" que miente
+        body = '<div class="gx-panel">' + lockPanelTxt(esT('Las picks de esports son para suscriptores', 'Esports picks are for subscribers'),
+          esT('Las tesis por serie, mapa, hándicap y rondas de CS2, LoL, Valorant y Dota 2 son parte de los planes Pro y Sharp.', 'The series, map, handicap and rounds theses for CS2, LoL, Valorant and Dota 2 are part of the Pro and Sharp plans.')) + '</div>';
+      } else if (!shown.length) {
         body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Ninguna ventaja pasa el listón ahora mismo.', 'No edge clears the bar right now.') + '</b>' +
           '<span class="gx-dim">' + esc((d.items || []).length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO PICK también es un resultado.', 'The engine valued the open lines and none beats its own noise. Saying NO PICK is a result too.') : esT('La casa todavía no abrió mercados derivados para estas partidas: suelen abrir en las horas previas al inicio.', 'The books have not opened derivative markets for these matches yet: they usually open in the hours before start.')) + '</span></div></div>';
       } else {
@@ -9188,8 +9215,13 @@
         '<div class="gx-estop-foot"><span class="gx-mono">' + (e.odds != null ? odd(e.odds) : '—') + '</span>' +
         (e.edge_pp != null ? '<span class="gx-pp gx-pos">+' + e.edge_pp.toFixed(1) + ' pp</span>' : '') + '</div>';
     } else {
-      pickBox = '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('none_active_pick')) + '</div>' +
-        '<div class="gx-estop-sub">' + esT('decir NO PICK también es un resultado', 'saying NO PICK is a result too') + '</div></div>';
+      // si el servidor candó las picks por plan, la caja lo dice — no un "sin ventaja" que miente
+      var lkN = (d.items || []).reduce(function (a, x) { return a + (x.picks_locked || 0); }, 0);
+      pickBox = lkN > 0
+        ? '<div class="gx-estop-main"><div class="gx-estop-sel">' + ic('lock') + lkN + esT(' con ventaja', ' with edge') + '</div>' +
+          '<div class="gx-estop-sub">' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</div></div>'
+        : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esc(t('none_active_pick')) + '</div>' +
+          '<div class="gx-estop-sub">' + esT('decir NO PICK también es un resultado', 'saying NO PICK is a result too') + '</div></div>';
     }
     var arbBox;
     if (arb) {
@@ -9480,6 +9512,7 @@
     var d = esGet('props', '/api/esports/props', 180000);
     var tr = esGet('propstrack', '/api/esports/propstrack', 180000);
     if (!d) { esShell(t('es_nav_props'), esLoading()); return; }
+    if (d._locked) { esShell(t('es_nav_props'), esTabs() + '<div class="gx-panel">' + lockPanelTxt(esT('Props de jugador — plan Sharp', 'Player props — Sharp plan'), esT('Las proyecciones de kills contra las líneas del libro, con su registro liquidado a la vista, son parte del plan Sharp.', 'Kill projections against the book lines, with their settled track in the open, are part of the Sharp plan.')) + '</div>'); return; }
     if (d._err) { esShell(t('es_nav_props'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var rows = d.rows || [];
     var somb = rows.filter(function (r) { return r.status === 'SOMBRA'; });
@@ -10553,7 +10586,7 @@
   function esEdges(d) {
     var e = d.edges; if (!e) return '';
     // el servidor manda la tabla vacía + locked para free: aquí se pinta el candado con CTA, no un hueco
-    if (e.locked) return esPanel('Mercado derivado', '', lockPanelPro(), 'gx-es-edges');
+    if (e.locked) return esPanel('Mercado derivado', '', lockPanelTxt(esT('El mercado derivado es para suscriptores', 'The derivative market is for subscribers'), esT('La lectura GP línea a línea de este cruce —y las picks que salgan de ella— es parte de los planes Pro y Sharp.', 'The line-by-line GP read on this matchup — and any picks that come out of it — is part of the Pro and Sharp plans.')), 'gx-es-edges');
     if (!(e.rows || []).length) return esPanel('Mercado derivado', '', '<div class="gx-empty">' + illo('radar') + '<b>' + esc(e.note || 'Sin líneas derivadas abiertas.') + '</b></div>', 'gx-es-edges');
     var rows = e.rows.map(function (r) {
       return '<tr class="' + (r.pick ? 'pick' : '') + '"><td>' + esc(esEdgeLabel(r)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(r.how || '') + '</div></td>' +
@@ -10644,6 +10677,7 @@
     var key = 'sim_' + encodeURIComponent(a) + '_' + encodeURIComponent(b) + '_' + bo;
     var s = esGet(key, '/api/esports/sim?game=' + g + '&a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&bo=' + bo, 900000);
     if (!s) return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>Simulando ' + esc(a) + ' vs ' + esc(b) + '…</b></div></div>';
+    if (s._locked) return '<div class="gx-panel">' + lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'), esT('Cruzar dos equipos cualesquiera con el motor real es parte de los planes Pro y Sharp.', 'Crossing any two teams with the real engine is part of the Pro and Sharp plans.')) + '</div>';
     if (s._err) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>';
     if (!s.available) {
       return '<div class="gx-panel gx-es-doct">' + ic('alert-triangle') + '<div><b>No se puede simular ese cruce</b><span>' + esc(s.why || '') + '</span></div></div>';
@@ -11759,6 +11793,12 @@
     var tr = f1Get('taketrack', '/api/f1/taketrack', 300000);
     var cov = f1Get('cov', '/api/f1/coverage', 900000);
     if (!tk) { f1Shell(t('nav_opps'), f1Loading()); return; }
+    if (tk._locked) {
+      // el candado conserva el selector de carrera; lo que se vende aquí son los GP Takes con su registro
+      f1Shell(t('nav_opps'), f1RaceBar() + '<div class="gx-panel">' + lockPanelTxt(esT('Los GP Takes son para suscriptores', 'GP Takes are for subscribers'),
+        esT('La lectura del modelo de cada carrera —podio, puntos, duelos— con su registro liquidado es parte de los planes Pro y Sharp.', 'The model\'s read on every race — podium, points, duels — with its settled track is part of the Pro and Sharp plans.')) + '</div>');
+      return;
+    }
     var bar = f1RaceBar();
     // EL CARTEL TIENE QUE MIRAR EL MERCADO, NO RECORDARLO (19-ago). Este aviso decía "sin mercado que medir"
     // siempre, porque cuando se escribió era verdad. Con Kalshi dentro hay carreras con contratos
@@ -11987,6 +12027,8 @@
   function renderF1Brief() {
     var d = f1Get('brief', '/api/f1/brief', 300000);
     if (!d) { f1Shell(t('nav_brief'), f1Loading()); return; }
+    if (d._locked) { f1Shell(t('nav_brief'), '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
+    if (d._err) { f1Shell(t('nav_brief'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var intro = d.intro && d.intro.es ? '<div class="gx-panel gx-brief-intro"><p>' + esc(S.lang === 'en' && d.intro.en ? d.intro.en : d.intro.es) + '</p><span class="gx-dim" style="font-size:10.5px">GP · ' + esc(String(d.day || '')) + '</span></div>'
       : '<div class="gx-panel"><div class="gx-dim">' + (d.intro_error === 'sin presupuesto de jobs para hoy' ? 'La apertura narrada vuelve mañana (presupuesto del redactor agotado); abajo va la parrilla completa.' : 'Sin apertura narrada todavía hoy.') + '</div></div>';
     var rows = (d.rows || []).map(function (r) {
@@ -12201,13 +12243,21 @@
         '<div class="gx-estop-sub">' + esc(top.r.a) + ' vs ' + esc(top.r.b) + '</div></div>' +
         '<div class="gx-estop-foot"><span class="gx-mono">' + (top.c.odds != null ? odd(top.c.odds) : '—') + '</span>' +
         '<span class="gx-pp gx-pos">+' + (top.c.edge_pp || 0).toFixed(1) + ' pp</span></div>'
-        : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna tesis pasa el listón</div>' +
+        : rows.some(function (r) { return r.picks_locked; })
+          ? '<div class="gx-estop-main"><div class="gx-estop-sel">' + ic('lock') + rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0) + esT(' tesis', ' theses') + '</div>' +
+            '<div class="gx-estop-sub">' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</div></div>'
+          : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">Ninguna tesis pasa el listón</div>' +
           '<div class="gx-estop-sub">decir NO también es un resultado</div></div>') + '</div>' +
       '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + (perfOK() ? 'Régimen' : 'En juego') + '</div>' +
       '<div class="gx-estop-main"><div class="gx-estop-sel">' + (perfOK() ? esT('Todo en sombra', 'All in shadow') : theses.length + (theses.length === 1 ? esT(' tesis', ' thesis') : esT(' tesis', ' theses'))) + '</div>' +
       '<div class="gx-estop-sub">' + (perfOK() ? theses.length + esT(' tesis vivas · ', ' live theses · ') + rows.length + esT(' partidos', ' matches') : rows.length + esT(' partidos en la ventana', ' matches in the window')) + '</div></div></div></div>';
+    // el servidor recortó las tesis por plan: candado dentro del tablero, jamás un "no hay" que miente
+    var tenLockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
     var body;
-    if (!theses.length) {
+    if (!theses.length && tenLockedN > 0) {
+      body = '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de tenis son para suscriptores', 'Tennis theses are for subscribers'),
+        esT('El registro por familia —ganador, sets, juegos— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — winner, sets, games — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
+    } else if (!theses.length) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
         '<b>' + (rows.length ? esT('Ninguna línea pasa el listón ahora mismo.', 'No line clears the bar right now.') : esT('Sin torneos con cuotas activas en la ventana.', 'No tournaments with active odds in the window.')) + '</b>' +
         '<span class="gx-dim">' + esc(rows.length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido.', 'The engine valued the open lines and none beats its own noise.') : (d.note || '')) + '</span></div></div>';
@@ -12368,7 +12418,7 @@
         '<span>' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + ' juegos esperados</span>' +
         '<span>TB ' + tenPct(d.tb_any) + '</span>' +
         ((d.picks || []).length ? '<span class="gx-ten-shadow">' + d.picks.length + ' tesis</span>'
-          : d.picks_locked ? '<a class="gx-ten-shadow" href="/plans" style="text-decoration:none">' + ic('lock') + d.picks_locked + ' tesis — en Pro</a>' : '') + '</div></div>';
+          : d.picks_locked ? '<a class="gx-ten-shadow" href="/plans" style="text-decoration:none">' + ic('lock') + d.picks_locked + esT(' tesis — en Pro', d.picks_locked === 1 ? ' thesis — in Pro' : ' theses — in Pro') + '</a>' : '') + '</div></div>';
 
     var lens = S.ten.lens || 'partido';
     var LENSES = [
@@ -12529,7 +12579,7 @@
   function tenPicksPanel(d) {
     var pk = d.picks || [];
     // el servidor recortó las tesis por plan: candado con CTA, jamás un "no hay" que miente
-    if (!pk.length && d.picks_locked) return '<div class="gx-panel">' + lockPanelPro() + '</div>';
+    if (!pk.length && d.picks_locked) return '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de este partido son para suscriptores', 'The theses for this match are for subscribers'), esT('El motor valoró las líneas abiertas y marcó ' + d.picks_locked + (d.picks_locked === 1 ? ' tesis' : ' tesis') + ' — verlas con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The engine valued the open lines and flagged ' + d.picks_locked + (d.picks_locked === 1 ? ' thesis' : ' theses') + ' — seeing them with reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
     if (!pk.length) {
       return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
         '<b>Ninguna línea de este partido pasa el listón.</b>' +
@@ -12843,6 +12893,8 @@
   function renderTenBrief() {
     var d = tenGet('brief_' + tenTour(), '/api/tennis/brief?tour=' + tenTour(), 300000);
     if (!d) { tenShell(t('nav_brief'), tenLoading()); return; }
+    if (d._locked) { tenShell(t('nav_brief'), '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
+    if (d._err) { tenShell(t('nav_brief'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var intro = d.intro && d.intro.es ? '<div class="gx-panel gx-brief-intro"><p>' + esc(S.lang === 'en' && d.intro.en ? d.intro.en : d.intro.es) + '</p><span class="gx-dim" style="font-size:10.5px">GP · ' + esc(String(d.day || '')) + '</span></div>'
       : '<div class="gx-panel"><div class="gx-dim">' + (d.intro_error === 'sin presupuesto de jobs para hoy' ? 'La apertura narrada vuelve mañana (presupuesto del redactor agotado hoy); abajo va el tablero completo.' : 'Sin apertura narrada todavía hoy.') + '</div></div>';
     var rows = (d.games || []).map(function (r) {
@@ -13062,6 +13114,7 @@
     var lg = nflLg();
     var d = nflGet('brief_' + lg, '/api/nfl/brief?league=' + (lg === 'college' ? 'ncaaf' : lg), 600000);
     if (!d) { nflShell('Brief', nflLoading()); return; }
+    if (d._locked) { nflShell('Brief', '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
     if (d._err) { nflShell('Brief', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
     var ms = d.market_state || {};
@@ -13385,7 +13438,11 @@
       }).join('') + '</div>' +
       (sp4 ? '<div class="gx-cs-warn">' + ic('trending-up') + '<span>El único bolsillo del backtest por encima del breakeven: spread con desacuerdo ≥4 pts — ' + sp4.hit_pct + '% de acierto y ' + (sp4.roi_pct > 0 ? '+' : '') + sp4.roi_pct + '% de ROI en ' + sp4.n + ' apuestas AL CIERRE. Todavía dentro del ruido: es exactamente lo que la sombra 2026 va a verificar antes de abrir nada.</span></div>' : '') + '</div>';
     var open = (tr && tr.open_list) || [];
-    var shadowB = open.length
+    // el registro en sombra es contenido de suscriptores: si el servidor lo candó, se dice qué es
+    var shadowB = (tr && tr._locked)
+      ? '<div class="gx-panel">' + lockPanelTxt(esT('El registro en sombra es para suscriptores', 'The shadow register is for subscribers'),
+        esT('Los veredictos del motor sobre spread y totales —con su precio, su card y su liquidación a la vista— son parte de los planes Pro y Sharp.', 'The engine\'s verdicts on spread and totals — with their price, card and settlement in the open — are part of the Pro and Sharp plans.')) + '</div>'
+      : open.length
       ? '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>Lo que la sombra está registrando ahora</span><span class="gx-dim">' + open.length + '</span></div>' +
         '<div class="gx-picks-feed">' + visiblePicks(open.map(amfStoredCard)).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' +
         soloAdmin('<div class="gx-dim gx-es-note">Registro PRIVADO de sombra: nace con su precio, se liquida solo y se mide su CLV. No son picks públicas — el chip MONITOR de cada card lo dice.</div>') + '</div>'
@@ -13693,6 +13750,7 @@
     var rd = nflGet('read_' + id, '/api/nfl/read?id=' + encodeURIComponent(id), 600000);
     if (!rd) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">Escribiendo la lectura…</div></div>';
     if (rd.pending) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">' + esc(rd.why || 'La lectura se escribirá en la pasada de fondo.') + '</div></div>';
+    if (rd._locked) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div>' + lockPanelTxt(esT('La lectura de GP es para suscriptores', 'The GP read is for subscribers'), esT('El análisis narrado del cruce, escrito sobre el dossier del modelo, es parte de los planes Pro y Sharp.', 'The narrated read on the matchup, written from the model\'s dossier, is part of the Pro and Sharp plans.')) + '</div>';
     if (rd._err || !rd.es) return '';
     var txt = (S.lang === 'en' && rd.en) ? rd.en : rd.es;
     return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span>' +
@@ -13779,7 +13837,9 @@
     var edB = '';
     if (d.edges && d.edges.locked) {
       // el servidor recortó el registro en sombra por plan: candado con CTA en su lugar
-      edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span></div>' + lockPanelPro() + '</div>';
+      edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span></div>' +
+        lockPanelTxt(esT('Los veredictos del motor son para suscriptores', 'The engine\'s verdicts are for subscribers'),
+          esT('Qué registra la sombra en este partido —lado, línea, precio y por qué— es parte de los planes Pro y Sharp.', 'What the shadow logs on this game — side, line, price and why — is part of the Pro and Sharp plans.')) + '</div>';
     } else if (d.edges && (d.edges.candidates || []).length) {
       edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span>' +
         '<span class="gx-ph-extra"><span class="gx-chip gx-chip-baja">SOMBRA — no son picks</span></span></div>' +
@@ -14098,6 +14158,7 @@
     var rd = esGet('read_' + id, '/api/esports/read?game=' + g + '&id=' + encodeURIComponent(id), 600000);
     if (!rd) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">Escribiendo la lectura…</div></div>';
     if (rd.pending) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div><div class="gx-dim" style="font-size:12px">' + esc(rd.why || '') + '</div></div>';
+    if (rd._locked) return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span></div>' + lockPanelTxt(esT('La lectura de GP es para suscriptores', 'The GP read is for subscribers'), esT('El análisis narrado del cruce, escrito sobre el dossier del modelo, es parte de los planes Pro y Sharp.', 'The narrated read on the matchup, written from the model\'s dossier, is part of the Pro and Sharp plans.')) + '</div>';
     if (rd._err || !rd.es) return '';
     var txt = (S.lang === 'en' && rd.en) ? rd.en : rd.es;
     return '<div class="gx-panel gx-bb-read"><div class="gx-ph"><span class="gx-label">La lectura de GP</span>' +
@@ -14274,6 +14335,7 @@
     var g = esGame();
     var d = esGet('brief_' + g, '/api/esports/brief?game=' + g, 300000);
     if (!d) { esShell('Brief', esTabs() + esLoading()); return; }
+    if (d._locked) { esShell('Brief', esTabs() + '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
     if (d._err) { esShell('Brief', esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var lang = (S.lang === 'en') ? 'en' : 'es';
     var items = (d.items || []);

@@ -20443,6 +20443,9 @@ async function anotar(pid){
           return json(res, 200, await PF.escanear({ game: depPf }).catch((e) => ({ error: e.message })));
         }
         if (runPf === 'settle') return json(res, 200, await PF.liquidar({ game: depPf }).catch((e) => ({ error: e.message })));
+        // anotar la colocación real de Alexis: ?run=anotar&id=<id de la tesis>&precio=0.51&costo=99.03
+        if (runPf === 'anotar') return json(res, 200, PF.anotar(String(url.searchParams.get('id') || ''), {
+          precio: url.searchParams.get('precio'), costo: url.searchParams.get('costo') }));
         return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
       }
       return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,

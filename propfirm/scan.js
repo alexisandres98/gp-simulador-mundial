@@ -528,6 +528,16 @@ function pendientesDeCorreo() {
   const st = rd();
   return Object.values(st.senales).filter((s) => s.estado === 'ABIERTA' && !s.correo_at && Date.parse(s.ko || 0) > Date.now() + 10 * 60e3);
 }
+// anota la colocación REAL de Alexis sobre una tesis (precio y costo de su fill en la firm) — la sombra
+// guarda las dos verdades: la tesis al precio del aviso y lo que de verdad se pudo comprar.
+function anotar(id, { precio, costo } = {}) {
+  const st = rd();
+  const s = st.senales[id];
+  if (!s) return { error: 'no hay tesis con ese id', id };
+  s.colocada = { precio: +precio || null, costo: +costo || null, at: new Date().toISOString() };
+  wr(st);
+  return { anotada: s.evento, mercado: s.mercado, lado: s.lado, ...s.colocada };
+}
 function marcaCorreo(ids) {
   const st = rd();
   const t = new Date().toISOString();
@@ -535,4 +545,4 @@ function marcaCorreo(ids) {
   wr(st);
 }
 
-module.exports = { escanear, escanearFutbol, escanearAmfoot, liquidar, estado, pendientesDeCorreo, marcaCorreo, DIR };
+module.exports = { escanear, escanearFutbol, escanearAmfoot, liquidar, estado, pendientesDeCorreo, marcaCorreo, anotar, DIR };

@@ -14828,8 +14828,14 @@ async function propfirmSweep() {
     const pend = PF.pendientesDeCorreo();
     if (pend.length && mailer.isConfigured()) {
       pend.sort((a, b) => b.edge_pp - a.edge_pp);
+      // RIESGO CORRELACIONADO (1-sep, primera pasada real): tres señales del mismo cruce ganan y pierden
+      // juntas — para la pérdida diaria son UNA decisión, no tres. La de mayor edge va como orden; las
+      // hermanas se listan como variantes para no sumar riesgo sin que Alexis lo vea.
+      const vistosEv = new Set();
+      for (const s of pend) { s._variante = vistosEv.has(s.evento); vistosEv.add(s.evento); }
       const fmtC = (p) => Math.round(p * 100) + '¢';
       const lineas = pend.map((s) => [
+        ...(s._variante ? [`▹ VARIANTE del mismo partido (no sumar riesgo — elegir UNA por cruce):`] : []),
         `▸ ${s.evento}${s.mapa ? ` · mapa ${s.mapa}` : ''}`,
         `  Mercado PM: ${s.mercado}`,
         `  COMPRAR: "${s.equipo}" @ ${fmtC(s.precio_pm)} actual`,

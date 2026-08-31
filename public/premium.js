@@ -7674,9 +7674,19 @@
   // Value, arbitraje, caídas y middles NO dependen del modelo (salen de precios entre casas). Las PICKS sí,
   // y por eso viven en un monitor privado con su etiqueta puesta: el modelo aún no bate al cierre.
   // etiquetas resueltas al PINTAR (t() depende del idioma vivo, y este array se evalúa una sola vez al cargar)
-  // la pestaña 'picks' es el MONITOR PRIVADO (hoops no tiene picks públicas): solo admin. El resto de
-  // familias sale de precios entre casas y es el producto Sharp de esta pantalla.
-  function bbOppFams() { return (perfOK() ? [['picks', 'Picks']] : []).concat([['value', 'Value'], ['arbs', function () { return t('arb'); }], ['dropping', function () { return t('drop_tab'); }], ['middles', function () { return t('mid_tab'); }]]); }
+  // la pestaña Picks existe para TODOS (reporte de Alexis 31-ago: "no veo dónde habla de picks"): el
+  // público no ve el monitor privado, ve el PORQUÉ no hay picks — la doctrina es producto, no un hueco.
+  function bbOppFams() { return [['picks', 'Picks']].concat([['value', 'Value'], ['arbs', function () { return t('arb'); }], ['dropping', function () { return t('drop_tab'); }], ['middles', function () { return t('mid_tab'); }]]); }
+  // Por qué baloncesto no tiene picks públicas (ni pick gratis del día): honestidad medida, con el
+  // camino a lo que SÍ se publica. El monitor privado sigue siendo solo admin.
+  function bbPicksWhyPanel() {
+    return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+      '<b>' + esT('En baloncesto no publicamos picks todavía — y es una decisión, no un hueco', 'In basketball we do not publish picks yet — a decision, not a gap') + '</b>' +
+      '<span class="gx-dim">' + esT(
+        'El modelo aún no le gana al precio de cierre del mercado, y no vendemos lo que no está probado: sus picks corren en un monitor privado que se mide contra el cierre, y solo si lo bate fuera de muestra se abrirán aquí — con pick del día incluida, como en fútbol. Lo que sí se publica no depende del modelo: sale de precios reales entre casas — los mejores precios (Value), el arbitraje, las caídas y los middles, en las pestañas de al lado (plan Sharp).',
+        'The model does not yet beat the market closing price, and we do not sell what is unproven: its picks run in a private monitor measured against the close, and only if it beats it out of sample will they open here — daily pick included, like football. What we do publish does not depend on the model: it comes from real prices across books — best prices (Value), arbitrage, dropping odds and middles, in the tabs next door (Sharp plan).') + '</span>' +
+      '<a class="gx-btn gx-lock-cta" href="/plans">' + ic('crown') + esc(t('lock_cta')) + '</a></div></div>';
+  }
   function bbOppLg() { return (S.bb && S.bb.oppLg) || 'all'; }
   function bbBookLab(b) { return String(b || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function bbWhen(d) {
@@ -7845,7 +7855,6 @@
   function renderBBOpps() {
     var lgo = bbOppLg();
     var f = S.bb.oppFilt || (perfOK() ? 'picks' : 'value');
-    if (f === 'picks' && !perfOK()) f = 'value'; // el monitor privado no existe para el público
     var tabs = '<div class="gx-cb-tabs">' + [['all', 'Todas']].concat(BB_LEAGUES).concat([['euro', 'Euroliga/NBL']]).map(function (x) {
       return '<span class="gx-cb-tab' + (lgo === x[0] ? ' on' : '') + '" data-bbopplg="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
@@ -7858,7 +7867,7 @@
     var chips = '<div class="gx-bb-oppfams">' + bbOppFams().map(function (x) {
       return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(typeof x[1] === 'function' ? x[1]() : x[1]) + '</span>';
     }).join('') + '</div>';
-    if (f === 'picks') { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + bbPicksPanel()); return; }
+    if (f === 'picks') { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + (perfOK() ? bbPicksPanel() : bbPicksWhyPanel())); return; }
 
     var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
     if (!d) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + mvLoading()); return; }

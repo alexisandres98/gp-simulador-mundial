@@ -1,5 +1,25 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⚡ PENDIENTES FRESCOS (31-ago, tras el cierre por tiers)
+- **PRO/móvil QA visual**: pasar la plataforma con `?asplan=pro` (admin) — free ya está auditado a fondo
+  con cuenta real (matriz de endpoints + payloads sin fugas). La cuenta de QA free vive:
+  `alexisgomezico+pruebafree@gmail.com`.
+- **Broadcast EN del cierre**: programado 31-ago 22:00Z (`sportsclosed_en`); comprobar que disparó
+  (`GET /api/admin/broadcast?key=`). ES ya salió: 963/965.
+- **Maven Predictions**: antes de pagar la segunda cuenta (~$126, 60% de pase por Monte Carlo), verificar
+  en su demo que MatchTrade lista CS2/LoL por mapa/hándicap. Si solo trae headline markets, no sirve.
+- **LoL Fase 1 en dos frentes**: Render + sesión local (la salida actual no está capada por Fandom).
+  Al completar una tabla localmente: subirla con POST `/api/internal/lolraw?key=&file=games.json` (gzip;
+  rechaza si trae menos filas). Después: **Fase 3** (walk-forward del rating: lado azul/rojo, parche,
+  región) y recién entonces abrir más familias de LoL.
+- **Fotos CFL de los 5 clubes migrados** (BC/CGY/SSK/HAM/OTT): el CMS nuevo es Nuxt+`/api/tunnel` opaco.
+  Vías: reversar el tunnel (el bundle de stats.cfl.ca lo usa) o Wayback desde una red que no lo bloquee
+  (los snapshots existen; el proxy de la sesión 31-ago bloqueaba web.archive.org).
+- **Cloudbet lecturas**: sin cambios (403 Cloudflare con key válida). La key "affiliate" que llegó el
+  31-ago es de OTRA cuenta y solo sirve para feed de cuotas (guardada en scratchpad como respaldo de feed).
+- Fechas: **9-sep kickoff NFL** (jobs listos, todo en sombra) · **17-sep vuelve la WNBA** (muestra v2;
+  vara: CLV≥0 y ≥40% positivo con n≥60) · **lunes**: primera lectura lol_kills_hcp_v1 + modelo_sombra.
+
 ## HOOPS: AUTOPSIA + REFIT DEL 31-AGO — LO MEDIDO Y LO QUE QUEDA
 La autopsia (186 liquidadas) encontró tres fugas y el walk-forward local (275 partidos WNBA 2026,
 protocolo de /api/hoops/perf) dio un RESULTADO NEGATIVO que vale oro: acortar la media vida del rating

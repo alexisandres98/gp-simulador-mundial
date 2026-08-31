@@ -1,3 +1,97 @@
+# HANDOFF — estado al 31-ago-2026 (cierre por tiers, prop firm operando, CFL con caras, sesión de dos llaves)
+
+> La sección anterior (21-ago) sigue abajo, intacta. Esto cubre del 24 al 31 de agosto — ~40 despliegues.
+
+## 💰 LA PROP FIRM ES EL CANAL REAL NUEVO
+Alexis compró el **Elite 10K de FundingPredicts** (FP-796307, cierra 30-sep: target $1.200, DD estático
+$500, tope diario $300, una fase). La casa lo institucionalizó entero:
+- `propfirm/scan.js`: escáner consenso-vs-Polymarket (doctrina `edge` de clubes, +6,7% ROI) en CINCO
+  frentes — CS2, LoL, fútbol (binarios Yes/No de gamma), NFL y NCAAF (moneyline). Gamma tiene trampas
+  documentadas en el archivo: `/events?search=` IGNORA el parámetro (descubrimiento por `/public-search`),
+  el ganador de serie lleva el título del evento como `question`, y la línea firmada se lee del "(±x)" con
+  equipo nombrado — sin eso liquidar adivinaría favoritos.
+- Filtros: edge 4-12pp (techo de cordura: cazó una trampa real de 19,7pp en libro vacío), precio 15-84¢,
+  liquidez ≥$500, consenso ≥2 casas sharp. Stake **$95** (env `GP_PROPFIRM_RIESGO_USD` — el margen para
+  fees fue idea de Alexis y quedó institucionalizado).
+- Correos de órdenes manuales con bloque de disciplina y marca `_variante` (variantes del mismo cruce =
+  UNA tesis, no tres). Los avisos de Cloudbet se pueden silenciar con `GP_REAL_AVISO_MANUAL=false`
+  (hoy: **true**, reactivados por orden).
+- Sombra propia en `/data/propfirm/senales.json` + clase `modelo_sombra` (hipótesis de Alexis: modelo vs
+  retail de PM en el ganador; lectura en 2-3 semanas). Probe: `/api/internal/propfirm?key=`.
+- Primer ciclo real: 3 posiciones ex-RUSTEC colocadas; liquidación automática vía bo3.gg.
+- **Proyección** (Monte Carlo, edge 4pp, 3 señales/día, stake $150): 47% de pasar, mediana 13 días.
+  Investigación de alternativas: **Maven Predictions Elite 10K** es la única que mejora las reglas
+  (9% target, SIN tope diario, 5% estático → 60% de pasar) pero es feed simulado (MatchTrade) y split
+  70/30 — **pendiente**: verificar en su demo si listan CS2/LoL por mapa antes de pagar ~$126.
+- Cloudbet: la key "nueva" que mandó Alexis resultó ser **tier affiliate de otra cuenta** — solo feed de
+  cuotas, sin cuenta detrás (balance 401). La de trading sigue siendo la única válida. El bloqueo de
+  lecturas `/pub/v3/bets/*` sigue (403 Cloudflare con key válida incluida); Monika (Cloudbet) empujó el
+  hilo internamente el 31-ago.
+
+## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
+Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,
+en vivo — el escaparate), **pro = accionable** (picks esports, briefs, lecturas, simuladores, registro en
+sombra), **sharp = precios entre casas** (value/arb/caídas/middles hoops, props+evidencia esports).
+- El recorte es del SERVIDOR (`nsPlanCtx` + strips): a free las picks no le llegan ni en el JSON; viaja
+  `picks_locked` (conteo) y el front pinta el candado CON EL CROMO del tablero (revisión de Alexis: la
+  pantalla pelada parecía todo bloqueado). Textos por deporte, bilingües.
+- Monitor privado de hoops (GET+POSTs) y liquidaciones esports/NFL: **solo admin** — nunca fueron producto.
+- Baloncesto tiene pestaña **Picks** pública con la doctrina ("no publicamos picks todavía y es una
+  decisión") — sin eso parecía un bug y no un principio. La nota amarilla de taller es solo admin.
+- Admin previsualiza con `?asplan=` y los strips se aplican DE VERDAD en la preview.
+- QA free hecho a fondo con cuenta real (`alexisgomezico+pruebafree@gmail.com`, viva para QA): matriz de
+  endpoints ✓, cero fugas en payloads. **Pendiente**: pase visual PRO/móvil con el asplan de Alexis.
+- Landing: los 9 deportes dicen "Abierto".
+- **Broadcast del cierre enviado** (31-ago): variant `sportsclosed_{es,en}`, SIN línea de baja (orden),
+  963/965 ES; EN programado 22:00Z. Las 6 bajas del correo del 28 quedaron suprimidas ANTES de disparar
+  (vía `/api/internal/suppress`; se detectan leyendo el Gmail de Alexis).
+
+## 🎭 EL MUNDIAL-FANTASMA: la sesión tenía dos llaves
+Cuenta nueva veía SOLO el Mundial. Reproducido con cuenta de prueba: `getUser` lee el header Bearer, pero
+las 19 puertas de clubes (`sessionEmailFromReq`) leían SOLO la cookie — y la cookie la escribía el CLIENTE
+(`document.cookie`), que en iOS muere a los 7 días (ITP) o no llega a existir. Arreglo: fallback al Bearer
+en `sessionEmailFromReq` (retroactivo, mismo almacén de tokens) + `Set-Cookie` de SERVIDOR en verify y
+Google. Afectaba a usuarios reales de iPhone en silencio.
+
+## 🏈 LA CFL TIENE PLANTILLAS Y CARAS (y la liga está migrando su web EN CALIENTE)
+ESPN no publica plantillas de la CFL (gap documentado). La fuente real: **las webs de los 9 clubes**
+(`scripts/cfl-rosters.js`) + Wikipedia como fallback. 634 jugadores, 258 headshots auto-hospedados
+(240px JPG, 2,5MB). Hallazgos que importan:
+- `redblacks.com` es un lander aparcado (la web vive en `ottawaredblacks.com`); los Alouettes publican
+  en francés (`/alignement/`).
+- La CFL está migrando los clubes al CMS nuevo de la liga (Nuxt, renderizado en cliente vía `/api/tunnel`
+  opaco): BC/CGY/SSK/HAM cayeron ENTRE dos pasadas del mismo día. Sus fotos quedan pendientes (Wayback
+  las tiene pero el proxy de esta sesión bloquea web.archive.org).
+- Blindajes: el harvester recuerda la mejor cosecha por equipo; `rosterOf` elige el archivo MÁS RICO
+  (jugadores + 2×fotos) entre disco y repo; la CFL salió del job semanal de Render (el repo es la fuente).
+- Bug preexistente cazado: la ficha del jugador nunca cruzó con su equipo (`.rows` vs `.teams` + catch
+  silencioso).
+- El vacío de plantillas habla idioma de cliente; el porqué de taller es solo admin.
+
+## 🧠 LO DEMÁS DE LA SEMANA (24-31)
+- **Frauen-Bundesliga** onboarded por la vía AF (82): 41 ligas sincronizando, gates en sombra.
+- **Hoops v2**: gates de la autopsia (edge≥5pp, |spread|<8, total solo under, `regime:hoops_v2`),
+  observer de prensa de baloncesto (REST/load management de primera clase). Refit negativo documentado:
+  halfLife 45 óptimo, el descanso se difiere a NBA-octubre. WNBA vuelve el **17-sep**.
+- **lol_kills_hcp_v1**: cuarto segmento de sombra (regla congelada; CLV plano por libro único — la vara
+  son los resultados). Tope de exposición ($400) FUERA por orden (`GP_REAL_MAX_OPEN=1000000`).
+- **Esports en inglés**: `S.lang` nunca se asignaba + red de seguridad de traducción (EN_X/EN_FRAG).
+  Las etiquetas cortas del panel (Mercado/Diferencia/Peso propio/…) entraron el 31-ago.
+- **LoL Fase 1 acelerada**: la cosecha de Leaguepedia corre AHORA en dos frentes — Render (como siempre)
+  y la sesión de desarrollo (la salida actual ya no está capada por Fandom). Cursors al 31-ago: drafts
+  30-may-2026 (casi lista), players mar-2023, games feb-2022. `/api/internal/lolraw` ahora acepta **POST**
+  (subida gzip, solo acepta más filas que el disco) para devolver tablas terminadas. Fase 3 (walk-forward)
+  espera la base completa.
+
+## 📌 Sigue pendiente
+- Rotar `API_FOOTBALL_KEY` (expuesta en chat — pendiente fijo de CLAUDE.md).
+- Pinnacle KYC (lado Alexis) → modo híbrido.
+- Fotos de los 5 clubes CFL migrados (tunnel del CMS nuevo, o Wayback desde una red sin bloqueo).
+- Maven: verificar catálogo en demo antes de la segunda cuenta.
+- Revisión del lunes: primera lectura de lol_kills y modelo_sombra. NFL kickoff 9-sep.
+
+---
+
 # HANDOFF — estado al 21-ago-2026 (tres proveedores de LLM, ocho deportes con voz, la prensa leída en cinco)
 
 ## 🔌 EL LLM DEJA DE APAGARSE

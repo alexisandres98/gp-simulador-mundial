@@ -19356,6 +19356,34 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, { dir: dirL, files, ops: log });
       }
       if (!OKL.includes(fL)) return json(res, 400, { error: 'archivo no permitido', ok: OKL });
+      // SUBIDA (31-ago): la cosecha también corre fuera (la salida de la sesión de desarrollo dejó de estar
+      // capada por Fandom) y esta puerta recibe la tabla terminada — gzip crudo en el cuerpo, mismos cuatro
+      // archivos permitidos, y solo se ACEPTA si trae más filas que la copia del disco: una subida nunca
+      // puede degradar el estado. state.json (el marcador de completitud) se acepta tal cual.
+      if (req.method === 'POST') {
+        try {
+          const chunks = [];
+          await new Promise((resolve, reject) => {
+            let n = 0;
+            req.on('data', (c) => { n += c.length; if (n > 64e6) { reject(new Error('cuerpo demasiado grande')); req.destroy(); } chunks.push(c); });
+            req.on('end', resolve); req.on('error', reject);
+          });
+          let body = Buffer.concat(chunks);
+          try { body = require('zlib').gunzipSync(body); } catch { /* llegó sin comprimir */ }
+          const nuevo = JSON.parse(body.toString('utf8'));
+          if (fL !== 'state.json') {
+            const filasN = Object.keys((nuevo && nuevo.rows) || {}).length;
+            let filasV = 0;
+            try { filasV = Object.keys((JSON.parse(fs.readFileSync(path.join(dirL, fL), 'utf8')) || {}).rows || {}).length; } catch { }
+            if (filasN < filasV) return json(res, 409, { error: 'la subida trae menos filas que el disco', disco: filasV, subida: filasN });
+          }
+          fs.mkdirSync(dirL, { recursive: true });
+          const tmp = path.join(dirL, fL + '.tmp');
+          fs.writeFileSync(tmp, JSON.stringify(nuevo));
+          fs.renameSync(tmp, path.join(dirL, fL));
+          return json(res, 200, { ok: true, file: fL, bytes: body.length, rows: fL === 'state.json' ? null : Object.keys(nuevo.rows || {}).length });
+        } catch (e) { return json(res, 400, { error: e.message }); }
+      }
       try {
         const buf = require('zlib').gzipSync(fs.readFileSync(path.join(dirL, fL)));
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'gzip', 'Content-Length': buf.length });

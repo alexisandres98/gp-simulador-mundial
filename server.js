@@ -20297,9 +20297,16 @@ async function anotar(pid){
           if (!cbk) return json(res, 200, { error: 'sin CLOUDBET_API_KEY' });
           const lim = Math.min(200, parseInt(url.searchParams.get('limit'), 10) || 100);
           const off = Math.max(0, parseInt(url.searchParams.get('offset'), 10) || 0);
-          const host = process.env.CLOUDBET_HOST || 'https://sports-api.cloudbet.com';
-          const rH = await fetch(`${host}/pub/v3/bets/history?limit=${lim}&offset=${off}`,
-            { headers: { 'X-API-Key': cbk, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) }).catch(e => null);
+          // REST /pub/v3/bets/* está detrás del cortafuegos de la cuenta (403 Cloudflare) — GraphQL no:
+          // el mismo borde que atraviesa el placeBet del relay expone `bets` y `accountBalances` de lectura.
+          // Desde la IP del contenedor de trabajo los resolvers dan 500 (geografía); desde prod se prueba aquí.
+          const gqlHost = process.env.CLOUDBET_GRAPHQL_HOST || 'https://sports-api-graphql.cloudbet.com/graphql';
+          const rH = await fetch(gqlHost, {
+            method: 'POST',
+            headers: { 'X-API-Key': cbk, accept: 'application/json', 'content-type': 'application/json' },
+            body: JSON.stringify({ query: `query($o:Int,$l:Int){ bets(offset:$o, limit:$l){ referenceId sportsKey eventId eventName marketUrl currency price stake side returnAmount betStatus betErrorCode } accountBalances { currency amount } }`, variables: { o: off, l: lim } }),
+            signal: AbortSignal.timeout(20000),
+          }).catch(() => null);
           if (!rH) return json(res, 200, { error: 'sin respuesta de la casa' });
           const jH = await rH.json().catch(() => null);
           return json(res, 200, { http: rH.status, historial: jH });

@@ -2812,6 +2812,37 @@ This link logs you in directly and works for the next 7 days.`;
   return { subject, text, html };
 }
 
+// ── MERCADO EN VIVO (31-ago): la capa Polymarket que viaja pegada a cualquier partido en juego ─────────
+// pmLive() (live-sports.js) da probabilidad implícita + marcador + minuto de TODO lo vivo en una llamada;
+// estos helpers la orientan al cruce y la reducen al bloque que pintan las UIs. DISPLAY, jamás modelo.
+const ES_PM_TAGS = {
+  cs2: ['counter-strike-2', 'counter-strike', 'cs2', 'csgo'],
+  lol: ['league-of-legends', 'lol'],
+  valorant: ['valorant'],
+  dota2: ['dota-2', 'dota2', 'dota'],
+};
+function nsPmBlock(pmHit) {
+  if (!pmHit) return null;
+  const sw = !!pmHit.swapped;
+  const r = (x) => (x != null && isFinite(x) ? +(+x).toFixed(3) : null);
+  return {
+    p_a: r(sw ? pmHit.p_b : pmHit.p_a), p_b: r(sw ? pmHit.p_a : pmHit.p_b), p_draw: r(pmHit.p_draw),
+    score: pmHit.score || null, period: pmHit.period || null, elapsed: pmHit.elapsed != null ? pmHit.elapsed : null,
+  };
+}
+// serie de esports SIN otra fuente viva pero viva en Polymarket: el marcador de PM ('kills|mapas|BoN')
+// alcanza para encender el vivo con la serie de mapas — mejor un vivo parco que ninguno.
+function esPmOnlyLive(pmHit) {
+  const pm = nsPmBlock(pmHit);
+  let s1 = null, s2 = null;
+  const segs = String(pmHit.score || '').split('|');
+  const serie = segs.length === 3 ? segs[1] : (segs[0] || '');
+  const mm = serie.match(/^(\d+)-(\d+)$/);
+  if (mm) { s1 = +mm[1]; s2 = +mm[2]; if (pmHit.swapped) { const t2 = s1; s1 = s2; s2 = t2; } }
+  return { s1: s1 != null ? s1 : 0, s2: s2 != null ? s2 : 0, bo: null,
+    detail: pmHit.period ? `mapa ${pmHit.period}` : 'EN VIVO', pm };
+}
+
 function liveAlertEmail(h, aw, a) {
   const isGoal = a.kind === 'goal';
   const subject = isGoal ? `⚽ GOL · ${h.name} ${a.hg}-${a.ag} ${aw.name}` : `▶ Empezó · ${h.name} vs ${aw.name}`;
@@ -18679,11 +18710,21 @@ const server = http.createServer(async (req, res) => {
             score: pl.awayScore != null && pl.homeScore != null ? `${pl.awayScore}-${pl.homeScore}` : null,
             scoring: !!pl.scoringPlay,
           })).filter((x) => x.t);
+          // MERCADO EN VIVO (31-ago): Polymarket pegado al vivo de hoops
+          let pmHoops = null;
+          try {
+            const LVh = require('./live-sports');
+            const pmB = LVh.pmRowsFor(await LVh.pmLive(), ['nba', 'wnba', 'basketball', 'cbb', 'college-basketball']);
+            const hN = (C.teams[target.home.id] || {}).name, aN = (C.teams[target.away.id] || {}).name;
+            const pmHit = pmB.length && hN && aN ? LVh.matchByNames(pmB, hN, aN, ['a', 'b']) : null;
+            if (pmHit) pmHoops = nsPmBlock(pmHit);
+          } catch { /* display */ }
           return json(res, 200, {
             league: lg, game: { id: target.id, home: C.teams[target.home.id] || { id: target.home.id },
               away: C.teams[target.away.id] || { id: target.away.id }, status: target.status || null },
             ...view,
             last_plays: lastPlays,
+            pm: pmHoops,
             others: inPlay.filter((x) => String(x.id) !== String(target.id)).map((x) => ({ id: x.id, home: x.home.abbr, away: x.away.abbr, status: x.status })),
           });
         } catch (e) { return json(res, 500, { error: e.message }); }
@@ -18835,13 +18876,15 @@ const server = http.createServer(async (req, res) => {
           try {
             const LV = require('./live-sports');
             const lv = await LV.tennisLive();
-            if (lv && lv.length && out && out.rows) {
+            const pmT = LV.pmRowsFor(await LV.pmLive(), ['tennis', 'atp', 'wta', 'us-open']);
+            if (((lv && lv.length) || pmT.length) && out && out.rows) {
               for (const r of out.rows) {
-                const hit = LV.matchByNames(lv, r.a, r.b, ['a', 'b']);
-                if (!hit) continue;
-                r.live = { sets_a: hit.swapped ? hit.sets_b : hit.sets_a, sets_b: hit.swapped ? hit.sets_a : hit.sets_b,
+                const hit = lv && lv.length ? LV.matchByNames(lv, r.a, r.b, ['a', 'b']) : null;
+                if (hit) r.live = { sets_a: hit.swapped ? hit.sets_b : hit.sets_a, sets_b: hit.swapped ? hit.sets_a : hit.sets_b,
                   serve_a: hit.swapped ? hit.serve_b : hit.serve_a, serve_b: hit.swapped ? hit.serve_a : hit.serve_b,
                   detail: hit.detail, tournament: hit.tournament };
+                const pmHit = pmT.length ? LV.matchByNames(pmT, r.a, r.b, ['a', 'b']) : null;
+                if (pmHit) { r.live = r.live || { detail: 'EN VIVO' }; r.live.pm = nsPmBlock(pmHit); }
               }
             }
           } catch { /* el vivo jamás rompe el tablero */ }
@@ -18861,6 +18904,9 @@ const server = http.createServer(async (req, res) => {
               if (hit) out.live = { sets_a: hit.swapped ? hit.sets_b : hit.sets_a, sets_b: hit.swapped ? hit.sets_a : hit.sets_b,
                 serve_a: hit.swapped ? hit.serve_b : hit.serve_a, serve_b: hit.swapped ? hit.serve_a : hit.serve_b,
                 detail: hit.detail, tournament: hit.tournament };
+              const pmT = LV.pmRowsFor(await LV.pmLive(), ['tennis', 'atp', 'wta', 'us-open']);
+              const pmHit = pmT.length ? LV.matchByNames(pmT, out.a.name, out.b.name, ['a', 'b']) : null;
+              if (pmHit) { out.live = out.live || { detail: 'EN VIVO' }; out.live.pm = nsPmBlock(pmHit); }
             }
           } catch { }
           return json(res, 200, tenStrip(out));
@@ -18960,16 +19006,20 @@ const server = http.createServer(async (req, res) => {
             days: +(url.searchParams.get('days') || 3),
             maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
           }));
-          // EN VIVO (31-ago): marcador de la serie en curso — CS2 de bo3.gg (serie + mapa actual), LoL de
-          // lolesports (mapas ganados). Valorant/Dota siguen sin fuente en vivo y no se disimula. DISPLAY.
+          // EN VIVO (31-ago): marcador de la serie en curso — bo3.gg para CS2/Valorant/Dota (serie + mapas),
+          // lolesports para LoL, OpenDota para el detalle de Dota, y Polymarket como capa de MERCADO EN VIVO
+          // (probabilidad implícita + marcador) para los cuatro juegos. DISPLAY.
           try {
-            if (gm === 'cs2' || gm === 'lol') {
+            {
               const LV = require('./live-sports');
-              const lv = gm === 'cs2' ? await LV.cs2Live() : await LV.lolLive();
-              if (lv && lv.length) {
+              const lv = await ({ cs2: LV.cs2Live, lol: LV.lolLive, valorant: LV.valorantLive, dota2: LV.dota2Live }[gm] || (async () => []))();
+              const pmRows = LV.pmRowsFor(await LV.pmLive(), ES_PM_TAGS[gm] || []);
+              if ((lv && lv.length) || pmRows.length) {
                 for (const it of (outB && outB.items) || []) {
                   const ev = it.event || {};
-                  const hit = LV.matchByNames(lv, ev.home && ev.home.name, ev.away && ev.away.name, ['a', 'b']);
+                  const pmHit = pmRows.length ? LV.matchByNames(pmRows, ev.home && ev.home.name, ev.away && ev.away.name, ['a', 'b']) : null;
+                  const hit = lv && lv.length ? LV.matchByNames(lv, ev.home && ev.home.name, ev.away && ev.away.name, ['a', 'b']) : null;
+                  if (!hit && pmHit) { it.live = esPmOnlyLive(pmHit); continue; }
                   if (!hit) continue;
                   it.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
                     bo: hit.bo || it.bo || null, detail: hit.detail,
@@ -18980,6 +19030,7 @@ const server = http.createServer(async (req, res) => {
                     it.live.k1 = hit.swapped ? hit.game.b.k : hit.game.a.k;
                     it.live.k2 = hit.swapped ? hit.game.a.k : hit.game.b.k;
                   }
+                  if (pmHit) it.live.pm = nsPmBlock(pmHit);
                 }
               }
             }
@@ -19011,12 +19062,15 @@ const server = http.createServer(async (req, res) => {
           // del servidor, y además esto deja claro en el propio JSON que el modelo NO las usó.
           out.senales = [...obsSenales('esports', `${gm}:${obsClave(out.event.home.name)}`, { lado: 'home' }),
             ...obsSenales('esports', `${gm}:${obsClave(out.event.away.name)}`, { lado: 'away' })];
-          // EN VIVO en la ficha (31-ago): la misma serie en curso que pinta la pizarra
+          // EN VIVO en la ficha (31-ago): la misma serie en curso que pinta la pizarra + Polymarket
           try {
-            if (gm === 'cs2' || gm === 'lol') {
+            {
               const LV = require('./live-sports');
-              const lv = gm === 'cs2' ? await LV.cs2Live() : await LV.lolLive();
+              const lv = await ({ cs2: LV.cs2Live, lol: LV.lolLive, valorant: LV.valorantLive, dota2: LV.dota2Live }[gm] || (async () => []))();
+              const pmRows = LV.pmRowsFor(await LV.pmLive(), ES_PM_TAGS[gm] || []);
+              const pmHit = pmRows.length ? LV.matchByNames(pmRows, out.event.home.name, out.event.away.name, ['a', 'b']) : null;
               const hit = lv && lv.length ? LV.matchByNames(lv, out.event.home.name, out.event.away.name, ['a', 'b']) : null;
+              if (!hit && pmHit) out.live = esPmOnlyLive(pmHit);
               if (hit) {
                 out.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
                   bo: hit.bo || out.bo || null, detail: hit.detail,
@@ -19027,7 +19081,13 @@ const server = http.createServer(async (req, res) => {
                   out.live.maps = hit.maps.map((mm) => hit.swapped ? { ...mm, s1: mm.s2, s2: mm.s1 } : mm);
                 }
                 if (hit.cur_map) out.live.cur_map = hit.cur_map;
-                if (hit.game) out.live.game = hit.swapped ? { ...hit.game, a: hit.game.b, b: hit.game.a } : hit.game;
+                if (hit.game) {
+                  out.live.game = hit.swapped
+                    ? { ...hit.game, a: hit.game.b, b: hit.game.a, top_a: hit.game.top_b || null, top_b: hit.game.top_a || null,
+                        gold_lead: hit.game.gold_lead != null ? -hit.game.gold_lead : undefined }
+                    : hit.game;
+                }
+                if (pmHit) out.live.pm = nsPmBlock(pmHit);
               }
             }
           } catch { }
@@ -19236,7 +19296,7 @@ const server = http.createServer(async (req, res) => {
                 period: hit.period, clock: hit.clock, detail: hit.detail,
                 possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
               // el detalle rico (31-ago): últimas jugadas del drive, anotaciones y marcador por cuartos.
-              // Solo College (ESPN summary); el feed oficial de CFL no publica jugada a jugada.
+              // Solo College (ESPN summary); el feed oficial de CFL no publica jugada a jugada (comprobado).
               if (hit.espn && lgA !== 'cfl') {
                 const sum = await LV.espnSummary('football/college-football', hit.espn);
                 if (sum) {
@@ -19245,6 +19305,12 @@ const server = http.createServer(async (req, res) => {
                   out.live.ls_away = hit.swapped ? sum.ls_home : sum.ls_away;
                 }
               }
+            }
+            // MERCADO EN VIVO (31-ago): la probabilidad implícita de Polymarket pegada a la ficha
+            if (lgA !== 'cfl') {
+              const pmA = LV.pmRowsFor(await LV.pmLive(), ['cfb', 'college-football', 'ncaaf', 'ncaa-football']);
+              const pmHit = pmA.length ? LV.matchByNames(pmA, out.home.name, out.away.name, ['a', 'b']) : null;
+              if (pmHit) { out.live = out.live || { detail: 'EN VIVO' }; out.live.pm = nsPmBlock(pmHit); }
             }
           } catch { }
           return json(res, 200, out);
@@ -19336,6 +19402,12 @@ const server = http.createServer(async (req, res) => {
                   out.live.ls_away = hit.swapped ? sum.ls_home : sum.ls_away;
                 }
               }
+            }
+            // MERCADO EN VIVO (31-ago): Polymarket pegado a la ficha
+            {
+              const pmN = LV.pmRowsFor(await LV.pmLive(), ['nfl']);
+              const pmHit = pmN.length ? LV.matchByNames(pmN, out.home.name, out.away.name, ['a', 'b']) : null;
+              if (pmHit) { out.live = out.live || { detail: 'EN VIVO' }; out.live.pm = nsPmBlock(pmHit); }
             }
           } catch { }
           return json(res, 200, out);
@@ -23964,6 +24036,15 @@ async function anotar(pid){
             const shg = homeIsH ? sr.hg : sr.ag, sag = homeIsH ? sr.ag : sr.hg;
             if (sr.status === 'live') {
               try { const gp = liveProbsFromLambdas(l1x2U[0], l1x2U[1], shg, sag, sr.minute); gpLive = { home: +gp.home.toFixed(4), draw: +gp.draw.toFixed(4), away: +gp.away.toFixed(4), likely_score: gp.likelyScore, minute: sr.minute, live: true }; } catch { gpLive = null; }
+              // MERCADO EN VIVO (31-ago): la probabilidad implícita de Polymarket junto a la GP en vivo —
+              // el ADN de la casa (modelo vs mercado) latiendo también durante el partido de club
+              try {
+                const LVc = require('./live-sports');
+                const pmS = LVc.pmRowsFor(await LVc.pmLive(), ['soccer', 'football', 'epl', 'premier-league', 'la-liga', 'serie-a', 'bundesliga', 'ligue-1']);
+                const hN = (TH && TH.name) || String(url.searchParams.get('hn') || ''), aN = (TA && TA.name) || String(url.searchParams.get('an') || '');
+                const pmHit = pmS.length && hN && aN ? LVc.matchByNames(pmS, hN, aN, ['a', 'b']) : null;
+                if (pmHit && gpLive) gpLive.pm = nsPmBlock(pmHit);
+              } catch { /* display */ }
             }
             const mom = (db.clubMomentum || {})[clubScoreKey(hl, hId, aId)];
             if (mom && mom.points && mom.points.length > 2) {

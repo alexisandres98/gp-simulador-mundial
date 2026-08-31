@@ -120,14 +120,15 @@ async function tennisLive() {
   });
 }
 
-// ── CS2 (bo3.gg) ────────────────────────────────────────────────────────────────────────────────────────
+// ── Series de esports (bo3.gg) — CS2, Valorant, Dota 2 ─────────────────────────────────────────────────
+// bo3 cubre 8 disciplinas con la MISMA forma (comprobado 31-ago: 1=csgo, 2=valorant, 3=lol, 4=dota2).
 // `with=teams,games` trae el HISTORIAL DE MAPAS de la serie: cada mapa terminado viene con nombre,
 // ganador y marcador de rondas. Del mapa EN CURSO bo3 solo publica el nombre y la hora de inicio (los
-// campos de rondas llegan null hasta que termina — comprobado también contra /games/{id}); ese límite se
-// declara tal cual en la UI en vez de inventar rondas.
-async function cs2Live() {
-  return memo('cs2', 60e3, async () => {
-    const r = await j('https://api.bo3.gg/api/v1/matches?filter[matches.status][eq]=current&page[limit]=24&with=teams,games');
+// campos de rondas llegan null hasta que termina — comprobado también contra /games/{id}), y en eventos
+// menores tampoco gradúa los terminados; ese límite se declara tal cual en la UI en vez de inventar.
+async function bo3SeriesLive(disciplineId, memoKey) {
+  return memo(memoKey, 60e3, async () => {
+    const r = await j(`https://api.bo3.gg/api/v1/matches?filter[matches.status][eq]=current&filter[matches.discipline_id][eq]=${disciplineId}&page[limit]=24&with=teams,games`);
     return ((r && r.results) || []).map((m) => {
       const n1 = norm(m.team1 && m.team1.name);
       const games = ((m.games || []).slice()).sort((x, y) => (x.number || 0) - (y.number || 0));
@@ -157,6 +158,33 @@ async function cs2Live() {
         detail: cur && cur.map_name ? `mapa ${cur.number || (m.team1_score || 0) + (m.team2_score || 0) + 1} · ${String(cur.map_name).replace(/^de_/, '')}` : `mapa ${(m.team1_score || 0) + (m.team2_score || 0) + 1}`,
       };
     }).filter((x) => x.a && x.b);
+  });
+}
+const cs2Live = () => bo3SeriesLive(1, 'cs2');
+const valorantLive = () => bo3SeriesLive(2, 'valorant');
+
+// ── Dota 2: serie de bo3 + kills/oro del mapa en curso de OpenDota ──────────────────────────────────────
+// OpenDota /api/live (sin llave) lista las partidas espectadas AHORA con radiant_score (kills),
+// radiant_lead (ventaja de oro) y game_time; las de equipos PRO llevan team_name_radiant/dire. Se casa
+// contra la serie de bo3 por nombres — sin cruce, la serie se pinta sin detalle, jamás con el ajeno.
+async function dota2Live() {
+  return memo('dota2', 60e3, async () => {
+    const series = (await bo3SeriesLive(4, 'dota2:bo3')) || [];
+    const od = await j('https://api.opendota.com/api/live');
+    const pro = (od || []).filter((x) => x.team_name_radiant && x.team_name_dire);
+    for (const s of series) {
+      const hit = matchByNames(pro, s.a, s.b, ['team_name_radiant', 'team_name_dire']);
+      if (!hit) continue;
+      const rad = { k: hit.radiant_score != null ? hit.radiant_score : null };
+      const dire = { k: hit.dire_score != null ? hit.dire_score : null };
+      s.game = {
+        n: (s.s1 || 0) + (s.s2 || 0) + 1,
+        a: hit.swapped ? dire : rad, b: hit.swapped ? rad : dire,
+        gold_lead: hit.radiant_lead != null ? (hit.swapped ? -hit.radiant_lead : hit.radiant_lead) : null,
+        min: hit.game_time != null ? Math.floor(hit.game_time / 60) : null,
+      };
+    }
+    return series;
   });
 }
 
@@ -203,10 +231,94 @@ async function lolLive() {
           t: t.towers != null ? t.towers : null, d: Array.isArray(t.dragons) ? t.dragons.length : null, b: t.barons != null ? t.barons : null });
         m.game = { n: g.number || (m.s1 + m.s2 + 1), state: fr.gameState || null,
           a: side(blueIsA ? fr.blueTeam : fr.redTeam), b: side(blueIsA ? fr.redTeam : fr.blueTeam) };
+        // POR JUGADOR: livestats/details da KDA y CS de los 10 (participantes 1-5 azul, 6-10 rojo);
+        // los nombres viven en el gameMetadata de window. El endpoint responde 204 entre mapas — es
+        // un extra sobre el extra y nunca bloquea lo demás.
+        try {
+          const dw = await j(`https://feed.lolesports.com/livestats/v1/details/${g.id}?startingTime=${tW}`);
+          const dfr = dw && Array.isArray(dw.frames) && dw.frames.length ? dw.frames[dw.frames.length - 1] : null;
+          const meta = [
+            ...(((w.gameMetadata || {}).blueTeamMetadata || {}).participantMetadata || []),
+            ...(((w.gameMetadata || {}).redTeamMetadata || {}).participantMetadata || []),
+          ];
+          if (dfr && Array.isArray(dfr.participants) && meta.length) {
+            const nameOf = {};
+            for (const pm of meta) nameOf[pm.participantId] = pm.summonerName || pm.championId || '';
+            const rows = dfr.participants.map((p) => ({
+              n: nameOf[p.participantId] || `#${p.participantId}`,
+              blue: p.participantId <= 5,
+              k: p.kills || 0, d: p.deaths || 0, a: p.assists || 0, cs: p.creepScore != null ? p.creepScore : null,
+            }));
+            const top = (isBlue) => rows.filter((x) => x.blue === isBlue).sort((x, y) => y.k - x.k)[0] || null;
+            m.game.top_a = top(blueIsA), m.game.top_b = top(!blueIsA);
+          }
+        } catch { /* sin detalle por jugador no pasa nada */ }
       } catch { /* el detalle es un extra: la serie se pinta igual sin él */ }
     }
     return out;
   });
+}
+
+// ── Polymarket EN VIVO (31-ago, idea de Alexis: "esa data en vivo la puedes encontrar en Polymarket") ──
+// `gamma /events?closed=false&live=true` devuelve TODOS los eventos deportivos en juego en una llamada:
+// marcador (`score`), período (`period`: 2H/Q3/1/3/SUS), minuto (`elapsed`), tags del deporte y los
+// mercados con su precio EN VIVO — la probabilidad implícita del dinero real, latiendo punto a punto.
+// Cloudbet quedó descartado para esto: su feed público responde los mercados en vivo SUSPENDIDOS
+// (price 0 en los 10 tenis + 2 LoL vivos probados); Kalshi da precios pero no marcadores. DISPLAY puro.
+// Dos formas de mercado (comprobadas): esports = un mercado "Match Winner" con los equipos como
+// outcomes; fútbol = trío Yes/No por equipo + "Draw (...)". Se leen las dos.
+async function pmLive() {
+  return memo('pm', 45e3, async () => {
+    const evs = await j('https://gamma-api.polymarket.com/events?closed=false&live=true&limit=100');
+    if (!Array.isArray(evs)) return [];
+    const byGame = new Map(); // dedup: el evento base y sus derivados ("... - Exact Score") comparten gameId
+    for (const e of evs) {
+      const title = String(e.title || '');
+      // "LoL: A vs B (BO3) - Liga" / "Aston Villa FC vs. Arsenal FC" → equipos
+      const clean = title.replace(/^[A-Za-z0-9]{2,6}:\s*/, '').replace(/\s*\((?:BO\d|Bo\d)\)\s*/i, ' ').split(' - ')[0];
+      const parts = clean.split(/\s+vs\.?\s+/i);
+      if (parts.length !== 2) continue;
+      const A = parts[0].trim(), B = parts[1].trim();
+      if (!A || !B) continue;
+      const tags = (e.tags || []).map((t) => t.slug || '').filter(Boolean);
+      const pj = (m, k) => { try { return JSON.parse(m[k] || '[]'); } catch { return []; } };
+      let p_a = null, p_b = null, p_draw = null;
+      for (const m of e.markets || []) {
+        if (m.closed === true && m.active !== true) continue;
+        const os = pj(m, 'outcomes'), ps = pj(m, 'outcomePrices').map(Number);
+        if (os.length !== 2 || ps.length !== 2) continue;
+        const grp = String(m.groupItemTitle || '');
+        if (/^(match winner|moneyline)$/i.test(grp) && !/^(yes|no)$/i.test(os[0])) {
+          // los outcomes son los equipos; orientación contra el título
+          const o0 = norm(os[0]);
+          const aFirst = o0 === norm(A) || o0.includes(norm(A)) || norm(A).includes(o0);
+          p_a = aFirst ? ps[0] : ps[1]; p_b = aFirst ? ps[1] : ps[0];
+        } else if (/^yes$/i.test(os[0])) {
+          const g = norm(grp);
+          if (g && g === norm(A)) p_a = ps[0];
+          else if (g && g === norm(B)) p_b = ps[0];
+          else if (/^draw\b/i.test(grp)) p_draw = ps[0];
+        }
+      }
+      const row = {
+        a: A, b: B, tags, title,
+        p_a, p_b, p_draw,
+        score: String(e.score || '') || null, period: e.period || null,
+        elapsed: e.elapsed != null && e.elapsed !== '' ? +e.elapsed : null,
+      };
+      const gk = e.gameId || title.split(' - ')[0];
+      const prev = byGame.get(gk);
+      // el evento con probabilidad extraída manda sobre sus derivados
+      if (!prev || (prev.p_a == null && row.p_a != null)) byGame.set(gk, row);
+    }
+    return [...byGame.values()];
+  });
+}
+// filtra filas de pmLive por deporte (los tags observados: soccer, tennis, nfl, cfb, mlb, nba, esports,
+// league-of-legends, counter-strike-2, valorant, dota-2...). Sin tag que case, no se cruza: un cruce
+// laxo entre deportes distintos es peor que ningún cruce.
+function pmRowsFor(rows, slugs) {
+  return (rows || []).filter((r) => r.tags.some((t) => slugs.includes(t)));
 }
 
 // ── ESPN summary (NFL / College): las últimas jugadas y el marcador por cuartos ─────────────────────────
@@ -292,4 +404,4 @@ function matchByNames(list, homeName, awayName, keys = ['home', 'away']) {
   return cands.length === 1 ? cands[0] : null;
 }
 
-module.exports = { cflLive, ncaafLive, nflLive, tennisLive, cs2Live, lolLive, espnSummary, f1Live, matchByNames, norm };
+module.exports = { cflLive, ncaafLive, nflLive, tennisLive, cs2Live, valorantLive, dota2Live, lolLive, pmLive, pmRowsFor, espnSummary, f1Live, matchByNames, norm };

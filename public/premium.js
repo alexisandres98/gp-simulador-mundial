@@ -1200,6 +1200,22 @@
   // usuario siga en ella. `bust` invalida las entradas de caché que alimentan esa vista (por subcadena)
   // para que el refresco traiga datos frescos y no la misma copia memoizada.
   function nsBust(store, sub) { for (var k in store || {}) { if (k.indexOf(sub) >= 0 && store[k]) store[k]._at = 0; } }
+  // MERCADO EN VIVO (31-ago): la fila Polymarket que pintan todas las tiras de vivo — probabilidad
+  // implícita del dinero real ahora mismo, con su marcador/minuto cuando el feed lo trae. DISPLAY.
+  function nsPmLine(pm, aName, bName) {
+    if (!pm || (pm.p_a == null && pm.p_b == null)) return '';
+    var pct = function (x) { return x != null ? Math.round(100 * x) + '%' : '—'; };
+    var mid = pm.p_draw != null ? ' · ' + esT('empate ', 'draw ') + pct(pm.p_draw) : '';
+    var st = [];
+    if (pm.score && pm.score.indexOf('|') < 0) st.push(pm.score);
+    if (pm.elapsed != null) st.push(pm.elapsed + '\'');
+    else if (pm.period && pm.period !== 'SUS') st.push(pm.period);
+    return '<div class="gx-dim" style="font-size:11.5px;flex-basis:100%;border-top:1px solid var(--line);padding-top:6px">' +
+      '<b style="color:var(--text)">Polymarket ' + esT('en vivo', 'live') + '</b> · ' +
+      esc(aName) + ' <b class="gx-mono" style="color:var(--text)">' + pct(pm.p_a) + '</b>' + mid + ' · ' +
+      esc(bName) + ' <b class="gx-mono" style="color:var(--text)">' + pct(pm.p_b) + '</b>' +
+      (st.length ? ' <span class="gx-mono">(' + esc(st.join(' · ')) + ')</span>' : '') + '</div>';
+  }
   function nsLiveAuto(bust) {
     if (S._liveT) clearTimeout(S._liveT);
     var v = S.view;
@@ -4958,6 +4974,10 @@
     // GP en vivo: mismo override del Mundial (la prob del hero se mueve con el marcador, la descomposición queda pre-partido)
     if (fx.status === 'live' && fx.gpLive) {
       var mk0 = {}; beta.probability.outcomes.forEach(function (o) { mk0[o.outcome_code] = o.market_probability; });
+      // MERCADO EN VIVO (31-ago): si Polymarket cotiza este partido AHORA, su probabilidad implícita
+      // sustituye al consenso pre-partido en la columna de mercado — modelo vivo contra dinero vivo
+      var pmc = m.gp_live && m.gp_live.pm;
+      if (pmc && pmc.p_a != null && pmc.p_b != null) { mk0.HOME = pmc.p_a; mk0.AWAY = pmc.p_b; if (pmc.p_draw != null) mk0.DRAW = pmc.p_draw; beta._pmLive = true; }
       beta.probability = { market_code: '1X2', period_code: 'REGULATION', period_note_code: 'REGULATION_90', sums_to_one: true, live: true, outcomes: [
         { outcome_code: 'HOME', team_ref: 'home', gp_probability: round4(fx.gpLive.homeWin), market_probability: mk0.HOME },
         { outcome_code: 'DRAW', team_ref: null, gp_probability: round4(fx.gpLive.draw), market_probability: mk0.DRAW },
@@ -8478,6 +8498,7 @@
           '<span class="gx-dim">' + (stv.is_ot ? 'OT' : 'Q' + stv.period) + (stv.clock ? ' · ' + esc(stv.clock) : '') + '</span>' +
           (pj.win && pj.win.home != null ? '<span class="gx-dim">' + esT('GP en vivo ', 'GP live ') + Math.round(100 * pj.win.home) + '%</span>' : '') +
           (pj.projected_final ? '<span class="gx-dim gx-mono" style="font-size:11.5px">' + esT('final proyectado ', 'projected final ') + pj.projected_final.away + ' - ' + pj.projected_final.home + '</span>' : '') +
+          nsPmLine(lv.pm, bbTeamName(H), bbTeamName(A)) +
           // las últimas jugadas (31-ago): la película del partido sin salir de la plataforma
           (lv.last_plays && lv.last_plays.length ? '<div style="flex-basis:100%"><span class="gx-label">' + esT('Últimas jugadas', 'Latest plays') + '</span>' +
             lv.last_plays.map(function (pl) {
@@ -9557,7 +9578,8 @@
       var mapSc = (it.live.map_s1 != null && it.live.map_s2 != null) ? ' · ' + it.live.map_s1 + '-' + it.live.map_s2
         : (it.live.k1 != null && it.live.k2 != null) ? ' · ⚔ ' + it.live.k1 + '-' + it.live.k2 : '';
       var mapNm = it.live.map ? ' · ' + esc(it.live.map) : '';
-      return '<span class="gx-live-pill">' + it.live.s1 + ' - ' + it.live.s2 + (it.live.bo ? ' · BO' + it.live.bo : '') + mapNm + mapSc + '</span>';
+      var pmS = it.live.pm && it.live.pm.p_a != null ? ' · PM ' + Math.round(100 * it.live.pm.p_a) + '%' : '';
+      return '<span class="gx-live-pill">' + it.live.s1 + ' - ' + it.live.s2 + (it.live.bo ? ' · BO' + it.live.bo : '') + mapNm + mapSc + pmS + '</span>';
     }
     if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
     if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + esT(' con ventaja', ' with edge') + '</span>';
@@ -10148,12 +10170,25 @@
         var duo = function (lbl, x, y, suf) { return x != null && y != null ? '<span class="gx-dim gx-mono">' + lbl + ' <b style="color:var(--text)">' + x + (suf || '') + ' - ' + y + (suf || '') + '</b></span>' : ''; };
         lvRows += '<div style="display:flex;gap:14px;flex-wrap:wrap;width:100%">' +
           '<span class="gx-dim">' + esT('mapa', 'game') + ' ' + d.live.game.n + '</span>' +
+          (d.live.game.min != null ? '<span class="gx-dim gx-mono">min ' + d.live.game.min + '</span>' : '') +
           duo('⚔ kills', ga.k, gb.k) +
           duo(esT('oro', 'gold'), ga.g, gb.g, 'k') +
+          (d.live.game.gold_lead != null ? '<span class="gx-dim gx-mono">' + esT('oro ', 'gold ') + '<b style="color:var(--text)">' +
+            (d.live.game.gold_lead >= 0 ? '+' : '−') + Math.abs(Math.round(d.live.game.gold_lead / 100) / 10) + 'k ' +
+            esc(d.live.game.gold_lead >= 0 ? ev.home.name : ev.away.name) + '</b></span>' : '') +
           duo(esT('torres', 'towers'), ga.t, gb.t) +
           duo(esT('dragones', 'dragons'), ga.d, gb.d) +
           duo(esT('barones', 'barons'), ga.b, gb.b) +
           '</div>';
+        // el mejor fragger de cada lado (LoL, livestats details): nombre y KDA
+        if (d.live.game.top_a || d.live.game.top_b) {
+          var kda = function (x) { return x ? '<span class="gx-dim" style="font-size:11.5px"><b style="color:var(--text)">' + esc(x.n) + '</b> ' + x.k + '/' + x.d + '/' + x.a + (x.cs != null ? ' · ' + x.cs + ' CS' : '') + '</span>' : ''; };
+          lvRows += '<div style="display:flex;gap:16px;flex-wrap:wrap;width:100%">' + kda(d.live.game.top_a) + kda(d.live.game.top_b) + '</div>';
+        }
+      }
+      // MERCADO EN VIVO (31-ago, idea de Alexis): lo que el dinero real de Polymarket paga AHORA MISMO
+      if (d.live.pm && (d.live.pm.p_a != null || d.live.pm.p_b != null)) {
+        lvRows += nsPmLine(d.live.pm, ev.home.name, ev.away.name);
       }
       esLiveB = '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
         '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
@@ -12529,6 +12564,7 @@
           : '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span>') + '</div>' +
       bar +
       '<div class="gx-mcard-foot"><span class="gx-dim" style="font-size:10.5px">' +
+        (r.live && r.live.pm && r.live.pm.p_a != null ? '<b>Polymarket ' + esT('en vivo', 'live') + ' ' + Math.round(100 * r.live.pm.p_a) + '%</b> · ' : '') +
         (mkA != null ? 'mercado ' + tenPct(mkA) + ' · ' + (r.books || 0) + ' casas' : (r.available ? 'sin consenso de mercado' : esc(r.why || 'fuera de la base'))) +
         (gp.exp_games != null ? ' · ' + gp.exp_games.toFixed(1) + ' juegos esp.' : '') +
         (nP ? ' · <b class="gx-ten-shadow">' + nP + ' en sombra</b>' : '') +
@@ -12560,7 +12596,8 @@
       '<b class="gx-mono" style="font-size:17px">' + esc((d.a.name || '').split(' ').pop()) + ' ' + esc(d.live.sets_a || '') + (d.live.serve_a ? ' 🎾' : '') + '</b>' +
       '<span class="gx-dim">vs</span>' +
       '<b class="gx-mono" style="font-size:17px">' + esc((d.b.name || '').split(' ').pop()) + ' ' + esc(d.live.sets_b || '') + (d.live.serve_b ? ' 🎾' : '') + '</b>' +
-      '<span class="gx-dim" style="font-size:11.5px">' + esc(d.live.detail || '') + (d.live.tournament ? ' · ' + esc(d.live.tournament) : '') + '</span></div>' : '';
+      '<span class="gx-dim" style="font-size:11.5px">' + esc(d.live.detail || '') + (d.live.tournament ? ' · ' + esc(d.live.tournament) : '') + '</span>' +
+      nsPmLine(d.live.pm, d.a.name, d.b.name) + '</div>' : '';
     var hero = '<div class="gx-panel gx-ten-hero">' +
       '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tourney, d.surface, d.best_of === 5 ? 'al mejor de 5' : 'al mejor de 3'].filter(Boolean).join(' · ')) + '</span>' +
       (d.commence ? '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(fmtDateTime(d.commence)) + '</span>' : '') + '</div>' +
@@ -13973,6 +14010,7 @@
             esc(sp.t || '') + (sp.score ? ' <em class="gx-mono">(' + esc(sp.score) + ')</em>' : '') + '</div>';
         }).join('') + '</div>';
     }
+    out += nsPmLine(lv.pm, d.home.name, d.away.name);
     return out;
   }
   function renderNflGame() {

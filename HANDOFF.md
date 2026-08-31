@@ -88,6 +88,29 @@ SOLO si el candidato es único (Vitality casó con dos "FUT" en producción el p
 - **Sonda `/api/internal/espn?key=&path=&qs=`**: iterar formas de ESPN desde prod (el sandbox recibe 403
   de Akamai). Solo lectura, host fijo por construcción.
 
+**Tercera pasada (misma noche) — la investigación de fuentes que pidió Alexis ("no te limites, busca más
+fuentes, panel lo más completo posible") y sus VEREDICTOS:**
+- ✅ **Polymarket `gamma /events?closed=false&live=true`** — LA joya: TODO lo vivo en una llamada, con
+  `score`, `period`, `elapsed` (minuto), tags del deporte y precios en vivo (= probabilidad implícita del
+  dinero real). Dos formas de mercado: esports = "Match Winner" con equipos como outcomes; fútbol = trío
+  Yes/No por equipo + Draw. `pmLive()` en live-sports.js; `nsPmBlock`/`esPmOnlyLive`/`ES_PM_TAGS` en
+  server. Pegado a: esports (4 juegos, ficha+pizarra; si no hay otra fuente el vivo se ENCIENDE solo con
+  PM), tenis (board+ficha), NCAAF/NFL fichas, hoops live, y el **cockpit de clubes** (con PM vivo, la
+  columna "mercado" del héroe pasa del consenso pre-partido al precio vivo → modelo vivo vs dinero vivo).
+- ✅ **bo3.gg cubre 8 disciplinas** (1=cs2, 2=valorant, 3=lol, 4=dota2…): `bo3SeriesLive(disciplineId)`
+  generalizado → **Valorant y Dota 2 estrenan vivo** con historial de mapas, misma forma que CS2.
+- ✅ **OpenDota `/api/live`** (sin llave): kills, ventaja de oro y minuto de las partidas espectadas; las
+  PRO llevan nombre de equipo → overlay del mapa en curso en la serie de Dota (verificado en vivo:
+  Team Spirit Academy 11-10 Pipsqueak, oro −2.9k, min 18).
+- ✅ **livestats `details`** de lolesports: KDA/CS de los 10 jugadores → mejor fragger por lado en la
+  ficha de LoL (204 entre mapas, defensivo).
+- ❌ **Cloudbet EN VIVO**: su feed público responde los mercados vivos SUSPENDIDOS (price 0 en los 10
+  tenis + 2 LoL vivos probados, también en `/events/{id}`). Solo sirve pre-partido. Descartado.
+- ❌ **Kalshi**: precios sí, marcadores no; PM cubre los mismos partidos CON marcador. Descartado v1.
+- ❌ **vlrggapi** (Valorant) muerta (402); bo3 lo cubre. ❌ **CFL play-by-play**: no existe JSON público.
+- ⏳ **livetiming.formula1.com** (oficial F1) existe y es público pero está Offline fuera de sesión —
+  probar en el próximo fin de semana de carrera; ESPN racing queda de base.
+
 ## ⭐ SEGUIR CLUBES + ALERTAS DE INICIO/GOL (31-ago, "sí hazlo")
 Los favoritos de club viajan como `club:<liga>:<tm_id>` en el MISMO array `favorites` (el endpoint ya
 aceptaba cualquier id). Botón Seguir en la ficha de club (hero), fila de club en Seguidos (escudo + liga +

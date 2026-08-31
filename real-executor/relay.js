@@ -133,6 +133,36 @@ const server = http.createServer(async (req, res) => {
   // Igual de estricto que /place: solo se reenvía la operación de colocar, y las variables tienen que traer
   // las claves que la casa exige. Un reenviador que acepta cualquier consulta GraphQL es una llave maestra
   // de la cuenta, no un reenviador.
+  // LECTURA DEL LIBRO DE LA CASA (31-ago, reporte del lunes): el historial de apuestas y los saldos solo
+  // responden desde esta geografía (REST bets = 403 Cloudflare en todas partes; los resolvers GraphQL dan
+  // 500 desde América). Cero GraphQL arbitrario: la consulta la construye ESTE proceso — el cliente solo
+  // manda offset y limit. Es de solo lectura por construcción, así que no viola el principio del reenviador.
+  if (ruta === '/historial' && req.method === 'POST') {
+    if (!TOKEN || !KEY) return json(res, 500, { ok: false, why: 'reenviador_sin_configurar' });
+    const authH = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!mismoSecreto(authH, TOKEN)) return json(res, 401, { ok: false, why: 'secreto_invalido' });
+    let cH = {};
+    try { cH = JSON.parse((await leerCuerpo(req, 2048)) || '{}'); } catch { cH = {}; }
+    const offH = Math.max(0, parseInt(cH.offset, 10) || 0);
+    const limH = Math.min(200, Math.max(1, parseInt(cH.limit, 10) || 100));
+    try {
+      const rQ = await fetch(GQL_HOST, {
+        method: 'POST',
+        headers: { 'X-API-Key': KEY, accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          query: 'query($o:Int,$l:Int){ bets(offset:$o, limit:$l){ referenceId sportsKey eventId eventName marketUrl currency price stake side returnAmount betStatus betErrorCode } accountBalances { currency amount } }',
+          variables: { o: offH, l: limH },
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const txtQ = await rQ.text();
+      let jQ = null; try { jQ = txtQ ? JSON.parse(txtQ) : null; } catch { /* no-json */ }
+      return json(res, 200, { ok: rQ.ok, status: rQ.status, gql: jQ, crudo: jQ ? null : txtQ.slice(0, 400) });
+    } catch (e) {
+      return json(res, 200, { ok: false, status: 0, gql: null, crudo: String((e && e.message) || e).slice(0, 160) });
+    }
+  }
+
   if (ruta === '/gql' && req.method === 'POST') {
     if (!TOKEN || !KEY) return json(res, 500, { ok: false, why: 'reenviador_sin_configurar' });
     const auth2 = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');

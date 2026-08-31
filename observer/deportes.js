@@ -37,6 +37,14 @@ const TERMINOS = {
     en: '(quarterback OR injury OR injured OR questionable OR "ruled out" OR doubtful OR suspended OR starter)',
     es: '(lesion OR lesionado OR baja OR duda OR sancionado OR titular OR quarterback)',
   },
+  // BALONCESTO (31-ago, autopsia de hoops): la fuga medida del modelo es información de plantilla que el
+  // mercado ve y el rating no — y en baloncesto UNA jugadora mueve la línea más que en ningún otro deporte
+  // de equipo (5 titulares, estrellas con 35% de uso). El vocabulario incluye el descanso programado
+  // ("load management"), que no existe en fútbol y aquí es señal de primera.
+  hoops: {
+    en: '(injury OR injured OR "ruled out" OR questionable OR doubtful OR "load management" OR rest OR sidelined OR suspended OR "season-ending")',
+    es: '(lesion OR lesionada OR baja OR duda OR descanso OR sancionada OR fuera)',
+  },
 };
 
 // PREFILTRO DE CÓDIGO. No es un extractor: es un ordenador de cola. El LLM tiene un tope de items por
@@ -50,6 +58,7 @@ const OLOR = {
   esports: /roster|stand[- ]?in|standin|bench|step(s|ped)? down|replac|visa|sick|ill|injur|leave|joins|sign|transfer|out of|suplente|banquill|reemplaz|visad|baja|fichaj/i,
   tennis: /withdraw|pull(s|ed)? out|retire|injur|ill|doubt|walkover|w\/o|medical|abdomin|wrist|shoulder|knee|back|retir|lesion|baja|abandon|molest/i,
   amfoot: /quarterback|\bqb\b|injur|questionable|doubtful|ruled out|\bout\b|suspend|starter|concussion|acl|hamstring|coordinator|fired|lesion|baja|duda|sancion|titular/i,
+  hoops: /injur|questionable|doubtful|ruled out|\bout\b|load management|\brest(s|ing|ed)?\b|sidelin|acl|achilles|ankle|knee|hamstring|concussion|suspend|waiv|season[- ]ending|lesion|baja|duda|descans|sancion/i,
 };
 
 const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -198,6 +207,10 @@ const ETIQUETAS = {
   amfoot: { QB: ['quarterback titular en el aire', 'starting quarterback in question'], OUT: ['titular fuera', 'starter ruled out'],
     INJURY: ['lesión reportada', 'reported injury'], DOUBT: ['titular en duda', 'starter questionable'],
     SUSPENDED: ['sancionado', 'suspended'], COACH: ['cambio de entrenador', 'coaching change'] },
+  hoops: { OUT: ['titular fuera', 'starter ruled out'], INJURY: ['lesión reportada', 'reported injury'],
+    REST: ['descanso programado', 'scheduled rest / load management'], DOUBT: ['en duda', 'questionable'],
+    SUSPENDED: ['sancionada', 'suspended'], RETURN: ['vuelve de lesión', 'returning from injury'],
+    ROSTER: ['movimiento de plantilla', 'roster move'] },
 };
 // LA GRAVEDAD LA DICEN LOS DOS, NO UNO SOLO. El tipo lleva un peso —una baja de quarterback importa más
 // que un cambio de analista, diga lo que diga el titular— pero dejar que el tipo mande solo pinta en rojo
@@ -206,7 +219,9 @@ const ETIQUETAS = {
 // de importancia y la lectura del texto lo corrige hacia abajo cuando la noticia es floja.
 const PESO = { esports: { STANDIN: 3, ROSTER: 3, FORFEIT: 3, VISA: 3, BENCH: 2, ILLNESS: 2, ORG: 1 },
   tennis: { OUT: 3, RETIRED: 3, WALKOVER: 3, INJURY: 2, ILLNESS: 2, DOUBT: 2, RETURN: 1 },
-  amfoot: { QB: 3, OUT: 3, SUSPENDED: 2, INJURY: 2, DOUBT: 1, COACH: 1 } };
+  amfoot: { QB: 3, OUT: 3, SUSPENDED: 2, INJURY: 2, DOUBT: 1, COACH: 1 },
+  // el descanso programado pesa como una baja: la estrella no juega, lo diga como lo diga el titular
+  hoops: { OUT: 3, REST: 3, SUSPENDED: 2, INJURY: 2, DOUBT: 2, RETURN: 1, ROSTER: 1 } };
 
 // banderas de UN sujeto, en la forma que ya consumen los paneles de inteligencia del resto de deportes
 function banderas(dominio, store, sid, { lado = null, etiquetaSujeto = null } = {}) {

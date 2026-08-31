@@ -11396,6 +11396,19 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           }, { validation: C.validation, published: gateDecisions.filter((d) => d.pick) });
           gateDecisions.push({ ...decision, game: ev.home + ' – ' + ev.away, league: lg });
           if (edgePp < HOOPS_PICK_MIN_EDGE() || evPct <= 0) continue;
+          // ── GATES v2 (31-ago, autopsia de 186 liquidadas — muestra NUEVA, no se junta con la v1) ────
+          // Tres fugas medidas, tres compuertas: (1) el bucket edge 3-5pp dio 47,7% y −10,4u en 149 —
+          // ruido cosechado; (2) spreads de perro grande (|línea|≥8): 41,7%, CLV −5,2, y el perro pierde
+          // 13,7 pts MÁS que la línea — el rating de temporada sobrevalora equipos malos tarde; (3) el
+          // over está fabricado (35,7%, −12,9u, el total real cayó EN la línea) mientras el under fue
+          // 15/15 con CLV +5,1. GP_HOOPS_V2=false revierte a v1. Las picks nuevas llevan regime hoops_v2
+          // para que el track pueda leerse por versión sin contaminar la muestra anterior.
+          const hoopsV2 = String(process.env.GP_HOOPS_V2 || 'true') !== 'false';
+          if (hoopsV2) {
+            if (edgePp < 5) continue;
+            if (m.fam === 'spread' && Math.abs(m.line) >= 8) continue;
+            if (m.fam === 'total' && side !== 'under') continue;
+          }
           out.considered++;
           cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pModelRaw, pMarket, edgePp, evPct, best, books, pushProb, price, decision });
         }
@@ -11439,6 +11452,9 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           sample_confidence: sim.conf,
           status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
           created_at: new Date().toISOString(),
+          // sello de versión del régimen de emisión: la muestra v2 (gates de la autopsia del 31-ago) se
+          // lee separada de la v1 — juntar muestras con reglas distintas es contaminar las dos.
+          regime: String(process.env.GP_HOOPS_V2 || 'true') !== 'false' ? 'hoops_v2' : 'hoops_v1',
           monitor_only: true,      // BANDERA DURA: esto no se publica jamás mientras el skill sea negativo
           // ── campos que consume pickCard() (la MISMA card de fútbol y combate) ──
           home: ev.home, away: ev.away,
@@ -14712,13 +14728,39 @@ async function obsSujetosAmfoot() {
   return filas.filter((x) => Number.isFinite(x.t) && x.t > Date.now() - 6 * 3600e3).sort((a, b) => a.t - b.t);
 }
 
+// BALONCESTO (31-ago, autopsia de hoops): los sujetos son los equipos con partido en los próximos 4 días.
+// Complementa a hoopsInjuries (el parte oficial de ESPN): la prensa atrapa el descanso programado y las
+// bajas que el parte publica tarde — exactamente la información que el cierre tiene y el modelo no.
+async function obsSujetosHoops() {
+  const filas = []; const vistos = new Set();
+  try {
+    const BST = require('./basketball-engine/store');
+    const BESPN = require('./data-providers/basketball/espn');
+    for (const lg of Object.keys(BST.LEAGUES)) {
+      const gs = await BESPN.games(lg, { from: new Date(Date.now() - 6 * 3600e3), to: new Date(Date.now() + 4 * 864e5) }).catch(() => []);
+      for (const g of gs) {
+        if (g.completed) continue;
+        for (const t of [g.home, g.away]) {
+          const nm = t && (t.name || t.displayName); if (!nm) continue;
+          const id = `${lg}:${obsClave(nm)}`;
+          if (vistos.has(id)) continue; vistos.add(id);
+          filas.push({ id, name: nm, t: Date.parse(g.date || 0), langs: ['en'], meta: { league: lg },
+            q: `"${nm}" ${lg === 'wnba' ? 'WNBA' : 'NBA'} basketball` });
+        }
+      }
+    }
+  } catch { /* hoops sin agenda */ }
+  return filas.filter((x) => Number.isFinite(x.t) && x.t > Date.now() - 6 * 3600e3).sort((a, b) => a.t - b.t);
+}
+
 async function runObsDeporte(dominio) {
   if (!obsDeportesOn()) return { skipped: 'disabled' };
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops' }[dominio];
   if (!SLOT) return { skipped: 'dominio' };
   db[SLOT] = db[SLOT] || {};
   const sujetos = dominio === 'esports' ? await obsSujetosEsports()
-    : dominio === 'tennis' ? await obsSujetosTenis() : await obsSujetosAmfoot();
+    : dominio === 'tennis' ? await obsSujetosTenis()
+      : dominio === 'hoops' ? await obsSujetosHoops() : await obsSujetosAmfoot();
   const r = await OBSD.barrer({
     dominio, sujetos, store: db[SLOT], llm,
     // College puede meter 130 equipos en una jornada: el tope y el orden por hora de inicio son lo que
@@ -14740,7 +14782,7 @@ async function runObsDeporte(dominio) {
 // por el otro habría dado cero señales siempre, y en silencio — el peor tipo de fallo, porque parece que
 // la capa funciona y simplemente no hay noticias. Se prueban las dos.
 const obsSenales = (dominio, ids, opts) => {
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops' }[dominio];
   const lista = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
   for (const id of lista) {
     try { const f = OBSD.banderas(dominio, db[SLOT] || {}, id, opts || {}); if (f.length) return f; } catch { /* sigue */ }
@@ -14757,7 +14799,7 @@ const obsParaDossier = (dominio, ids) => {
 if (obsDeportesOn()) {
   // escalonados para no salir los tres a la vez ni chocar con los dos que ya existían (150 s y 200 s)
   const arranca = (dom, ms) => { setTimeout(() => runObsDeporte(dom).catch(() => { }), ms); setInterval(() => runObsDeporte(dom).catch(() => { }), 3 * 3600 * 1000); };
-  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000);
+  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -18191,6 +18233,16 @@ const server = http.createServer(async (req, res) => {
           props: url.searchParams.get('props') !== '0',
           deep: url.searchParams.get('deep') !== '0' });
         if (!gi) return json(res, 404, { error: 'No encontrado' });
+        // PRENSA (31-ago): las señales del observador de baloncesto — DISPLAY con cita textual, jamás
+        // dentro de una probabilidad. Complementa al parte oficial (obsG): la prensa trae el descanso
+        // programado y lo que el injury report publica tarde.
+        try {
+          const hN = (C.teams[g.home.id] || {}).name, aN = (C.teams[g.away.id] || {}).name;
+          gi.prensa = [
+            ...obsSenales('hoops', `${lg}:${obsClave(hN)}`, { lado: 'home' }),
+            ...obsSenales('hoops', `${lg}:${obsClave(aN)}`, { lado: 'away' })];
+          if (!gi.prensa.length) delete gi.prensa;
+        } catch { /* la prensa nunca rompe el panel */ }
         // ── CONGELADO POINT-IN-TIME (data-fabric, módulo 5) ────────────────────────────────────────
         // Cada vez que el modelo opina sobre un partido futuro se guarda la fotografía de lo que tenía
         // delante: versión del modelo, supuestos de alineación, precio de mercado y probabilidad. Es lo
@@ -19417,7 +19469,7 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const dom = String(url.searchParams.get('dom') || '');
       if (req.method === 'POST') {
-        if (!['esports', 'tennis', 'amfoot'].includes(dom)) return json(res, 400, { error: 'dom desconocido', dom: ['esports', 'tennis', 'amfoot'] });
+        if (!['esports', 'tennis', 'amfoot', 'hoops'].includes(dom)) return json(res, 400, { error: 'dom desconocido', dom: ['esports', 'tennis', 'amfoot', 'hoops'] });
         return json(res, 200, await runObsDeporte(dom).catch((e) => ({ error: e.message })));
       }
       const resumen = (slot, dominio) => {
@@ -19434,6 +19486,7 @@ const server = http.createServer(async (req, res) => {
         enabled: obsDeportesOn(), at: new Date().toISOString(),
         doctrina: 'display, nunca modelo: las señales se pintan con su cita y entran al dossier del redactor como PRENSA; ninguna toca una probabilidad.',
         esports: resumen('obsEsports', 'esports'), tennis: resumen('obsTennis', 'tennis'), amfoot: resumen('obsAmfoot', 'amfoot'),
+        hoops: resumen('obsHoops', 'hoops'),
       });
     }
     if (p === '/api/internal/depth') {

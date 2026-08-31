@@ -676,6 +676,24 @@ const DOMINIOS = {
     },
     ruido: 'Ignora clickbait, mercado de fichajes fuera de temporada, recruiting y noticias de otra semana.',
   },
+  // BALONCESTO (31-ago, autopsia de hoops): la fuga del modelo contra el cierre es exactamente la
+  // información de plantilla que la prensa publica y el rating no ve. Con 5 titulares y estrellas de 30%+
+  // de uso, una sola ausencia mueve la línea más que en cualquier otro deporte de equipo — y el descanso
+  // programado (load management) es un tipo propio porque no es lesión y también saca a la estrella.
+  hoops: {
+    que: 'baloncesto (WNBA, NBA)',
+    sujeto: 'el equipo indicado (no su rival)',
+    tipos: {
+      OUT: 'una titular o jugadora importante confirmada fuera del partido',
+      INJURY: 'lesión sin baja confirmada',
+      REST: 'descanso programado o load management: no juega sin estar lesionada',
+      DOUBT: 'en duda, questionable o day-to-day',
+      SUSPENDED: 'sanción de la liga o del equipo',
+      RETURN: 'vuelve de lesión o de ausencia',
+      ROSTER: 'fichaje, corte o traspaso que cambia la rotación',
+    },
+    ruido: 'Ignora clickbait, crónicas del partido de ayer, rumores de mercado y noticias de otro equipo.',
+  },
 };
 async function extractSignals(items, domain) {
   if (!items.length) return [];

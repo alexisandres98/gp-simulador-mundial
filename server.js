@@ -426,9 +426,11 @@ async function amfootRostersJob() {
         return Date.now() - st.mtimeMs < 7 * 864e5;
       } catch { return false; }
     };
-    // CFL PRIMERO: son 9 equipos contra los 130+ de college. La liga barata entrega valor en un minuto y
-    // deja la cara para el final; al revés, college se come la ventana y la CFL no llega nunca.
-    const todo = ['cfl', 'ncaaf'].filter((lg) => !fresh(lg));
+    // CFL FUERA DEL JOB (31-ago): su plantilla viaja COMPLETA en el repo (webs de los clubes + Wikipedia,
+    // con headshots auto-hospedados en public/). La liga está migrando las webs de los clubes a un CMS
+    // renderizado en cliente que este job no puede leer, y una cosecha pobre en Render pisaría fotos que
+    // el motor ya prefiere por riqueza (rosterOf puntúa jugadores+fotos). Refresco: manual, por sesión.
+    const todo = ['ncaaf'].filter((lg) => !fresh(lg));
     if (!todo.length) { opsLog('amf_rosters', { skipped: 'al día' }); return; }
     for (const lg of todo) {
       if (!opsMemOk('amf_rosters', 100)) { opsLog('amf_rosters', { stopped: 'techo', pending: lg }); setTimeout(amfootRostersJob, 45 * 60e3); return; }

@@ -799,18 +799,18 @@ function rosterOf(lg) {
   const c = RST[lg];
   if (c && c.j) return c.j;
   if (c && !c.j && Date.now() - c.at < 5 * 60e3) return null;
-  // GANA EL ARCHIVO CON JUGADORES, no el primero (31-ago). El disco persistente de Render guarda el
-  // roster-cfl.json con el GAP de ESPN (cero jugadores), y la cosecha nueva de la CFL (webs de los nueve
-  // clubes) viaja en el REPO: con la preferencia ciega disco-primero, el gap viejo taparía la plantilla
-  // real para siempre. Un archivo vacío nunca le gana a uno lleno; entre dos llenos, manda el disco.
-  let j = null;
+  // GANA EL ARCHIVO MÁS RICO, no el primero (31-ago). El disco persistente de Render puede guardar una
+  // versión pobre (el gap de ESPN, o una cosecha de Wikipedia sin fotos de cuando la web de un club falló)
+  // y la cosecha buena de la CFL —con headshots auto-hospedados— viaja en el REPO. La vara es simple:
+  // jugadores + el doble por cada foto. Entre iguales, manda el disco (es el que refrescan los jobs).
+  let j = null, best = -1;
   for (const dir of [DISK_DIR, REPO_DIR]) {
     let cand = null;
     try { cand = JSON.parse(fs.readFileSync(path.join(dir, `roster-${lg}.json`), 'utf8')); } catch { }
     if (!cand) continue;
-    const full = cand.players && Object.keys(cand.players).length;
-    if (full) { j = cand; break; }
-    if (!j) j = cand; // vacío/gap: solo si no aparece nada mejor
+    const ps = Object.values(cand.players || {});
+    const score = ps.length + 2 * ps.filter((p) => p.photo).length;
+    if (score > best) { best = score; j = cand; }
   }
   RST[lg] = { j, at: Date.now() };
   return j;

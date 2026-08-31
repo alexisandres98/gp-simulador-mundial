@@ -2858,6 +2858,45 @@ async function dispatchLiveAlerts(list) {
   }
 }
 
+// Alertas en vivo de CLUBES (31-ago, "sí hazlo"): misma mecánica que las del Mundial, pero el favorito
+// es `club:<liga>:<tm_id>` (la convención que escribe el botón Seguir de la ficha de club). El email
+// reutiliza la pieza del Mundial con el nombre del club y la liga en vez de banderas.
+async function dispatchClubLiveAlerts(list) {
+  if (!mailer.isConfigured()) return;
+  const RT = global._clubsRatings || { leagues: {} };
+  for (const a of list) {
+    const dk = a.kind === 'start' ? `${a.key}:start` : `${a.key}:g${a.hg}-${a.ag}`;
+    if (db.sentAlerts[dk]) continue;
+    const favH = `club:${a.league}:${a.hId}`, favA = `club:${a.league}:${a.aId}`;
+    const lgName = (RT.leagues && RT.leagues[a.league] && RT.leagues[a.league].name) || a.league;
+    const h = { name: a.hName, flag: '' }, aw = { name: a.aName, flag: '' };
+    let sent = 0;
+    for (const [email, u] of Object.entries(db.users)) {
+      if (u.alerts === false) continue;
+      const prefs = u.alertPrefs || {};
+      const ev = prefs.events || {}, ch = prefs.channels || {};
+      if (ch.email === false) continue;
+      if (a.kind === 'start' && ev.matchStart === false) continue;
+      if (a.kind === 'goal' && ev.goal === false) continue;
+      const muted = prefs.mutedTeams || [];
+      const favs = u.favorites || [];
+      if (![favH, favA].some(f => favs.includes(f) && !muted.includes(f))) continue;
+      const m = liveAlertEmail(h, aw, a);
+      m.subject += ` · ${lgName}`;
+      try { await mailer.sendMail({ to: email, ...m }); sent++; }
+      catch (e) { console.error('[alert] club', email, e.message); }
+    }
+    db.sentAlerts[dk] = Date.now();
+    if (sent) console.log(`[alert] club ${a.kind} ${a.key}: ${sent} correos enviados`);
+  }
+  // poda: las claves de club (llevan '|' del clubScoreKey) con más de 3 días salen — las ligas juegan
+  // cada semana y sin poda esto crecería para siempre; las del Mundial no se tocan
+  for (const [k, v] of Object.entries(db.sentAlerts)) {
+    if (k.includes('|') && Date.now() - v > 3 * 86400e3) delete db.sentAlerts[k];
+  }
+  save();
+}
+
 // Revisa todos los partidos finalizados y alerta los que aún no se han notificado
 async function dispatchPendingAlerts() {
   const finals = [];
@@ -5830,6 +5869,7 @@ async function clubScoresSync({ force = false } = {}) {
     const fromD = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
     const toD = new Date(Date.now() + 1 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
     let anyChange = false;
+    const clubAlerts = []; // transiciones inicio/gol para alertas de clubes seguidos (31-ago)
     for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
       const code = CLUB_ESPN[lgKey]; if (!code || L.starts) continue; // pretemporada: sin partidos aún
       // índice nombre-normalizado → tm_id de la liga
@@ -5867,6 +5907,16 @@ async function clubScoresSync({ force = false } = {}) {
           const wasFinal = prev && prev.status === 'final';
           if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; persistClubFinal(lgKey, payload); }
           else if (prev && prev.elo_applied) payload.elo_applied = true;
+          // transiciones para alertas de clubes seguidos (31-ago): misma lógica que el Mundial —
+          // pasar a live sin haberlo estado = inicio; subir el total de goles estando live = gol
+          try {
+            if (payload.status === 'live') {
+              const wasLive = prev && (prev.status === 'live' || prev.status === 'final');
+              const total = hg + ag, ptotal = ((prev && prev.hg) || 0) + ((prev && prev.ag) || 0);
+              if (!wasLive) clubAlerts.push({ key, league: lgKey, hId, aId, hName: H.team.displayName, aName: A.team.displayName, hg, ag, kind: 'start' });
+              else if (total > ptotal) clubAlerts.push({ key, league: lgKey, hId, aId, hName: H.team.displayName, aName: A.team.displayName, hg, ag, kind: 'goal' });
+            }
+          } catch { /* nunca romper el sync */ }
           db.clubResults[key] = payload; out.changed++; anyChange = true; console.log(`[clubs-score] ${lgKey} ${H.team.displayName} ${hg}-${ag} ${A.team.displayName} ${payload.status}${payload.status === 'live' ? ` ${minute}'` : ''}`);
         }
       }
@@ -5876,6 +5926,8 @@ async function clubScoresSync({ force = false } = {}) {
       const age = Date.now() - (r.at || 0);
       if ((r.status === 'final' && age > 3 * 3600e3) || age > 6 * 3600e3) delete db.clubResults[k];
     }
+    // alertas en vivo de clubes (31-ago): a quien sigue el club, con el mismo dedup que el Mundial
+    if (clubAlerts.length) dispatchClubLiveAlerts(clubAlerts).catch(e => console.error('[alert] clubs:', e.message));
     try { sampleClubMomentum(RT); } catch { /* momentum no crítico */ } // F1.2: muestrea la prob GP en vivo de los partidos en juego
     try { if (anyChange) settleClubDailyPicks(); } catch { /* settle no crítico */ } // F3.3: liquida picks de clubes al llegar finales
     _clubScoresLast = Date.now();
@@ -18618,10 +18670,20 @@ const server = http.createServer(async (req, res) => {
             home: { id: target.home.id }, away: { id: target.away.id } },
           { period: target.period, clock: target.clock, home_score: target.home.score, away_score: target.away.score },
           { L: Ll, sims: 20000, source_at: lastWall, ingest_at: ingestAt });
+          // las últimas jugadas (31-ago, "ver qué está pasando sin ver el partido"): el summary ya está
+          // en mano por el wallclock — se exponen las últimas 6 con texto, reloj y marcador
+          const lastPlays = plays.slice(-6).reverse().map((pl) => ({
+            t: String(pl.text || '').slice(0, 160) || null,
+            clock: (pl.clock && pl.clock.displayValue) || null,
+            q: (pl.period && pl.period.number) || null,
+            score: pl.awayScore != null && pl.homeScore != null ? `${pl.awayScore}-${pl.homeScore}` : null,
+            scoring: !!pl.scoringPlay,
+          })).filter((x) => x.t);
           return json(res, 200, {
             league: lg, game: { id: target.id, home: C.teams[target.home.id] || { id: target.home.id },
               away: C.teams[target.away.id] || { id: target.away.id }, status: target.status || null },
             ...view,
+            last_plays: lastPlays,
             others: inPlay.filter((x) => String(x.id) !== String(target.id)).map((x) => ({ id: x.id, home: x.home.abbr, away: x.away.abbr, status: x.status })),
           });
         } catch (e) { return json(res, 500, { error: e.message }); }
@@ -18703,7 +18765,15 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/f1/board') {
           const rd = url.searchParams.get('round');
-          return json(res, 200, F1.raceBoard(rd != null && rd !== '' ? +rd : undefined));
+          const outF1 = F1.raceBoard(rd != null && rd !== '' ? +rd : undefined);
+          // EN VIVO (31-ago): si hay sesión en curso (libres, clasificación o carrera), la cabeza de
+          // pista de ESPN racing viaja pegada al tablero. DISPLAY, no modelo.
+          try {
+            const LVf = require('./live-sports');
+            const lvF = await LVf.f1Live();
+            if (lvF) outF1.live = lvF;
+          } catch { /* el vivo jamás rompe el tablero */ }
+          return json(res, 200, outF1);
         }
         if (p === '/api/f1/calendar') return json(res, 200, F1.calendar());
         if (p === '/api/f1/standings') return json(res, 200, F1.standings());
@@ -18905,6 +18975,11 @@ const server = http.createServer(async (req, res) => {
                     bo: hit.bo || it.bo || null, detail: hit.detail,
                     map_s1: hit.swapped ? (hit.map_s2 != null ? hit.map_s2 : null) : (hit.map_s1 != null ? hit.map_s1 : null),
                     map_s2: hit.swapped ? (hit.map_s1 != null ? hit.map_s1 : null) : (hit.map_s2 != null ? hit.map_s2 : null) };
+                  if (hit.cur_map && hit.cur_map.map) it.live.map = hit.cur_map.map;
+                  if (hit.game && hit.game.a && hit.game.b) {
+                    it.live.k1 = hit.swapped ? hit.game.b.k : hit.game.a.k;
+                    it.live.k2 = hit.swapped ? hit.game.a.k : hit.game.b.k;
+                  }
                 }
               }
             }
@@ -18942,9 +19017,18 @@ const server = http.createServer(async (req, res) => {
               const LV = require('./live-sports');
               const lv = gm === 'cs2' ? await LV.cs2Live() : await LV.lolLive();
               const hit = lv && lv.length ? LV.matchByNames(lv, out.event.home.name, out.event.away.name, ['a', 'b']) : null;
-              if (hit) out.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
-                bo: hit.bo || out.bo || null, detail: hit.detail,
-                map_s1: hit.swapped ? hit.map_s2 : hit.map_s1, map_s2: hit.swapped ? hit.map_s1 : hit.map_s2 };
+              if (hit) {
+                out.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
+                  bo: hit.bo || out.bo || null, detail: hit.detail,
+                  map_s1: hit.swapped ? hit.map_s2 : hit.map_s1, map_s2: hit.swapped ? hit.map_s1 : hit.map_s2 };
+                // el detalle rico (31-ago): historial de mapas en CS2, kills/oro/objetivos en LoL — todo
+                // con la orientación corregida si el cruce salió al revés
+                if (Array.isArray(hit.maps) && hit.maps.length) {
+                  out.live.maps = hit.maps.map((mm) => hit.swapped ? { ...mm, s1: mm.s2, s2: mm.s1 } : mm);
+                }
+                if (hit.cur_map) out.live.cur_map = hit.cur_map;
+                if (hit.game) out.live.game = hit.swapped ? { ...hit.game, a: hit.game.b, b: hit.game.a } : hit.game;
+              }
             }
           } catch { }
           return json(res, 200, esStripMatch(out));
@@ -19147,9 +19231,21 @@ const server = http.createServer(async (req, res) => {
             const LV = require('./live-sports');
             const lv = lgA === 'cfl' ? await LV.cflLive() : await LV.ncaafLive();
             const hit = lv && lv.length ? LV.matchByNames(lv, out.home.name, out.away.name) : null;
-            if (hit) out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
-              period: hit.period, clock: hit.clock, detail: hit.detail,
-              possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+            if (hit) {
+              out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
+                period: hit.period, clock: hit.clock, detail: hit.detail,
+                possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+              // el detalle rico (31-ago): últimas jugadas del drive, anotaciones y marcador por cuartos.
+              // Solo College (ESPN summary); el feed oficial de CFL no publica jugada a jugada.
+              if (hit.espn && lgA !== 'cfl') {
+                const sum = await LV.espnSummary('football/college-football', hit.espn);
+                if (sum) {
+                  out.live.plays = sum.plays; out.live.scoring = sum.scoring; out.live.drive = sum.drive;
+                  out.live.ls_home = hit.swapped ? sum.ls_away : sum.ls_home;
+                  out.live.ls_away = hit.swapped ? sum.ls_home : sum.ls_away;
+                }
+              }
+            }
           } catch { }
           return json(res, 200, out);
         }
@@ -19227,9 +19323,20 @@ const server = http.createServer(async (req, res) => {
             const LV = require('./live-sports');
             const lv = await LV.nflLive();
             const hit = lv && lv.length ? LV.matchByNames(lv, out.home.name, out.away.name) : null;
-            if (hit) out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
-              period: hit.period, clock: hit.clock, detail: hit.detail,
-              possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+            if (hit) {
+              out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
+                period: hit.period, clock: hit.clock, detail: hit.detail,
+                possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+              // el detalle rico (31-ago): drive en curso, anotaciones y marcador por cuartos del summary
+              if (hit.espn) {
+                const sum = await LV.espnSummary('football/nfl', hit.espn);
+                if (sum) {
+                  out.live.plays = sum.plays; out.live.scoring = sum.scoring; out.live.drive = sum.drive;
+                  out.live.ls_home = hit.swapped ? sum.ls_away : sum.ls_home;
+                  out.live.ls_away = hit.swapped ? sum.ls_home : sum.ls_away;
+                }
+              }
+            }
           } catch { }
           return json(res, 200, out);
         }
@@ -22304,6 +22411,24 @@ async function anotar(pid){
     }
     // CAPA DE OBSERVACIÓN (shadow, solo admin): señales + disponibilidad por jugador + factor λ sugerido.
     // POST = correr el pase ahora. NADA de esto toca el modelo oficial (aplicación pendiente de encendido).
+    // ── sonda ESPN con llave (31-ago): iterar formas de site.api.espn.com desde producción — el sandbox
+    // de desarrollo recibe 403 de Akamai y sin esto cada ajuste del vivo era un deploy a ciegas. Solo
+    // lectura, allowlist del host por construcción, jamás enlazada desde la UI.
+    if (p === '/api/internal/espn') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const pathE = String(url.searchParams.get('path') || '').replace(/^\/+/, '');
+      if (!/^[a-z0-9/_.-]+$/i.test(pathE) || pathE.includes('..')) return json(res, 400, { error: 'path inválido' });
+      const qsE = String(url.searchParams.get('qs') || '').replace(/[^a-zA-Z0-9=&_,.-]/g, '');
+      try {
+        const rE = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${pathE}${qsE ? '?' + qsE : ''}`, {
+          headers: { 'user-agent': 'Mozilla/5.0', accept: 'application/json' }, signal: AbortSignal.timeout(15000),
+        });
+        const bodyE = await rE.text();
+        res.writeHead(rE.ok ? 200 : rE.status, { 'Content-Type': 'application/json' });
+        return res.end(bodyE.slice(0, 2_000_000));
+      } catch (e) { return json(res, 502, { error: e.message }); }
+    }
     if (p === '/api/internal/observer') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await runObserver().catch(e => ({ error: e.message })); return json(res, 200, r); }

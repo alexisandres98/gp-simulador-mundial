@@ -4716,7 +4716,9 @@
       if (res && res.favorites) S.me.favorites = res.favorites;
       else { var i = favs.indexOf(id); if (i >= 0) favs.splice(i, 1); else favs.push(id); }
       // repintar la superficie activa
-      if (S.view === 'team' && S.teamId === id) renderTeam(); else if (S.view === 'follow') renderFollow();
+      if (S.view === 'team' && S.teamId === id) renderTeam();
+      else if (S.view === 'cteam' && id === 'club:' + S.cteamLg + ':' + S.cteamId) renderClubTeam();
+      else if (S.view === 'follow') renderFollow();
     });
   }
   function syncNavActive() {
@@ -6570,7 +6572,13 @@
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_pts')) + '</span><b class="gx-mono">' + st.pts + '</b></div>' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_record')) + '</span><b class="gx-mono">' + st.w + '-' + st.d + '-' + st.l + '</b></div>' +
         '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('cl_goals')) + '</span><b class="gx-mono">' + st.gf + ':' + st.ga + '</b></div>' +
-        '</div>' : '') + '</div>';
+        '</div>' : '') +
+      // SEGUIR CLUBES (31-ago, "sí hazlo"): mismo botón que el Mundial; el favorito viaja como
+      // club:<liga>:<id> y activa las alertas de inicio/gol de este club
+      (S.me ? '<div class="gx-team-actions"><button class="gx-btn ghost gx-follow" data-follow="' + esc('club:' + lg + ':' + id) + '">' +
+        ic(isFollowing('club:' + lg + ':' + id) ? 'star-filled' : 'star') + ' ' + esc(t(isFollowing('club:' + lg + ':' + id) ? 'tm_following' : 'tm_follow')) + '</button>' +
+        '<span class="gx-hero-note gx-dim">' + esc(esT('Alertas de inicio y gol por email al seguirlo.', 'Kickoff and goal email alerts when you follow.')) + '</span></div>' : '') +
+      '</div>';
     var ups = (L.upcoming || []).filter(function (f) { return f.home.id === id || f.away.id === id; });
     var upHtml;
     if (L.starts) upHtml = '<div class="gx-empty">' + ic('calendar') + esc(t('cl_preseason')) + '</div>';
@@ -7102,7 +7110,11 @@
       body = '<div class="gx-panel"><div class="gx-empty">' + ic('chart-line') + '<b>' + esc(t('evo_insufficient')) + '</b>' + esc(t('evo_insufficient_sub', { n: hist.length })) + '</div></div>';
     } else {
       var last = hist[hist.length - 1].probs || {}, first = hist[0].probs || {};
-      var followed = isClub ? [] : ((S.me && S.me.favorites) || []);
+      // los clubes seguidos (club:<liga>:<id>) también se destacan en su propia liga (31-ago)
+      var followed = isClub
+        ? ((S.me && S.me.favorites) || []).filter(function (f) { return String(f).indexOf('club:' + S.eComp + ':') === 0; })
+          .map(function (f) { return String(f).split(':').slice(2).join(':'); })
+        : ((S.me && S.me.favorites) || []);
       var filt = S.evoFilt === 'mine' && followed.length ? 'mine' : 'top';
       var sel = filt === 'mine' ? followed.slice(0, 10) : Object.keys(last).sort(function (a, b) { return (last[b] || 0) - (last[a] || 0); }).slice(0, 10);
       // gráfico SVG multi-línea sobre snapshots REALES
@@ -7194,6 +7206,20 @@
     if (!favs.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('star') + '<b>' + esc(t('fol_empty')) + '</b>' + esc(t('fol_empty_sub')) + '</div></div>';
     else {
       var rows = favs.map(function (id) {
+        // clubes seguidos (31-ago): el favorito club:<liga>:<id> se pinta con escudo y liga, y navega
+        // a la ficha del club; la columna de campeón del Mundial no aplica
+        if (String(id).indexOf('club:') === 0) {
+          var cp = String(id).split(':'), clg = cp[1], cid = cp.slice(2).join(':');
+          if (clubsOn()) loadClubs();
+          var CL = S.clubs ? clubLeague(clg) : null;
+          var crow = CL ? ((CL.table || []).concat(CL.standings || []).filter(function (x) { return x.id === cid; })[0] || null) : null;
+          var cnm = (crow && crow.name) || cid;
+          var cup = CL ? ((CL.upcoming || []).filter(function (f) { return f.home.id === cid || f.away.id === cid; })[0] || null) : null;
+          return '<tr class="gx-row" data-nav-cteam="' + esc(clg + '|' + cid) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + clubBadge(cid) + '</span><b>' + esc(cnm) + '</b></div></td>' +
+            '<td class="l gx-dim" style="font-size:11.5px">' + (cup ? esc(t('vs') + ' ' + (cup.home.id === cid ? cup.away.name : cup.home.name) + ' · ' + fmtDate(cup.utc)) : esc((CL && CL.name) || clg)) + '</td>' +
+            '<td class="gx-mono gx-dim">—</td>' +
+            '<td class="l"><button class="gx-iconmini" data-follow="' + esc(id) + '" title="' + esc(t('tm_following')) + '">' + ic('star-filled') + '</button></td></tr>';
+        }
         var s = simById[id] || {}, ms = teamMatches(id).filter(function (c) { return calStatus(c) !== 'final'; })[0];
         return '<tr class="gx-row" data-nav-team="' + esc(id) + '"><td class="l"><div class="gx-cell-team"><span class="fl">' + flag(id) + '</span><b>' + esc(teamName(id)) + '</b></div></td>' +
           '<td class="l gx-dim" style="font-size:11.5px">' + (ms ? esc(t('vs') + ' ' + teamName(ms.home === id ? ms.away : ms.home) + ' · ' + fmtDate(ms.datetime)) : '—') + '</td>' +
@@ -8452,6 +8478,13 @@
           '<span class="gx-dim">' + (stv.is_ot ? 'OT' : 'Q' + stv.period) + (stv.clock ? ' · ' + esc(stv.clock) : '') + '</span>' +
           (pj.win && pj.win.home != null ? '<span class="gx-dim">' + esT('GP en vivo ', 'GP live ') + Math.round(100 * pj.win.home) + '%</span>' : '') +
           (pj.projected_final ? '<span class="gx-dim gx-mono" style="font-size:11.5px">' + esT('final proyectado ', 'projected final ') + pj.projected_final.away + ' - ' + pj.projected_final.home + '</span>' : '') +
+          // las últimas jugadas (31-ago): la película del partido sin salir de la plataforma
+          (lv.last_plays && lv.last_plays.length ? '<div style="flex-basis:100%"><span class="gx-label">' + esT('Últimas jugadas', 'Latest plays') + '</span>' +
+            lv.last_plays.map(function (pl) {
+              return '<div class="gx-dim" style="font-size:11.5px;padding:2px 0;border-top:1px solid var(--line)">' +
+                (pl.q ? '<b class="gx-mono">Q' + pl.q + (pl.clock ? ' ' + esc(pl.clock) : '') + '</b> · ' : '') + esc(pl.t || '') +
+                (pl.score ? ' <em class="gx-mono"' + (pl.scoring ? ' style="color:var(--text)"' : '') + '>(' + esc(pl.score) + ')</em>' : '') + '</div>';
+            }).join('') + '</div>' : '') +
           '</div>';
       }
     }
@@ -9521,8 +9554,10 @@
   function esSignalCell(it) {
     // EN VIVO manda (31-ago): marcador de la serie + mapa en curso
     if (it.live) {
-      var mapSc = (it.live.map_s1 != null && it.live.map_s2 != null) ? ' · ' + it.live.map_s1 + '-' + it.live.map_s2 : '';
-      return '<span class="gx-live-pill">' + it.live.s1 + ' - ' + it.live.s2 + (it.live.bo ? ' · BO' + it.live.bo : '') + mapSc + '</span>';
+      var mapSc = (it.live.map_s1 != null && it.live.map_s2 != null) ? ' · ' + it.live.map_s1 + '-' + it.live.map_s2
+        : (it.live.k1 != null && it.live.k2 != null) ? ' · ⚔ ' + it.live.k1 + '-' + it.live.k2 : '';
+      var mapNm = it.live.map ? ' · ' + esc(it.live.map) : '';
+      return '<span class="gx-live-pill">' + it.live.s1 + ' - ' + it.live.s2 + (it.live.bo ? ' · BO' + it.live.bo : '') + mapNm + mapSc + '</span>';
     }
     if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
     if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + esT(' con ventaja', ' with edge') + '</span>';
@@ -10094,13 +10129,40 @@
     }
     var ev = d.event, m = d.model || {};
     if (d.live) nsLiveAuto(function () { nsBust(S.es, 'match_'); });
-    // TIRA EN VIVO (31-ago): serie y mapa en curso, arriba de todo
-    var esLiveB = d.live ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
-      '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
-      '<b class="gx-mono" style="font-size:20px">' + esc(ev.home.name) + ' ' + d.live.s1 + ' - ' + d.live.s2 + ' ' + esc(ev.away.name) + '</b>' +
-      (d.live.bo ? '<span class="gx-dim">BO' + d.live.bo + '</span>' : '') +
-      (d.live.map_s1 != null && d.live.map_s2 != null ? '<span class="gx-dim gx-mono">' + esT('mapa en curso ', 'current map ') + d.live.map_s1 + ' - ' + d.live.map_s2 + '</span>' : '<span class="gx-dim">' + esc(d.live.detail || '') + '</span>') +
-      '</div>' : '';
+    // TIRA EN VIVO (31-ago): serie y mapa en curso arriba; debajo, el detalle rico — historial de mapas
+    // en CS2 (bo3 no publica las rondas del mapa en curso: se dice, no se inventa) y kills/oro/objetivos
+    // del mapa en curso en LoL (livestats de lolesports).
+    var esLiveB = '';
+    if (d.live) {
+      var lvRows = '';
+      if (d.live.maps && d.live.maps.length) {
+        lvRows += '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">' + d.live.maps.map(function (mm) {
+          return '<span class="gx-dim gx-mono" style="border:1px solid var(--line);border-radius:6px;padding:2px 8px">M' + mm.n +
+            (mm.map ? ' ' + esc(mm.map) : '') + (mm.s1 != null && mm.s2 != null ? ' · ' + mm.s1 + '-' + mm.s2 : '') + '</span>';
+        }).join('') +
+        (d.live.cur_map ? '<span class="gx-mono" style="border:1px solid var(--line);border-radius:6px;padding:2px 8px">M' + d.live.cur_map.n +
+          (d.live.cur_map.map ? ' ' + esc(d.live.cur_map.map) : '') + ' · ' + esT('en juego', 'playing') + '</span>' : '') + '</div>';
+      }
+      if (d.live.game && d.live.game.a && d.live.game.b) {
+        var ga = d.live.game.a, gb = d.live.game.b;
+        var duo = function (lbl, x, y, suf) { return x != null && y != null ? '<span class="gx-dim gx-mono">' + lbl + ' <b style="color:var(--text)">' + x + (suf || '') + ' - ' + y + (suf || '') + '</b></span>' : ''; };
+        lvRows += '<div style="display:flex;gap:14px;flex-wrap:wrap;width:100%">' +
+          '<span class="gx-dim">' + esT('mapa', 'game') + ' ' + d.live.game.n + '</span>' +
+          duo('⚔ kills', ga.k, gb.k) +
+          duo(esT('oro', 'gold'), ga.g, gb.g, 'k') +
+          duo(esT('torres', 'towers'), ga.t, gb.t) +
+          duo(esT('dragones', 'dragons'), ga.d, gb.d) +
+          duo(esT('barones', 'barons'), ga.b, gb.b) +
+          '</div>';
+      }
+      esLiveB = '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+        '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+        '<b class="gx-mono" style="font-size:20px">' + esc(ev.home.name) + ' ' + d.live.s1 + ' - ' + d.live.s2 + ' ' + esc(ev.away.name) + '</b>' +
+        (d.live.bo ? '<span class="gx-dim">BO' + d.live.bo + '</span>' : '') +
+        (d.live.map_s1 != null && d.live.map_s2 != null ? '<span class="gx-dim gx-mono">' + esT('mapa en curso ', 'current map ') + d.live.map_s1 + ' - ' + d.live.map_s2 + '</span>' : '<span class="gx-dim">' + esc(d.live.detail || '') + '</span>') +
+        lvRows +
+        '</div>';
+    }
     var head = esMatchHead(d);
     var blocks;
     // CS2 ES EL PRODUCTO INSIGNIA y tiene su propia composición: héroe con escudos, tablero de veto con los
@@ -11614,7 +11676,23 @@
     if (!d.available) { f1Shell(t('f1_nav_race'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || 'Sin calendario') + '</b></div></div>'); return; }
     var rc = d.race;
     var days = Math.max(0, Math.ceil((Date.parse(rc.date + 'T' + (rc.time || '13:00:00Z')) - Date.now()) / 864e5));
-    var hero = '<div class="gx-panel gx-f1-hero">' +
+    // TIRA EN VIVO (31-ago): sesión en curso (libres, quali o carrera) con la cabeza de pista. El tablero
+    // se cachea 5 min, pero con sesión viva el auto-refresh lo vuelve a pedir cada 30s.
+    var liveF = '';
+    if (d.live) {
+      nsLiveAuto(function () { nsBust(S.f1, 'board'); });
+      liveF = '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+        '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+        '<b>' + esc(d.live.gp || '') + (d.live.session ? ' · ' + esc(d.live.session) : '') + '</b>' +
+        '<span class="gx-dim">' + esc(d.live.detail || '') + (d.live.lap ? ' · ' + esT('vuelta ', 'lap ') + d.live.lap : '') + '</span>' +
+        (d.live.leaders && d.live.leaders.length ? '<div style="flex-basis:100%;display:flex;gap:10px;flex-wrap:wrap">' +
+          d.live.leaders.map(function (ld) {
+            return '<span class="gx-dim gx-mono" style="font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:2px 8px">' +
+              (ld.pos != null ? 'P' + ld.pos + ' ' : '') + esc(ld.name) + (ld.laps != null ? ' · ' + ld.laps + 'v' : '') + '</span>';
+          }).join('') + '</div>' : '') +
+        '</div>';
+    }
+    var hero = liveF + '<div class="gx-panel gx-f1-hero">' +
       '<div class="gx-f1-hero-top"><span class="gx-f1-round gx-mono">R' + rc.round + ' · ' + rc.season + '</span>' +
         '<span class="gx-f1-state' + (d.state === 'POST_QUALI' ? ' post' : '') + '">' + esc(d.state_label) + '</span></div>' +
       '<h2 class="gx-f1-title">' + esc(rc.name) + '</h2>' +
@@ -13863,6 +13941,40 @@
       '<div class="gx-nfl-forms">' + side(h, d.home.abbr) + side(a, d.away.abbr) + '</div>' +
       '<div class="gx-dim gx-es-note">' + esc((h && h.note) || 'Reporte de ESPN con su fecha; la decisión del motor NO lo consume todavía — eso exige feed licenciado point-in-time (NFL-0069).') + '</div></div>';
   }
+  // El detalle rico del vivo (31-ago): marcador por cuartos, drive en curso, últimas jugadas y
+  // anotaciones — todo del summary de ESPN vía el servidor. Cada bloque solo aparece si el feed lo trae.
+  function nflLiveDetail(d) {
+    var lv = d.live || {}, out = '';
+    if (lv.ls_home && lv.ls_home.length) {
+      var qs = lv.ls_home.map(function (_, i) { return i < 4 ? 'Q' + (i + 1) : 'OT'; });
+      out += '<div style="flex-basis:100%;overflow-x:auto"><table class="gx-mono" style="font-size:11.5px;border-spacing:10px 2px">' +
+        '<tr><td></td>' + qs.map(function (q) { return '<td class="gx-dim">' + q + '</td>'; }).join('') + '</tr>' +
+        '<tr><td><b>' + esc(d.home.abbr) + '</b></td>' + lv.ls_home.map(function (v) { return '<td>' + v + '</td>'; }).join('') + '</tr>' +
+        '<tr><td><b>' + esc(d.away.abbr) + '</b></td>' + (lv.ls_away || []).map(function (v) { return '<td>' + v + '</td>'; }).join('') + '</tr>' +
+        '</table></div>';
+    }
+    if (lv.drive && (lv.drive.team || lv.drive.desc)) {
+      out += '<span class="gx-dim" style="font-size:11.5px;flex-basis:100%">' + esT('En posesión: ', 'On the ball: ') +
+        '<b>' + esc(lv.drive.team || '') + '</b>' + (lv.drive.desc ? ' — ' + esc(lv.drive.desc) : '') + '</span>';
+    }
+    if (lv.plays && lv.plays.length) {
+      out += '<div style="flex-basis:100%"><span class="gx-label">' + esT('Últimas jugadas', 'Latest plays') + '</span>' +
+        lv.plays.map(function (pl) {
+          return '<div class="gx-dim" style="font-size:11.5px;padding:2px 0;border-top:1px solid var(--line)">' +
+            (pl.q ? '<b class="gx-mono">Q' + pl.q + (pl.clock ? ' ' + esc(pl.clock) : '') + '</b> · ' : '') + esc(pl.t || '') +
+            (pl.score ? ' <em class="gx-mono">(' + esc(pl.score) + ')</em>' : '') + '</div>';
+        }).join('') + '</div>';
+    }
+    if (lv.scoring && lv.scoring.length) {
+      out += '<div style="flex-basis:100%"><span class="gx-label">' + esT('Anotaciones', 'Scoring plays') + '</span>' +
+        lv.scoring.map(function (sp) {
+          return '<div class="gx-dim" style="font-size:11.5px;padding:2px 0;border-top:1px solid var(--line)">' +
+            (sp.team ? '<b>' + esc(sp.team) + '</b> · ' : '') + (sp.q ? '<b class="gx-mono">Q' + sp.q + (sp.clock ? ' ' + esc(sp.clock) : '') + '</b> · ' : '') +
+            esc(sp.t || '') + (sp.score ? ' <em class="gx-mono">(' + esc(sp.score) + ')</em>' : '') + '</div>';
+        }).join('') + '</div>';
+    }
+    return out;
+  }
   function renderNflGame() {
     var id = S.nfl.gameId;
     if (!id) { showView('nflgames'); return; }
@@ -13883,6 +13995,7 @@
       '<span class="gx-dim">' + esc(d.live.detail || '') + '</span>' +
       (d.live.down ? '<span class="gx-dim gx-mono" style="font-size:11.5px">' + esc(d.live.down) + '</span>' : '') +
       (d.live.last_play ? '<span class="gx-dim" style="font-size:11.5px;flex-basis:100%">' + esc(String(d.live.last_play).slice(0, 160)) + '</span>' : '') +
+      nflLiveDetail(d) +
       '</div>' : '';
     if (d.live) nsLiveAuto(function () { nsBust(S.nfl, 'game_'); });
     var hero = liveB + '<div class="gx-cs-hero">' +
@@ -16873,6 +16986,9 @@
           var o = e.target.closest('[data-openmatch]'); if (o) { e.preventDefault(); S.arbCtx = null; S.pendingSec = o.getAttribute('data-cock-sec') || null; openMatch(o.getAttribute('data-openmatch')); return; }
           var ff = e.target.closest('[data-follow]'); if (ff) { e.preventDefault(); e.stopPropagation(); toggleFollow(ff.getAttribute('data-follow')); return; }
           var tt = e.target.closest('[data-nav-team]'); if (tt) { e.preventDefault(); openTeam(tt.getAttribute('data-nav-team')); return; }
+          // navegación delegada a la ficha de club (31-ago: la fila de un club seguido vive en vistas
+          // que se repintan enteras — el binding local se perdería en cada render)
+          var ctn = e.target.closest('[data-nav-cteam]'); if (ctn) { e.preventDefault(); var ctp = ctn.getAttribute('data-nav-cteam').split('|'); openClubTeam(ctp[0], ctp[1]); return; }
           var n = e.target.closest('[data-nav]'); if (n) { e.preventDefault(); navTo(n.getAttribute('data-nav')); }
         });
         window.addEventListener('hashchange', onHash); onHash();

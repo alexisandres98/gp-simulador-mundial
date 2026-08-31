@@ -121,17 +121,42 @@ async function tennisLive() {
 }
 
 // ── CS2 (bo3.gg) ────────────────────────────────────────────────────────────────────────────────────────
+// `with=teams,games` trae el HISTORIAL DE MAPAS de la serie: cada mapa terminado viene con nombre,
+// ganador y marcador de rondas. Del mapa EN CURSO bo3 solo publica el nombre y la hora de inicio (los
+// campos de rondas llegan null hasta que termina — comprobado también contra /games/{id}); ese límite se
+// declara tal cual en la UI en vez de inventar rondas.
 async function cs2Live() {
   return memo('cs2', 60e3, async () => {
-    const r = await j('https://api.bo3.gg/api/v1/matches?filter[matches.status][eq]=current&page[limit]=24&with=teams');
-    return ((r && r.results) || []).map((m) => ({
-      a: (m.team1 && m.team1.name) || null, b: (m.team2 && m.team2.name) || null,
-      s1: m.team1_score != null ? m.team1_score : 0, s2: m.team2_score != null ? m.team2_score : 0,
-      bo: m.bo_type || null,
-      map_s1: m.team1_last_game_score != null ? m.team1_last_game_score : null,
-      map_s2: m.team2_last_game_score != null ? m.team2_last_game_score : null,
-      detail: `mapa ${(m.team1_score || 0) + (m.team2_score || 0) + 1}`,
-    })).filter((x) => x.a && x.b);
+    const r = await j('https://api.bo3.gg/api/v1/matches?filter[matches.status][eq]=current&page[limit]=24&with=teams,games');
+    return ((r && r.results) || []).map((m) => {
+      const n1 = norm(m.team1 && m.team1.name);
+      const games = ((m.games || []).slice()).sort((x, y) => (x.number || 0) - (y.number || 0));
+      const maps = [];
+      for (const g of games) {
+        if (g.status !== 'finished') continue;
+        const w = norm(g.winner_clan_name);
+        // orientación: el ganador del mapa se casa contra team1 por nombre; si no casa con ninguno de
+        // los dos, el mapa se pinta sin marcador antes que con el marcador al revés
+        const wIs1 = w && n1 && (w === n1 || n1.includes(w) || w.includes(n1));
+        const wIs2 = w && !wIs1 && (() => { const n2 = norm(m.team2 && m.team2.name); return n2 && (w === n2 || n2.includes(w) || w.includes(n2)); })();
+        maps.push({
+          n: g.number || maps.length + 1, map: String(g.map_name || '').replace(/^de_/, ''),
+          s1: wIs1 ? g.winner_clan_score : wIs2 ? g.loser_clan_score : null,
+          s2: wIs2 ? g.winner_clan_score : wIs1 ? g.loser_clan_score : null,
+        });
+      }
+      const cur = games.find((g) => g.status === 'current');
+      return {
+        a: (m.team1 && m.team1.name) || null, b: (m.team2 && m.team2.name) || null,
+        s1: m.team1_score != null ? m.team1_score : 0, s2: m.team2_score != null ? m.team2_score : 0,
+        bo: m.bo_type || null,
+        map_s1: m.team1_last_game_score != null ? m.team1_last_game_score : null,
+        map_s2: m.team2_last_game_score != null ? m.team2_last_game_score : null,
+        maps,
+        cur_map: cur ? { n: cur.number || maps.length + 1, map: String(cur.map_name || '').replace(/^de_/, ''), since: cur.begin_at || null } : null,
+        detail: cur && cur.map_name ? `mapa ${cur.number || (m.team1_score || 0) + (m.team2_score || 0) + 1} · ${String(cur.map_name).replace(/^de_/, '')}` : `mapa ${(m.team1_score || 0) + (m.team2_score || 0) + 1}`,
+      };
+    }).filter((x) => x.a && x.b);
   });
 }
 
@@ -146,14 +171,101 @@ async function lolLive() {
       if (e.state !== 'inProgress' || !e.match || !(e.match.teams || []).length) continue;
       const [t1, t2] = e.match.teams;
       out.push({
-        a: t1.name, b: t2.name,
+        a: t1.name, b: t2.name, mid: e.match.id || null,
         s1: (t1.result && t1.result.gameWins) || 0, s2: (t2.result && t2.result.gameWins) || 0,
         bo: (e.match.strategy && e.match.strategy.count) || null,
         league: (e.league && e.league.name) || null,
         detail: `mapa ${(((t1.result && t1.result.gameWins) || 0) + ((t2.result && t2.result.gameWins) || 0)) + 1}`,
       });
     }
+    // EL DETALLE DEL MAPA EN CURSO (31-ago, "quiero el número de muertes"): getEventDetails da los games
+    // de la serie y su estado; feed.lolesports livestats/window da frames con kills, oro, torres,
+    // dragones y barones por lado. OJO con startingTime: sin él el feed devuelve los PRIMEROS frames del
+    // juego (parece vivo y es el minuto 0 — mordió en el primer intento); el parámetro tiene que ser
+    // múltiplo de 10s y el final de la ventana ≥120s en el pasado, o responde 400. now−150s cumple ambas.
+    // Máximo 3 series por pasada para no castigar la fuente; todo dentro del mismo memo de 60s.
+    for (const m of out.slice(0, 3)) {
+      if (!m.mid) continue;
+      try {
+        const det = await j(`https://esports-api.lolesports.com/persisted/gw/getEventDetails?hl=es-ES&id=${m.mid}`, { 'x-api-key': LOL_KEY() });
+        const match = det && det.data && det.data.event && det.data.event.match;
+        const g = ((match && match.games) || []).find((x) => x.state === 'inProgress');
+        if (!g || !g.id) continue;
+        const tW = new Date(Math.floor((Date.now() - 150e3) / 10e3) * 10e3).toISOString();
+        const w = await j(`https://feed.lolesports.com/livestats/v1/window/${g.id}?startingTime=${tW}`);
+        const fr = w && Array.isArray(w.frames) && w.frames.length ? w.frames[w.frames.length - 1] : null;
+        if (!fr || !fr.blueTeam || !fr.redTeam) continue;
+        // orientación azul/rojo → a/b por el id de equipo del metadata; sin cruce se asume azul = a
+        const bluId = w.gameMetadata && w.gameMetadata.blueTeamMetadata && String(w.gameMetadata.blueTeamMetadata.esportsTeamId || '');
+        const ids = ((match && match.teams) || []).map((t) => String(t.id || ''));
+        const blueIsA = !bluId || !ids[0] ? true : bluId === ids[0];
+        const side = (t) => ({ k: t.totalKills != null ? t.totalKills : null, g: t.totalGold != null ? Math.round(t.totalGold / 100) / 10 : null,
+          t: t.towers != null ? t.towers : null, d: Array.isArray(t.dragons) ? t.dragons.length : null, b: t.barons != null ? t.barons : null });
+        m.game = { n: g.number || (m.s1 + m.s2 + 1), state: fr.gameState || null,
+          a: side(blueIsA ? fr.blueTeam : fr.redTeam), b: side(blueIsA ? fr.redTeam : fr.blueTeam) };
+      } catch { /* el detalle es un extra: la serie se pinta igual sin él */ }
+    }
     return out;
+  });
+}
+
+// ── ESPN summary (NFL / College): las últimas jugadas y el marcador por cuartos ─────────────────────────
+// El scoreboard solo trae LA última jugada; el summary del evento trae el drive en curso con todas. Se
+// leen las dos formas conocidas (drives.current.plays en vivo, scoringPlays siempre) a la defensiva.
+async function espnSummary(pathLeague, espnId) {
+  if (!espnId) return null;
+  return memo(`sum:${pathLeague}:${espnId}`, 30e3, async () => {
+    const s = await j(`https://site.api.espn.com/apis/site/v2/sports/${pathLeague}/summary?event=${espnId}`);
+    if (!s) return null;
+    const comp = (((s.header || {}).competitions) || [])[0] || {};
+    const lsOf = (ha) => {
+      const c = (comp.competitors || []).find((x) => x.homeAway === ha);
+      return c ? (c.linescores || []).map((l) => (l.displayValue != null ? +l.displayValue : +l.value || 0)) : [];
+    };
+    const playRow = (pl) => ({
+      t: String(pl.text || '').slice(0, 180) || null,
+      clock: (pl.clock && pl.clock.displayValue) || null,
+      q: (pl.period && pl.period.number) || null,
+      score: pl.awayScore != null && pl.homeScore != null ? `${pl.awayScore}-${pl.homeScore}` : null,
+    });
+    let plays = [];
+    const cur = s.drives && s.drives.current;
+    if (cur && Array.isArray(cur.plays)) plays = cur.plays.slice(-6).reverse().map(playRow).filter((x) => x.t);
+    const scoring = (s.scoringPlays || []).slice(-4).reverse().map((sp) => ({
+      ...playRow(sp), team: (sp.team && (sp.team.abbreviation || sp.team.displayName)) || null,
+    })).filter((x) => x.t);
+    const drive = cur ? { desc: String(cur.description || '').slice(0, 80) || null,
+      team: (cur.team && (cur.team.abbreviation || cur.team.displayName)) || null } : null;
+    return { ls_home: lsOf('home'), ls_away: lsOf('away'), plays, scoring, drive };
+  });
+}
+
+// ── F1 (ESPN racing): sesión en curso + cabeza de carrera ───────────────────────────────────────────────
+// Escrito a la defensiva contra la forma conocida del scoreboard de racing (el sandbox no alcanza ESPN;
+// se verifica desde producción con la sonda interna el próximo fin de semana de carrera).
+async function f1Live() {
+  return memo('f1', 60e3, async () => {
+    const sb = await j('https://site.api.espn.com/apis/site/v2/sports/racing/f1/scoreboard');
+    for (const ev of (sb && sb.events) || []) {
+      for (const c of ev.competitions || []) {
+        const st = c.status && c.status.type;
+        if (!st || st.state !== 'in') continue;
+        const rows = (c.competitors || []).slice()
+          .sort((x, y) => (+x.order || 99) - (+y.order || 99)).slice(0, 10)
+          .map((x) => ({
+            pos: +x.order || null,
+            name: (x.athlete && (x.athlete.shortName || x.athlete.displayName)) || (x.team && x.team.displayName) || '',
+            laps: x.laps != null ? +x.laps : null,
+            winner: !!x.winner,
+          })).filter((x) => x.name);
+        return {
+          gp: ev.shortName || ev.name || 'GP', session: (c.type && (c.type.text || c.type.abbreviation)) || '',
+          detail: st.shortDetail || st.detail || 'EN VIVO', lap: (c.status && c.status.period) || null,
+          leaders: rows,
+        };
+      }
+    }
+    return null;
   });
 }
 
@@ -180,4 +292,4 @@ function matchByNames(list, homeName, awayName, keys = ['home', 'away']) {
   return cands.length === 1 ? cands[0] : null;
 }
 
-module.exports = { cflLive, ncaafLive, nflLive, tennisLive, cs2Live, lolLive, matchByNames, norm };
+module.exports = { cflLive, ncaafLive, nflLive, tennisLive, cs2Live, lolLive, espnSummary, f1Live, matchByNames, norm };

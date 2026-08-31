@@ -68,6 +68,36 @@ ESPN no publica plantillas de la CFL (gap documentado). La fuente real: **las we
   silencioso).
 - El vacío de plantillas habla idioma de cliente; el porqué de taller es solo admin.
 
+## 📡 EL VIVO MULTI-DEPORTE (31-ago, "quiero todo en vivo como en fútbol")
+`live-sports.js` (módulo raíz, memo 45-60s por fuente, DISPLAY puro): CFL oficial (cuarto/reloj/posesión),
+NCAAF/NFL ESPN (down&distance, última jugada), tenis ESPN atp+wta (sets por linescores, saque), CS2 bo3
+(serie + mapa), LoL lolesports (mapas ganados). Cruce por nombres `matchByNames`: exacto primero, laxo
+SOLO si el candidato es único (Vitality casó con dos "FUT" en producción el primer minuto).
+**Segunda pasada (misma noche) — los paneles RICOS:**
+- **CS2**: `with=teams,games` → historial de mapas (nombre + rondas del ganador) + mapa en curso. Las
+  rondas del mapa EN CURSO bo3 no las publica (null hasta terminar, comprobado); en eventos menores
+  tampoco gradúa los terminados → el chip pinta el mapa sin marcador, jamás lo inventa.
+- **LoL**: livestats/window de feed.lolesports → kills, oro, torres, dragones, barones por lado.
+  **TRAMPA DOCUMENTADA**: sin `startingTime` el feed devuelve los PRIMEROS frames (parece vivo y es el
+  min 0); el parámetro debe ser múltiplo de 10s con final de ventana ≥120s viejo → now−150s.
+- **NFL/College**: `espnSummary` (summary?event=) → drive en curso, últimas jugadas, anotaciones,
+  marcador por cuartos (`nflLiveDetail` en la ficha).
+- **F1**: `f1Live` (ESPN racing scoreboard, defensivo) → sesión en curso + cabeza de pista en el tablero;
+  se verifica el próximo fin de semana de carrera con la sonda.
+- **Hoops**: `/api/hoops/live` ahora expone `last_plays` (el summary ya estaba en mano por el wallclock).
+- **Sonda `/api/internal/espn?key=&path=&qs=`**: iterar formas de ESPN desde prod (el sandbox recibe 403
+  de Akamai). Solo lectura, host fijo por construcción.
+
+## ⭐ SEGUIR CLUBES + ALERTAS DE INICIO/GOL (31-ago, "sí hazlo")
+Los favoritos de club viajan como `club:<liga>:<tm_id>` en el MISMO array `favorites` (el endpoint ya
+aceptaba cualquier id). Botón Seguir en la ficha de club (hero), fila de club en Seguidos (escudo + liga +
+próximo cruce, navegación delegada `data-nav-cteam`), destacado en Evolución. El despacho vive DENTRO de
+`clubScoresSync` (transiciones live/goles contra `db.clubResults`, igual que el Mundial) →
+`dispatchClubLiveAlerts`: mismas prefs (`matchStart`/`goal`, email, muted), dedup en `db.sentAlerts` con
+la clave de club (`liga|a-b:g1-0`) y poda a 3 días. El email reutiliza la pieza del Mundial con la liga
+en el asunto. Alertas de valor (pro/sharp, 15min) ya funcionaban; las de inicio/gol eran Mundial-only —
+ese era el hueco.
+
 ## 🧠 LO DEMÁS DE LA SEMANA (24-31)
 - **Frauen-Bundesliga** onboarded por la vía AF (82): 41 ligas sincronizando, gates en sombra.
 - **Hoops v2**: gates de la autopsia (edge≥5pp, |spread|<8, total solo under, `regime:hoops_v2`),

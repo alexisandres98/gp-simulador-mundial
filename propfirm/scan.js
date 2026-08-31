@@ -246,10 +246,182 @@ async function escanear({ game = 'cs2' } = {}) {
   return out;
 }
 
+// ---- FÚTBOL (1-sep): el consenso más denso de la casa contra los binarios Yes/No de gamma ---------------
+// Forma REAL de un partido en gamma (verificada con lal-bar-ray-2026-08-31): TRES mercados binarios —
+// "Will X win on <fecha>?", "Will … end in a draw?", "Will Y win…?". El ancla es el devig 3-vías de
+// sportsbook_goal_quote_current (mediana por lado entre casas frescas, ≥3 casas). El lado "No" de cada
+// binario también se compara (consenso del No = 1 − consenso del Yes): duplica las oportunidades sin
+// inventar nada. La liquidación de esta pata se engancha aparte (v1: señal + correo + tesis abierta).
+async function escanearFutbol({ dbc, eventos } = {}) {
+  const out = { deporte: 'futbol', eventos: 0, pm_encontrados: 0, mercados: 0, con_consenso: 0, senales_nuevas: 0, senales: [], cerca: [] };
+  if (!dbc || !eventos) return { ...out, error: 'sin dbc/eventos' };
+  const st = rd();
+  const ahora = Date.now();
+  const lista = Object.entries(eventos)
+    .map(([ceid, e]) => ({ ceid, home: e.home, away: e.away, ko: Date.parse(e.kickoff || 0), league: e.league }))
+    .filter((e) => e.home && e.away && e.ko > ahora + 10 * 60e3 && e.ko < ahora + 30 * 3600e3)
+    .sort((a, b) => a.ko - b.ko).slice(0, 40);
+  if (!lista.length) return out;
+  // consenso 3-vías por evento en UNA query (frescura 75 min, la misma del consenso de picks)
+  let rows = [];
+  try {
+    rows = (await dbc.query(`SELECT canonical_event_id ceid, lower(side) side, sportsbook_code book, odds_decimal::float o
+        FROM sportsbook_goal_quote_current
+       WHERE market_family='match_winner' AND canonical_event_id = ANY($1)
+         AND observed_at > now() - interval '75 minutes'`, [lista.map((e) => e.ceid)])).rows;
+  } catch (e) { return { ...out, error: e.message }; }
+  const porEv = {};
+  for (const r of rows) {
+    const k = porEv[r.ceid] = porEv[r.ceid] || { home: [], draw: [], away: [] };
+    if (k[r.side]) k[r.side].push(1 / r.o);
+  }
+  const med = (a) => { const v = a.slice().sort((x, y) => x - y); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
+  for (const ev of lista) {
+    const q = porEv[ev.ceid];
+    if (!q || !['home', 'draw', 'away'].every((s) => q[s].length >= 3)) continue;   // sin 3 casas por lado no hay ancla
+    out.eventos++;
+    const im = { home: med(q.home), draw: med(q.draw), away: med(q.away) };
+    const sum = im.home + im.draw + im.away;
+    const cons = { home: im.home / sum, draw: im.draw / sum, away: im.away / sum, books: Math.min(q.home.length, q.draw.length, q.away.length) };
+    const evs = await gammaBusca(`${ev.home} ${ev.away}`);
+    const pmHit = evs.find((e) => {
+      const tt = `${e.title || ''} ${e.slug || ''}`;
+      if (!(nombra(tt, ev.home) && nombra(tt, ev.away))) return false;
+      const d = Date.parse(e.startDate || e.endDate || 0);
+      return !d || Math.abs(d - ev.ko) < 20 * 864e5;   // gamma abre estos eventos con startDate viejo
+    });
+    if (!pmHit || !pmHit.slug) continue;
+    const pmEv = await gammaEvento(pmHit.slug);
+    if (!pmEv) continue;
+    out.pm_encontrados++;
+    for (const m of pmEv.markets || []) {
+      if (m.closed || m.active === false) continue;
+      const qq = String(m.question || '');
+      const outs = jarr(m.outcomes), precios = jarr(m.outcomePrices).map(num);
+      if (outs.length !== 2 || precios.some((p) => p == null) || !/^(yes|no)$/i.test(String(outs[0]))) continue;
+      let resultado = null;   // qué resuelve el "Yes" de este binario
+      if (/end in a draw/i.test(qq)) resultado = 'draw';
+      else {
+        const mw = qq.match(/^will\s+(.+?)\s+win\b/i);
+        if (mw) resultado = nombra(mw[1], ev.home) && !nombra(mw[1], ev.away) ? 'home'
+          : nombra(mw[1], ev.away) && !nombra(mw[1], ev.home) ? 'away' : null;
+      }
+      if (!resultado) continue;
+      out.mercados++; out.con_consenso++;
+      const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
+      if (liq != null && liq < LIQ_MIN()) continue;
+      for (let i = 0; i < 2; i++) {
+        const esYes = /^yes$/i.test(String(outs[i]));
+        const p = precios[i];
+        const consLado = esYes ? cons[resultado] : 1 - cons[resultado];
+        if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
+        const edge = 100 * (consLado - p);
+        out.cerca.push({ m: qq.slice(0, 60), lado: outs[i], pm: p, cons: +consLado.toFixed(3), edge: +edge.toFixed(1) });
+        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
+        const id = `${m.id || m.slug || qq}|${outs[i]}`;
+        const prev = st.senales[id];
+        if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
+        if (prev && prev.estado !== 'ABIERTA') continue;
+        const limite = Math.min(PRECIO_MAX, +(consLado - 0.01).toFixed(2));
+        const shares = Math.min(MAX_SHARES_EVENTO, Math.floor(RIESGO_USD() / p));
+        const s = {
+          id, at: new Date().toISOString(), deporte: 'futbol', game: 'futbol', ceid: ev.ceid,
+          evento: `${ev.home} vs ${ev.away}`, liga: ev.league || null,
+          pm_evento: pmEv.slug || pmEv.title, mercado: qq,
+          familia: 'FUT1X2', resultado, lado: outs[i], equipo: `${outs[i]} — ${qq}`,
+          precio_pm: p, consenso: consLado, books: cons.books, edge_pp: +edge.toFixed(1),
+          limite, shares, ko: new Date(ev.ko).toISOString(), home: ev.home, away: ev.away,
+          estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
+        };
+        st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
+      }
+    }
+  }
+  st.at = new Date().toISOString(); wr(st);
+  out.cerca = out.cerca.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 10);
+  return out;
+}
+
+// ---- FÚTBOL AMERICANO (1-sep): NFL/NCAAF con el consenso de The Odds API del motor amfoot ---------------
+// Polymarket aún no lista partidos de college (comprobado) y los de NFL llegan con la semana 1 (9-sep).
+// El barrido busca cada partido del slate; cuando gamma lo tenga, el mapeo del moneyline (binario Yes/No o
+// dos salidas con nombres) entra solo. Spreads/totales se suman cuando haya un evento vivo para VERIFICAR
+// su forma — la lección de CS2: el mapper no se escribe a ciegas.
+async function escanearAmfoot({ lg = 'nfl' } = {}) {
+  const AF = require('../amfoot-engine/store');
+  const out = { deporte: lg, eventos: 0, pm_encontrados: 0, mercados: 0, con_consenso: 0, senales_nuevas: 0, senales: [], cerca: [] };
+  const st = rd();
+  const ahora = Date.now();
+  let sl = null, odds = null;
+  try { sl = await AF.slate(lg, { days: 4 }); odds = await AF.refreshOdds(lg); } catch (e) { return { ...out, error: e.message }; }
+  for (const g of (sl && sl.games) || []) {
+    const ko = Date.parse((g.date || '') + 'T' + (g.time || '17:00') + ':00Z');
+    if (!(ko > ahora + 10 * 60e3) || ko > ahora + 4 * 864e5) continue;
+    out.eventos++;
+    const mk = AF.marketFor(lg, g, odds);
+    if (!mk || !mk.consensus || mk.consensus.ml_p_home == null || (mk.consensus.books || 0) < 3) continue;
+    const cons = { home: mk.consensus.ml_p_home, away: 1 - mk.consensus.ml_p_home, books: mk.consensus.books };
+    const home = g.home && (g.home.name || g.home), away = g.away && (g.away.name || g.away);
+    const evs = await gammaBusca(`${home} ${away}`);
+    const pmHit = evs.find((e) => nombra(`${e.title || ''} ${e.slug || ''}`, home) && nombra(`${e.title || ''} ${e.slug || ''}`, away));
+    if (!pmHit || !pmHit.slug) continue;
+    const pmEv = await gammaEvento(pmHit.slug);
+    if (!pmEv) continue;
+    out.pm_encontrados++;
+    for (const m of pmEv.markets || []) {
+      if (m.closed || m.active === false) continue;
+      const qq = String(m.question || '');
+      if (/spread|handicap|o\/u|over\/under|total/i.test(qq)) continue;   // solo ML hasta verificar formas
+      const outs = jarr(m.outcomes), precios = jarr(m.outcomePrices).map(num);
+      if (outs.length !== 2 || precios.some((p) => p == null)) continue;
+      let l0 = null, l1 = null;
+      const lado = (i) => nombra(outs[i], home) && !nombra(outs[i], away) ? 'home'
+        : nombra(outs[i], away) && !nombra(outs[i], home) ? 'away' : null;
+      l0 = lado(0); l1 = lado(1);
+      if (!l0 && /^(yes|no)$/i.test(String(outs[0]))) {
+        const eq = nombra(qq, home) && !nombra(qq, away) ? 'home' : nombra(qq, away) && !nombra(qq, home) ? 'away' : null;
+        if (!eq) continue;
+        l0 = /^yes$/i.test(outs[0]) ? eq : (eq === 'home' ? 'away' : 'home');
+        l1 = l0 === 'home' ? 'away' : 'home';
+      }
+      if (!l0 || !l1 || l0 === l1) continue;
+      out.mercados++; out.con_consenso++;
+      const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
+      if (liq != null && liq < LIQ_MIN()) continue;
+      const lados = { [l0]: precios[0], [l1]: precios[1] };
+      for (const ldo of ['home', 'away']) {
+        const p = lados[ldo];
+        if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
+        const edge = 100 * (cons[ldo] - p);
+        out.cerca.push({ m: qq.slice(0, 60), lado: ldo, pm: p, cons: +cons[ldo].toFixed(3), edge: +edge.toFixed(1) });
+        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
+        const id = `${m.id || m.slug || qq}|${ldo}`;
+        const prev = st.senales[id];
+        if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
+        if (prev && prev.estado !== 'ABIERTA') continue;
+        const limite = Math.min(PRECIO_MAX, +(cons[ldo] - 0.01).toFixed(2));
+        const shares = Math.min(MAX_SHARES_EVENTO, Math.floor(RIESGO_USD() / p));
+        const s = {
+          id, at: new Date().toISOString(), deporte: lg, game: lg,
+          evento: `${home} vs ${away}`, pm_evento: pmEv.slug || pmEv.title, mercado: qq,
+          familia: 'ML', lado: ldo, equipo: ldo === 'home' ? home : away,
+          precio_pm: p, consenso: cons[ldo], books: cons.books, edge_pp: +edge.toFixed(1),
+          limite, shares, ko: new Date(ko).toISOString(), home, away,
+          estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
+        };
+        st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
+      }
+    }
+  }
+  st.at = new Date().toISOString(); wr(st);
+  out.cerca = out.cerca.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 10);
+  return out;
+}
+
 // ---- LIQUIDACIÓN (sombra propia, desde nuestra fuente de resultados) ------------------------------------
 async function liquidar({ game = 'cs2' } = {}) {
   const st = rd();
-  const abiertas = Object.values(st.senales).filter((s) => s.estado === 'ABIERTA' && Date.parse(s.ko || 0) < Date.now() - 30 * 60e3);
+  const abiertas = Object.values(st.senales).filter((s) => s.estado === 'ABIERTA' && (s.game || 'cs2') === game && Date.parse(s.ko || 0) < Date.now() - 30 * 60e3);
   if (!abiertas.length) return { settled: 0, abiertas: 0 };
   const RES = require('../data-providers/esports/results');
   const masVieja = Math.min(...abiertas.map((s) => Date.parse(s.ko || 0)));
@@ -325,4 +497,4 @@ function marcaCorreo(ids) {
   wr(st);
 }
 
-module.exports = { escanear, liquidar, estado, pendientesDeCorreo, marcaCorreo, DIR };
+module.exports = { escanear, escanearFutbol, escanearAmfoot, liquidar, estado, pendientesDeCorreo, marcaCorreo, DIR };

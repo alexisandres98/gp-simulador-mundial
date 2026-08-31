@@ -14812,8 +14812,18 @@ if (obsDeportesOn()) {
 async function propfirmSweep() {
   const PF = require('./propfirm/scan');
   const out = { at: new Date().toISOString() };
-  try { out.scan = await PF.escanear({ game: 'cs2' }); } catch (e) { out.scan = { error: e.message }; }
-  try { out.settle = await PF.liquidar({ game: 'cs2' }); } catch (e) { out.settle = { error: e.message }; }
+  // 1-sep (orden de Alexis): cinco frentes — CS2 y LoL (consenso esports), fútbol (devig 3-vías de las
+  // ~30 casas), y NFL/NCAAF (consenso The Odds API del motor amfoot; gamma aún no lista college y la NFL
+  // llega el 9-sep — el barrido los atrapa solo cuando aparezcan).
+  try { out.cs2 = await PF.escanear({ game: 'cs2' }); } catch (e) { out.cs2 = { error: e.message }; }
+  try { out.lol = await PF.escanear({ game: 'lol' }); } catch (e) { out.lol = { error: e.message }; }
+  try { out.futbol = await PF.escanearFutbol({ dbc: require('./database/client'), eventos: db.clubsQuoteEvents || {} }); }
+  catch (e) { out.futbol = { error: e.message }; }
+  for (const lgPf of ['nfl', 'ncaaf']) {
+    try { out[lgPf] = await PF.escanearAmfoot({ lg: lgPf }); } catch (e) { out[lgPf] = { error: e.message }; }
+  }
+  try { out.settle_cs2 = await PF.liquidar({ game: 'cs2' }); } catch (e) { out.settle_cs2 = { error: e.message }; }
+  try { out.settle_lol = await PF.liquidar({ game: 'lol' }); } catch (e) { out.settle_lol = { error: e.message }; }
   try {
     const pend = PF.pendientesDeCorreo();
     if (pend.length && mailer.isConfigured()) {
@@ -20420,8 +20430,13 @@ async function anotar(pid){
       const PF = require('./propfirm/scan');
       if (req.method === 'POST') {
         const runPf = String(url.searchParams.get('run') || '');
-        if (runPf === 'scan') return json(res, 200, await PF.escanear({ game: 'cs2' }).catch((e) => ({ error: e.message })));
-        if (runPf === 'settle') return json(res, 200, await PF.liquidar({ game: 'cs2' }).catch((e) => ({ error: e.message })));
+        const depPf = String(url.searchParams.get('dep') || 'cs2');
+        if (runPf === 'scan') {
+          if (depPf === 'futbol') return json(res, 200, await PF.escanearFutbol({ dbc: require('./database/client'), eventos: db.clubsQuoteEvents || {} }).catch((e) => ({ error: e.message })));
+          if (depPf === 'nfl' || depPf === 'ncaaf') return json(res, 200, await PF.escanearAmfoot({ lg: depPf }).catch((e) => ({ error: e.message })));
+          return json(res, 200, await PF.escanear({ game: depPf }).catch((e) => ({ error: e.message })));
+        }
+        if (runPf === 'settle') return json(res, 200, await PF.liquidar({ game: depPf }).catch((e) => ({ error: e.message })));
         return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
       }
       return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,

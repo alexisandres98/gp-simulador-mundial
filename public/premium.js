@@ -16818,6 +16818,23 @@
     [/(\d+) de (\d+) contratos tienen horquilla utilizable/g, '$1 of $2 contracts have a usable spread'],
     [/^(\d+) de (\d+)$/, '$1 of $2'], [/\blos (\d+) (games|maps|matches)\b/g, 'the $1 $2'],
   ];
+  // PANEL DE ESPORTS EN INGLÉS (31-ago, captura de Alexis): etiquetas cortas que la red no cubría — sin
+  // acento ni palabra-señal, EN_MARK no las miraba — y la nota del ancla del servidor, que quedaba a medias.
+  Object.assign(EN_X, {
+    'Mercado': 'Market', 'Diferencia': 'Difference', 'Peso propio': 'Own weight',
+    'La partida': 'The match', 'El modelo': 'The model', 'Contexto': 'Context',
+    'Mercado derivado': 'Derivative market', 'Modelo de GP': 'GP model',
+    'Estimación propia de GP.': "GP's own estimate.",
+  });
+  EN_FRAG.push(
+    ['anclado al mercado con ', 'anchored to the market with '],
+    ['de peso propio', 'own weight'],
+    ['partidos de muestra', 'sample games'],
+    ['games de muestra', 'sample games'],
+    ['maps de muestra', 'sample maps'],
+    ['leído del marcador exacto de la serie', 'read from the exact series score'],
+    ['marcador exacto de la serie', 'exact series score'],
+  );
   var EN_MARK = /[áéíóúñÁÉÍÓÚÑ¿«]|\b(el|la|los|las|de|del|un|una|que|con|sin|por|para|se|no|ya|más|es|son|hay|hoy|en|sem)\b|partid|liquidad|abiert|ventaja|cuota|sombra|mapa|ronda|pelea|juego|casas|muestra|prórroga|puntúa|activ/i;
   function enTxt(txt) {
     if (!txt) return null;

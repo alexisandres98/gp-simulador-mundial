@@ -15726,9 +15726,18 @@ async function buildTeamDetail(code) {
 function sessionEmailFromReq(req) {
   const raw = req.headers.cookie || '';
   const m = raw.match(/(?:^|;\s*)wc_token=([^;]+)/);
-  if (!m) return null;
-  let tok; try { tok = decodeURIComponent(m[1]); } catch { tok = m[1]; }
-  return db.sessions[tok] || null;
+  if (m) {
+    let tok; try { tok = decodeURIComponent(m[1]); } catch { tok = m[1]; }
+    if (db.sessions[tok]) return db.sessions[tok];
+  }
+  // FALLBACK AL BEARER (31-ago, reporte de Alexis con cuenta nueva: "solo aparece el Mundial"). El login
+  // por código y el de Google guardaban el token en localStorage y la cookie la escribía el CLIENTE con
+  // document.cookie — que en iOS muere sola (ITP la capa a 7 días) o ni llega a existir. Resultado: todo
+  // lo gateado por esta función (los /api/clubs/* enteros — Partidos, Equipos, ligas) devolvía 404 para
+  // esas sesiones y la plataforma se veía "solo Mundial" mientras el resto (Bearer) funcionaba. El token
+  // es EL MISMO almacén (db.sessions): aceptar el header no abre nada que la cookie no abriera ya.
+  const btok = (req.headers.authorization || '').replace('Bearer ', '');
+  return (btok && db.sessions[btok]) || null;
 }
 function getUser(req) {
   const tok = (req.headers.authorization || '').replace('Bearer ', '');
@@ -16747,7 +16756,14 @@ const server = http.createServer(async (req, res) => {
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
       save();
-      return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false });
+      // la cookie la pone el SERVIDOR (31-ago): la que escribía el cliente con document.cookie muere sola
+      // en iOS (ITP capa a 7 días las de script) — y sin cookie, la raíz servía la landing y los /api/clubs
+      // desaparecían. Una cookie de Set-Cookie no sufre esa capa.
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Set-Cookie': `wc_token=${token};path=/;max-age=31536000;SameSite=Lax`,
+      });
+      return res.end(JSON.stringify({ token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false }));
     }
     // ===== LOGIN CON GOOGLE (25-jul) — sin código por email ==================================================
     // El cliente manda el ID token (JWT) de Google Identity Services. Lo verificamos NOSOTROS contra las claves
@@ -16784,7 +16800,12 @@ const server = http.createServer(async (req, res) => {
       const token = crypto.randomBytes(24).toString('hex');
       db.sessions[token] = e;
       save();
-      return json(res, 200, { token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false, provider: 'google' });
+      // misma cookie de servidor que el verify por código (31-ago): sin ella, iOS pierde los /api/clubs
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Set-Cookie': `wc_token=${token};path=/;max-age=31536000;SameSite=Lax`,
+      });
+      return res.end(JSON.stringify({ token, email: e, isAdmin: isAdmin(e), favorites: db.users[e].favorites, alerts: db.users[e].alerts !== false, provider: 'google' }));
     }
     // MAGIC LINK: click desde el correo → verifica sin código, setea cookie de sesión y redirige a la
     // plataforma (premium.js sincroniza cookie→localStorage en el boot). Mínima fricción: un toque y entra.

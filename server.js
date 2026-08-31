@@ -2180,6 +2180,55 @@ Estimaciones de un modelo estadístico, no consejo financiero. Apostá con respo
   return { subject, text, html };
 }
 
+// CIERRE CONSUMADO (31-ago, orden de Alexis): el correo de DESPUÉS del cierre — la ventana ya venció y
+// esto cuenta qué quedó en cada plan. Mismo estilo personal anti-Promociones que el aviso del 28-ago.
+// SIN línea de baja al final (orden explícita: este envío no la lleva).
+function sportsClosedEmail(lang) {
+  const en = lang === 'en';
+  if (en) {
+    const subject = 'the open week is over — here is what stays where';
+    const text = `Hi,
+
+Alexis here, from GP Simulador. The open week for the five new sports ended last night, as promised. Here is exactly where things landed, so nobody has to guess.
+
+Everything is still there to see. On the free plan you can walk into every sport — basketball, esports, American football, tennis, F1 — and read the intelligence: boards, probabilities, team and player profiles, rankings, live states. That does not close. It is the same model working in the open.
+
+What moved to Pro and Sharp is the actionable layer: the esports picks with their reasoning and prices, the narrated briefs and match reads, the simulators, the shadow registers with side and line, and on Sharp the things that come straight from prices across books — value, arbitrage, dropping odds, middles and player props. Wherever you hit a lock, that is what is behind it.
+
+The timing is the real argument: college football just started and the NFL kicks off September 9. The American football engine — own ratings, 22 books compared per game — is the kind of thing you want open before week 1, not after week 3.
+
+Plans are at gpsimulador.com/plans — Pro and Sharp, and your account keeps everything you already follow. Any question about which one fits how you bet, reply to this email. I read every answer.
+
+Alexis
+GP Simulador
+
+Estimates from a statistical model, not financial advice. Bet responsibly. 18+.`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'la semana abierta terminó — esto es lo que quedó en cada plan';
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. La semana abierta de los cinco deportes nuevos terminó anoche, como estaba dicho. Te cuento exactamente cómo quedó todo, para que nadie tenga que adivinar.
+
+Todo sigue a la vista. Con el plan gratis podés entrar a cualquier deporte — baloncesto, esports, fútbol americano, tenis, F1 — y leer la inteligencia: pizarras, probabilidades, fichas de equipos y jugadores, rankings, partidos en vivo. Eso no se cierra. Es el mismo modelo trabajando a la vista.
+
+Lo que pasó a Pro y Sharp es la capa accionable: las picks de esports con su porqué y su cuota, los briefs narrados y las lecturas de cada cruce, los simuladores, los registros en sombra con lado y línea, y en Sharp lo que sale directo de precios entre casas — value, arbitraje, caídas, middles y props de jugador. Donde te encuentres un candado, eso es lo que hay detrás.
+
+El momento es el argumento de verdad: el fútbol americano universitario ya arrancó y la NFL empieza el 9 de septiembre. El motor de americano — ratings propios, 22 casas comparadas por partido — es de esas cosas que conviene tener abiertas antes de la semana 1, no en la semana 3.
+
+Los planes están en gpsimulador.com/plans — Pro y Sharp, y tu cuenta conserva todo lo que ya seguís. Cualquier duda sobre cuál te conviene según cómo apostás, respondé este correo. Leo todas las respuestas.
+
+Alexis
+GP Simulador
+
+Estimaciones de un modelo estadístico, no consejo financiero. Apostá con responsabilidad. 18+.`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 function launchPersonalEmail(lang) {
   const en = lang === 'en';
   const tr = dailyPicksTrackRecord().overall || {};
@@ -22921,7 +22970,7 @@ async function anotar(pid){
         const leads = uk.filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true).length;
         const unverified = uk.filter(e => db.users[e] && db.users[e].verified !== true).length;
         const verified = uk.filter(e => db.users[e] && db.users[e].verified === true).length;
-        const isReactivate = /^(reactivate|opensports)_(es|en)$/.test(variant || '');
+        const isReactivate = /^(reactivate|opensports|sportsclosed)_(es|en)$/.test(variant || '');
         const freeNoSub = uk.filter(e => planFor(e) === 'free').length; // sin Pro/Sharp (incluye leads); admin=sharp queda fuera
         const wouldSend = variant === 'leads_magic' ? leads : isReactivate ? freeNoSub : uk.length;
         return json(res, 200, { variant: variant || 'beta', would_send: wouldSend, total_users: uk.length, suppressed, verified, unverified, leads, free_no_sub: freeNoSub });
@@ -22969,6 +23018,9 @@ async function anotar(pid){
                                       // cierre de la semana abierta (28-ago): idioma FIJO, estilo personal anti-Promociones
                                       : (variant === 'opensports_es') ? () => ({ ...openSportsCloseEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                         : (variant === 'opensports_en') ? () => ({ ...openSportsCloseEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                      // cierre CONSUMADO (31-ago): qué quedó en cada plan; sin línea de baja
+                                      : (variant === 'sportsclosed_es') ? () => ({ ...sportsClosedEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                        : (variant === 'sportsclosed_en') ? () => ({ ...sportsClosedEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                       // reactivación post-Mundial (idioma FIJO, estilo personal anti-Promociones)
                                       : (variant === 'reactivate_en') ? () => ({ ...reactivateEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                         : (variant === 'reactivate_es') ? () => ({ ...reactivateEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
@@ -23002,7 +23054,7 @@ async function anotar(pid){
       // nunca a un verificado.
       const targets = (variant === 'leads_magic'
         ? Object.keys(db.users).filter(e => db.users[e] && db.users[e].lead === true && db.users[e].verified !== true)
-        : /^(reactivate|opensports)_(es|en)$/.test(variant || '')
+        : /^(reactivate|opensports|sportsclosed)_(es|en)$/.test(variant || '')
           ? Object.keys(db.users).filter(e => planFor(e) === 'free') // SIN Pro/Sharp (free + leads); admin=sharp fuera
           : Object.keys(db.users)
       ).filter(notSuppressed); // la lista de supresión gana SIEMPRE, en todos los variants

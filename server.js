@@ -12710,6 +12710,10 @@ function anotar(pid){
 cargar();setInterval(cargar,90000);
 </script></body></html>`;
 async function realAvisoApuestaManual() {
+  // 31-ago (compra del Elite 10K): Alexis opera la prop firm y NO quiere los correos de colocar a mano de
+  // Cloudbet mezclados con las órdenes de la firm. Los libros y las sombras siguen corriendo igual —solo
+  // calla el correo—. GP_REAL_AVISO_MANUAL=true lo reenciende sin deploy de código.
+  if (String(process.env.GP_REAL_AVISO_MANUAL || 'true') === 'false') return;
   const RE = require('./real-executor/store');
   if (!RE.CFG().enabled) return;
   const L = RE.load();
@@ -14800,6 +14804,54 @@ if (obsDeportesOn()) {
   // escalonados para no salir los tres a la vez ni chocar con los dos que ya existían (150 s y 200 s)
   const arranca = (dom, ms) => { setTimeout(() => runObsDeporte(dom).catch(() => { }), ms); setInterval(() => runObsDeporte(dom).catch(() => { }), 3 * 3600 * 1000); };
   arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000);
+}
+// ── PROP FIRM (31-ago, Elite 10K de FundingPredicts comprado por Alexis) ────────────────────────────────
+// Barrido cada 10 min: consenso sharp de la casa vs precio de Polymarket (que la firm espeja en vivo),
+// tesis a la sombra propia en disco, y el CORREO con la orden manual exacta — el único correo de apuestas
+// que Alexis quiere recibir mientras opera la firm. Aislado y best-effort: nada de esto toca los libros.
+async function propfirmSweep() {
+  const PF = require('./propfirm/scan');
+  const out = { at: new Date().toISOString() };
+  try { out.scan = await PF.escanear({ game: 'cs2' }); } catch (e) { out.scan = { error: e.message }; }
+  try { out.settle = await PF.liquidar({ game: 'cs2' }); } catch (e) { out.settle = { error: e.message }; }
+  try {
+    const pend = PF.pendientesDeCorreo();
+    if (pend.length && mailer.isConfigured()) {
+      pend.sort((a, b) => b.edge_pp - a.edge_pp);
+      const fmtC = (p) => Math.round(p * 100) + '¢';
+      const lineas = pend.map((s) => [
+        `▸ ${s.evento}${s.mapa ? ` · mapa ${s.mapa}` : ''}`,
+        `  Mercado PM: ${s.mercado}`,
+        `  COMPRAR: "${s.equipo}" @ ${fmtC(s.precio_pm)} actual`,
+        `  Orden: LÍMITE máx ${fmtC(s.limite)} · ${s.shares} shares (~$${Math.round(s.shares * s.precio_pm)} de costo, riesgo tope $${+(s.shares * s.precio_pm).toFixed(0)})`,
+        `  Consenso sharp: ${(100 * s.consenso).toFixed(0)}% (${s.books} casas) · Edge +${s.edge_pp} pp`,
+        `  Saque: ${s.ko}`,
+        '',
+      ].join('\n'));
+      const cuerpo = [
+        'ÓRDENES MANUALES — PROP FIRM (FundingPredicts · Elite 10K)', '',
+        'Consenso sharp (Cloudbet+Pinnacle+Bovada, mediana sin margen) contra el precio vivo de Polymarket',
+        'que la firm espeja. Disciplina del Elite 10K:',
+        '  · SIEMPRE orden límite — nunca pagar más que el límite indicado (slippage 1% en su UI).',
+        '  · Máx 3 órdenes nuevas al día (pérdida diaria $300, riesgo ~$100 por posición).',
+        '  · Si el precio ya pasó el límite, la orden se deja pasar: la ventaja ya no está.',
+        '  · Respeta su candado de liquidez: si la UI dice "not eligible", no hay orden.', '',
+        ...lineas,
+        'Anota lo que coloques respondiéndome (mercado, precio y shares) para cuadrar la sombra.',
+        '', 'Estimaciones de un modelo estadístico, no consejo financiero.',
+      ].join('\n');
+      const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+      await mailer.sendMail({ to: adminTo, subject: `🎯 PROP FIRM — ${pend.length} orden${pend.length > 1 ? 'es' : ''} manual${pend.length > 1 ? 'es' : ''} (CS2)`, text: cuerpo });
+      PF.marcaCorreo(pend.map((s) => s.id));
+      out.correo = pend.length;
+    }
+  } catch (e) { out.correo_error = e.message; }
+  global._propfirmLast = out;
+  return out;
+}
+if (String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false') {
+  setTimeout(() => { propfirmSweep().catch(() => { }); }, 200 * 1000);
+  setInterval(() => { propfirmSweep().catch(() => { }); }, 10 * 60 * 1000);
 }
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
@@ -20359,6 +20411,22 @@ async function anotar(pid){
 </script></body></html>`;
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(html);
+    }
+    // Estado y forzado del escáner de la prop firm. GET = estado de la sombra propia; POST = barrer ya
+    // (run=scan solo escanea sin correo, para probar; sin run corre el sweep completo con correo).
+    if (p === '/api/internal/propfirm') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const PF = require('./propfirm/scan');
+      if (req.method === 'POST') {
+        const runPf = String(url.searchParams.get('run') || '');
+        if (runPf === 'scan') return json(res, 200, await PF.escanear({ game: 'cs2' }).catch((e) => ({ error: e.message })));
+        if (runPf === 'settle') return json(res, 200, await PF.liquidar({ game: 'cs2' }).catch((e) => ({ error: e.message })));
+        return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
+      }
+      return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,
+        enabled: String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false',
+        aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false' });
     }
     if (p === '/api/internal/real') {
       const xk = process.env.GP_EXPORT_KEY || '';

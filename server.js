@@ -20289,6 +20289,21 @@ async function anotar(pid){
       if (req.method === 'POST') {
         const run = url.searchParams.get('run') || '';
         if (run === 'saldo') return json(res, 200, { saldo: await RE.refrescarSaldo() });
+        // Historial de apuestas DE LA CASA (31-ago, reporte del lunes): la fuente de verdad para conciliar
+        // el libro — encuentra lo que Alexis colocó a mano y no marcó. GET del pub API desde prod (este IP
+        // pasa el cortafuegos para lecturas; el contenedor de Claude no). Solo lee, no toca el libro.
+        if (run === 'cb_historial') {
+          const cbk = process.env.CLOUDBET_API_KEY || '';
+          if (!cbk) return json(res, 200, { error: 'sin CLOUDBET_API_KEY' });
+          const lim = Math.min(200, parseInt(url.searchParams.get('limit'), 10) || 100);
+          const off = Math.max(0, parseInt(url.searchParams.get('offset'), 10) || 0);
+          const host = process.env.CLOUDBET_HOST || 'https://sports-api.cloudbet.com';
+          const rH = await fetch(`${host}/pub/v3/bets/history?limit=${lim}&offset=${off}`,
+            { headers: { 'X-API-Key': cbk, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) }).catch(e => null);
+          if (!rH) return json(res, 200, { error: 'sin respuesta de la casa' });
+          const jH = await rH.json().catch(() => null);
+          return json(res, 200, { http: rH.status, historial: jH });
+        }
         // El contador de rechazos de cuenta para el ejecutor ENTERO a los tres seguidos, que es lo que
         // queremos cuando la cuenta está de verdad restringida. Pero cuando la causa se ha arreglado —como
         // hoy, que los dos RESTRICTED salieron de apostar desde el país equivocado— el contador se queda

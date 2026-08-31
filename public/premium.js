@@ -1155,13 +1155,18 @@
     var t = (S.me && S.me.newSportsFreeUntil) || 0;
     return t > 0 && Date.now() < t;
   }
-  function nuevosOK() {
-    if (!S.me) return true;
-    if (S.me.isAdmin || !S.me.plans_enforced) return true;
-    if (nuevosLibres()) return true;
-    var pl = S.me.plan || 'free';
-    return pl === 'pro' || pl === 'sharp';
+  // CIERRE DE LA VENTANA (31-ago, orden de Alexis): el candado deja de ser todo-o-nada. El plan efectivo
+  // se calcula UNA vez (con el preview admin de gp_asplan, para que la preview no mienta) y cada vista
+  // gated pinta su candado con CTA a /plans; las de inteligencia quedan abiertas para free — es el
+  // escaparate. El servidor es quien manda (strips + 403); esto solo evita pantallas rotas.
+  function nuevosPlan() {
+    if (!S.me) return 'sharp'; // aún no se sabe quién es: no bloquear, cada vista tiene su carga
+    if (S.me.isAdmin) { var as = lsGet('gp_asplan') || ''; return (as === 'free' || as === 'pro' || as === 'sharp') ? as : 'sharp'; }
+    if (!S.me.plans_enforced || nuevosLibres()) return 'sharp';
+    return S.me.plan || 'free';
   }
+  function nuevosOK() { var pl = nuevosPlan(); return pl === 'pro' || pl === 'sharp'; }
+  function nuevosSharpOK() { return nuevosPlan() === 'sharp'; }
   function nuevosHasta() {
     var ms = (S.me && S.me.newSportsFreeUntil) || 0;
     if (!ms) return '';
@@ -1178,6 +1183,15 @@
   // puerta que Rendimiento, y por la misma razón: son evidencia de taller, no producto.
   function soloAdmin(html) { return perfOK() ? html : ''; }
   function lockNuevos() { return lockPanel('lock_new_t', 'lock_new_s'); }
+  // qué vistas de los deportes nuevos venden y a qué plan pertenecen (misma línea que combate/fútbol):
+  // pro = picks/brief/sim/ask; sharp = lo que sale de precios entre casas (value/arb de hoops, props).
+  var NS_SHARP_VIEWS = ['bbopps', 'esprops'];
+  var NS_PRO_VIEWS = ['bbbrief', 'bbsim', 'bbask', 'esopps', 'esbrief', 'esask', 'f1opps', 'f1sim', 'f1brief', 'f1ask', 'tenopps', 'tensim', 'tenbrief', 'tenask', 'nflopps', 'nflbrief', 'nflsim', 'nflask'];
+  function nsLockHtml(v) {
+    if (NS_SHARP_VIEWS.indexOf(v) >= 0 && !nuevosSharpOK()) return lockPanel();
+    if (NS_PRO_VIEWS.indexOf(v) >= 0 && !nuevosOK()) return lockPanelPro();
+    return null;
+  }
 
   function bbAllowed() { return !!(S.me && (S.me.isAdmin || S.me.hoopsPublic)); }
   var BB_LEAGUES = [['nba', 'NBA'], ['wnba', 'WNBA'], ['ncaam', 'NCAA M'], ['ncaaw', 'NCAA F']];
@@ -7378,7 +7392,7 @@
     var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'hoops') showView(S.view); }, 25000);
     // mismo transporte que combate (hdrs() lleva el token; asplanQS respeta el preview de plan del admin)
     fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
-      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
       .then(function (d) {
         if (done) return; done = true; clearTimeout(to);
         e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
@@ -7647,7 +7661,9 @@
   // Value, arbitraje, caídas y middles NO dependen del modelo (salen de precios entre casas). Las PICKS sí,
   // y por eso viven en un monitor privado con su etiqueta puesta: el modelo aún no bate al cierre.
   // etiquetas resueltas al PINTAR (t() depende del idioma vivo, y este array se evalúa una sola vez al cargar)
-  var BB_OPPF = [['picks', 'Picks'], ['value', 'Value'], ['arbs', function () { return t('arb'); }], ['dropping', function () { return t('drop_tab'); }], ['middles', function () { return t('mid_tab'); }]];
+  // la pestaña 'picks' es el MONITOR PRIVADO (hoops no tiene picks públicas): solo admin. El resto de
+  // familias sale de precios entre casas y es el producto Sharp de esta pantalla.
+  function bbOppFams() { return (perfOK() ? [['picks', 'Picks']] : []).concat([['value', 'Value'], ['arbs', function () { return t('arb'); }], ['dropping', function () { return t('drop_tab'); }], ['middles', function () { return t('mid_tab'); }]]); }
   function bbOppLg() { return (S.bb && S.bb.oppLg) || 'all'; }
   function bbBookLab(b) { return String(b || '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   function bbWhen(d) {
@@ -7815,7 +7831,8 @@
 
   function renderBBOpps() {
     var lgo = bbOppLg();
-    var f = S.bb.oppFilt || 'picks';
+    var f = S.bb.oppFilt || (perfOK() ? 'picks' : 'value');
+    if (f === 'picks' && !perfOK()) f = 'value'; // el monitor privado no existe para el público
     var tabs = '<div class="gx-cb-tabs">' + [['all', 'Todas']].concat(BB_LEAGUES).concat([['euro', 'Euroliga/NBL']]).map(function (x) {
       return '<span class="gx-cb-tab' + (lgo === x[0] ? ' on' : '') + '" data-bbopplg="' + x[0] + '">' + esc(x[1]) + '</span>';
     }).join('') + '<span class="gx-spacer"></span></div>';
@@ -7825,7 +7842,7 @@
     // en chip cuadrado. Baloncesto tenía las dos en píldora —`gx-bb-subtab` es 999px de radio igual que
     // `gx-cb-tab`— así que las dos filas parecían el mismo control repetido.
     // Se pasa a `gx-prodchip`, que es el chip de familia de la casa: el mismo que ya usan los otros tres.
-    var chips = '<div class="gx-bb-oppfams">' + BB_OPPF.map(function (x) {
+    var chips = '<div class="gx-bb-oppfams">' + bbOppFams().map(function (x) {
       return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(typeof x[1] === 'function' ? x[1]() : x[1]) + '</span>';
     }).join('') + '</div>';
     if (f === 'picks') { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + bbPicksPanel()); return; }
@@ -7876,7 +7893,8 @@
           '<div class="gx-bb-orow"><span class="gx-bb-otag">' + esc(v.fam_label) + '</span><b class="gx-bb-osel">' + esc(v.label) + '</b>' +
           '<span class="gx-bb-oodds">' + v.odds.toFixed(2) + '<i>' + esc(bbBookLab(v.book)) + '</i></span>' +
           '<span class="gx-bb-oev up">+' + v.ev_pct.toFixed(1) + '%</span></div></div>';
-      }).join('') + '</div></div>' : '';
+      }).join('') + '</div></div>'
+      : d.value_locked ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Los mejores precios de hoy</span><span class="gx-ph-extra">' + d.value_locked + '</span></div>' + lockPanel() + '</div>' : '';
     var note = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span>' + esc(d.note || '') + '</span></div>';
     bbShell('Brief · ' + esc(d.label || bbLgLab()), bbTabs() + intro + games + val + note);
   }
@@ -8794,7 +8812,7 @@
   function renderBB(v) {
     if (!S.me) { bbShell('Baloncesto', mvLoading()); return; }
     if (!bbAllowed()) { showView('board'); return; }
-    if (!nuevosOK()) { bbShell('Baloncesto', lockNuevos()); return; }
+    var lkBB = nsLockHtml(v); if (lkBB) { bbShell('Baloncesto', lkBB); return; }
     if (v === 'bbgame') renderBBGame();
     else if (v === 'bbteam') renderBBTeam();
     else if (v === 'bbplayer') renderBBPlayer();
@@ -8963,7 +8981,7 @@
     e._inflight = true; var done = false;
     var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'esports') showView(S.view); }, 30000);
     fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
-      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
       .then(function (d) {
         if (done) return; done = true; clearTimeout(to);
         e.v = d || { _err: 1 }; e._at = Date.now(); e._inflight = false;
@@ -9062,7 +9080,8 @@
   function renderES(v) {
     if (!S.me) { esShell('Esport', esLoading()); return; }
     if (!esAllowed()) { showView('board'); return; }
-    if (!nuevosOK()) { esShell('Esport', lockNuevos()); return; }
+    var lkES = nsLockHtml(v === 'esmatch' || v === 'esmodel' || v === 'esperf' || v === 'esboard' || v === 'esteams' || v === 'esteam' || v === 'esplayer' || v === 'escircuit' || v === 'estour' || v === 'esprops' || v === 'esbrief' || v === 'esask' ? v : 'esopps');
+    if (lkES) { esShell('Esport', lkES); return; }
     if (v === 'esmatch') renderESMatch();
     else if (v === 'esmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESModel(); }
     else if (v === 'esperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); renderESPerf(); }
@@ -9413,6 +9432,8 @@
   function esSignalCell(it) {
     if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
     if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + esT(' con ventaja', ' with edge') + '</span>';
+    // el servidor recortó las picks por plan: el hueco se pinta como candado, no como "sin señal"
+    if (it.picks_locked) return '<a class="gx-bb-pickchip" href="/plans" style="text-decoration:none">' + ic('lock') + it.picks_locked + esT(' con ventaja — en Pro', ' with edge — in Pro') + '</a>';
     if (it.highlight) return '<span class="gx-es-hl">' + esc(it.highlight) + '</span>';
     return '<span class="gx-dim" style="font-size:11px">' + (it.markets_n ? it.markets_n + ' líneas' : 'mercado cerrado') + '</span>';
   }
@@ -10531,7 +10552,9 @@
   }
   function esEdges(d) {
     var e = d.edges; if (!e) return '';
-    if (!e.rows.length) return esPanel('Mercado derivado', '', '<div class="gx-empty">' + illo('radar') + '<b>' + esc(e.note || 'Sin líneas derivadas abiertas.') + '</b></div>', 'gx-es-edges');
+    // el servidor manda la tabla vacía + locked para free: aquí se pinta el candado con CTA, no un hueco
+    if (e.locked) return esPanel('Mercado derivado', '', lockPanelPro(), 'gx-es-edges');
+    if (!(e.rows || []).length) return esPanel('Mercado derivado', '', '<div class="gx-empty">' + illo('radar') + '<b>' + esc(e.note || 'Sin líneas derivadas abiertas.') + '</b></div>', 'gx-es-edges');
     var rows = e.rows.map(function (r) {
       return '<tr class="' + (r.pick ? 'pick' : '') + '"><td>' + esc(esEdgeLabel(r)) + '<div class="gx-dim" style="font-size:10.5px">' + esc(r.how || '') + '</div></td>' +
         '<td class="r gx-mono">' + esPct(r.p_gp) + '</td><td class="r gx-mono">' + esPct(r.p_market) + '</td>' +
@@ -11331,7 +11354,7 @@
       e2._inflight = true; var done = false;
       var to = setTimeout(function () { if (done) return; done = true; e2._inflight = false; e2.v = { _err: 1 }; e2._at = Date.now(); if (S.sport === 'f1') showView(S.view); }, 30000);
       fetch(url, { headers: hdrs() })
-        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
         .then(function (j) {
           if (done) return; done = true; clearTimeout(to);
           e2._inflight = false; e2.v = j || { _err: 1 }; e2._at = Date.now();
@@ -11447,7 +11470,7 @@
     // enlace directo a F1 caía en fútbol antes de saber si el usuario tiene acceso. Se espera.
     if (!S.me) { f1Shell(t('nav_opps'), f1Loading()); return; }
     if (!f1Allowed()) { showView('board'); return; }
-    if (!nuevosOK()) { f1Shell(t('nav_opps'), lockNuevos()); return; }
+    var lkF1 = nsLockHtml(v); if (lkF1) { f1Shell(t('nav_opps'), lkF1); return; }
     if (v === 'f1opps') return renderF1Opps();
     if (v === 'f1perf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderF1Perf(); }
     if (v === 'f1race') return renderF1Race();
@@ -12090,7 +12113,7 @@
     e._inflight = true; var done = false;
     var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'tennis') showView(S.view); }, 30000);
     fetch(url, { headers: hdrs() })
-      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
       .then(function (j) {
         if (done) return; done = true; clearTimeout(to);
         e._inflight = false; e.v = j || { _err: 1 }; e._at = Date.now();
@@ -12125,7 +12148,7 @@
     // faltaban. Se espera, y cuando `me` llega el guard de arranque decide de verdad.
     if (!S.me) { tenShell(t('nav_opps'), tenLoading()); return; }
     if (!tenAllowed()) { showView('board'); return; }
-    if (!nuevosOK()) { tenShell(t('nav_opps'), lockNuevos()); return; }
+    var lkTN = nsLockHtml(v); if (lkTN) { tenShell(t('nav_opps'), lkTN); return; }
     if (v === 'tenopps') return renderTenOpps();
     if (v === 'tenmatch') return renderTenMatch();
     if (v === 'tengames') return renderTenGames();
@@ -12344,7 +12367,8 @@
         (d.market && d.market.ml_p_a != null ? '<span>mercado ' + tenPct(d.market.ml_p_a) + ' · ' + (d.books || 0) + ' casas</span>' : '<span>sin consenso</span>') +
         '<span>' + (d.exp_games != null ? d.exp_games.toFixed(1) : '—') + ' juegos esperados</span>' +
         '<span>TB ' + tenPct(d.tb_any) + '</span>' +
-        ((d.picks || []).length ? '<span class="gx-ten-shadow">' + d.picks.length + ' tesis</span>' : '') + '</div></div>';
+        ((d.picks || []).length ? '<span class="gx-ten-shadow">' + d.picks.length + ' tesis</span>'
+          : d.picks_locked ? '<a class="gx-ten-shadow" href="/plans" style="text-decoration:none">' + ic('lock') + d.picks_locked + ' tesis — en Pro</a>' : '') + '</div></div>';
 
     var lens = S.ten.lens || 'partido';
     var LENSES = [
@@ -12504,6 +12528,8 @@
   // 7) LAS TESIS, con la card de la casa
   function tenPicksPanel(d) {
     var pk = d.picks || [];
+    // el servidor recortó las tesis por plan: candado con CTA, jamás un "no hay" que miente
+    if (!pk.length && d.picks_locked) return '<div class="gx-panel">' + lockPanelPro() + '</div>';
     if (!pk.length) {
       return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
         '<b>Ninguna línea de este partido pasa el listón.</b>' +
@@ -12973,7 +12999,7 @@
       var done = false;
       var to = setTimeout(function () { if (done) return; done = true; slot._inflight = false; slot.v = { _err: 1 }; slot._at = Date.now(); if (S.sport === 'nfl') showView(S.view); }, 30000);
       fetch(url + asplanQS(url.indexOf('?') >= 0 ? '&' : '?'), { headers: hdrs() })
-        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
         .then(function (d) {
           if (done) return; done = true; clearTimeout(to);
           slot.v = d || { _err: 1 }; slot._at = Date.now(); slot._inflight = false;
@@ -13211,7 +13237,7 @@
   function renderNfl(v) {
     if (!S.me) { nflShell(t('sport_nfl'), nflLoading()); return; }
     if (!nflAllowed()) { showView('board'); return; }
-    if (!nuevosOK()) { nflShell(t('sport_nfl'), lockNuevos()); return; }
+    var lkNF = nsLockHtml(v); if (lkNF) { nflShell(t('sport_nfl'), lkNF); return; }
     if (v === 'nflgame') renderNflGame();
     else if (v === 'nflteams') renderNflTeams();
     else if (v === 'nflteam') renderNflTeam();
@@ -13751,7 +13777,10 @@
     }
     // VEREDICTOS (sombra)
     var edB = '';
-    if (d.edges && (d.edges.candidates || []).length) {
+    if (d.edges && d.edges.locked) {
+      // el servidor recortó el registro en sombra por plan: candado con CTA en su lugar
+      edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span></div>' + lockPanelPro() + '</div>';
+    } else if (d.edges && (d.edges.candidates || []).length) {
       edB = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Veredictos del motor</span>' +
         '<span class="gx-ph-extra"><span class="gx-chip gx-chip-baja">SOMBRA — no son picks</span></span></div>' +
         '<div class="gx-es-why-rows">' + d.edges.candidates.map(function (c) {

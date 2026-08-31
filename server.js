@@ -1237,6 +1237,22 @@ function newSportsPlanOk(u) {
   if (Date.now() < newSportsFreeUntil()) return true;
   return ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0;
 }
+// CIERRE DE LA VENTANA (31-ago, orden de Alexis): la semana gratis venció y los cinco deportes dejan el
+// todo-o-nada. Misma línea que combate v3 y fútbol: free entra y ve la INTELIGENCIA (agenda, boards,
+// fichas, rankings, proyecciones) pero ninguna señal accionable; pro ve las picks públicas, briefs,
+// lecturas, simuladores y el registro en sombra; sharp ve lo que sale de precios entre casas (value,
+// arbitraje, caídas, middles, props). El monitor privado (picks hoops, POSTs de liquidación) es solo
+// admin: no es producto de ningún plan. El admin previsualiza con ?asplan=free|pro|sharp como en combate,
+// y en preview los strips se aplican de verdad (si no, la preview mentiría justo donde importa).
+function nsPlanCtx(u, url) {
+  const as = String(url.searchParams.get('asplan') || '');
+  const preview = !!(u && u.isAdmin && ['free', 'pro', 'sharp'].indexOf(as) >= 0);
+  const plan = preview ? as
+    : (u && u.isAdmin) ? 'sharp'
+      : (!plansEnforced() || Date.now() < newSportsFreeUntil()) ? 'sharp'
+        : (u ? effectivePlan(u.email) : 'free');
+  return { plan, pro: plan === 'pro' || plan === 'sharp', sharp: plan === 'sharp', admin: !!(u && u.isAdmin && !preview) };
+}
 
 // Genera (si falta) un código de referido único para un usuario. Link: gpsimulador.com/?ref=<code>
 function ensureRefCode(email) {
@@ -17993,8 +18009,13 @@ const server = http.createServer(async (req, res) => {
       const uH = getUser(req);
       const hoopsPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_HOOPS_PUBLIC_ENABLED || '').trim());
       if (!uH || !(uH.isAdmin || hoopsPublic)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uH)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = inteligencia; pro = brief/sim/lecturas; sharp = value/arb
+      // (opps). El monitor privado de picks sigue siendo solo admin. Detalle por ruta más abajo.
+      const nsH = nsPlanCtx(uH, url);
+      if (p === '/api/hoops/opps' && !nsH.sharp) return json(res, 403, { error: 'upgrade', need: 'sharp' });
+      if ((p === '/api/hoops/brief' || p === '/api/hoops/sim' || p === '/api/hoops/read') && !nsH.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // monitor privado (GET y POSTs de build/settle) y la sala de máquinas: jamás producto de un plan
+      if ((p === '/api/hoops/picks' || p === '/api/hoops/perf') && !nsH.admin) return json(res, 404, { error: 'No encontrado' });
       const ST = require('./basketball-engine/store');
       const lg = String(url.searchParams.get('league') || 'wnba');
 
@@ -18231,7 +18252,12 @@ const server = http.createServer(async (req, res) => {
       // ── B5: BRIEF DE LA JORNADA ───────────────────────────────────────────────────────────────
       // Funciona con o sin dataset: sin modelo muestra la jornada y los precios; con modelo, además,
       // la proyección de cada partido y la apertura narrada.
-      if (p === '/api/hoops/brief') return json(res, 200, await hoopsBrief(lg, { force: url.searchParams.get('force') === '1' }).catch((e) => ({ league: lg, error: e.message, games: [], value: [] })));
+      if (p === '/api/hoops/brief') {
+        const bOut = await hoopsBrief(lg, { force: url.searchParams.get('force') === '1' }).catch((e) => ({ league: lg, error: e.message, games: [], value: [] }));
+        // el bloque de value dentro del brief es contenido Sharp, como en fútbol (memo compartido → copia)
+        if (!nsH.sharp && bOut && (bOut.value || []).length) return json(res, 200, { ...bOut, value: [], value_locked: bOut.value.length });
+        return json(res, 200, bOut);
+      }
 
       const C = ST.load(lg);
       if (!C || !C.n) return json(res, 200, { league: lg, empty: true, note: 'sin dataset cosechado para esta liga' });
@@ -18587,8 +18613,12 @@ const server = http.createServer(async (req, res) => {
       const uF = getUser(req);
       const f1Public = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
       if (!uF || !(uF.isAdmin || f1Public)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uF)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = carrera/parrilla/pilotos/clasificación; pro = GP Takes,
+      // gemelo (whatif/duel/sim), lecturas y brief.
+      const nsF = nsPlanCtx(uF, url);
+      if (['/api/f1/takes', '/api/f1/taketrack', '/api/f1/whatif', '/api/f1/duel', '/api/f1/read', '/api/f1/brief'].indexOf(p) >= 0 && !nsF.pro) {
+        return json(res, 403, { error: 'upgrade', need: 'pro' });
+      }
       const F1 = require('./f1-engine/store');
       try {
         if (p === '/api/f1/read') {
@@ -18633,18 +18663,35 @@ const server = http.createServer(async (req, res) => {
       const uT = getUser(req);
       const tenPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_TENNIS_PUBLIC_ENABLED || '').trim());
       if (!uT || !(uT.isAdmin || tenPublic)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uT)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = agenda/board/fichas/ranking/carga; pro = tesis en sombra,
+      // simulador, lecturas, brief y track. Las tesis viajan DENTRO de board/match (el aviso de Alexis:
+      // la pick que no se ve en oportunidades no puede verse en el panel de inteligencia) → strip abajo.
+      const nsT = nsPlanCtx(uT, url);
+      if (['/api/tennis/sim', '/api/tennis/read', '/api/tennis/brief', '/api/tennis/track'].indexOf(p) >= 0 && !nsT.pro) {
+        return json(res, 403, { error: 'upgrade', need: 'pro' });
+      }
+      // las tesis en sombra que viajan en cada fila del board y en la ficha del partido son contenido pro
+      const tenStrip = (row) => {
+        if (!row || nsT.pro) return row;
+        const n = (row.picks || []).length;
+        delete row.picks; delete row.candidates;
+        if (n || row.shadow_n) { row.picks_locked = n || row.shadow_n || 0; row.shadow_n = 0; }
+        return row;
+      };
       const TEN = require('./tennis-engine/store');
       const tnQ = String(url.searchParams.get('tour') || 'atp').toLowerCase() === 'wta' ? 1 : 0;
       try {
-        if (p === '/api/tennis/board') return json(res, 200, await TEN.board(tnQ));
+        if (p === '/api/tennis/board') {
+          const out = await TEN.board(tnQ);
+          if (out && out.rows && !nsT.pro) out.rows = out.rows.map(tenStrip);
+          return json(res, 200, out);
+        }
         if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
         if (p === '/api/tennis/match') {
           const out = await TEN.matchDetail(url.searchParams.get('id') || '');
           if (out && out.a && out.b) out.senales = [...obsSenales('tennis', [obsClave(out.a.name), obsClave(out.a.ref)], { lado: 'a' }),
             ...obsSenales('tennis', [obsClave(out.b.name), obsClave(out.b.ref)], { lado: 'b' })];
-          return json(res, 200, out);
+          return json(res, 200, tenStrip(out));
         }
         if (p === '/api/tennis/read') {
           const id = String(url.searchParams.get('id') || '');
@@ -18684,8 +18731,50 @@ const server = http.createServer(async (req, res) => {
       const uE = getUser(req);
       const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
       if (!uE || !(uE.isAdmin || esPublic)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uE)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = pizarra/fichas/catálogo/resultados; pro = picks de familias
+      // derivadas, brief, sim y lecturas; sharp = lo que sale de precios entre casas (props, evidencia,
+      // arbitraje/middles/caídas). Los POSTs de liquidación/snapshot pasan a admin: son maquinaria.
+      const nsE = nsPlanCtx(uE, url);
+      if (['/api/esports/props', '/api/esports/propstrack', '/api/esports/evidence'].indexOf(p) >= 0 && !nsE.sharp) {
+        return json(res, 403, { error: 'upgrade', need: 'sharp' });
+      }
+      if (['/api/esports/sim', '/api/esports/brief', '/api/esports/read'].indexOf(p) >= 0 && !nsE.pro) {
+        return json(res, 403, { error: 'upgrade', need: 'pro' });
+      }
+      if ((p === '/api/esports/settle' || p === '/api/esports/snapshot') && req.method === 'POST' && !nsE.admin) {
+        return json(res, 404, { error: 'No encontrado' });
+      }
+      // STRIPS del panel de inteligencia (el aviso de Alexis: la pick que Free no ve en oportunidades
+      // tampoco puede asomar en la pizarra ni en la ficha). Se deja el CONTEO como candado pintable.
+      const esStripItem = (x) => {
+        if (!x) return x;
+        if (!nsE.pro) {
+          x.picks_locked = (x.picks_list || []).length || x.picks || 0;
+          x.picks = 0; x.best = null; x.picks_list = []; x.valued = 0; x.reasons = null;
+        }
+        if (!nsE.sharp) { x.arbs = []; x.best_arb = null; }
+        return x;
+      };
+      const esStripBoard = (out) => {
+        if (!out || (nsE.pro && nsE.sharp)) return out;
+        (out.items || []).forEach(esStripItem);
+        if (!nsE.sharp && out.surfaces) {
+          out.surfaces = { arbs: [], middles: [], dropping: [], counts: out.surfaces.counts || null, locked: true, why: null, diag: null };
+        }
+        return out;
+      };
+      const esStripMatch = (out) => {
+        if (!out) return out;
+        if (!nsE.pro && out.edges) {
+          // misma forma que evaluateAll para que la tabla del frontend no reviente: vacía + candado.
+          // El detalle GP-vs-casa línea a línea ES la ventaja: no viaja a free ni recortado.
+          out.edges = { rows: [], picks: [], no_picks: [], reasons: {}, valued: 0, folded: 0,
+            families_allowed: [], excluded: [], locked: true, picks_locked: ((out.edges.picks || []).length) || null,
+            note: 'El mercado derivado (la lectura GP línea a línea y las picks) es parte de los planes Pro y Sharp.' };
+        }
+        if (!nsE.sharp) { out.arbitrages = []; }
+        return out;
+      };
       const ES = require('./esports-engine/store');
       const gm = String(url.searchParams.get('game') || 'cs2').toLowerCase();
       const okGame = !!ES.ENGINES[gm];
@@ -18695,10 +18784,10 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/esports/board') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
-          return json(res, 200, await ES.board(gm, {
+          return json(res, 200, esStripBoard(await ES.board(gm, {
             days: +(url.searchParams.get('days') || 3),
             maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
-          }));
+          })));
         }
         if (p === '/api/esports/evidence') {
           // evidencia de mercado (17-ago, P0 del blueprint de feedback): cobertura de cierres con apertura,
@@ -18725,7 +18814,7 @@ const server = http.createServer(async (req, res) => {
           // del servidor, y además esto deja claro en el propio JSON que el modelo NO las usó.
           out.senales = [...obsSenales('esports', `${gm}:${obsClave(out.event.home.name)}`, { lado: 'home' }),
             ...obsSenales('esports', `${gm}:${obsClave(out.event.away.name)}`, { lado: 'away' })];
-          return json(res, 200, out);
+          return json(res, 200, esStripMatch(out));
         }
         if (p === '/api/esports/model') {
           // la ficha del motor de un juego: qué es propio suyo, qué familias cotiza y dónde puede aportar
@@ -18879,8 +18968,10 @@ const server = http.createServer(async (req, res) => {
       const uA = getUser(req);
       const nflPublicA = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
       if (!uA || !(uA.isAdmin || nflPublicA)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uA)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = jornada/fichas/directorios/proyección; pro = lecturas y el
+      // registro en sombra (los edges viajan dentro de la ficha del partido → strip abajo).
+      const nsA = nsPlanCtx(uA, url);
+      if ((p === '/api/amfoot/read' || p === '/api/amfoot/track') && !nsA.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
       const AF = require('./amfoot-engine/store');
       const lgA = String(url.searchParams.get('league') || 'ncaaf').toLowerCase();
       if (!AF.LEAGUES[lgA]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AF.LEAGUES) });
@@ -18897,6 +18988,9 @@ const server = http.createServer(async (req, res) => {
           if (!out) return json(res, 404, { error: 'partido no encontrado en la base' });
           out.senales = [...obsSenales('amfoot', `${lgA}:${obsClave(out.home.name)}`, { lado: 'home' }),
             ...obsSenales('amfoot', `${lgA}:${obsClave(out.away.name)}`, { lado: 'away' })];
+          // el registro en sombra (candidatas con lado, línea y precio) es contenido pro: para free se
+          // sustituye por el candado, no por un hueco mudo
+          if (!nsA.pro && out.edges) out.edges = { candidates: [], locked: true, verdict_note: out.edges.verdict_note || null };
           return json(res, 200, out);
         }
         if (p === '/api/amfoot/teams') return json(res, 200, AF.teamsDirectory(lgA));
@@ -18915,8 +19009,13 @@ const server = http.createServer(async (req, res) => {
       const uN = getUser(req);
       const nflPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_NFL_PUBLIC_ENABLED || '').trim());
       if (!uN || !(uN.isAdmin || nflPublic)) return json(res, 404, { error: 'No encontrado' });
-      // Ventana de lanzamiento: gratis para todos 7 días; vencida, Pro/Sharp (ver newSportsPlanOk).
-      if (!newSportsPlanOk(uN)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // Cierre por tiers (31-ago): free = jornada/fichas/lesiones/proyección; pro = brief, simulador,
+      // lecturas y el registro en sombra. La liquidación (POST settle) pasa a admin.
+      const nsN = nsPlanCtx(uN, url);
+      if (['/api/nfl/brief', '/api/nfl/sim', '/api/nfl/read', '/api/nfl/track'].indexOf(p) >= 0 && !nsN.pro) {
+        return json(res, 403, { error: 'upgrade', need: 'pro' });
+      }
+      if (p === '/api/nfl/settle' && req.method === 'POST' && !nsN.admin) return json(res, 404, { error: 'No encontrado' });
       const NFL = require('./nfl-engine/store');
       try {
         if (p === '/api/nfl/slate') {
@@ -18943,6 +19042,8 @@ const server = http.createServer(async (req, res) => {
           if (!out) return json(res, 404, { error: 'partido no encontrado en la base', id });
           out.senales = [...obsSenales('amfoot', `nfl:${obsClave(out.home.name)}`, { lado: 'home' }),
             ...obsSenales('amfoot', `nfl:${obsClave(out.away.name)}`, { lado: 'away' })];
+          // mismo strip que College/CFL: el registro en sombra de la ficha es contenido pro
+          if (!nsN.pro && out.edges) out.edges = { candidates: [], locked: true, verdict_note: out.edges.verdict_note || null };
           return json(res, 200, out);
         }
         if (p === '/api/nfl/teams') return json(res, 200, NFL.teamsDirectory());

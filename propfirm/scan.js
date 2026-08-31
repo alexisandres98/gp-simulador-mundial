@@ -166,7 +166,7 @@ function consensoDe(cross, familia, mapa, linea) {
 // ---- EL BARRIDO -----------------------------------------------------------------------------------------
 async function escanear({ game = 'cs2' } = {}) {
   const ESS = require('../esports-engine/store');
-  const out = { game, eventos: 0, pm_encontrados: 0, mercados: 0, senales_nuevas: 0, senales: [] };
+  const out = { game, eventos: 0, pm_encontrados: 0, mercados: 0, con_consenso: 0, senales_nuevas: 0, senales: [], cerca: [] };
   const sl = await ESS.slate(game, { days: 2 }).catch(() => null);
   const st = rd();
   const ahora = Date.now();
@@ -198,6 +198,15 @@ async function escanear({ game = 'cs2' } = {}) {
       if (mm.liquidez != null && mm.liquidez < LIQ_MIN()) continue;         // el propio gate de la firm pide fondo
       const cons = consensoDe(cross, mm.familia, mm.mapa, mm.linea);
       if (!cons) continue;
+      out.con_consenso++;
+      // el parte enseña QUÉ TAN CERCA estuvo cada mercado — el silencio con este dato es una medición,
+      // sin él es una incógnita ("¿no hay valor o el consenso no cruzó?")
+      for (const lado of (mm.familia === 'TOTAL_MAPAS' ? ['over', 'under'] : ['home', 'away'])) {
+        const p0 = mm.lados[lado] && mm.lados[lado].precio;
+        if (p0 >= PRECIO_MIN && p0 <= PRECIO_MAX && cons[lado] != null) {
+          out.cerca.push({ m: mm.pregunta.slice(0, 60), lado, pm: p0, cons: +cons[lado].toFixed(3), edge: +(100 * (cons[lado] - p0)).toFixed(1) });
+        }
+      }
       for (const lado of (mm.familia === 'TOTAL_MAPAS' ? ['over', 'under'] : ['home', 'away'])) {
         const p = mm.lados[lado] && mm.lados[lado].precio;
         if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
@@ -233,6 +242,7 @@ async function escanear({ game = 'cs2' } = {}) {
   }
   st.at = new Date().toISOString();
   wr(st);
+  out.cerca = out.cerca.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 10);
   return out;
 }
 

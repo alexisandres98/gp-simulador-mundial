@@ -14834,7 +14834,7 @@ async function propfirmSweep() {
         `  Mercado PM: ${s.mercado}`,
         `  COMPRAR: "${s.equipo}" @ ${fmtC(s.precio_pm)} actual`,
         `  Orden: LÍMITE máx ${fmtC(s.limite)} · ${s.shares} shares (~$${Math.round(s.shares * s.precio_pm)} de costo, riesgo tope $${+(s.shares * s.precio_pm).toFixed(0)})`,
-        `  Consenso sharp: ${(100 * s.consenso).toFixed(0)}% (${s.books} casas) · Edge +${s.edge_pp} pp`,
+        `  Consenso sharp: ${(100 * s.consenso).toFixed(0)}% (${s.books} casas) · Edge +${s.edge_pp} pp${s.liquidez != null ? ` · Liquidez PM $${s.liquidez.toLocaleString('en-US')}` : ''}`,
         `  Saque: ${s.ko}`,
         '',
       ].join('\n'));

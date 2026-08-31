@@ -196,6 +196,34 @@ async function escanear({ game = 'cs2' } = {}) {
       if (!mm) continue;
       out.mercados++;
       if (mm.liquidez != null && mm.liquidez < LIQ_MIN()) continue;         // el propio gate de la firm pide fondo
+      // ── HIPÓTESIS DE ALEXIS EN SOMBRA (1-sep): ¿le gana NUESTRO MODELO al retail de PM en el ganador? ──
+      // GP midió pérdidas en el mercado de ganador en baloncesto (−11,9% ROI) y combate (−8,3% CLV), y el
+      // ganador de esports acaba de reabrirse en sombra con prior en contra. Contra el retail de Polymarket
+      // el listón es más bajo que contra Pinnacle — eso es exactamente lo que esta clase de señal MIDE:
+      // solo SERIE, solo sombra, JAMÁS correo. Si en 2-3 semanas la sombra dice que sí, se abre con datos.
+      if (mm.familia === 'SERIE') {
+        const pSerieA = an && an.model && (an.model.post_p != null ? an.model.post_p : an.model.pre_p);
+        if (pSerieA != null && pSerieA > 0 && pSerieA < 1) {
+          const pModelo = { home: pSerieA, away: 1 - pSerieA };
+          for (const lado of ['home', 'away']) {
+            const p = mm.lados[lado] && mm.lados[lado].precio;
+            if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
+            const edgeM = 100 * (pModelo[lado] - p);
+            if (!(edgeM >= 6) || edgeM > 15) continue;    // listón más alto que el del consenso: es una hipótesis
+            const idM = `mvsp|${mm.pm_id}|${lado}`;
+            if (st.senales[idM]) continue;
+            st.senales[idM] = {
+              id: idM, at: new Date().toISOString(), tipo: 'modelo_sombra', deporte: game, game,
+              evento: `${home} vs ${away}`, pm_evento: pmEv.slug || pmEv.title, mercado: mm.pregunta,
+              familia: 'SERIE', lado, equipo: mm.lados[lado].nombre,
+              precio_pm: p, consenso: pModelo[lado], books: 0, edge_pp: +edgeM.toFixed(1),
+              limite: null, shares: Math.floor(RIESGO_USD() / p), ko: ev.start_at, home, away,
+              estado: 'ABIERTA', correo_at: 'nunca',   // sombra pura: el correo jamás la toca
+            };
+            out.senales_nuevas++;
+          }
+        }
+      }
       const cons = consensoDe(cross, mm.familia, mm.mapa, mm.linea);
       if (!cons) continue;
       out.con_consenso++;
@@ -227,6 +255,7 @@ async function escanear({ game = 'cs2' } = {}) {
           familia: mm.familia, mapa: mm.mapa, linea: mm.linea, linea_home: mm.linea_home,
           lado, equipo: mm.lados[lado].nombre,
           precio_pm: p, consenso: cons[lado], books: cons.books, edge_pp: +edge.toFixed(1),
+          liquidez: mm.liquidez != null ? Math.round(mm.liquidez) : null,
           limite, shares, ko: ev.start_at, home, away,
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
@@ -472,16 +501,25 @@ async function liquidar({ game = 'cs2' } = {}) {
 // ---- ESTADO ---------------------------------------------------------------------------------------------
 function estado() {
   const st = rd();
-  const all = Object.values(st.senales);
-  const cerr = all.filter((s) => s.estado === 'WIN' || s.estado === 'LOSS');
+  const todas = Object.values(st.senales);
+  const resumen = (all) => {
+    const cerr = all.filter((s) => s.estado === 'WIN' || s.estado === 'LOSS');
+    return {
+      senales: all.length,
+      abiertas: all.filter((s) => s.estado === 'ABIERTA').length,
+      w: cerr.filter((s) => s.estado === 'WIN').length,
+      l: cerr.filter((s) => s.estado === 'LOSS').length,
+      pnl_usd: +cerr.reduce((a, s) => a + (s.pnl_usd || 0), 0).toFixed(2),
+    };
+  };
+  const operables = todas.filter((s) => s.tipo !== 'modelo_sombra');
   return {
-    at: st.at, senales: all.length,
-    abiertas: all.filter((s) => s.estado === 'ABIERTA').length,
-    w: cerr.filter((s) => s.estado === 'WIN').length,
-    l: cerr.filter((s) => s.estado === 'LOSS').length,
-    pnl_usd: +cerr.reduce((a, s) => a + (s.pnl_usd || 0), 0).toFixed(2),
-    sin_correo: all.filter((s) => s.estado === 'ABIERTA' && !s.correo_at).length,
-    ultimas: all.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20),
+    at: st.at, ...resumen(operables),
+    // el experimento de Alexis (modelo vs retail en ganador) se lee APARTE: mezclarlo con lo operable
+    // contaminaría las dos lecturas
+    modelo_sombra: resumen(todas.filter((s) => s.tipo === 'modelo_sombra')),
+    sin_correo: operables.filter((s) => s.estado === 'ABIERTA' && !s.correo_at).length,
+    ultimas: todas.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20),
   };
 }
 

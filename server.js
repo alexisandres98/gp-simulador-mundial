@@ -17709,6 +17709,13 @@ const server = http.createServer(async (req, res) => {
         const rows = db.combatPicks || [];
         return json(res, 200, { count: rows.length, picks: rows, exported_at: new Date().toISOString() });
       }
+      // ?amfoot=<liga> (31-ago): el track de fútbol americano para el reporte de los lunes — mismo criterio.
+      if (url.searchParams.get('amfoot')) {
+        const AFx = require('./amfoot-engine/store');
+        const lgX = String(url.searchParams.get('amfoot')).toLowerCase();
+        if (!AFx.LEAGUES[lgX]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AFx.LEAGUES) });
+        return json(res, 200, { league: lgX, track: AFx.track(lgX), exported_at: new Date().toISOString() });
+      }
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
     }
     // REEMPLAZO EDITORIAL de una pick ACTIVE (one-off, misma key): la vieja queda SUPERSEDED (fuera del feed y

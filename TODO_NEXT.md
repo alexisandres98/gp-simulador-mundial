@@ -1,5 +1,19 @@
 # TODO_NEXT.md — GP Simulador
 
+## HOOPS: AUTOPSIA + REFIT DEL 31-AGO — LO MEDIDO Y LO QUE QUEDA
+La autopsia (186 liquidadas) encontró tres fugas y el walk-forward local (275 partidos WNBA 2026,
+protocolo de /api/hoops/perf) dio un RESULTADO NEGATIVO que vale oro: acortar la media vida del rating
+EMPEORA el skill contra el mercado (hl=45 → skill −0.0079; hl=14 → −0.0128). La fuga contra el cierre no
+es decaimiento — es información de plantilla, y eso se ataca con capas de información, no con el fit.
+- HECHO: gates v2 (edge≥5pp, sin spreads |línea|≥8, totales solo under) con régimen hoops_v2 — la muestra
+  nueva NO se junta con la v1. GP_HOOPS_V2=false revierte.
+- HECHO: observador de prensa de baloncesto (dominio hoops, REST/load management como tipo propio).
+  El build ya usaba la sim ajustada por bajas oficiales desde el 16-ago; la prensa complementa en display.
+- MEDIDO Y DIFERIDO: el equipo en back-to-back rinde 4-9 pts BAJO su proyección (b2b local −4.4, rival en
+  b2b +8.9 para el local) pero n=9 — coeficiente honesto imposible. Refit del ajuste de descanso cuando la
+  NBA (oct) dé volumen; el tuner vive en el scratchpad de la sesión y el protocolo en /api/hoops/perf.
+- La vara de éxito de la v2: CLV medio ≥ 0 y % positivo ≥ 40% con n≥60 liquidadas.
+
 ## 💵 25-AGO: EJECUTOR CON DINERO REAL (léeme antes de tocar `real-executor/`)
 
 **⛔ ESTADO (25-ago 00:20Z): LA CUENTA DE CLOUDBET NO PUEDE APOSTAR POR API TODAVÍA — Y NO ES UN BUG.**

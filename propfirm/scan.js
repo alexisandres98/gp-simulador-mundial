@@ -47,17 +47,33 @@ const nombra = (texto, nombre) => {
 
 // ---- POLYMARKET (gamma): buscar el evento del cruce y leer sus mercados ---------------------------------
 const _cacheEv = new Map();   // por consulta, 10 min: educados con gamma y con nuestro propio sweep
+// gamma NO busca en /events (ignora `search` y devuelve cualquier cosa — comprobado). El buscador real es
+// /public-search, pero sus eventos vienen recortados: el descubrimiento sale de ahí y los MERCADOS
+// completos (outcomePrices, liquidez) se piden después por slug, que es el patrón del collector de la casa.
 async function gammaBusca(q) {
   const k = nrm(q);
   const hit = _cacheEv.get(k);
   if (hit && Date.now() - hit.at < 10 * 60e3) return hit.v;
   let v = [];
   try {
-    const r = await fetch(`${GAMMA}/events?closed=false&limit=25&search=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(12000) });
-    v = r.ok ? await r.json().catch(() => []) : [];
-    if (!Array.isArray(v)) v = [];
+    const r = await fetch(`${GAMMA}/public-search?q=${encodeURIComponent(q)}&limit_per_type=12`, { signal: AbortSignal.timeout(12000) });
+    const j = r.ok ? await r.json().catch(() => null) : null;
+    v = (j && Array.isArray(j.events)) ? j.events.filter((e) => !e.closed) : [];
   } catch { v = []; }
   _cacheEv.set(k, { at: Date.now(), v });
+  return v;
+}
+const _cacheSlug = new Map();
+async function gammaEvento(slug) {
+  const hit = _cacheSlug.get(slug);
+  if (hit && Date.now() - hit.at < 5 * 60e3) return hit.v;
+  let v = null;
+  try {
+    const r = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, { signal: AbortSignal.timeout(12000) });
+    const j = r.ok ? await r.json().catch(() => null) : null;
+    v = Array.isArray(j) ? j[0] : null;
+  } catch { v = null; }
+  _cacheSlug.set(slug, { at: Date.now(), v });
   return v;
 }
 
@@ -67,49 +83,82 @@ function jarr(x) { if (Array.isArray(x)) return x; try { const j = JSON.parse(x)
 // clasifica un mercado de gamma contra nuestras familias. Devuelve null si no se puede mapear SIN dudas:
 // inventarle una equivalencia a un título ambiguo es cómo se compra el partido equivocado.
 function mapMercado(m, home, away) {
+  if (m.closed || m.active === false) return null;
   const q = String(m.question || m.groupItemTitle || '');
   const outs = jarr(m.outcomes);
   const precios = jarr(m.outcomePrices).map(num);
   if (outs.length !== 2 || precios.length !== 2 || precios.some((p) => p == null)) return null;
-  // orientación por nombre de equipo en los outcomes (el caso normal en deportes de gamma)
-  const lado = (i) => nombra(outs[i], home) && !nombra(outs[i], away) ? 'home'
-    : nombra(outs[i], away) && !nombra(outs[i], home) ? 'away' : null;
-  let l0 = lado(0), l1 = lado(1);
-  // binario Yes/No: "Will G2 win…" — el equipo vive en la pregunta
-  if (!l0 && /^(yes|no)$/i.test(String(outs[0]))) {
-    const eq = nombra(q, home) && !nombra(q, away) ? 'home' : nombra(q, away) && !nombra(q, home) ? 'away' : null;
-    if (!eq) return null;
-    l0 = /^yes$/i.test(outs[0]) ? eq : (eq === 'home' ? 'away' : 'home');
-    l1 = l0 === 'home' ? 'away' : 'home';
+
+  // familia + mapa + línea, con la taxonomía REAL de gamma (verificada contra el BLAST del 31-ago):
+  //   "… - Map 1 Winner" · "Map Handicap: G2 (-1.5) vs …" · "Games Total: O/U 2.5" ·
+  //   "Map 1 Rounds Handicap: G2 (-3.5) vs …" · y el ganador de serie lleva el TÍTULO del evento como question.
+  let familia = null, mapa = null, linea = null;
+  const mMapa = q.match(/map\s*(\d)/i);
+  if (/rounds? handicap/i.test(q)) {
+    familia = 'RONDAS_HANDICAP'; mapa = mMapa ? +mMapa[1] : null;
+    const mln = q.match(/\(([+-]?\d+(?:\.\d+)?)\)/); linea = mln ? Math.abs(num(mln[1])) : null;
+    if (mapa == null || linea == null) return null;
+  } else if (/map handicap/i.test(q) && !/rounds?/i.test(q)) {
+    familia = 'HANDICAP';
+    const mln = q.match(/\(([+-]?\d+(?:\.\d+)?)\)/); linea = mln ? Math.abs(num(mln[1])) : 1.5;
+  } else if (/map\s*\d\s*winner/i.test(q)) {
+    familia = 'MAPA'; mapa = +mMapa[1];
+  } else if (/(games?|maps?) total/i.test(q)) {
+    familia = 'TOTAL_MAPAS';
+    const mln = q.match(/([0-9]+\.?[0-9]*)\s*$/); linea = mln ? num(mln[1]) : null;
+    if (linea == null) return null;
+  } else if (/ vs /i.test(q) && /\(bo\d\)/i.test(q) && !/map|round|total|kill/i.test(q.replace(/\(bo\d\)/i, ''))) {
+    familia = 'SERIE';   // el mercado del ganador repite el título del evento
+  } else return null;
+
+  // orientación de lados. Over/Under va por nombre de outcome; lo demás por nombre de equipo — y si el
+  // nombre no resuelve SIN ambigüedad, no hay mercado: comprar el lado equivocado es el peor error posible.
+  let l0 = null, l1 = null;
+  if (familia === 'TOTAL_MAPAS') {
+    l0 = /^over/i.test(outs[0]) ? 'over' : /^under/i.test(outs[0]) ? 'under' : null;
+    l1 = /^over/i.test(outs[1]) ? 'over' : /^under/i.test(outs[1]) ? 'under' : null;
+  } else {
+    const lado = (i) => nombra(outs[i], home) && !nombra(outs[i], away) ? 'home'
+      : nombra(outs[i], away) && !nombra(outs[i], home) ? 'away' : null;
+    l0 = lado(0); l1 = lado(1);
+    if (!l0 && /^(yes|no)$/i.test(String(outs[0]))) {
+      const eq = nombra(q, home) && !nombra(q, away) ? 'home' : nombra(q, away) && !nombra(q, home) ? 'away' : null;
+      if (!eq) return null;
+      l0 = /^yes$/i.test(outs[0]) ? eq : (eq === 'home' ? 'away' : 'home');
+      l1 = l0 === 'home' ? 'away' : 'home';
+    }
   }
   if (!l0 || !l1 || l0 === l1) return null;
 
-  let familia = null, mapa = null, linea = null;
-  if (/map handicap/i.test(q)) {
-    familia = 'HANDICAP';
-    const mln = q.match(/\(([+-]?\d+(?:\.\d+)?)\)/);
-    linea = mln ? Math.abs(num(mln[1])) : 1.5;
-  } else if (/map\s*(\d)\s*winner/i.test(q)) {
-    familia = 'MAPA'; mapa = +q.match(/map\s*(\d)/i)[1];
-  } else if (/match winner|series winner|win the match|win the series/i.test(q)) {
-    familia = 'SERIE';
-  } else return null;
+  // LÍNEA FIRMADA para hándicaps: la pregunta nombra explícitamente quién lleva el signo ("G2 (-1.5)").
+  // Se traduce a la perspectiva del local UNA vez aquí y la liquidación no adivina favoritos jamás.
+  let lineaHome = null;
+  if (familia === 'HANDICAP' || familia === 'RONDAS_HANDICAP') {
+    const mSign = q.match(/([^:()]+?)\s*\(([+-]\d+(?:\.\d+)?)\)/);
+    if (!mSign) return null;
+    const quien = nombra(mSign[1], home) && !nombra(mSign[1], away) ? 'home'
+      : nombra(mSign[1], away) && !nombra(mSign[1], home) ? 'away' : null;
+    if (!quien) return null;
+    lineaHome = quien === 'home' ? num(mSign[2]) : -num(mSign[2]);
+  }
 
-  return { familia, mapa, linea, lados: { [l0]: { precio: precios[0], nombre: outs[0] }, [l1]: { precio: precios[1], nombre: outs[1] } },
+  return { familia, mapa, linea, linea_home: lineaHome, lados: { [l0]: { precio: precios[0], nombre: outs[0] }, [l1]: { precio: precios[1], nombre: outs[1] } },
     pm_id: String(m.id || m.conditionId || m.slug || q), pregunta: q,
     liquidez: num(m.liquidityNum != null ? m.liquidityNum : m.liquidity), vol24: num(m.volume24hr) };
 }
 
 // consenso devig de crossBook para una familia/mapa/línea concreta → { home: p, away: p, books }
 function consensoDe(cross, familia, mapa, linea) {
+  const conLinea = familia === 'HANDICAP' || familia === 'RONDAS_HANDICAP' || familia === 'TOTAL_MAPAS';
   for (const c of cross || []) {
     if (c.family !== familia) continue;
     if ((mapa == null) !== (c.map == null) || (mapa != null && +c.map !== +mapa)) continue;
-    if (familia === 'HANDICAP' && linea != null && c.line != null && Math.abs(Math.abs(c.line) - linea) > 0.01) continue;
+    if (conLinea && !(linea != null && c.line != null && Math.abs(Math.abs(c.line) - linea) < 0.01)) continue;
     if (!c.consensus || c.single_book) continue;
     const out = { books: c.books };
     for (const s of c.consensus) out[s.side] = s.p;
-    if (out.home != null && out.away != null) return out;
+    const lados = familia === 'TOTAL_MAPAS' ? ['over', 'under'] : ['home', 'away'];
+    if (lados.every((l) => out[l] != null)) return out;
   }
   return null;
 }
@@ -131,14 +180,15 @@ async function escanear({ game = 'cs2' } = {}) {
     if (!cross.length) continue;
     const home = ev.home && (ev.home.name || ev.home), away = ev.away && (ev.away.name || ev.away);
     // buscar el evento en gamma por el equipo con nombre más distintivo
-    const q = (toks(home)[0] || '').length >= (toks(away)[0] || '').length ? home : away;
-    const evs = await gammaBusca(`${q}`);
-    const pmEv = evs.find((e) => {
+    const evs = await gammaBusca(`${home} ${away}`);
+    const pmHit = evs.find((e) => {
       const tt = `${e.title || ''} ${e.slug || ''}`;
       if (!(nombra(tt, home) && nombra(tt, away))) return false;
       const d = Date.parse(e.startDate || e.endDate || 0);
       return !d || Math.abs(d - ko) < 36 * 3600e3;
     });
+    if (!pmHit || !pmHit.slug) continue;
+    const pmEv = await gammaEvento(pmHit.slug);
     if (!pmEv) continue;
     out.pm_encontrados++;
     for (const m of pmEv.markets || []) {
@@ -148,11 +198,13 @@ async function escanear({ game = 'cs2' } = {}) {
       if (mm.liquidez != null && mm.liquidez < LIQ_MIN()) continue;         // el propio gate de la firm pide fondo
       const cons = consensoDe(cross, mm.familia, mm.mapa, mm.linea);
       if (!cons) continue;
-      for (const lado of ['home', 'away']) {
+      for (const lado of (mm.familia === 'TOTAL_MAPAS' ? ['over', 'under'] : ['home', 'away'])) {
         const p = mm.lados[lado] && mm.lados[lado].precio;
         if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
         const edge = 100 * (cons[lado] - p);
-        if (!(edge >= EDGE_MIN_PP())) continue;
+        // techo de cordura: un "edge" de 12+ pp contra un libro con volumen casi nunca es ventaja — es un
+        // partido que ya va en vivo, un mercado mal mapeado o un consenso rancio. Se descarta y punto.
+        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
         const id = `${mm.pm_id}|${lado}`;
         const prev = st.senales[id];
         // dedup: una tesis por mercado+lado; se reaviva solo si el edge creció ≥2 pp desde el aviso
@@ -163,7 +215,7 @@ async function escanear({ game = 'cs2' } = {}) {
         const s = {
           id, at: new Date().toISOString(), game, evento: `${home} vs ${away}`,
           pm_evento: pmEv.slug || pmEv.title, mercado: mm.pregunta,
-          familia: mm.familia, mapa: mm.mapa, linea: mm.linea,
+          familia: mm.familia, mapa: mm.mapa, linea: mm.linea, linea_home: mm.linea_home,
           lado, equipo: mm.lados[lado].nombre,
           precio_pm: p, consenso: cons[lado], books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: ev.start_at, home, away,
@@ -209,11 +261,20 @@ async function liquidar({ game = 'cs2' } = {}) {
       const g = r.maps[s.mapa - 1];
       const sh = invert ? g.score_b : g.score_a, sa = invert ? g.score_a : g.score_b;
       gana = (s.lado === 'home') === (sh > sa);
-    } else if (s.familia === 'HANDICAP') {
-      const diff = (s.lado === 'home' ? mapsHome - mapsAway : mapsAway - mapsHome);
-      // el favorito (−línea) necesita ganar por más que la línea; el perro (+línea) cubre si no pierde por más
-      const fav = s.consenso > 0.5;
-      gana = fav ? diff > s.linea : diff > -s.linea;
+    } else if (s.familia === 'TOTAL_MAPAS' && s.linea != null) {
+      const tot = mapsHome + mapsAway;
+      if (tot !== s.linea) gana = s.lado === 'over' ? tot > s.linea : tot < s.linea;
+    } else if (s.familia === 'HANDICAP' && s.linea_home != null) {
+      // la línea ya viene FIRMADA en perspectiva del local desde el escaneo: aquí no se adivina nada
+      const diff = mapsHome - mapsAway + s.linea_home;
+      if (diff !== 0) gana = s.lado === 'home' ? diff > 0 : diff < 0;
+    } else if (s.familia === 'RONDAS_HANDICAP' && s.linea_home != null && r.maps && r.maps[s.mapa - 1]) {
+      const g = r.maps[s.mapa - 1];
+      const sh = invert ? g.score_b : g.score_a, sa = invert ? g.score_a : g.score_b;
+      if (Number.isFinite(sh) && Number.isFinite(sa)) {
+        const diff = sh - sa + s.linea_home;
+        if (diff !== 0) gana = s.lado === 'home' ? diff > 0 : diff < 0;
+      }
     }
     if (gana == null) continue;
     s.estado = gana ? 'WIN' : 'LOSS';

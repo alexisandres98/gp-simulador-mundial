@@ -12197,6 +12197,24 @@ async function shadowSweep() {
     });
     save();
   }
+  // ═ CUARTO SEGMENTO: lol_kills_hcp_v1 (31-ago, reporte del lunes, aprobado por Alexis) ═══════════════
+  // Entrada NUEVA anotada, nunca edición de un segmento vivo. La familia elegida es la del VOLUMEN con
+  // resultados: KILLS_HANDICAP n=221, 60,6% de acierto, +15,96 u. PERO ENTRA CON UNA ADVERTENCIA ESCRITA
+  // distinta a la de CS2: su CLV es PLANO (+0,04% sobre 86 medidas, sd 1,8). Kills lo cotiza solo Cloudbet
+  // y la línea casi no se mueve — en un mercado muerto el CLV no informa, así que aquí la vara del
+  // experimento son los RESULTADOS contra el juice real, no el cierre. Eso es exactamente lo que esta
+  // sombra existe para medir. La familia hermana HANDICAP (mapas) tiene el CLV grande (+11,2%) pero n=29:
+  // demasiado chica para congelar una regla; se decide sobre ella cuando la muestra madure sola.
+  // Además: rating propio walk-forward (Fase 3) pendiente — dinero real NI HABLAR hasta ese cierre.
+  if (!S.cfg.some((c) => c.key === 'lol_kills_hcp_v1')) {
+    S.cfg.push({
+      key: 'lol_kills_hcp_v1', sport: 'esports', game: 'lol', family: 'KILLS_HANDICAP',
+      frozen_at: new Date().toISOString(),
+      auto_books: ['cloudbet'], manual_books: ['pinnacle'],
+      note: 'REGLA CONGELADA (31-ago): toda KILLS_HANDICAP de LoL que publique el motor · stake kelly/4 cap 1.5% · mismo enrutado de casas que cs2_rounds_v1. Base: 221 picks, 60,6%, +15,96 u. Aviso: CLV plano (+0,04% n=86) — mercado de una sola casa que no se mueve; la vara son los resultados, no el cierre.',
+    });
+    save();
+  }
   let placed = 0, settled = 0, unexec = 0;
   let realIntentos = 0, realColocadas = 0;
   const seen = new Set(S.bets.map(b => b.pick_id).concat(S.unexec.map(u => u.pick_id)));

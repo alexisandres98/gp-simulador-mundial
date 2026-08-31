@@ -157,18 +157,27 @@ async function lolLive() {
   });
 }
 
-// busca un cruce por nombres normalizados en cualquier orden; matching laxo por inclusión para tolerar
-// "RedBlacks" vs "Ottawa Redblacks" o "N. Djokovic" vs "Novak Djokovic"
+// busca un cruce por nombres normalizados en cualquier orden. DOS pasADAS: exacta primero; laxa por
+// inclusión ("RedBlacks" vs "Ottawa Redblacks", "N. Djokovic" vs "Novak Djokovic") solo si el candidato
+// es ÚNICO — con dos candidatos laxos (Vitality vs "Fut eSports" Y vs "FUT Academy", visto en producción
+// el primer minuto) se devuelve nada: sin cruce no hay vivo, jamás un vivo equivocado.
 function matchByNames(list, homeName, awayName, keys = ['home', 'away']) {
   const H = norm(homeName), A = norm(awayName);
-  const hit = (x, y) => x && y && (x === y || x.includes(y) || y.includes(x) ||
+  if (!H || !A) return null;
+  const lax = (x, y) => x && y && (x === y || x.includes(y) || y.includes(x) ||
     (y.split(' ').pop().length > 3 && x.includes(y.split(' ').pop())));
   for (const it of list || []) {
     const h = norm(it[keys[0]]), a = norm(it[keys[1]]);
-    if ((hit(h, H) && hit(a, A))) return { ...it, swapped: false };
-    if ((hit(h, A) && hit(a, H))) return { ...it, swapped: true };
+    if (h === H && a === A) return { ...it, swapped: false };
+    if (h === A && a === H) return { ...it, swapped: true };
   }
-  return null;
+  const cands = [];
+  for (const it of list || []) {
+    const h = norm(it[keys[0]]), a = norm(it[keys[1]]);
+    if (lax(h, H) && lax(a, A)) cands.push({ ...it, swapped: false });
+    else if (lax(h, A) && lax(a, H)) cands.push({ ...it, swapped: true });
+  }
+  return cands.length === 1 ? cands[0] : null;
 }
 
 module.exports = { cflLive, ncaafLive, nflLive, tennisLive, cs2Live, lolLive, matchByNames, norm };

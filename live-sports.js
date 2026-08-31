@@ -278,7 +278,7 @@ async function pmLive() {
       // El prefijo del juego puede llevar espacio ("Dota 2:"); solo se recorta si lo que queda aún
       // contiene el "vs", para no comerse un nombre real con dos puntos.
       let clean = title;
-      const pref = clean.match(/^([A-Za-z0-9 ]{2,10}):\s*(.+)$/);
+      const pref = clean.match(/^([A-Za-z0-9 ]{2,16}):\s*(.+)$/); // "US Open WTA:" mide 11
       if (pref && /\svs\.?\s/i.test(pref[2])) clean = pref[2];
       clean = clean.replace(/\s*\((?:BO\d|Bo\d)\)\s*/i, ' ').split(' - ')[0];
       const parts = clean.split(/\s+vs\.?\s+/i);
@@ -293,11 +293,16 @@ async function pmLive() {
         const os = pj(m, 'outcomes'), ps = pj(m, 'outcomePrices').map(Number);
         if (os.length !== 2 || ps.length !== 2) continue;
         const grp = String(m.groupItemTitle || '');
-        if (/^(match winner|moneyline)$/i.test(grp) && !/^(yes|no)$/i.test(os[0])) {
+        // mercado de ganador: o viene rotulado ("Match Winner"/"Moneyline", esports), o viene SIN grupo
+        // con los dos nombres como outcomes (tenis, comprobado en vivo) — se acepta solo si algún outcome
+        // casa con los nombres del título, para no confundirlo con un Over/Under
+        const named = os.length === 2 && !/^(yes|no|over|under|odd|even)$/i.test(os[0]) &&
+          [os[0], os[1]].some((o) => { const on = norm(o); return on === norm(A) || on === norm(B) || norm(A).includes(on) || norm(B).includes(on) || on.includes(norm(A)) || on.includes(norm(B)); });
+        if ((/^(match winner|moneyline)$/i.test(grp) || (named && !grp)) && !/^(yes|no)$/i.test(os[0])) {
           // los outcomes son los equipos; orientación contra el título
           const o0 = norm(os[0]);
           const aFirst = o0 === norm(A) || o0.includes(norm(A)) || norm(A).includes(o0);
-          p_a = aFirst ? ps[0] : ps[1]; p_b = aFirst ? ps[1] : ps[0];
+          if (p_a == null) { p_a = aFirst ? ps[0] : ps[1]; p_b = aFirst ? ps[1] : ps[0]; }
         } else if (/^yes$/i.test(os[0])) {
           const g = norm(grp);
           if (g && g === norm(A)) p_a = ps[0];

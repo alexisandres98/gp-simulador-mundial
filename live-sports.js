@@ -274,8 +274,13 @@ async function pmLive() {
     const byGame = new Map(); // dedup: el evento base y sus derivados ("... - Exact Score") comparten gameId
     for (const e of evs) {
       const title = String(e.title || '');
-      // "LoL: A vs B (BO3) - Liga" / "Aston Villa FC vs. Arsenal FC" → equipos
-      const clean = title.replace(/^[A-Za-z0-9]{2,6}:\s*/, '').replace(/\s*\((?:BO\d|Bo\d)\)\s*/i, ' ').split(' - ')[0];
+      // "LoL: A vs B (BO3) - Liga" / "Dota 2: A vs B" / "Aston Villa FC vs. Arsenal FC" → equipos.
+      // El prefijo del juego puede llevar espacio ("Dota 2:"); solo se recorta si lo que queda aún
+      // contiene el "vs", para no comerse un nombre real con dos puntos.
+      let clean = title;
+      const pref = clean.match(/^([A-Za-z0-9 ]{2,10}):\s*(.+)$/);
+      if (pref && /\svs\.?\s/i.test(pref[2])) clean = pref[2];
+      clean = clean.replace(/\s*\((?:BO\d|Bo\d)\)\s*/i, ' ').split(' - ')[0];
       const parts = clean.split(/\s+vs\.?\s+/i);
       if (parts.length !== 2) continue;
       const A = parts[0].trim(), B = parts[1].trim();
@@ -388,8 +393,15 @@ async function f1Live() {
 function matchByNames(list, homeName, awayName, keys = ['home', 'away']) {
   const H = norm(homeName), A = norm(awayName);
   if (!H || !A) return null;
-  const lax = (x, y) => x && y && (x === y || x.includes(y) || y.includes(x) ||
-    (y.split(' ').pop().length > 3 && x.includes(y.split(' ').pop())));
+  const lax = (x, y) => {
+    if (!x || !y) return false;
+    if (x === y || x.includes(y) || y.includes(x)) return true;
+    // compacto (sin espacios): "intz e sports" ≡ "intz esports" — visto con Polymarket, que escribe
+    // los nombres con guiones que norm() vuelve espacios
+    const xc = x.replace(/ /g, ''), yc = y.replace(/ /g, '');
+    if (xc === yc || xc.includes(yc) || yc.includes(xc)) return true;
+    return y.split(' ').pop().length > 3 && x.includes(y.split(' ').pop());
+  };
   for (const it of list || []) {
     const h = norm(it[keys[0]]), a = norm(it[keys[1]]);
     if (h === H && a === A) return { ...it, swapped: false };

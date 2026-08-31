@@ -1195,6 +1195,20 @@
   // con el mensaje de lo que de verdad está bloqueado en ese deporte.
   var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim'];
   var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask'];
+  // ═══ EN VIVO EN LOS DEPORTES NUEVOS (31-ago, orden de Alexis) ════════════════════════════════════
+  // Un solo temporizador: la vista que pintó contenido en vivo se re-renderiza sola cada 30s mientras el
+  // usuario siga en ella. `bust` invalida las entradas de caché que alimentan esa vista (por subcadena)
+  // para que el refresco traiga datos frescos y no la misma copia memoizada.
+  function nsBust(store, sub) { for (var k in store || {}) { if (k.indexOf(sub) >= 0 && store[k]) store[k]._at = 0; } }
+  function nsLiveAuto(bust) {
+    if (S._liveT) clearTimeout(S._liveT);
+    var v = S.view;
+    S._liveT = setTimeout(function () {
+      if (S.view !== v) return;
+      try { if (bust) bust(); } catch (e) { }
+      showView(S.view);
+    }, 30000);
+  }
   function nsLockHtml(v) {
     if (!nuevosOK() && NS_SIM_VIEWS.indexOf(v) >= 0) {
       return lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'),
@@ -8422,6 +8436,25 @@
     if (d._err || !d.game) { bbShell('Partido', '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo cargar el partido.</b></div></div>'); return; }
     var G = d.game, P = d.projection, H = G.home, A = G.away;
     var back = '<div class="gx-cb-backrow"><span class="gx-clgate sh lnk" data-bbback="1">← Partidos</span></div>';
+    // EN VIVO (31-ago): el motor de vivo ya existía (/api/hoops/live: probabilidad condicionada al marcador
+    // y al reloj, con presupuesto de latencia) pero NINGUNA pantalla lo consumía. Se pide solo alrededor
+    // del pitazo (±5h del kickoff) y pinta marcador, período/reloj, prob del resto y final proyectado.
+    var bbLiveB = '';
+    var koT = Date.parse(G.date || 0); // ESPN entrega el datetime ISO completo en `date`
+    if (isFinite(koT) && Date.now() > koT - 20 * 60e3 && Date.now() - koT < 5 * 3600e3) {
+      var lv = bbGet('live_' + lg + '_' + id, '/api/hoops/live?league=' + lg + '&id=' + encodeURIComponent(id), 30000);
+      if (lv && lv.ok && lv.state) {
+        nsLiveAuto(function () { nsBust(S.bb, 'live_'); });
+        var stv = lv.state, pj = lv.projection || {};
+        bbLiveB = '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+          '<b class="gx-mono" style="font-size:22px">' + stv.away_score + ' - ' + stv.home_score + '</b>' +
+          '<span class="gx-dim">' + (stv.is_ot ? 'OT' : 'Q' + stv.period) + (stv.clock ? ' · ' + esc(stv.clock) : '') + '</span>' +
+          (pj.win && pj.win.home != null ? '<span class="gx-dim">' + esT('GP en vivo ', 'GP live ') + Math.round(100 * pj.win.home) + '%</span>' : '') +
+          (pj.projected_final ? '<span class="gx-dim gx-mono" style="font-size:11.5px">' + esT('final proyectado ', 'projected final ') + pj.projected_final.away + ' - ' + pj.projected_final.home + '</span>' : '') +
+          '</div>';
+      }
+    }
 
     // 1) HERO: probabilidad con intervalo
     var ph = Math.round(100 * P.win.home);
@@ -8665,7 +8698,7 @@
       return '<button data-bblens="' + x[0] + '"' + (x[0] === blens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
     var bact = BLENSES.filter(function (x) { return x[0] === blens; })[0];
-    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + hero + bbar + bact[2]);
+    bbShell(bbTeamName(A) + ' @ ' + bbTeamName(H), back + bbLiveB + hero + bbar + bact[2]);
   }
   // Genera la lectura bajo demanda (POST) y repinta. Cuesta una llamada al LLM, por eso es un botón.
   function bbGenRead(id) {
@@ -9486,6 +9519,11 @@
     return '<span class="gx-tri gx-gp gx-duo"><span' + (h > a ? ' class="hi"' : '') + '>' + h + '%</span><span' + (a >= h ? ' class="hi"' : '') + '>' + a + '%</span></span>';
   }
   function esSignalCell(it) {
+    // EN VIVO manda (31-ago): marcador de la serie + mapa en curso
+    if (it.live) {
+      var mapSc = (it.live.map_s1 != null && it.live.map_s2 != null) ? ' · ' + it.live.map_s1 + '-' + it.live.map_s2 : '';
+      return '<span class="gx-live-pill">' + it.live.s1 + ' - ' + it.live.s2 + (it.live.bo ? ' · BO' + it.live.bo : '') + mapSc + '</span>';
+    }
     if (it.arbitrages) return '<span class="gx-bb-pickchip">' + ic('arrows-shuffle') + it.arbitrages + ' arb.</span>';
     if (it.picks) return '<span class="gx-bb-pickchip">' + ic('target-arrow') + it.picks + esT(' con ventaja', ' with edge') + '</span>';
     // el servidor recortó las picks por plan: el hueco se pinta como candado, no como "sin señal"
@@ -9640,6 +9678,7 @@
     if (!d) { esShell(t('es_nav_board'), esTabs() + esLoading()); return; }
     if (d._err) { esShell(t('es_nav_board'), esTabs() + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('e_net')) + '</b></div></div>'); return; }
     var all = d.items || [];
+    if (all.some(function (x) { return x.live; })) nsLiveAuto(function () { nsBust(S.es, 'board_'); });
     var tab = S.es.gTab || 'all';
     var q = (S.es.gQ || '').toLowerCase();
     var live = all.filter(esIsLive), up = all.filter(function (x) { return !esIsLive(x); });
@@ -10054,6 +10093,14 @@
       return;
     }
     var ev = d.event, m = d.model || {};
+    if (d.live) nsLiveAuto(function () { nsBust(S.es, 'match_'); });
+    // TIRA EN VIVO (31-ago): serie y mapa en curso, arriba de todo
+    var esLiveB = d.live ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+      '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+      '<b class="gx-mono" style="font-size:20px">' + esc(ev.home.name) + ' ' + d.live.s1 + ' - ' + d.live.s2 + ' ' + esc(ev.away.name) + '</b>' +
+      (d.live.bo ? '<span class="gx-dim">BO' + d.live.bo + '</span>' : '') +
+      (d.live.map_s1 != null && d.live.map_s2 != null ? '<span class="gx-dim gx-mono">' + esT('mapa en curso ', 'current map ') + d.live.map_s1 + ' - ' + d.live.map_s2 + '</span>' : '<span class="gx-dim">' + esc(d.live.detail || '') + '</span>') +
+      '</div>' : '';
     var head = esMatchHead(d);
     var blocks;
     // CS2 ES EL PRODUCTO INSIGNIA y tiene su propia composición: héroe con escudos, tablero de veto con los
@@ -10085,7 +10132,7 @@
         return '<button data-eslens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
       }).join('') + '</div>';
       var active = LENSES.filter(function (x) { return x[0] === lens; })[0];
-      esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + csHead + edgesC + lensBar + active[2].filter(Boolean).join(''));
+      esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + esLiveB + csHead + edgesC + lensBar + active[2].filter(Boolean).join(''));
       return;
     }
     // Los juegos sin composición propia usan el mismo patrón de lentes, con dos: la partida y el modelo.
@@ -10117,7 +10164,7 @@
     var edges = esEdges(d);
     // el héroe de CS2 sirve para los cuatro desde que el modelo trae las fichas de equipo con escudo
     var richHead = (m.teams && (m.teams.a || m.teams.b)) ? cs2Hero(d) : head;
-    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + richHead + edges + gbar + gact[2]);
+    esShell(ev.home.name + ' vs ' + ev.away.name, esBack() + esLiveB + richHead + edges + gbar + gact[2]);
   }
   // ── TIRA DE EQUIPOS (los tres juegos): Elo propio, muestra, victorias y forma reciente, uno frente a otro.
   function esTeamStrip(m, ev) {
@@ -12328,6 +12375,7 @@
     var d = tenGet('board_' + tenTour(), '/api/tennis/board?tour=' + tenTour(), 120000);
     if (!d) { tenShell(t('ten_nav_games'), tenLoading()); return; }
     if (d._err) { tenShell(t('ten_nav_games'), '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>No se pudo leer el tablero.</b></div></div>'); return; }
+    if ((d.rows || []).some(function (r) { return r.live; })) nsLiveAuto(function () { nsBust(S.ten, 'board_'); });
 
     // EL FORMATO DE LA CASA (19-ago, pedido de Alexis: "entra a baloncesto o a fútbol y mira cómo es el que
     // usamos y cópialo adaptado a tenis"). Es la misma gramática del calendario de fútbol: cabecera con
@@ -12391,14 +12439,16 @@
     return '<div class="gx-mcard' + (r.available ? ' clk' : '') + '"' + (r.available ? ' data-tenmatch="' + esc(r.id) + '"' : '') + '>' +
       '<div class="gx-mcard-top"><span class="gx-time">' + (r.commence ? esc(fmtTime(r.commence)) + ' · ' : '') + esc(r.tourney || '') + '</span>' +
       '<span class="gx-spacer"></span>' +
-      (live ? '<span class="gx-badge gx-b-live">en juego</span>' : '') +
+      (r.live ? '<span class="gx-live-pill">' + esc(r.live.detail || esT('EN VIVO', 'LIVE')) + '</span>' : live ? '<span class="gx-badge gx-b-live">en juego</span>' : '') +
       '<span class="gx-dim" style="font-size:10.5px">' + esc(r.surface || '') + (r.best_of === 5 ? ' · bo5' : '') + '</span></div>' +
       '<div class="gx-ten-mrow">' + tenFace({ name: r.a, photo: r.photo_a }) +
-        '<b class="gx-ten-name">' + esc(r.a) + '</b>' +
-        '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span></div>' +
+        '<b class="gx-ten-name">' + esc(r.a) + (r.live && r.live.serve_a ? ' <span title="al saque">🎾</span>' : '') + '</b>' +
+        (r.live ? '<span class="gx-mono gx-ten-p hi">' + esc(r.live.sets_a || '') + '</span>'
+          : '<span class="gx-mono gx-ten-p' + (pA != null && pA >= 0.5 ? ' hi' : '') + '">' + tenPct(pA) + '</span>') + '</div>' +
       '<div class="gx-ten-mrow">' + tenFace({ name: r.b, photo: r.photo_b }) +
-        '<b class="gx-ten-name">' + esc(r.b) + '</b>' +
-        '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span></div>' +
+        '<b class="gx-ten-name">' + esc(r.b) + (r.live && r.live.serve_b ? ' <span title="al saque">🎾</span>' : '') + '</b>' +
+        (r.live ? '<span class="gx-mono gx-ten-p hi">' + esc(r.live.sets_b || '') + '</span>'
+          : '<span class="gx-mono gx-ten-p' + (pA != null && pA < 0.5 ? ' hi' : '') + '">' + (pA != null ? tenPct(1 - pA) : '—') + '</span>') + '</div>' +
       bar +
       '<div class="gx-mcard-foot"><span class="gx-dim" style="font-size:10.5px">' +
         (mkA != null ? 'mercado ' + tenPct(mkA) + ' · ' + (r.books || 0) + ' casas' : (r.available ? 'sin consenso de mercado' : esc(r.why || 'fuera de la base'))) +
@@ -12425,6 +12475,14 @@
       return;
     }
     var pa = d.p_a, pr = d.profiles || {}, A = pr.a || {}, B = pr.b || {};
+    if (d.live) nsLiveAuto(function () { nsBust(S.ten, 'm_'); });
+    // TIRA EN VIVO (31-ago): sets y juego actual arriba de la ficha
+    var tenLiveB = d.live ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+      '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+      '<b class="gx-mono" style="font-size:17px">' + esc((d.a.name || '').split(' ').pop()) + ' ' + esc(d.live.sets_a || '') + (d.live.serve_a ? ' 🎾' : '') + '</b>' +
+      '<span class="gx-dim">vs</span>' +
+      '<b class="gx-mono" style="font-size:17px">' + esc((d.b.name || '').split(' ').pop()) + ' ' + esc(d.live.sets_b || '') + (d.live.serve_b ? ' 🎾' : '') + '</b>' +
+      '<span class="gx-dim" style="font-size:11.5px">' + esc(d.live.detail || '') + (d.live.tournament ? ' · ' + esc(d.live.tournament) : '') + '</span></div>' : '';
     var hero = '<div class="gx-panel gx-ten-hero">' +
       '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tourney, d.surface, d.best_of === 5 ? 'al mejor de 5' : 'al mejor de 3'].filter(Boolean).join(' · ')) + '</span>' +
       (d.commence ? '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(fmtDateTime(d.commence)) + '</span>' : '') + '</div>' +
@@ -12458,7 +12516,7 @@
       return '<button data-tenlens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
     }).join('') + '</div>';
     var act = LENSES.filter(function (x) { return x[0] === lens; })[0];
-    tenShell('Partido', back + hero + bar + act[2] +
+    tenShell('Partido', back + tenLiveB + hero + bar + act[2] +
       '<div class="gx-dim gx-es-trunc">Todo en sombra: nada de esto es una pick. ' + TEN_ATTRIB + '</div>');
   }
 
@@ -13344,6 +13402,11 @@
       (hot ? ' <span class="gx-nfl-hotchip" title="el modelo y el mercado se separan">Δ</span>' : '');
   }
   function nflStateCell(g) {
+    // EN VIVO manda sobre el mercado (31-ago): marcador (visitante - local, el orden de la tabla) + cuarto/reloj
+    if (g.live) {
+      return '<span class="gx-mono" style="font-weight:700">' + g.live.as + ' - ' + g.live.hs + '</span> ' +
+        '<span class="gx-live-pill">' + esc(g.live.detail || ('Q' + (g.live.period || '') + (g.live.clock ? ' ' + g.live.clock : ''))) + '</span>';
+    }
     var mk = g.market && g.market.spread != null
       ? '<span class="gx-mono" style="font-size:11px">' + nflSpread(g.market.spread) + (g.market.total != null ? ' · T ' + g.market.total.toFixed(0) : '') + '</span>'
       : '<span class="gx-dim" style="font-size:11px">sin mercado</span>';
@@ -13378,6 +13441,7 @@
     if (!d) { nflShell(t('nfl_nav_games'), nflLoading()); return; }
     if (d._err || !d.available) { nflShell(t('nfl_nav_games'), nflErr); return; }
     var rows = d.games || [];
+    if (rows.some(function (g) { return g.live; })) nsLiveAuto(function () { nsBust(S.nfl, 'slate'); });
     var hero = '<div class="gx-es-hero"><div><b>Semana ' + (d.week || '—') + ' · temporada ' + d.season + '</b>' +
       '<span class="gx-dim">' + (d.books ? d.books + ' casas cotizando · cuotas de ' + esc(String(d.odds_at || '').replace('T', ' ').slice(11, 16)) + ' UTC' : 'las casas abren mercados conforme se acerca la semana') + '</span></div>' +
       '<span class="gx-spacer"></span><div class="gx-es-hero-n"><b>' + rows.length + '</b><span>partidos</span></div></div>' +
@@ -13812,7 +13876,16 @@
     var lo = p != null && uncPp != null ? Math.max(2, 100 * p - uncPp) : null;
     var hi = p != null && uncPp != null ? Math.min(98, 100 * p + uncPp) : null;
     var cons = d.market && d.market.consensus;
-    var hero = '<div class="gx-cs-hero">' +
+    // TIRA EN VIVO (31-ago): marcador, cuarto/reloj, posesión, down y última jugada — arriba del héroe
+    var liveB = d.live ? '<div class="gx-panel" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+      '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' +
+      '<b class="gx-mono" style="font-size:22px">' + esc(d.home.abbr) + ' ' + d.live.hs + ' - ' + d.live.as + ' ' + esc(d.away.abbr) + '</b>' +
+      '<span class="gx-dim">' + esc(d.live.detail || '') + '</span>' +
+      (d.live.down ? '<span class="gx-dim gx-mono" style="font-size:11.5px">' + esc(d.live.down) + '</span>' : '') +
+      (d.live.last_play ? '<span class="gx-dim" style="font-size:11.5px;flex-basis:100%">' + esc(String(d.live.last_play).slice(0, 160)) + '</span>' : '') +
+      '</div>' : '';
+    if (d.live) nsLiveAuto(function () { nsBust(S.nfl, 'game_'); });
+    var hero = liveB + '<div class="gx-cs-hero">' +
       '<div class="gx-cs-hero-top"><span class="gx-cs-comp">' + (d.week != null ? 'Semana ' + d.week : esc((AMF_LEAGUES.filter(function (x) { return x[0] === nflLg(); })[0] || [])[1] || '')) + (d.stadium ? ' · ' + esc(d.stadium) : '') + (d.roof ? ' · ' + esc(d.roof) : '') + '</span>' +
         '<span class="gx-spacer"></span><span class="gx-cs-when">' + esc(d.date) + (d.time ? ' · ' + d.time.slice(0, 5) + ' UTC' : '') + '</span></div>' +
       '<div class="gx-cs-hero-body">' +

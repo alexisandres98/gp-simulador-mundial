@@ -18760,6 +18760,21 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/tennis/board') {
           const out = await TEN.board(tnQ);
           if (out && out.rows && !nsT.pro) out.rows = out.rows.map(tenStrip);
+          // EN VIVO (31-ago): sets y juego actual de ESPN atp/wta pegados a cada cruce del tablero.
+          // El matching es por apellido normalizado (la casa de cuotas y ESPN escriben distinto). DISPLAY.
+          try {
+            const LV = require('./live-sports');
+            const lv = await LV.tennisLive();
+            if (lv && lv.length && out && out.rows) {
+              for (const r of out.rows) {
+                const hit = LV.matchByNames(lv, r.a, r.b, ['a', 'b']);
+                if (!hit) continue;
+                r.live = { sets_a: hit.swapped ? hit.sets_b : hit.sets_a, sets_b: hit.swapped ? hit.sets_a : hit.sets_b,
+                  serve_a: hit.swapped ? hit.serve_b : hit.serve_a, serve_b: hit.swapped ? hit.serve_a : hit.serve_b,
+                  detail: hit.detail, tournament: hit.tournament };
+              }
+            }
+          } catch { /* el vivo jamás rompe el tablero */ }
           return json(res, 200, out);
         }
         if (p === '/api/tennis/agenda') return json(res, 200, await TEN.agenda());
@@ -18767,6 +18782,17 @@ const server = http.createServer(async (req, res) => {
           const out = await TEN.matchDetail(url.searchParams.get('id') || '');
           if (out && out.a && out.b) out.senales = [...obsSenales('tennis', [obsClave(out.a.name), obsClave(out.a.ref)], { lado: 'a' }),
             ...obsSenales('tennis', [obsClave(out.b.name), obsClave(out.b.ref)], { lado: 'b' })];
+          // EN VIVO en la ficha (31-ago): sets y juego actual del mismo feed del tablero
+          try {
+            if (out && out.a && out.b) {
+              const LV = require('./live-sports');
+              const lv = await LV.tennisLive();
+              const hit = lv && lv.length ? LV.matchByNames(lv, out.a.name, out.b.name, ['a', 'b']) : null;
+              if (hit) out.live = { sets_a: hit.swapped ? hit.sets_b : hit.sets_a, sets_b: hit.swapped ? hit.sets_a : hit.sets_b,
+                serve_a: hit.swapped ? hit.serve_b : hit.serve_a, serve_b: hit.swapped ? hit.serve_a : hit.serve_b,
+                detail: hit.detail, tournament: hit.tournament };
+            }
+          } catch { }
           return json(res, 200, tenStrip(out));
         }
         if (p === '/api/tennis/read') {
@@ -18860,10 +18886,30 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/esports/board') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
-          return json(res, 200, esStripBoard(await ES.board(gm, {
+          const outB = esStripBoard(await ES.board(gm, {
             days: +(url.searchParams.get('days') || 3),
             maxEvents: Math.min(24, +(url.searchParams.get('max') || 14)),
-          })));
+          }));
+          // EN VIVO (31-ago): marcador de la serie en curso — CS2 de bo3.gg (serie + mapa actual), LoL de
+          // lolesports (mapas ganados). Valorant/Dota siguen sin fuente en vivo y no se disimula. DISPLAY.
+          try {
+            if (gm === 'cs2' || gm === 'lol') {
+              const LV = require('./live-sports');
+              const lv = gm === 'cs2' ? await LV.cs2Live() : await LV.lolLive();
+              if (lv && lv.length) {
+                for (const it of (outB && outB.items) || []) {
+                  const ev = it.event || {};
+                  const hit = LV.matchByNames(lv, ev.home && ev.home.name, ev.away && ev.away.name, ['a', 'b']);
+                  if (!hit) continue;
+                  it.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
+                    bo: hit.bo || it.bo || null, detail: hit.detail,
+                    map_s1: hit.swapped ? (hit.map_s2 != null ? hit.map_s2 : null) : (hit.map_s1 != null ? hit.map_s1 : null),
+                    map_s2: hit.swapped ? (hit.map_s1 != null ? hit.map_s1 : null) : (hit.map_s2 != null ? hit.map_s2 : null) };
+                }
+              }
+            }
+          } catch { /* el vivo jamás rompe la pizarra */ }
+          return json(res, 200, outB);
         }
         if (p === '/api/esports/evidence') {
           // evidencia de mercado (17-ago, P0 del blueprint de feedback): cobertura de cierres con apertura,
@@ -18890,6 +18936,17 @@ const server = http.createServer(async (req, res) => {
           // del servidor, y además esto deja claro en el propio JSON que el modelo NO las usó.
           out.senales = [...obsSenales('esports', `${gm}:${obsClave(out.event.home.name)}`, { lado: 'home' }),
             ...obsSenales('esports', `${gm}:${obsClave(out.event.away.name)}`, { lado: 'away' })];
+          // EN VIVO en la ficha (31-ago): la misma serie en curso que pinta la pizarra
+          try {
+            if (gm === 'cs2' || gm === 'lol') {
+              const LV = require('./live-sports');
+              const lv = gm === 'cs2' ? await LV.cs2Live() : await LV.lolLive();
+              const hit = lv && lv.length ? LV.matchByNames(lv, out.event.home.name, out.event.away.name, ['a', 'b']) : null;
+              if (hit) out.live = { s1: hit.swapped ? hit.s2 : hit.s1, s2: hit.swapped ? hit.s1 : hit.s2,
+                bo: hit.bo || out.bo || null, detail: hit.detail,
+                map_s1: hit.swapped ? hit.map_s2 : hit.map_s1, map_s2: hit.swapped ? hit.map_s1 : hit.map_s2 };
+            }
+          } catch { }
           return json(res, 200, esStripMatch(out));
         }
         if (p === '/api/esports/model') {
@@ -19058,7 +19115,25 @@ const server = http.createServer(async (req, res) => {
           const r = await amfootGameRead(lgA, id).catch(() => null);
           return json(res, 200, r || { pending: true, why: llm.enabled() ? 'la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
         }
-        if (p === '/api/amfoot/slate') return json(res, 200, await AF.slate(lgA, { days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
+        if (p === '/api/amfoot/slate') {
+          const out = await AF.slate(lgA, { days: Math.min(40, +(url.searchParams.get('days') || 12)) });
+          // EN VIVO (31-ago, orden de Alexis: "todo en vivo como en fútbol"): marcador, cuarto, reloj y
+          // posesión pegados a la jornada. CFL del scoreboard oficial; College de ESPN. DISPLAY, no modelo.
+          try {
+            const LV = require('./live-sports');
+            const lv = lgA === 'cfl' ? await LV.cflLive() : await LV.ncaafLive();
+            if (lv && lv.length) {
+              for (const g of out.games || []) {
+                const hit = LV.matchByNames(lv, g.home.name, g.away.name);
+                if (!hit) continue;
+                g.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
+                  period: hit.period, clock: hit.clock, detail: hit.detail,
+                  possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+              }
+            }
+          } catch { /* el vivo jamás rompe la jornada */ }
+          return json(res, 200, out);
+        }
         if (p === '/api/amfoot/game') {
           const out = await AF.gameIntel(lgA, String(url.searchParams.get('id') || ''));
           if (!out) return json(res, 404, { error: 'partido no encontrado en la base' });
@@ -19067,6 +19142,15 @@ const server = http.createServer(async (req, res) => {
           // el registro en sombra (candidatas con lado, línea y precio) es contenido pro: para free se
           // sustituye por el candado, no por un hueco mudo
           if (!nsA.pro && out.edges) out.edges = { candidates: [], locked: true, verdict_note: out.edges.verdict_note || null };
+          // EN VIVO en la ficha (31-ago): mismo feed que la jornada
+          try {
+            const LV = require('./live-sports');
+            const lv = lgA === 'cfl' ? await LV.cflLive() : await LV.ncaafLive();
+            const hit = lv && lv.length ? LV.matchByNames(lv, out.home.name, out.away.name) : null;
+            if (hit) out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
+              period: hit.period, clock: hit.clock, detail: hit.detail,
+              possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+          } catch { }
           return json(res, 200, out);
         }
         if (p === '/api/amfoot/teams') return json(res, 200, AF.teamsDirectory(lgA));
@@ -19095,7 +19179,25 @@ const server = http.createServer(async (req, res) => {
       const NFL = require('./nfl-engine/store');
       try {
         if (p === '/api/nfl/slate') {
-          return json(res, 200, await NFL.slate({ days: Math.min(40, +(url.searchParams.get('days') || 12)) }));
+          const out = await NFL.slate({ days: Math.min(40, +(url.searchParams.get('days') || 12)) });
+          // EN VIVO (31-ago): marcador/cuarto/reloj de ESPN pegados a la jornada. Cruce por id de ESPN
+          // cuando el calendario lo trae; por nombres si no. DISPLAY, no modelo.
+          try {
+            const LV = require('./live-sports');
+            const lv = await LV.nflLive();
+            if (lv && lv.length) {
+              for (const g of out.games || []) {
+                const byId = g.espn ? lv.find((x) => String(x.espn) === String(g.espn)) : null;
+                const hit = byId || LV.matchByNames(lv, g.home.name, g.away.name);
+                if (!hit) continue;
+                const sw = !byId && hit.swapped;
+                g.live = { hs: sw ? hit.as : hit.hs, as: sw ? hit.hs : hit.as,
+                  period: hit.period, clock: hit.clock, detail: hit.detail,
+                  possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+              }
+            }
+          } catch { /* el vivo jamás rompe la jornada */ }
+          return json(res, 200, out);
         }
         // brief y simulador por LIGA (18-ago): league=nfl|ncaaf|cfl — el brief narra la semana, el
         // simulador enfrenta a dos equipos cualesquiera con el modelo propio (sin cuotas)
@@ -19120,6 +19222,15 @@ const server = http.createServer(async (req, res) => {
             ...obsSenales('amfoot', `nfl:${obsClave(out.away.name)}`, { lado: 'away' })];
           // mismo strip que College/CFL: el registro en sombra de la ficha es contenido pro
           if (!nsN.pro && out.edges) out.edges = { candidates: [], locked: true, verdict_note: out.edges.verdict_note || null };
+          // EN VIVO en la ficha (31-ago): mismo feed que la jornada
+          try {
+            const LV = require('./live-sports');
+            const lv = await LV.nflLive();
+            const hit = lv && lv.length ? LV.matchByNames(lv, out.home.name, out.away.name) : null;
+            if (hit) out.live = { hs: hit.swapped ? hit.as : hit.hs, as: hit.swapped ? hit.hs : hit.as,
+              period: hit.period, clock: hit.clock, detail: hit.detail,
+              possession: hit.possession || null, down: hit.down || null, last_play: hit.lastPlay || null };
+          } catch { }
           return json(res, 200, out);
         }
         if (p === '/api/nfl/teams') return json(res, 200, NFL.teamsDirectory());

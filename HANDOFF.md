@@ -1,3 +1,94 @@
+# HANDOFF — estado al 1-sep-2026, noche (sesión de continuación: liquidación real auditada y corregida)
+
+## 🧳 PUNTO DE RETOMA (1-sep, 22:00Z) — léelo primero
+- Código: `main` == `claude/gpsim-continuation-92ctkh`. Deploys de esta sesión: `07770f0` y `275d2b1`
+  (liquidación real) en vivo; `a248dee` (fetch resiliente en app.js) + cosecha LoL games-primero + estos
+  docs van en el deploy que cierra la sesión. Health 200. Llaves: mismo archivo de Drive (nada rotó).
+- Rutinas vivas en Claude Code Remote: solo queda `trig_012Ai9w8HHmxRXL9GneDcAzv` (roster timeline CS2,
+  7-sep 14:00Z, sesión nueva). Las de auditoría del relay y check-in LoL ya no existen (se auditó a mano).
+
+## 💸 A. PRIMERA LIQUIDACIÓN REAL POR EL BRAZO — auditada, con bug de dinero cazado y corregido
+Las 5 apuestas del 1-sep colocadas por el brazo (Championship, tarjetas under) se resolvieron todas:
+| Partido | Apuesta | Casa | P&L |
+|---|---|---|---|
+| Preston–Bristol | u4.5 · $29 @1.53 | WIN | +15,37 |
+| Lincoln–Blackburn | u4.5 · $20,20 @1.36 | LOSS | −20,20 |
+| Birmingham–Southampton | u3.5 · $29,87 @2.45 | LOSS | −29,87 |
+| West Ham–Wolves | u4.5 · $29,87 @1.42 | WIN | +12,55 |
+| Portsmouth–Derby | u4.5 · $29,87 @1.53 | WIN | +15,83 |
+**3-2, −6,32 USDT.** Saldo Cloudbet tras liquidar: **324,87 USDT** (Alexis depositó: el saldo era 6,74).
+- **El bug:** el RESULTADO lo leyó bien (estado de la casa), pero el DINERO no: `returnAmount` es el
+  resultado **NETO** (+15,37 en la ganada; −20,20 en la perdida — un bruto nunca es negativo) y
+  `liquidar` le restaba el stake otra vez: la primera ganada real quedó anotada como −13,63 y la perdida
+  como −40,40. Medido con la sonda nueva `run=cb_estado&ref=`: la respuesta vino por **GraphQL**
+  (`_fuente`), no por el REST del brazo (la ruta de estado REST sigue sin confirmar). La auditoría
+  local asumía bruto (57 para 30 @1.9) porque nunca se había liquidado nada por API.
+- **La corrección (desplegada):** el P&L sale de la aritmética estado × precio real × stake; el importe de
+  la casa es CONTRASTE (`importe_casa_semantica`: neto|bruto; si no cuadra → `discrepancia_importe` y
+  cuenta como descuadre). `run=reliquidar&ref=` corrige el dinero de una liquidada por la diferencia
+  (realizado, nocional y día). Se reliquidaron las 4 mal anotadas (2 con el código viejo antes del deploy).
+  Libro: realizado −14,98 · nocional 1.985,02 · 43 liquidadas 20-23 · ROI −1,79 % · 0 descuadres.
+- Auditoría local: escenario 16b (importe neto, reliquidar, importe raro) y la expectativa CS2 puesta al
+  stake plano de 5 (fallaba desde la doctrina del 1-sep). `node real-executor/auditoria.js` → verde.
+- Quedan 41 abiertas ($981 de exposición): 3 relay (Toulouse–Lille ×2, Burnley–Boro) + las de canal
+  manual del 31-ago (Alexis) que liquidan con nuestro resultado + 2 CS2 solo_manual.
+
+## 📅 B. REVISIÓN DEL LUNES (leída el 1-sep noche)
+- **Sombra de la casa**: banco 4.393 (+2.393 desde 2.000), 272 liquidadas 154-114, ROI 21,1 %, CLV exec
+  +0,64 %. Por segmento: cards_under_v1 130 liq., 91-39, **+41,8 %**, CLV +0,7 (7d: 52 liq., +37,5 %) ·
+  cs2_rounds_v1 136 liq., 60-72, +7,4 %, CLV +0,68 · corners_over_v1 6 liq., −13,7 % (casi nada ejecutable:
+  87 de 103 sin casa conectable) · **lol_kills_hcp_v1: 17 apostadas (LES, Prime League, LFL del 1-sep),
+  0 liquidadas** — Leaguepedia tarda ~1 día en cargar los scoreboards; el track de LoL liquidó ayer a las
+  11:44Z con normalidad. Primera lectura real la semana que viene.
+- **modelo_sombra (hipótesis de Alexis, modelo vs retail de PM en ganador): 0 señales en 1,5 días.** El
+  listón es edge 6-15 pp del modelo contra el precio de PM en SERIE; ninguna serie lo cruzó. No es un
+  fallo: es que el modelo y el retail de PM están más cerca que 6 pp. Si en 2 semanas sigue en 0, bajar
+  el listón a 4 pp SOLO en sombra.
+- **Prop firm FP-796307 (cierra 30-sep)**: 41 señales, 10 cerradas **6-4, +512 USD en papel** (todo CS2:
+  Imperial–ShindeN, VP–WBT, UNiTY–Misa), 31 abiertas (20 fútbol, 2 LoL, 9 CS2). Ninguna marcada con
+  `run=anotar` (precio/costo real) → no sé cuáles colocó Alexis en la firm ni el saldo de la cuenta.
+  **Ojo con la lectura:** 6 de las 10 cerradas son LOS DOS LADOS del mismo mapa (UNiTY–Misa m1 y m2,
+  Imperial–ShindeN m2): con $95 por pierna eso no son dos tesis, es una posición neta al lado barato
+  (si gana el favorito pierde ~14; si gana el perro gana ~100). El escáner las emite como dos señales y la
+  sombra las cuenta como dos. Decisión pendiente de Alexis: (a) una sola pierna por mercado (el lado con
+  más edge) o (b) dejarlo y leerlo como "posición neta". La disciplina del correo ya dice "una tesis".
+- **Sombra Polymarket**: 29 abiertas, $794 expuestos, slippage medio +1,31 pp, 1 sin fill, 0 cerradas.
+
+## 🎮 C. LoL — dónde está de verdad la Fase 3
+- **El walk-forward YA CORRE** (`scripts/lol-validate.js`, 5 s) sobre el espejo de HuggingFace que vive en
+  el repo (`games.json.gz`, 84.586 partidas 2021-01 → 2026-08-16, kills/objetivos rellenados por
+  `lol-kills-backfill`, t1 = lado azul): ventana intacta 120 d → gp skill 12,75 % vs elo 12,56 % vs lado
+  0,67 % (ECE 0,015). `priors.json` ya tiene esas constantes (K=32, azul +20,4 Elo). Se re-ejecutó hoy y
+  dio lo mismo (determinista; no se commiteó el cambio de fecha).
+- **Lo que espera a la cosecha propia de Leaguepedia** (`/data/lol-raw` en Render): las tablas se cruzan
+  por GameId de Leaguepedia, y el espejo renumera (1..N) → **players.json (mastery, comps, Fase 4) solo
+  casa con la games.json PROPIA**. Cursores al cierre: games 2022-11-06 (43.410), players 2023-03-10
+  (37.710), drafts **completa** (33.185, done). La cosecha en Render corre (`running: lol_harvest` en
+  `/api/internal/ops`), pero cada deploy la mata (se rearma a los 6 min) y Fandom da ~14 páginas por
+  ventana; el sandbox de esta sesión está limitado (429).
+- **Cambio de esta sesión:** el orden de la cosecha pasa a **games → players → drafts** entre incompletas
+  (antes "la de menos filas primero" mandaba players, 700+ páginas, por delante de games). Cuando games
+  cruce 2024: bajar por `lolraw?file=games.json`, correr `lol-validate.js --json` sobre la base propia y
+  comparar con el espejo (mismas constantes ⇒ Fase 3 cerrada con linaje propio).
+- Fases 4 y 7 (`lol-data.js`: championsBoard/draftIntel/mastery; Draft Room V1) están desplegadas desde el
+  18-ago y degradan honestas sin players.json → se encienden solas al re-agregar (`lol-aggregate.js`).
+
+## 🌐 D. FETCH RESILIENTE EN LA UI PÚBLICA — hecho
+`public/app.js` lleva la misma sombra de `fetch` que premium.js (declaración léxica del script; index.html
+solo carga ui-kit.js + app.js). QA `scripts/qa/app-robust.mjs` (ESM ignora NODE_PATH: correr desde un dir
+con symlink `node_modules -> $(npm root -g)`): 2×502 → arranca; 502 fijo → 5 intentos en ~11 s; POST → 1.
+
+## 🔑 E. API_FOOTBALL_KEY — bloqueado en Alexis
+Hace falta una key NUEVA generada en el dashboard de API-Football (cuenta de Alexis). Con ella:
+`PUT https://api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/env-vars/API_FOOTBALL_KEY` (body
+`{"value":"..."}`) + deploy. Sin key nueva no hay nada que rotar.
+
+## 📌 Externos que dependen de Alexis (recordatorio, no se tocaron)
+Historial REST de Klaus (Cloudbet) · KYC Cloudbet/Pinnacle · demo Maven (¿lista CS2/LoL por mapa?) · Whop
+`unmatched_plan: 1` · anotar en la prop firm lo colocado (`run=anotar&id=&precio=&costo=`).
+
+---
+
 # HANDOFF — estado al 1-sep-2026 (cierre de la sesión larga: todo guardado, retoma en sesión nueva)
 
 > La sección anterior (21-ago) sigue abajo, intacta. Esto cubre del 24 de agosto al 1 de septiembre.

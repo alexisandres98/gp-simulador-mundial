@@ -1,5 +1,16 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⚡ PENDIENTES FRESCOS (1-sep noche, tras la auditoría de la primera liquidación real)
+- **Ruta REST de estado/historial de Cloudbet**: sigue sin confirmar; la liquidación real lee por GraphQL
+  (`_fuente` lo dice). Cuando Klaus conteste, probar con `run=cb_estado&ref=` ANTES de fiarse: el importe
+  REST puede venir con otra semántica (la aritmética ya no depende de ella, pero el contraste sí).
+- **Prop firm — dos lados del mismo mapa**: decidir si el escáner emite una sola pierna por mercado (ver
+  HANDOFF §B). Y anotar lo colocado en FP-796307 con `run=anotar` para que la sombra y la cuenta cuadren.
+- **lol_kills_hcp_v1**: primera lectura cuando Leaguepedia cargue los scoreboards del 1-sep (≈1 día).
+- **modelo_sombra**: 0 señales en 1,5 días con listón 6-15 pp; si sigue en 0 dos semanas, bajar a 4 pp.
+- **Cosecha LoL**: no desplegar más de lo necesario (cada deploy mata la pasada). Orden nuevo games-primero.
+- **API_FOOTBALL_KEY**: bloqueado hasta que Alexis genere la key nueva (HANDOFF §E tiene el comando).
+
 ## ⚡ PENDIENTES FRESCOS (31-ago, tras el cierre por tiers)
 - **PRO/móvil QA visual**: pasar la plataforma con `?asplan=pro` (admin) — free ya está auditado a fondo
   con cuenta real (matriz de endpoints + payloads sin fugas). La cuenta de QA free vive:

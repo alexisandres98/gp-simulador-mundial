@@ -202,7 +202,12 @@ async function main() {
   // ya estaba completa y gastaba ahí el cubo de Fandom; la que faltaba no llegaba a empezar nunca. Va
   // primero la que menos filas tiene en disco — la vacía antes que ninguna.
   const filas = (f) => { const st = rd(f); if (!st) return -1; if (st.done && !FORCE) return Infinity; return Object.keys(st.rows || {}).length; };
-  TABLAS.sort((a, b) => filas(a.file) - filas(b.file));
+  // (1-sep) Con el marcador `done` el motivo de "la de menos filas primero" ya está cubierto: lo que importa
+  // ahora es la NECESIDAD del blueprint — la Fase 3 (walk-forward con lados y kills propios) espera a
+  // `games`, y players (700+ páginas) la dejaba siempre para después. Orden: games → players → drafts entre
+  // las incompletas; las completas al final (se saltan solas).
+  const ORDEN = { 'games.json': 0, 'players.json': 1, 'drafts.json': 2 };
+  TABLAS.sort((a, b) => (filas(a.file) === Infinity) - (filas(b.file) === Infinity) || ORDEN[a.file] - ORDEN[b.file]);
   console.log('[lol] orden de esta pasada: ' + TABLAS.map((t) => `${t.file}(${filas(t.file) === Infinity ? 'completa' : filas(t.file)})`).join(' → '));
   for (const t of TABLAS) await harvestTable(t);
 

@@ -62,3 +62,6 @@ data/f1/disk/
 
 # cerrojo del rellenado de LoL: estado de proceso, no de datos
 data/esports/lol/.kills-backfill.lock
+
+# estado local del canal prop firm (en prod vive en /data/propfirm)
+data/propfirm/

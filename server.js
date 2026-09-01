@@ -21025,7 +21025,9 @@ async function anotar(pid){
           const rowsF = LRf.bets.filter((b) => !estQ || String(b.status).toUpperCase() === estQ)
             .map((b) => ({ pick: b.pick_id, match: b.match, linea: b.line, status: b.status,
               motivo: b.motivo || null, cuota_sombra: b.odds_sombra, prob: b.model_prob,
-              kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null }));
+              kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null,
+              stake: b.stake != null ? b.stake : null, cuota_real: b.odds_real || null,
+              placed_at: b.placed_at || null, via: b.via || null, referencia: b.referencia || b.ref_id || null }));
           return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, 80) });
         }
         // `run=colocar_una&pick=&stake=` (1-sep): colocar UNA fila concreta con stake fijado por orden

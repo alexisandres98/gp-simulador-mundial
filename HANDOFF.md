@@ -63,8 +63,23 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
   Saldo tras colocar: $36.61. ⚠️ `GP_REAL_MIN_BALANCE` bajó de 40 → 5 para poder cumplir la orden —
   preguntar a Alexis si lo restauramos. El brazo definitivo es `gp-cb-relay-hel2` (2.29.18.155); el v1
   se borró. Quedan 6 pendientes más (2 CS2 solo_manual + 4 card-under de la misma noche).
+- **EL RÉGIMEN OPERATIVO (1-sep, órdenes de Alexis, "procede con todo")**:
+  · Ejecutor 100% automático en Cloudbet — **avisos de apuesta manual APAGADOS** (`GP_REAL_AVISO_MANUAL=false`).
+  · **Tarjetas**: la fórmula de siempre (~$29-30, Kelly/4 con topes).
+  · **CS2**: stake PLANO de $5 (`GP_REAL_CS2_STAKE=5`) — si la casa permite menos, el máximo disponible;
+    jamás más de $5. Motivo: los límites desiguales ($4-5 casi siempre, $30-40 a veces) rompían la
+    matemática de la cartera. **`GP_REAL_CS2_AUTO=true`**: el gemelo del 28-ago pasó de ensayo a
+    colocación real por el brazo (rearma payload con precio vivo cada pasada, mismos frenos de cartera,
+    respeta mínimo de la casa, DUPLICATE_REQUEST = comprometida, baja saldo al colocar).
+  · Suelo de saldo $5 (`GP_REAL_MIN_BALANCE=5`) y exposición máxima fuera (1e6) — confirmados por orden.
+  · Reporte diario ya existente: plan 08:00Z + parte 23:30Z al admin.
+  · Colocadas 1-sep por orden directa: Preston-Bristol u4.5 tarjetas $29 @1.53 y Birmingham-Southampton
+    u3.5 $29.87 @2.45, ambas ACCEPTED vía brazo. Lincoln/Portsmouth/West Ham quedaron `sin_fondos`
+    (saldo $6.74) — reintentan cada 10 min; con depósito antes de su KO entran solas.
+  · **SIGUIENTE FASE (cuando llegue el KYC de Pinnacle)**: modo híbrido — email solo para las de
+    Pinnacle (colocación manual de Alexis), Cloudbet enteramente solo.
 - **PENDIENTE**: ruta REST del historial (preguntada a Klaus en el borrador); responder a Klaus;
-  KYC vía CS (lado Alexis); decidir si `run=recuperar` para las 4 card-under restantes.
+  KYC vía CS (lado Alexis).
 
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,

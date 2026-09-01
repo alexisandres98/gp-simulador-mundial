@@ -84,8 +84,23 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
 - **Borrador para Klaus**: CREADO en el Gmail de Alexis como respuesta al hilo (cc Monika+Axel) —
   confirma REST desde región permitida, pregunta la ruta del historial, anuncia KYC. Falta que Alexis
   le dé enviar.
-- **PENDIENTE**: enviar el borrador (Alexis); KYC vía CS (Alexis); la PRIMERA LIQUIDACIÓN nocturna
-  sobre apuestas del brazo (1-sep ~21:00Z en adelante) cierra el ciclo completo — vigilar el parte.
+- **PENDIENTE**: KYC vía CS (Alexis; el email a Klaus YA SE ENVIÓ con la pregunta de límites/segunda
+  cuenta); la PRIMERA LIQUIDACIÓN nocturna sobre apuestas del brazo (1-sep ~21:00Z) cierra el ciclo.
+
+## 🟣 LA SOMBRA DE POLYMARKET (1-sep, orden de Alexis: "si funciona lo cableamos y le metemos dinero")
+`propfirm/polyshadow.js`: banco simulado de $2.000 donde CADA señal operable de la prop firm se coloca
+como si fuera por la API real del CLOB — orden límite (el límite de la señal) caminando los asks del
+libro real en el momento del aviso — y se liquida con la RESOLUCIÓN del propio Polymarket (outcomePrices
+→ 1/0; cubre fútbol/NFL que senales.json no liquida). El escáner captura `clobTokenIds` por señal (con
+rescate vía gamma para las viejas). Ledger `poly-sombra.json` en /data/propfirm.
+- **Primera pasada real**: 6 posiciones, $509 desplegados, slippage medio +0,43 pp, y la medición
+  estrella: una tesis pedía $100 y el libro solo tenía ~$10 bajo el límite (24 shares) — la capacidad
+  REAL del venue, medida posición a posición.
+- Revisión: sección propia en el correo del LUNES de la sombra; probe `/api/internal/propfirm` →
+  `poly_sombra`. Envs: GP_POLYSOMBRA_BANCO (2000), GP_POLYSOMBRA_RIESGO (100).
+- Lectura del lunes: las variantes del mismo cruce entran TODAS (ganan/pierden juntas — como en la firm).
+- **Si da positivo sostenido → cablear la API real del CLOB** (órdenes firmadas EIP-712, wallet propia,
+  sin aprobación de nadie) y meterle dinero real.
 
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,

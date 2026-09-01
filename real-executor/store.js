@@ -561,8 +561,12 @@ async function intentar(sb, pick, { cbIdx = {}, slate = null } = {}) {
 async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
   const L = load();
   const ahora = Date.now();
+  // el veto por aviso_manual protegía del doble-colocado cuando el correo invitaba a Alexis a apostar a
+  // mano. Con los avisos APAGADOS (1-sep: el ejecutor hace todo) ese correo ya no sale y el veto solo
+  // dejaría filas varadas para siempre; se respeta únicamente mientras el canal manual siga vivo.
+  const avisosOn = String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false';
   const cola = L.bets.filter((b) => b.status === 'PENDIENTE'
-    && !b.aviso_manual // ya salió por correo al canal manual: si la API la recolocara habría DOS apuestas vivas
+    && (!avisosOn || !b.aviso_manual)
     && b.motivo !== 'solo_manual' // filas de canal manual puro (CS2): la API no tiene su mercado
     && (!b.kickoff_at || Date.parse(b.kickoff_at) > ahora))
     .sort((a, b) => Date.parse(a.kickoff_at || 0) - Date.parse(b.kickoff_at || 0))

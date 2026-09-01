@@ -21027,7 +21027,9 @@ async function anotar(pid){
               motivo: b.motivo || null, cuota_sombra: b.odds_sombra, prob: b.model_prob,
               kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null,
               stake: b.stake != null ? b.stake : null, cuota_real: b.odds_real || null,
-              placed_at: b.placed_at || null, via: b.via || null, referencia: b.referencia || b.ref_id || null }));
+              placed_at: b.placed_at || null, via: b.via || null, referencia: b.referencia || b.ref_id || null,
+              ensayo: b.familia === 'CS2_RONDAS' ? { motivo: b.ensayo_motivo || null, at: b.ensayo_at || null,
+                intentos: b.ensayo_intentos || 0, payload: !!b.ensayo_payload, rechazo: b.ultimo_rechazo || null } : undefined }));
           return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, 80) });
         }
         // `run=colocar_una&pick=&stake=` (1-sep): colocar UNA fila concreta con stake fijado por orden

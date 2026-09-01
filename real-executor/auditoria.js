@@ -186,6 +186,41 @@ const ok = (cond, txt, detalle) => {
   ok(b2c.status === 'SETTLED' && b2c.resultado === 'LOSS', 'perdida', b2c.status);
   ok(b2c.pnl === -30, 'P&L −30', b2c.pnl);
 
+  console.log('\n16b. por el brazo REST el importe de la casa es NETO (1-sep): no se resta el stake dos veces');
+  {
+    const sN1 = senal({ id: 'cdp_neto_win', match: 'Preston vs Bristol' }), sN2 = senal({ id: 'cdp_neto_loss', match: 'Lincoln vs Blackburn' });
+    casa.respuestaPlace = (p) => ({ ok: true, status: 200, betStatus: 'ACCEPTED', body: { betStatus: 'ACCEPTED', price: p.price, stake: p.stake } });
+    await RE.intentar(sN1, pick, { cbIdx: IDX }); await RE.intentar(sN2, pick, { cbIdx: IDX });
+    const bN1 = RE.load().bets.find((b) => b.pick_id === sN1.pick_id), bN2 = RE.load().bets.find((b) => b.pick_id === sN2.pick_id);
+    ok(bN1 && bN1.status === 'PLACED' && bN2 && bN2.status === 'PLACED', 'las dos colocadas', [bN1 && bN1.status, bN2 && bN2.status]);
+    const stN = Number(bN1.stake), prN = Number(bN1.odds_real || bN1.odds_sombra);
+    const netoWin = +(stN * (prN - 1)).toFixed(2);
+    casa.estados[bN1.ref_id] = { betStatus: 'WIN', returnAmount: String(netoWin), _fuente: 'relay-rest' };
+    casa.estados[bN2.ref_id] = { betStatus: 'LOSS', returnAmount: String(-Number(bN2.stake)), _fuente: 'relay-rest' };
+    const nocAntes = RE.load().nocional;
+    const outN = await RE.liquidar({ [sN1.pick_id]: { result_code: 'WIN' }, [sN2.pick_id]: { result_code: 'LOSS' } });
+    const bN1b = RE.load().bets.find((b) => b.pick_id === sN1.pick_id), bN2b = RE.load().bets.find((b) => b.pick_id === sN2.pick_id);
+    ok(bN1b.pnl === netoWin && bN1b.importe_casa_semantica === 'neto', 'ganada neta: P&L = stake × (precio − 1), sin restar el stake otra vez', [bN1b.pnl, bN1b.importe_casa_semantica]);
+    ok(bN2b.pnl === -Number(bN2.stake) && bN2b.importe_casa_semantica === 'neto', 'perdida neta: P&L = −stake, no −2×stake', [bN2b.pnl, bN2b.importe_casa_semantica]);
+    ok(!bN1b.discrepancia && !bN2b.discrepancia && !bN1b.discrepancia_importe && !bN2b.discrepancia_importe, 'sin descuadres: el importe cuadra como neto', outN.descuadres);
+    ok(Math.abs(RE.load().nocional - (nocAntes + netoWin - Number(bN2.stake))) < 0.011, 'el banco compone con el P&L correcto', RE.load().nocional);
+    // y la corrección a mano de una liquidada con el error viejo
+    bN2b.pnl = -2 * Number(bN2.stake); RE.load().realizado = +(RE.load().realizado - Number(bN2.stake)).toFixed(2); RE.load().nocional = +(RE.load().nocional - Number(bN2.stake)).toFixed(2); RE.save();
+    const rl = RE.reliquidar(bN2b.ref_id);
+    ok(rl.ok && rl.delta === Number(bN2.stake) && RE.load().bets.find((b) => b.pick_id === sN2.pick_id).pnl === -Number(bN2.stake), 'reliquidar corrige el dinero por la diferencia', rl);
+    ok(Math.abs(RE.load().nocional - (nocAntes + netoWin - Number(bN2.stake))) < 0.011, 'y el banco vuelve a cuadrar', RE.load().nocional);
+    const rl2 = RE.reliquidar(bN2b.ref_id);
+    ok(rl2.ok && rl2.sin_cambio, 'reliquidar dos veces no cambia nada', rl2);
+    // un importe que no cuadra ni como neto ni como bruto queda marcado
+    const sN3 = senal({ id: 'cdp_neto_raro', match: 'Raro vs Raro' });
+    await RE.intentar(sN3, pick, { cbIdx: IDX });
+    const bN3 = RE.load().bets.find((b) => b.pick_id === sN3.pick_id);
+    casa.estados[bN3.ref_id] = { betStatus: 'WIN', returnAmount: '1.23' };
+    await RE.liquidar({ [sN3.pick_id]: { result_code: 'WIN' } });
+    const bN3b = RE.load().bets.find((b) => b.pick_id === sN3.pick_id);
+    ok(bN3b.status === 'SETTLED' && !!bN3b.discrepancia_importe && bN3b.pnl === +(Number(bN3.stake) * (Number(bN3.odds_real || bN3.odds_sombra) - 1)).toFixed(2), 'importe raro: se liquida por aritmética y queda marcado', [bN3b.pnl, bN3b.discrepancia_importe]);
+  }
+
   console.log('\n17. descuadre: decimos perdida y la casa paga');
   const b3 = RE.load().bets.find((b) => b.pick_id === s3.pick_id);
   casa.estados[b3.ref_id] = { betStatus: 'WIN', returnAmount: '57.0' };
@@ -319,8 +354,8 @@ const ok = (cond, txt, detalle) => {
   const antesEns = casa.colocaciones.length;
   await RE.ensayoCs2(fEns, { eventoId: 'ev-ens-1', evRaw: evRawCs2 });
   ok(fEns.ensayo_payload && fEns.ensayo_payload.marketUrl === 'counter-strike.map_round_handicap/away?map=2'
-    && fEns.ensayo_payload.price === 2.12 && fEns.ensayo_payload.stake === 20,
-    'el payload queda armado con precio vivo y el tope de 20 de la casa', fEns.ensayo_payload);
+    && fEns.ensayo_payload.price === 2.12 && fEns.ensayo_payload.stake === 5,
+    'el payload queda armado con precio vivo y el stake plano de 5 (doctrina 1-sep, aunque la casa deje 20)', fEns.ensayo_payload);
   ok(fEns.status === 'PENDIENTE' && fEns.motivo === 'solo_manual', 'la fila sigue siendo del canal manual', [fEns.status, fEns.motivo]);
   ok(casa.colocaciones.length === antesEns, 'con la llave apagada NO se envió nada a la casa', casa.colocaciones.length - antesEns);
   const fEnsSin = RE.crearManualCs2({ ...sbEns, pick_id: 'es_cs2_ens2_RONDAS_HANDICAP_home_-3.5_1', side: 'home', line: -3.5 }, { stake: 30 });
@@ -372,7 +407,7 @@ const ok = (cond, txt, detalle) => {
   const b = RE.board({ limit: 5 });
   ok(typeof b.roi_pct === 'number', 'ROI calculado', b.roi_pct);
   ok(b.descuadres === 1, 'descuadres a la vista', b.descuadres);
-  ok(b.liquidadas === 5, 'cinco liquidadas (tres por API y las dos manuales — tarjetas y CS2)', b.liquidadas);
+  ok(b.liquidadas === 8, 'ocho liquidadas (seis por API —tres de importe neto— y las dos manuales — tarjetas y CS2)', b.liquidadas);
   ok(b.cortafuegos && b.cortafuegos.seguidos === 0, 'cortafuegos a la vista y reabierto', b.cortafuegos);
   const sumaPnl = RE.load().bets.filter((x) => x.status === 'SETTLED').reduce((a, x) => a + x.pnl, 0);
   ok(Math.abs(sumaPnl - RE.load().realizado) < 0.01, 'el realizado cuadra con la suma', [sumaPnl, RE.load().realizado]);

@@ -546,13 +546,14 @@ async function betByReference(apiKey, referenceId) {
     if (jj && (jj.referenceId || jj.status)) {
       return { ...jj, referenceId: jj.referenceId || referenceId,
         betStatus: String(jj.betStatus || jj.status || '').toUpperCase() || null,
-        betErrorCode: jj.betErrorCode || jj.error || null };
+        betErrorCode: jj.betErrorCode || jj.error || null, _fuente: 'relay-rest' };
     }
   }
   const r = await gql(apiKey, `query Apuesta($ref: String!) {
     bet(referenceId: $ref) { referenceId eventId marketUrl currency price stake side returnAmount betStatus betErrorCode }
   }`, { ref: referenceId }).catch(() => null);
-  return (r && r.data && r.data.bet) || null;
+  const bt = r && r.data && r.data.bet;
+  return bt ? { ...bt, _fuente: 'graphql' } : null;
 }
 
 // LO QUE HAY EN LA CACHÉ, SIN SALIR A BUSCAR NADA. `fetchCloudbetSoccer` con la caché vencida se lanza a

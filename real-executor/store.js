@@ -647,6 +647,51 @@ async function preflight(pares, { cbIdx = {}, slate = null } = {}) {
 //   · si los dos no cuadran, no se toca el banco y se marca `discrepancia`. Un descuadre entre lo que
 //     creemos y lo que nos pagaron es justo el fallo que un ejecutor automático NO puede tapar solo.
 //
+// P&L por el ESTADO que dice la casa, con el precio que aceptó y el stake que cobró. Null = estado que no
+// sabemos convertir (PARTIAL, o uno nuevo): ahí manda el importe de la casa tal cual venga.
+function pnlPorEstado(estado, stake, precio) {
+  const st = String(estado || '').toUpperCase();
+  if (st === 'WIN') return stake * (precio - 1);
+  if (st === 'LOSS') return -stake;
+  if (st === 'PUSH' || st === 'VOID' || st === 'CANCELLED') return 0;
+  if (st === 'HALF_WIN') return stake * (precio - 1) / 2;
+  if (st === 'HALF_LOSS') return -stake / 2;
+  return null;
+}
+
+// RELIQUIDAR UNA APUESTA YA CERRADA (1-sep). Para las que se liquidaron con la lectura equivocada del
+// importe: recalcula el P&L con la aritmética de arriba a partir del estado que la casa ya dio y ajusta
+// el libro —realizado, nocional y el día— por la DIFERENCIA. No pregunta a la casa ni cambia el resultado;
+// solo corrige el dinero. Se llama a mano por referencia (`run=reliquidar&ref=`).
+function reliquidar(refId) {
+  const C = CFG();
+  const L = load();
+  const b = L.bets.find((x) => x.ref_id === refId);
+  if (!b) return { error: 'referencia no encontrada' };
+  if (b.status !== 'SETTLED') return { error: 'no está liquidada', status: b.status };
+  const casa = String(b.casa_estado || b.resultado || '').toUpperCase();
+  const stake = Number(b.stake) || 0;
+  const arit = pnlPorEstado(casa, stake, Number(b.odds_real || b.odds_sombra) || 1);
+  if (arit == null) return { error: 'estado sin aritmética conocida', estado: casa };
+  const antes = Number(b.pnl) || 0;
+  const despues = +arit.toFixed(2);
+  const delta = +(despues - antes).toFixed(2);
+  if (Math.abs(delta) < 0.005) return { ok: true, sin_cambio: true, pnl: antes };
+  b.pnl_antes_de_corregir = antes;
+  b.pnl = despues;
+  b.corregido_at = new Date().toISOString();
+  if (b.pagado_por_la_casa != null) {
+    const ret = Number(b.pagado_por_la_casa);
+    b.importe_casa_semantica = Math.abs(ret - arit) <= 0.011 ? 'neto' : Math.abs((ret - stake) - arit) <= 0.011 ? 'bruto' : null;
+    if (b.importe_casa_semantica) delete b.discrepancia_importe;
+  }
+  L.realizado = +((L.realizado || 0) + delta).toFixed(2);
+  L.nocional = +((L.nocional || C.nocional) + delta).toFixed(2);
+  const d = dia(String(b.settled_at || b.corregido_at).slice(0, 10)); d.pnl = +(d.pnl + delta).toFixed(2);
+  save();
+  return { ok: true, ref_id: refId, match: b.match, estado: casa, pnl_antes: antes, pnl_ahora: despues, delta, realizado: L.realizado, nocional: L.nocional };
+}
+
 // `resultados` es un mapa pick_id → { result_code, } que el llamador saca de sus propias picks liquidadas.
 async function liquidar(resultados = {}) {
   const C = CFG();
@@ -685,9 +730,27 @@ async function liquidar(resultados = {}) {
     // viva por mucho que nuestro liquidador ya haya cerrado la pick: el dinero no ha vuelto.
     if (!CB.ESTADOS_LIQUIDADOS.has(casa)) { esperando++; continue; }
 
-    const ret = raw.returnAmount != null ? Number(raw.returnAmount) : 0;
+    const ret = raw.returnAmount != null && raw.returnAmount !== '' ? Number(raw.returnAmount) : null;
     const stake = Number(b.stake) || 0;
-    b.pnl = +(ret - stake).toFixed(2);
+    // EL IMPORTE DE LA CASA NO SIGNIFICA LO MISMO POR LAS DOS PUERTAS (1-sep, primera liquidación real por
+    // el brazo). Por REST `returnAmount` es el resultado NETO de la apuesta: +15,37 en una ganada de 29 a
+    // 1,53 y −20,20 en una perdida de 20,20 — una cifra negativa no puede ser un retorno bruto. El código
+    // le restaba el stake otra vez, y la primera ganada real quedó anotada como pérdida. Así que el P&L se
+    // calcula con la aritmética de la apuesta —estado de la casa × precio real × stake—, y el importe de la
+    // casa se usa como CONTRASTE: si no cuadra ni como neto ni como bruto, se marca `discrepancia_importe`
+    // y sale en el parte. El dinero sigue siendo el de la casa: el estado es suyo, el precio es el que ella
+    // aceptó y el stake es el que ella cobró.
+    const arit = pnlPorEstado(casa, stake, Number(b.odds_real || b.odds_sombra) || 1);
+    let semantica = null;
+    if (ret != null && Number.isFinite(ret)) {
+      if (Math.abs(ret - arit) <= 0.011) semantica = 'neto';
+      else if (Math.abs((ret - stake) - arit) <= 0.011) semantica = 'bruto';
+    }
+    if (arit != null) { b.pnl = +arit.toFixed(2); }
+    else { b.pnl = ret == null ? 0 : +((ret < 0 || Math.abs(ret) < stake) ? ret : ret - stake).toFixed(2); }
+    if (ret != null && !semantica) { b.discrepancia_importe = { casa: ret, aritmetica: arit, stake, estado: casa }; descuadres++; }
+    b.importe_casa_semantica = semantica;
+    b.fuente_estado = raw._fuente || null;
     b.resultado = casa === 'LOSS' ? 'LOSS' : casa === 'PUSH' ? 'VOID' : casa === 'WIN' ? 'WIN' : casa;
 
     // NUESTRO VEREDICTO SE COMPARA, NO SE USA. El dinero es el de la casa; nuestra lectura del partido sirve
@@ -955,5 +1018,5 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER };

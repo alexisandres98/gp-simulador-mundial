@@ -21132,6 +21132,17 @@ async function anotar(pid){
           return json(res, 200, { rechazos_antes: antes, ahora: 0 });
         }
         if (run === 'liquidar') return json(res, 200, await RE.liquidar());
+        // `run=reliquidar&ref=`: corrige el DINERO de una apuesta ya liquidada con la aritmética de su estado
+        // (1-sep: la primera liquidación por el brazo restó el stake dos veces). Ajusta el libro por la diferencia.
+        if (run === 'reliquidar') return json(res, 200, RE.reliquidar(String(url.searchParams.get('ref') || '')));
+        // `run=cb_estado&ref=`: lo que la casa contesta HOY por esa referencia, crudo, por la puerta que toque
+        // (brazo REST → GraphQL). Solo lectura: para auditar qué significa cada campo antes de fiarse de él.
+        if (run === 'cb_estado') {
+          const CBv = require('./market-scanner/venues/cloudbet');
+          const refQ = String(url.searchParams.get('ref') || '');
+          const est = await CBv.betByReference(process.env.CLOUDBET_API_KEY || '', refQ).catch((e) => ({ error: e.message }));
+          return json(res, 200, { ref: refQ, estado: est });
+        }
         // `run=recuperar`: mete en el libro las señales que el sombra YA tiene abiertas y que nunca pasaron
         // por el ejecutor real —las que nacieron antes de encenderlo—. Sin esto, la primera apuesta real
         // habría que esperarla a que el motor publique una señal nueva, que pueden ser horas. No relaja

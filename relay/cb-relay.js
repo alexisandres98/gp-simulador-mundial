@@ -27,8 +27,15 @@
 'use strict';
 
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 10000;
+// TLS propio (1-sep): si GP_RELAY_TLS_DIR apunta a un dir con key.pem/cert.pem, el relay habla HTTPS.
+// El certificado es autofirmado (no hay dominio sobre la IP): el cliente lo acepta sin verificar CA pero
+// el tráfico va cifrado — las llaves no cruzan el Atlántico en claro. Mejora pendiente: fijar huella.
+const TLSD = process.env.GP_RELAY_TLS_DIR || '';
 const HOST = process.env.CLOUDBET_ACCOUNT_HOST || 'https://sports-api.cloudbet.com';
 const AK = process.env.CLOUDBET_API_KEY || '';
 const RK = process.env.GP_RELAY_KEY || '';
@@ -48,7 +55,15 @@ async function cb(path, { method = 'GET', body = null, conLlave = true } = {}) {
   } catch (e) { return { error: String(e.message || e).slice(0, 80) }; }
 }
 
-http.createServer(async (req, res) => {
+const mkServer = (handler) => {
+  if (TLSD) {
+    try {
+      return https.createServer({ key: fs.readFileSync(path.join(TLSD, 'key.pem')), cert: fs.readFileSync(path.join(TLSD, 'cert.pem')) }, handler);
+    } catch (e) { console.error('[cb-relay] TLS pedido pero ilegible, caigo a HTTP:', e.message); }
+  }
+  return http.createServer(handler);
+};
+mkServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   if (p === '/health') return j(res, 200, { ok: true, at: new Date().toISOString() });
@@ -81,4 +96,4 @@ http.createServer(async (req, res) => {
   }
 
   return j(res, 404, { error: 'No encontrado' });
-}).listen(PORT, () => console.log(`[cb-relay] escuchando en :${PORT} → ${HOST}`));
+}).listen(PORT, () => console.log(`[cb-relay] escuchando en :${PORT}${TLSD ? ' (TLS)' : ''} → ${HOST}`));

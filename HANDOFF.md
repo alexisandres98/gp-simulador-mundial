@@ -78,8 +78,14 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
     (saldo $6.74) — reintentan cada 10 min; con depósito antes de su KO entran solas.
   · **SIGUIENTE FASE (cuando llegue el KYC de Pinnacle)**: modo híbrido — email solo para las de
     Pinnacle (colocación manual de Alexis), Cloudbet enteramente solo.
-- **PENDIENTE**: ruta REST del historial (preguntada a Klaus en el borrador); responder a Klaus;
-  KYC vía CS (lado Alexis).
+- **Vigilancia del brazo** (1-sep): el servicio principal hace ping al /health del relay cada 5 min;
+  3 fallos seguidos (~15 min) → email 🔴 al admin (qué significa + qué mirar en Hetzner), y ✅ al
+  volver. Una alerta por caída. `GP_RELAY_WATCH=false` la apaga.
+- **Borrador para Klaus**: CREADO en el Gmail de Alexis como respuesta al hilo (cc Monika+Axel) —
+  confirma REST desde región permitida, pregunta la ruta del historial, anuncia KYC. Falta que Alexis
+  le dé enviar.
+- **PENDIENTE**: enviar el borrador (Alexis); KYC vía CS (Alexis); la PRIMERA LIQUIDACIÓN nocturna
+  sobre apuestas del brazo (1-sep ~21:00Z en adelante) cierra el ciclo completo — vigilar el parte.
 
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,

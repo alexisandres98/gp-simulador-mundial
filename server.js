@@ -21008,6 +21008,8 @@ async function anotar(pid){
         // anotar la colocación real de Alexis: ?run=anotar&id=<id de la tesis>&precio=0.51&costo=99.03
         if (runPf === 'anotar') return json(res, 200, PF.anotar(String(url.searchParams.get('id') || ''), {
           precio: url.searchParams.get('precio'), costo: url.searchParams.get('costo') }));
+        // borrón de la sombra de Polymarket (1-sep): solo a mano, para renacer con reglas nuevas
+        if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset());
         return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
       }
       return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,

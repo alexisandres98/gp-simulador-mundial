@@ -26,7 +26,30 @@ const DIR = process.env.GP_PROPFIRM_DIR || (fs.existsSync('/data') ? '/data/prop
 const F = path.join(DIR, 'poly-sombra.json');
 const SENALES = path.join(DIR, 'senales.json');
 const BANCO = () => +(process.env.GP_POLYSOMBRA_BANCO || 2000);
-const RIESGO = () => +(process.env.GP_POLYSOMBRA_RIESGO || 100);   // el mismo $100/posición de la firm
+// EL TAMAÑO NO ES EL DE LA FIRM (1-sep, corrección de Alexis): la firm tiene $10.000 y REGLAS (pérdida
+// diaria, tope de posiciones, $100 planos); este banco es de $2.000 y Polymarket no tiene reglas. Se usa
+// la MISMA estructura del ejecutor de Cloudbet: Kelly/4 con tope del 1,5% del banco VIVO (compone con el
+// P&L realizado), suelo $5 y tope duro $45 — sin máximo de exposición ni de número de apuestas.
+const STAKE_PCT = () => +(process.env.GP_POLYSOMBRA_STAKE_PCT || 1.5) / 100;
+const STAKE_MIN = () => +(process.env.GP_POLYSOMBRA_STAKE_MIN || 5);
+const STAKE_MAX = () => +(process.env.GP_POLYSOMBRA_STAKE_MAX || 45);
+function kellyDe(prob, odds) {
+  if (!(prob > 0 && prob < 1 && odds > 1)) return 0;
+  const b = odds - 1;
+  return Math.max(0, (b * prob - (1 - prob)) / b) / 4;   // Kelly/4, como en Cloudbet
+}
+function bancoVivo(st) {
+  const pnl = Object.values(st.posiciones || {}).reduce((a, p) => a + (p.pnl || 0), 0);
+  return +((st.banco_inicial || BANCO()) + pnl).toFixed(2);
+}
+function stakeDe(st, s) {
+  const banco = bancoVivo(st);
+  const odds = s.precio_pm > 0 ? 1 / s.precio_pm : 0;    // comprar a p paga 1/p por share
+  const f = kellyDe(s.consenso, odds);
+  // `f || STAKE_PCT()` es la fórmula EXACTA del sombra de Cloudbet, conservada a propósito
+  const stk = Math.min(STAKE_PCT(), f || STAKE_PCT()) * banco;
+  return Math.min(STAKE_MAX(), Math.max(STAKE_MIN(), Math.round(stk * 100) / 100));
+}
 const CLOB = 'https://clob.polymarket.com';
 const GAMMA = 'https://gamma-api.polymarket.com';
 
@@ -124,14 +147,15 @@ async function sincronizar() {
     // límite: el de la señal; el experimento modelo_sombra no llega aquí, y una señal sin límite (no
     // debería existir en operables) usa su propio precio de aviso como tope
     const lim = s.limite != null ? s.limite : s.precio_pm;
-    const presupuesto = Math.min(RIESGO(), st.efectivo);
+    const stakeObj = stakeDe(st, s);
+    const presupuesto = Math.min(stakeObj, st.efectivo);
     const fill = asks ? simulaFill(asks, lim, presupuesto) : null;
     if (fill && fill.shares >= 1 && fill.costo > 0) {
       st.posiciones[s.id] = {
         senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
         deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, equipo: s.equipo,
         ko: s.ko, precio_senal: s.precio_pm, limite: lim, consenso: s.consenso, edge_pp: s.edge_pp,
-        shares: fill.shares, costo: fill.costo, precio_fill: fill.precio_medio,
+        stake_objetivo: stakeObj, shares: fill.shares, costo: fill.costo, precio_fill: fill.precio_medio,
         slippage_pp: +((fill.precio_medio - s.precio_pm) * 100).toFixed(2),
         estado: 'ABIERTA', at: new Date().toISOString(),
       };
@@ -190,7 +214,7 @@ function estado() {
   const pnl = +cerradas.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2);
   const expuesto = +abiertas.reduce((a, p) => a + (p.costo || 0), 0).toFixed(2);
   return {
-    at: st.at, banco_inicial: st.banco_inicial, efectivo: st.efectivo,
+    at: st.at, banco_inicial: st.banco_inicial, banco_vivo: bancoVivo(st), efectivo: st.efectivo,
     expuesto, equity: +(st.efectivo + expuesto).toFixed(2),
     abiertas: abiertas.length,
     w: cerradas.filter((p) => p.estado === 'WIN').length,
@@ -207,4 +231,11 @@ function estado() {
   };
 }
 
-module.exports = { sincronizar, liquidarPoly, estado, DIR };
+// borrón y cuenta nueva (solo por orden humana): el experimento nace de cero con las reglas vigentes
+function reset() {
+  const st = { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: new Date().toISOString(), reset_at: new Date().toISOString() };
+  wr(st);
+  return { ok: true, banco: st.banco_inicial };
+}
+
+module.exports = { sincronizar, liquidarPoly, estado, reset, DIR };

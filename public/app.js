@@ -1,4 +1,39 @@
 // Frontend del simulador — vanilla JS, SSE para tiempo real
+// RED RESILIENTE (1-sep; la misma sombra que public/premium.js estrenó ese día). Los ~65 fetch de este archivo
+// hacían UNA llamada y, si fallaba por lo que sea —un 502 en pleno deploy, un timeout de proveedor, un parpadeo de
+// red—, el panel se quedaba vacío hasta recargar. Este `fetch` sombra al nativo: cada GET/HEAD a /api lleva timeout
+// de 60 s por intento y hasta 4 reintentos con espera creciente (0.6 s → 1.5 s → 3 s → 6 s) ante error de red,
+// 502/503/504, 429 o 408. Un 500 se reintenta UNA vez (suele ser un bug determinista: no vale multiplicar carga).
+// Los POST/PUT/DELETE no se reintentan (no son idempotentes). 401/403/404 vuelven al instante: no son transitorios.
+// Es una declaración léxica global de este script (index.html carga ui-kit.js + app.js, sin otro `fetch` propio):
+// la firma es la del nativo y devuelve la misma Response, así que ningún llamador cambia.
+const fetch = (function () {
+  const nativeFetch = window.fetch.bind(window);
+  const RETRY_MS = [600, 1500, 3000, 6000];
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  return function fetch(url, opts) {
+    opts = opts || {};
+    const method = String(opts.method || 'GET').toUpperCase();
+    const again = (method === 'GET' || method === 'HEAD') && typeof url === 'string' && url.charAt(0) === '/';
+    const ownTimer = !opts.signal && typeof AbortController === 'function';
+    const attempt = (i) => {
+      let o = opts, tm = null;
+      if (ownTimer) { const ac = new AbortController(); o = Object.assign({}, opts, { signal: ac.signal }); tm = setTimeout(() => ac.abort(), 60000); }
+      return nativeFetch(url, o).then((r) => {
+        if (tm) clearTimeout(tm);
+        const transient = r.status >= 502 || r.status === 429 || r.status === 408;
+        const cap = transient ? RETRY_MS.length : (r.status === 500 ? 1 : 0);
+        if (again && i < cap) return wait(RETRY_MS[i]).then(() => attempt(i + 1));
+        return r;
+      }, (e) => {
+        if (tm) clearTimeout(tm);
+        if (again && i < RETRY_MS.length && !(opts.signal && opts.signal.aborted)) return wait(RETRY_MS[i]).then(() => attempt(i + 1));
+        throw e;
+      });
+    };
+    return attempt(0);
+  };
+})();
 let STATE = null, USER = null, ARB = null;
 const $ = s => document.querySelector(s);
 const pct = (p, d = 1) => (p * 100).toFixed(d) + '%';

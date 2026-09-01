@@ -1,11 +1,17 @@
 // relay/cb-relay.js — RELAY DE APUESTAS EN REGIÓN PERMITIDA (1-sep)
 //
 // Por qué existe: Cloudbet habilitó la API de trading a la cuenta (email de Klaus, 1-sep) pero la familia
-// REST `/pub/v3/bets/*` responde 403 de Cloudflare desde IPs de EE.UU. (Ray ID *-PDX desde Render Oregón;
-// "be mindful about the geo restriction in place", dixit Klaus). Cuotas y cuenta no están geo-cercadas;
-// colocar sí. Este proceso corre en un servicio de Render en FRANKFURT y hace UNA sola cosa: recibir una
-// orden ya decidida y reenviarla a Cloudbet tal cual, con la llave que vive en SU entorno. Ninguna lógica
-// de decisión vive aquí — el cerebro sigue en el servicio principal; esto es un brazo en otra geografía.
+// REST `/pub/v3/bets/*` está GEO-CERCADA en el borde ("be mindful about the geo restriction", dixit Klaus).
+// Mapa medido el 1-sep con sondas externas (GET sin llave: 403 HTML de Cloudflare = bloqueado; 401 JSON =
+// pasó el cortafuegos y pide llave):
+//   ❌ 403: EE.UU. (Oregón PDX, Ohio), Alemania, Países Bajos, Reino Unido, Singapur
+//   ✅ 401: Brasil, Argentina, México, Chile, Colombia, Canadá (Toronto), Finlandia
+// Es decir: LAS CINCO REGIONES DE RENDER están en países bloqueados — Frankfurt NO sirve (se comprobó
+// ANTES de pagar el servicio). Y el bloqueo no es por IP de datacenter: las sondas que pasaron eran
+// Oracle (BR/CL), Hetzner (FI) y EdgeUno (CO). Cuotas y cuenta no están geo-cercadas; colocar sí.
+// Este proceso corre en un host de PAÍS PERMITIDO y hace UNA sola cosa: recibir una orden ya decidida y
+// reenviarla a Cloudbet tal cual, con la llave que vive en SU entorno. Ninguna lógica de decisión vive
+// aquí — el cerebro sigue en el servicio principal; esto es un brazo en otra geografía.
 //
 // Seguridad: todo endpoint (menos /health) exige `?key=` igual a GP_RELAY_KEY. El servicio principal es el
 // único que conoce esa llave. Sin llave → 404 seco, como las sondas internas de la casa.

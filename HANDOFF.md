@@ -28,6 +28,24 @@ $500, tope diario $300, una fase). La casa lo institucionalizó entero:
   lecturas `/pub/v3/bets/*` sigue (403 Cloudflare con key válida incluida); Monika (Cloudbet) empujó el
   hilo internamente el 31-ago.
 
+## 🌍 CLOUDBET HABILITÓ LA API — Y EL BLOQUEO RESULTÓ SER GEOGRÁFICO (1-sep)
+Klaus (Cloudbet) habilitó el acceso de trading a la cuenta GPsimulador: pide NO usar GraphQL (hoy el
+ejecutor coloca por ahí), usar los endpoints REST oficiales, ojo con la "geo restriction", y completar
+KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
+- Cuenta y saldo desde Render: OK ($65.61 USDT). `POST /pub/v3/bets/place` desde Render Oregón: 403 de
+  Cloudflare, Ray ID `a3426a27a861d74d-PDX`.
+- **Mapa por país** (sondas globalping, GET sin llave — 403 HTML = bloqueado, 401 JSON = abierto):
+  ❌ EE.UU., Alemania, Países Bajos, Reino Unido, Singapur → **las 5 regiones de Render, todas
+  bloqueadas** (el plan "relay en Frankfurt" murió ANTES de pagarlo).
+  ✅ Brasil, Argentina, México, Chile, Colombia, Canadá, Finlandia — y desde IPs de datacenter
+  (Oracle, Hetzner, EdgeUno): no hay bloqueo por ASN de hosting.
+- Nunca fue la llave: es la geografía del servidor. GraphQL colaba porque ese host no está tras la
+  misma regla — y ahora está prohibido por la casa.
+- **El brazo**: `relay/cb-relay.js` (sin deps, llave propia GP_RELAY_KEY, /diag con la batería de sondas,
+  /cb reenvío crudo allowlist /pub/) listo para desplegarse en un host de país permitido — Hetzner
+  Helsinki (~€4/mes, red comprobada), Oracle Cloud free tier São Paulo/Santiago (gratis, red comprobada)
+  o Fly.io GRU. Falta que Alexis elija/cree la cuenta del proveedor.
+
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,
 en vivo — el escaparate), **pro = accionable** (picks esports, briefs, lecturas, simuladores, registro en

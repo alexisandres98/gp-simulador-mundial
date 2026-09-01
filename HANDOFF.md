@@ -2,6 +2,26 @@
 
 > La sección anterior (21-ago) sigue abajo, intacta. Esto cubre del 24 al 31 de agosto — ~40 despliegues.
 
+## 🔁 LA CAPA PREMIUM YA NO PIDE RECARGAR (1-sep, "me molesta la falta de naturalidad")
+Alexis entró a un partido **en vivo** y vio "Couldn't load this match analysis"; recargando varias veces cargó.
+Dos causas en `public/premium.js`, ambas de diseño: (1) cada una de las ~110 llamadas hacía **un** fetch y, si
+fallaba —un 502 en pleno deploy, un timeout de proveedor, un parpadeo de red—, cacheaba el fallo `{_empty:true}`
+hasta recargar; (2) el caché usa `null` como "en vuelo", y cualquier repintado durante la carga (el tick de vivo
+cada 25 s, el SSE, el callback de `/api/clubs/value`) leía `!m` como fallo y pintaba el error mientras la
+respuesta todavía venía en camino. Lo que hay ahora:
+- **`fetch` sombra** al principio del IIFE: GET/HEAD a `/api` llevan timeout de 60 s por intento y hasta 4
+  reintentos (0.6 → 1.5 → 3 → 6 s) ante error de red, 502/503/504, 429 o 408. Un **500** se reintenta UNA vez
+  (suele ser un bug determinista; no vale multiplicar carga). POST nunca; 401/403/404 vuelven al instante.
+- **Tres estados explícitos** (`ldState`): `undefined`=pedir, `null`=en vuelo → `mvHold` (mantiene el spinner,
+  nunca error), `{_empty,_at,_n}`=fallo (`miss(k)`) que **caduca a los 10 s** y se vuelve a pedir hasta 3 veces.
+- **`mvFail`**: panel de error con botón **Reintentar** (resetea el contador) + un auto-reintento a los 6 s
+  mientras quede cupo. Convertidos: partido (beta/fx/teams/clubes), jugador de club, equipo, cockpit, h2h,
+  alineaciones, registro, temporada de club. Los fetches "de adorno" (picks del día, xG, intel, estilo…) siguen
+  cayendo a panel-ausente, pero ahora con reintentos.
+- Verificado con Playwright local (`scratchpad/robust.mjs`): 2×502 → carga transparente sin panel; 502 siempre →
+  panel + Reintentar tras 5 intentos; click → carga. Cero errores JS de página.
+- Queda opcional: la misma sombra para los 4 fetches `ok ? json : null` de `public/app.js` (UI pública).
+
 ## 💰 LA PROP FIRM ES EL CANAL REAL NUEVO
 Alexis compró el **Elite 10K de FundingPredicts** (FP-796307, cierra 30-sep: target $1.200, DD estático
 $500, tope diario $300, una fase). La casa lo institucionalizó entero:

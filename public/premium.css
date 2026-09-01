@@ -3875,3 +3875,7 @@ td .gx-calc-btn span { display: none; }
   .gx-cbet.no-art .gx-cbet-18 { flex: 1 0 100%; align-self: flex-start; text-align: left; }
 }
 @media (prefers-reduced-motion: reduce) { .gx-cbet.no-art { transition: none; } }
+/* Reintentar dentro de un panel de fallo (1-sep): el ícono no hereda el tamaño-bloque del estado vacío */
+.gx-empty .gx-retry { margin-top: 12px; }
+.gx-empty .gx-retry i { display: inline-flex; font-size: 14px; margin: 0; color: inherit; }
+.gx-empty .gx-retry i.gxi svg { width: 15px; height: 15px; }

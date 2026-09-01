@@ -3,6 +3,39 @@
    diccionario compartido). No modifica datos, modelo, auth ni la UI actual. */
 (function () {
   'use strict';
+  // RED RESILIENTE (1-sep, reporte Alexis: "Couldn't load this match analysis" en un partido en vivo que cargó al
+  // recargar). Las ~110 llamadas de este archivo hacen UN fetch y, si falla por lo que sea —un 502 durante el
+  // deploy, un timeout de un proveedor, un parpadeo de red— pintan error y algunas cachean el fallo hasta
+  // recargar. Este `fetch` sombra al nativo dentro del closure: cada GET a /api lleva timeout y hasta 4
+  // reintentos con espera creciente (0.6s → 1.5s → 3s → 6s) ante error de red, 5xx, 429 o 408. Los POST no se
+  // reintentan (no son idempotentes). Los 4xx normales (401/403/404) vuelven de inmediato: no son transitorios.
+  var nativeFetch = window.fetch.bind(window);
+  var RETRY_MS = [600, 1500, 3000, 6000];
+  function fetch(url, opts) {
+    opts = opts || {};
+    var method = String(opts.method || 'GET').toUpperCase();
+    var again = (method === 'GET' || method === 'HEAD') && typeof url === 'string' && url.charAt(0) === '/';
+    var ownTimer = !opts.signal && typeof AbortController === 'function';
+    var attempt = function (i) {
+      var o = opts, ac = null, tm = null;
+      if (ownTimer) { ac = new AbortController(); o = Object.assign({}, opts, { signal: ac.signal }); tm = setTimeout(function () { ac.abort(); }, 60000); }
+      return nativeFetch(url, o).then(function (r) {
+        if (tm) clearTimeout(tm);
+        // 502/503/504 (deploy, reinicio, proveedor caído) reciben los 4 reintentos; un 500 suele ser un error
+        // determinista del servidor: UN reintento y ya, para no multiplicar la carga sobre un bug.
+        var transient = r.status >= 502 || r.status === 429 || r.status === 408;
+        var cap = transient ? RETRY_MS.length : (r.status === 500 ? 1 : 0);
+        if (again && i < cap) return wait(RETRY_MS[i]).then(function () { return attempt(i + 1); });
+        return r;
+      }, function (e) {
+        if (tm) clearTimeout(tm);
+        if (again && i < RETRY_MS.length && !(opts.signal && opts.signal.aborted)) return wait(RETRY_MS[i]).then(function () { return attempt(i + 1); });
+        throw e;
+      });
+    };
+    return attempt(0);
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   // RECORTE QUE NO PARTE PALABRAS. Un `slice(n)` seco deja frases como "…familia por familia, con C", que
@@ -169,7 +202,7 @@
       pp_empty: 'Perfil no disponible', pp_reading: 'Lectura GP', pp_sample: 'Muestra del torneo', pp_min: 'Minutos', pp_apps: 'Titular/PJ', pp_goals: 'Goles', pp_expmin: 'Min. típicos', pp_per90: 'Producción por 90 minutos', pp_shots: 'Remates', pp_sot: 'Al arco', pp_next: 'Próximo partido · proyección', pp_pgoal: 'P(gol)', pp_proj_shots: 'Remates proy.', pp_proj_min: 'Minutos proy.', pp_form: 'Partido a partido', pp_rival: 'Rival', pp_shots_h: 'REM', pp_sot_h: 'ARCO', pp_goals_h: 'GOL', pp_conf_high: 'Confianza alta', pp_conf_med: 'Confianza media', pp_conf_low: 'Confianza baja', pp_finding: 'Hallazgo de inteligencia', pp_mindist: 'Minutos · distribución', pp_pstart: 'P(titular)', pp_if_start: 'Si titular', pp_if_bench: 'Si banco', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'tit', sr_players: 'Jugadores', sr_loading_players: 'Cargando jugadores… intenta en unos segundos', pp_markets: 'Mercados del jugador', pp_market: 'Mercado', pp_best: 'Mejor', pp_implied: 'Implícita', pp_books: 'casas', pp_mk_goal: 'Anota (anytime)', pp_h2h: 'Ante este rival', pp_share: '{pct}% del ataque de su equipo', pp_pctl: 'Top {p}% de su posición',
       form_gf: 'GF', form_ga: 'GC', form_cs: 'Vallas', form_avg: 'Prom.', lineup_subs: 'Suplentes',
       evk_goal: 'Gol', evk_yellow: 'Amarilla', evk_red: 'Roja', evk_subst: 'Cambio', evk_var: 'VAR', evk_other: 'Evento',
-      lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.',
+      lineup_conf: 'Confirmada', lineup_proj: 'Proyectada', formation: 'Formación', news_title: 'Noticias', match_loading: 'Cargando partido…', match_404: 'No se pudo cargar el análisis de este partido.', retry: 'Reintentar', load_fail: 'No pudimos cargar esta sección.', load_fail_auto: 'No pudimos cargar esta sección. Reintentamos en unos segundos…',
       // ---- Corte 3: Partidos + Simulador ----
       g_today: 'Hoy', g_tomorrow: 'Mañana', m_stage_all: 'Todas las fases', m_search: 'Buscar equipo…', m_empty: 'No hay partidos para este filtro.',
       gp_absent: 'Sin evaluación GP prepartido', gp_absent_sub: 'No se registró una evaluación GP prepartido para este encuentro.',
@@ -577,7 +610,7 @@
       pp_empty: 'Profile not available', pp_reading: 'GP reading', pp_sample: 'Tournament sample', pp_min: 'Minutes', pp_apps: 'Starts/Apps', pp_goals: 'Goals', pp_expmin: 'Typical min.', pp_per90: 'Output per 90 minutes', pp_shots: 'Shots', pp_sot: 'On target', pp_next: 'Next match · projection', pp_pgoal: 'P(goal)', pp_proj_shots: 'Proj. shots', pp_proj_min: 'Proj. minutes', pp_form: 'Match by match', pp_rival: 'Opponent', pp_shots_h: 'SH', pp_sot_h: 'SOT', pp_goals_h: 'G', pp_conf_high: 'High confidence', pp_conf_med: 'Medium confidence', pp_conf_low: 'Low confidence', pp_finding: 'Intelligence finding', pp_mindist: 'Minutes · distribution', pp_pstart: 'P(starter)', pp_if_start: 'If starter', pp_if_bench: 'From bench', pp_p60: '60+ min', pp_p75: '75+ min', pp_p90: '90 min', mi_start_chip: 'st', sr_players: 'Players', sr_loading_players: 'Loading players… try again in a few seconds', pp_markets: 'Player markets', pp_market: 'Market', pp_best: 'Best', pp_implied: 'Implied', pp_books: 'books', pp_mk_goal: 'To score (anytime)', pp_h2h: 'Vs this opponent', pp_share: '{pct}% of team attack', pp_pctl: 'Top {p}% of position',
       form_gf: 'GF', form_ga: 'GA', form_cs: 'Clean sheets', form_avg: 'Avg.', lineup_subs: 'Substitutes',
       evk_goal: 'Goal', evk_yellow: 'Yellow', evk_red: 'Red', evk_subst: 'Sub', evk_var: 'VAR', evk_other: 'Event',
-      lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.',
+      lineup_conf: 'Confirmed', lineup_proj: 'Projected', formation: 'Formation', news_title: 'News', match_loading: 'Loading match…', match_404: 'Couldn’t load this match analysis.', retry: 'Retry', load_fail: 'Couldn’t load this section.', load_fail_auto: 'Couldn’t load this section. Retrying in a few seconds…',
       // ---- Corte 3: Matches + Simulator ----
       g_today: 'Today', g_tomorrow: 'Tomorrow', m_stage_all: 'All stages', m_search: 'Search team…', m_empty: 'No matches for this filter.',
       gp_absent: 'No pre-match GP evaluation', gp_absent_sub: 'No pre-match GP evaluation was recorded for this match.',
@@ -4282,17 +4315,18 @@
     el.innerHTML = selectorHtml + body;
     var s = $('#gx-ck-select'); if (s) s.addEventListener('change', function () { S.ckSel = s.value; refreshCockpit(); var ck = $('#gx-cockpit'); if (window.innerWidth <= 1180 && ck) ck.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     // enriquecimiento del canónico (tesis/riesgo reales) — una vez por evento
-    if (canonRow && canonRow.h.event_id && !S.mc[canonRow.h.event_id]) {
-      fetch('/api/beta/match/' + encodeURIComponent(canonRow.h.event_id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[canonRow.h.event_id] = m || { _empty: true }; refreshCockpit(); });
+    if (canonRow && canonRow.h.event_id && ldState(S.mc[canonRow.h.event_id]) === 'fetch') {
+      S.mc[canonRow.h.event_id] = null;
+      fetch('/api/beta/match/' + encodeURIComponent(canonRow.h.event_id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[canonRow.h.event_id] = m || miss('mc:' + canonRow.h.event_id); refreshCockpit(); });
     }
   }
   // Cockpit COMPACTO para un partido de picks (sintético): GP 1X2 (h2h/deep) + proyección de goles + pick(s) del día
   // + botón al análisis completo. La persona lo elige en el selector y aparece acá.
   function cockpitCompact(m) {
     var hk = m.hid + '_' + m.aid;
-    if (S.h2h[hk] === undefined) {
+    if (ldState(S.h2h[hk]) === 'fetch') {
       S.h2h[hk] = null;
-      fetch('/api/h2h/deep?a=' + encodeURIComponent(m.hid) + '&b=' + encodeURIComponent(m.aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.h2h[hk] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(m.hid) + '&b=' + encodeURIComponent(m.aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (j) { S.h2h[hk] = j || miss('h2h:' + hk); if (S.ckSel === m.key) refreshCockpit(); });
     }
     var h2h = (S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
     var probs = h2h && h2h.probs ? h2h.probs : null;
@@ -4327,11 +4361,11 @@
   // (cache S.clm compartido con el cockpit completo). flag() ya resuelve escudos tm_.
   function cockpitCompactClub(m) {
     S.clm = S.clm || {};
-    if (S.clm[m.id] === undefined) {
+    if (ldState(S.clm[m.id]) === 'fetch') {
       S.clm[m.id] = null;
       fetch('/api/clubs/match?hl=' + encodeURIComponent(m.league) + '&h=' + encodeURIComponent(m.hid) + '&al=' + encodeURIComponent(m.league) + '&a=' + encodeURIComponent(m.aid) + '&hn=' + encodeURIComponent(m.home) + '&an=' + encodeURIComponent(m.away), { headers: hdrs() })
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        .then(function (j) { S.clm[m.id] = j || { _empty: true }; if (S.ckSel === m.key) refreshCockpit(); });
+        .then(function (j) { S.clm[m.id] = j || miss('clm:' + m.id); if (S.ckSel === m.key) refreshCockpit(); });
     }
     var cm = (S.clm[m.id] && !S.clm[m.id]._empty) ? S.clm[m.id] : null;
     var probs = cm && cm.probs ? cm.probs : null;
@@ -4892,18 +4926,20 @@
   function renderClubMatch(eid, mv) {
     var parts = eid.slice(3).split('-'); var lgk = parts[0], hId = parts[1], aId = parts[2];
     S.clm = S.clm || {};
-    if (S.clm[eid] === undefined) {
+    var clmSt = ldState(S.clm[eid]);
+    if (clmSt === 'loading') { mvHold(mv); return; }
+    if (clmSt === 'fetch') {
       S.clm[eid] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
       // nombres para equipos 'NUEVO' (sin rating): del fixture en el estado de clubes si lo tenemos
       var Lup = clubLeague(lgk), fxm = Lup ? (Lup.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
       var nq = fxm ? '&hn=' + encodeURIComponent(fxm.home.name) + '&an=' + encodeURIComponent(fxm.away.name) : '';
       fetch('/api/clubs/match?hl=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&al=' + encodeURIComponent(lgk) + '&a=' + encodeURIComponent(aId) + nq, { headers: hdrs() })
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        .then(function (m) { S.clm[eid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+        .then(function (m) { S.clm[eid] = m || miss('clm:' + eid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
       return;
     }
     var m = S.clm[eid];
-    if (!m || m._empty || m.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    if (clmSt === 'fail' || m.error) { mvFail(mv, 'clm:' + eid, function () { delete S.clm[eid]; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); return; }
     // lazy-fetch de alineaciones y contexto del cruce (mismos endpoints; re-render al llegar)
     S.clu = S.clu || {}; S.cctx = S.cctx || {};
     if (!m.cross_league && S.clu[eid] === undefined) {
@@ -4912,11 +4948,11 @@
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
         .then(function (j) { S.clu[eid] = j || { available: false }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
-    if (!m.cross_league && S.cctx[eid] === undefined) {
+    if (!m.cross_league && ldState(S.cctx[eid]) === 'fetch') {
       S.cctx[eid] = null;
       fetch('/api/clubs/context?league=' + encodeURIComponent(lgk) + '&h=' + encodeURIComponent(hId) + '&a=' + encodeURIComponent(aId), { headers: hdrs() })
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        .then(function (j) { S.cctx[eid] = j || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+        .then(function (j) { S.cctx[eid] = j || miss('cctx:' + eid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
     // marcador en vivo/finalizado del cruce (si el sync de clubes lo tiene)
     var Lm = clubLeague(lgk), fxr = Lm ? (Lm.live || []).concat(Lm.upcoming || []).find(function (f) { return f.home.id === hId && f.away.id === aId; }) : null;
@@ -5044,8 +5080,33 @@
       '<div class="gx-mv-bar"><button class="gx-mv-back">' + ic('arrow-left') + '<span>' + esc(t('back')) + '</span></button></div>' +
       body + '</div>';
   }
-  function mvLoading() { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + esc(t('match_loading')) + '</div></div>'; }
+  function mvLoading() { return '<div class="gx-panel gx-mv-loading"><div class="gx-empty">' + ic('loader-2') + esc(t('match_loading')) + '</div></div>'; }
+  // Vista de detalle con la carga en vuelo: mantener el "Cargando…" (no repintarlo, no confundirlo con fallo).
+  function mvHold(mv) { if (!$('.gx-mv-loading', mv)) { mv.innerHTML = mvShell(mvLoading()); bindBack(); } }
   function bindBack() { var b = $('.gx-mv-back'); if (b) b.addEventListener('click', function () { goBack(); }); }
+  // CACHÉS DE CARGA CON TRES ESTADOS (1-sep). Convención de todas las vistas: `undefined` = hay que pedirlo,
+  // `null` = petición en vuelo, `{_empty:true}` = falló. Dos defectos corregidos aquí:
+  //   1) `null` en vuelo se leía como fallo: cualquier re-render mientras cargaba (el tick del vivo, la llegada de
+  //      /api/clubs/value) pintaba "No se pudo cargar" con la petición todavía viva → parpadeo de error.
+  //   2) el fallo era PERMANENTE: volver a la vista mostraba el error hasta recargar la página.
+  // Ahora el fallo caduca (10s) y se vuelve a pedir hasta 3 veces por clave; después queda el botón Reintentar.
+  function miss(k) { var n = ((S._miss || (S._miss = {}))[k] || 0) + 1; S._miss[k] = n; return { _empty: true, _at: Date.now(), _n: n }; }
+  function ldState(v) {
+    if (v === undefined) return 'fetch';
+    if (v === null) return 'loading';
+    if (v && v._empty) return ((v._n || 0) < 3 && Date.now() - (v._at || 0) > 10000) ? 'fetch' : 'fail';
+    return 'ok';
+  }
+  // Panel de fallo: mensaje + Reintentar. Reintenta SOLO una vez a los 6s si el panel sigue en pantalla (el usuario
+  // no navegó) y la clave no agotó sus intentos; el botón manual siempre vale y resetea el contador.
+  function mvFail(mv, k, retry) {
+    if ($('[data-gxfail][data-gxkey="' + k + '"]', mv)) return;
+    var id = 'f' + (S._failSeq = (S._failSeq || 0) + 1), auto = ((S._miss || {})[k] || 0) < 3;
+    mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty" data-gxfail="' + id + '" data-gxkey="' + esc(k) + '">' + ic('alert-triangle') + '<b>' + esc(t(auto ? 'load_fail_auto' : 'load_fail')) + '</b><button class="gx-btn ghost gx-retry" type="button">' + ic('refresh') + ' ' + esc(t('retry')) + '</button></div></div>');
+    bindBack();
+    var b = $('.gx-retry', mv); if (b) b.addEventListener('click', function () { if (S._miss) S._miss[k] = 0; retry(); });
+    if (auto) setTimeout(function () { if (document.querySelector('[data-gxfail="' + id + '"]')) retry(); }, 6000);
+  }
   // A.7: barra de navegación de secciones (sticky desktop+móvil). Click → scroll con offset; scroll-spy marca activa.
   function mvNav(sections) { return '<nav class="gx-mv-nav" id="gx-mv-nav">' + sections.map(function (s, i) { return '<a data-sec="sec-' + s.id + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(t(s.key)) + '</a>'; }).join('') + '</nav>'; }
   function bindMvNav() {
@@ -5156,36 +5217,39 @@
       // Cargar el FIXTURE por par de equipos → marcador en vivo, alineaciones, eventos y stats (si el partido existe/está en juego).
       var tfid = fixtureIdFor(beta.header);
       if (tfid != null) {
-        if (S.mfix[tfid] === undefined) {
+        if (ldState(S.mfix[tfid]) === 'fetch') {
           S.mfix[tfid] = null;
-          fetch('/api/match/' + encodeURIComponent(tfid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[tfid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+          fetch('/api/match/' + encodeURIComponent(tfid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[tfid] = m || miss('mfix:' + tfid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
         }
         fx = (S.mfix[tfid] && !S.mfix[tfid]._empty) ? S.mfix[tfid] : null;
       }
     } else if (fixtureOnly) {
-      var fxid = eid.slice(3);
-      if (S.mfix[fxid] === undefined) {
+      var fxid = eid.slice(3), fxSt = ldState(S.mfix[fxid]);
+      if (fxSt === 'loading') { mvHold(mv); return; }
+      if (fxSt === 'fetch') {
         S.mfix[fxid] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
-        fetch('/api/match/' + encodeURIComponent(fxid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fxid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+        fetch('/api/match/' + encodeURIComponent(fxid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fxid] = m || miss('mfix:' + fxid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
         return;
       }
-      fx = (S.mfix[fxid] && !S.mfix[fxid]._empty) ? S.mfix[fxid] : null;
-      if (!fx) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+      fx = fxSt === 'ok' ? S.mfix[fxid] : null;
+      if (!fx) { mvFail(mv, 'mfix:' + fxid, function () { delete S.mfix[fxid]; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); return; }
       beta = fixtureBeta(fx, eid); gpAbsent = true;
     } else {
       beta = qa ? qa.beta : S.mc[eid];
-      if (!qa && beta === undefined) {
-        mv.innerHTML = mvShell(mvLoading()); bindBack();
-        fetch('/api/beta/match/' + encodeURIComponent(eid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[eid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      var mcSt = qa ? 'ok' : ldState(beta);
+      if (mcSt === 'loading') { mvHold(mv); return; }
+      if (mcSt === 'fetch') {
+        S.mc[eid] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
+        fetch('/api/beta/match/' + encodeURIComponent(eid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mc[eid] = m || miss('mc:' + eid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
         return;
       }
-      if (!beta || beta._empty || !beta.header) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+      if (mcSt === 'fail' || !beta || !beta.header) { mvFail(mv, 'mc:' + eid, function () { delete S.mc[eid]; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); return; }
       if (qa) { fx = qa.fx || null; }
       else {
         var fid = fixtureIdFor(beta.header);
-        if (fid != null && S.mfix[fid] === undefined) {
+        if (fid != null && ldState(S.mfix[fid]) === 'fetch') {
           S.mfix[fid] = null;
-          fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fid] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+          fetch('/api/match/' + encodeURIComponent(fid), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.mfix[fid] = m || miss('mfix:' + fid); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
         }
         fx = (fid != null && S.mfix[fid] && !S.mfix[fid]._empty) ? S.mfix[fid] : null;
       }
@@ -5194,9 +5258,9 @@
     // Contexto en vivo para CUALQUIER partido: si beta no trae la capa de contexto (snapshot canónico), la
     // derivamos de /api/h2h/deep (mismo motor) → GP+contexto en TODOS los partidos, sin "no disponible".
     var hid = header.home && header.home.team_id, aid = header.away && header.away.team_id, hk = hid + '_' + aid;
-    if (hid && aid && S.h2h[hk] === undefined) {
+    if (hid && aid && ldState(S.h2h[hk]) === 'fetch') {
       S.h2h[hk] = null;
-      fetch('/api/h2h/deep?a=' + encodeURIComponent(hid) + '&b=' + encodeURIComponent(aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.h2h[hk] = m || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); });
+      fetch('/api/h2h/deep?a=' + encodeURIComponent(hid) + '&b=' + encodeURIComponent(aid) + asplanQS('&'), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.h2h[hk] = m || miss('h2h:' + hk); if (S.view === 'match' && S.matchId === eid) renderMatch(); });
     }
     var h2h = (hid && aid && S.h2h[hk] && !S.h2h[hk]._empty) ? S.h2h[hk] : null;
     if (h2h) {
@@ -5311,7 +5375,7 @@
   function mvLineups(beta, fx) {
     var h = beta.header, lu = fx.lineups || {}, eid = beta.header.event_id;
     // lazy-fetch teamdetail para lados sin alineación (próximos partidos sin XI confirmado/proyectado en /api/match)
-    ['home', 'away'].forEach(function (sk) { var id = sk === 'home' ? h.home.team_id : h.away.team_id; if (!lu[sk] && id && !/^tm_/.test(id) && S.tcache[id] === undefined) { S.tcache[id] = null; fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (td) { S.tcache[id] = td || { _empty: true }; if (S.view === 'match' && S.matchId === eid) renderMatch(); }); } });
+    ['home', 'away'].forEach(function (sk) { var id = sk === 'home' ? h.home.team_id : h.away.team_id; if (!lu[sk] && id && !/^tm_/.test(id) && ldState(S.tcache[id]) === 'fetch') { S.tcache[id] = null; fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (td) { S.tcache[id] = td || miss('tcache:' + id); if (S.view === 'match' && S.matchId === eid) renderMatch(); }); } });
     var side = function (sideKey, id, name) {
       var l = lu[sideKey], fromTeam = false;
       if (!l) { var td = S.tcache[id]; if (td && !td._empty && td.projectedLineup && (td.projectedLineup.startXI || []).length) { l = td.projectedLineup; fromTeam = true; } }
@@ -6725,15 +6789,17 @@
     if (uiPlan() === 'free') { mv.innerHTML = mvShell(lockPanelPro('lock_player_s')); bindBack(); return; }
     var lg = S.cplLg, tid = S.cplTeam, pid = S.cplPid, key = lg + '|' + tid + '|' + pid;
     S.cpl = S.cpl || {};
-    if (S.cpl[key] === undefined) {
+    var cplSt = ldState(S.cpl[key]);
+    if (cplSt === 'loading') { mvHold(mv); return; }
+    if (cplSt === 'fetch') {
       S.cpl[key] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
       fetch('/api/clubs/player?league=' + encodeURIComponent(lg) + '&team=' + encodeURIComponent(tid) + '&pid=' + encodeURIComponent(pid), { headers: hdrs() })
         .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-        .then(function (m) { S.cpl[key] = m || { _empty: true }; if (S.view === 'cplayer' && S.cplPid === pid) renderClubPlayer(); });
+        .then(function (m) { S.cpl[key] = m || miss('cpl:' + key); if (S.view === 'cplayer' && S.cplPid === pid) renderClubPlayer(); });
       return;
     }
     var p = S.cpl[key];
-    if (!p || p._empty || p.error) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    if (cplSt === 'fail' || p.error) { mvFail(mv, 'cpl:' + key, function () { delete S.cpl[key]; if (S.view === 'cplayer' && S.cplPid === pid) renderClubPlayer(); }); return; }
     var mini = function (label, val) { return val == null || val === '' ? '' : '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + esc(val) + '</b></div>'; };
     var footL = { left: t('cl_foot_l'), right: t('cl_foot_r'), both: t('cl_foot_b') };
     var iv = p.intel || {};
@@ -6814,13 +6880,14 @@
   }
   function renderTeam() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    var id = S.teamId, td = S.tcache[id];
-    if (td === undefined) {
-      mv.innerHTML = mvShell(mvLoading()); bindBack();
-      fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.tcache[id] = m || { _empty: true }; if (S.view === 'team' && S.teamId === id) renderTeam(); });
+    var id = S.teamId, td = S.tcache[id], tdSt = ldState(td);
+    if (tdSt === 'loading') { mvHold(mv); return; }
+    if (tdSt === 'fetch') {
+      S.tcache[id] = null; mv.innerHTML = mvShell(mvLoading()); bindBack();
+      fetch('/api/teamdetail/' + encodeURIComponent(id), { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.tcache[id] = m || miss('tcache:' + id); if (S.view === 'team' && S.teamId === id) renderTeam(); });
       return;
     }
-    if (!td || td._empty) { mv.innerHTML = mvShell('<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(t('match_404')) + '</b></div></div>'); bindBack(); return; }
+    if (tdSt === 'fail') { mvFail(mv, 'tcache:' + id, function () { delete S.tcache[id]; if (S.view === 'team' && S.teamId === id) renderTeam(); }); return; }
     var prob = function (label, v) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + pct1(v) + '</b></div>'; };
     var hero = '<div class="gx-panel gx-hero gx-team-hero"><div class="gx-hero-meta">' + esc(t('comp')) + (td.group ? ' · ' + esc(t('group')) + ' ' + esc(td.group) : '') + '<span class="gx-spacer"></span>' + (td.rank ? '<span class="gx-dim">#' + td.rank + ' Nivel</span>' : '') + '</div>' +
       '<div class="gx-team-id"><span class="fl big">' + flag(id) + '</span><div><b>' + esc(teamName(id, td.name)) + '</b><span class="gx-mono gx-dim">Nivel ' + Math.round(td.elo || 0) + (td.eloDelta != null ? ' · ' + (td.eloDelta >= 0 ? '+' : '') + Math.round(td.eloDelta) : '') + '</span></div></div>' +
@@ -6947,11 +7014,11 @@
     var key = L.key, hasSt = (L.standings || []).length > 0;
     // season sim (avance %) — se dispara una vez por liga, la tabla no espera a que llegue.
     S.clubSeason = S.clubSeason || {};
-    if (S.clubSeason[key] === undefined && hasSt && !L.starts) {
+    if (ldState(S.clubSeason[key]) === 'fetch' && hasSt && !L.starts) {
       S.clubSeason[key] = null;
       fetch('/api/clubs/season?league=' + encodeURIComponent(key), { headers: hdrs() })
         .then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; })
-        .then(function (j) { S.clubSeason[key] = (j && j.sim) || { _empty: true }; if (S.view === 'groups' && S.gComp === key) renderGroups(); });
+        .then(function (j) { S.clubSeason[key] = (j && j.sim) || miss('clubSeason:' + key); if (S.view === 'groups' && S.gComp === key) renderGroups(); });
     }
     var sim = S.clubSeason[key];
     var teamsSim = (sim && sim.teams) ? sim.teams : null;
@@ -7172,9 +7239,10 @@
   // ---- Registro ----
   function renderRegistry() {
     var mv = $('#gx-matchview'); if (!mv) return;
-    if (S.registry === null) {
+    if (S.registry === null || (S.registry && S.registry._empty && ldState(S.registry) === 'fetch')) {
+      S.registry = null;
       mv.innerHTML = '<div class="gx-mv"><div class="gx-content">' + viewHead(t('nav_registry')) + mvLoading() + '</div></div>';
-      fetch('/api/beta/history', { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.registry = m || { _empty: true }; if (S.view === 'registry') renderRegistry(); });
+      fetch('/api/beta/history', { headers: hdrs() }).then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; }).then(function (m) { S.registry = m || miss('registry'); if (S.view === 'registry') renderRegistry(); });
       return;
     }
     var d = S.registry || {};

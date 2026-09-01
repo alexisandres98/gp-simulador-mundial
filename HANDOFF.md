@@ -33,6 +33,24 @@ Las 5 apuestas del 1-sep colocadas por el brazo (Championship, tarjetas under) s
 - Quedan 41 abiertas ($981 de exposición): 3 relay (Toulouse–Lille ×2, Burnley–Boro) + las de canal
   manual del 31-ago (Alexis) que liquidan con nuestro resultado + 2 CS2 solo_manual.
 
+## 🎯 A2. EL CANAL CS2 AUTOMÁTICO NUNCA COLOCÓ NADA — y era código nuestro, no la casa (1-sep noche)
+Alexis preguntó por qué no había ninguna apuesta real de CS2. Las 18 filas CS2 del libro desde el 30-ago
+acabaron `CADUCADA · linea_no_cotizada_ahora` (hasta 46 intentos en una fila). Dos causas, medidas contra un
+evento vivo de la casa (Galorys v Imperial, id 36139040) con la llave de trading desde el sandbox:
+1. **La clave del mercado está versionada:** hoy es `counter_strike.map_round_handicap.v2` y el casador
+   exigía que terminara en `map_round_handicap` → cero selecciones, siempre. La auditoría local usaba un
+   fixture inventado (`counter-strike.map_round_handicap`, líneas por selección) y por eso estaba en verde.
+2. **La casa reordena local/visitante en esports:** la pick nació "Imperial vs Galorys" (Imperial local) y a
+   la hora del partido Cloudbet listaba "Galorys v Imperial". Casar por `side` habría apostado al RIVAL con
+   el hándicap invertido. Ahora el lado se resuelve por NOMBRE del equipo contra `home.name`/`away.name`
+   del evento crudo; la línea pasa de la perspectiva del local de la señal a la del local de la casa
+   (`handicap=X` es la línea del LOCAL y la comparten ambos lados). Sin resolución inequívoca no se coloca
+   (`equipo_no_resuelto_en_la_casa`), y la fila guarda `ensayo_casa` (nombres + claves de mercado) para
+   auditar el siguiente fallo sin adivinar.
+Fixture de la auditoría reescrito al formato real + caso de lados invertidos. Verificado contra el evento vivo:
+"Imperial −5,5 · mapa 1" → `away · handicap 5.5 · @2.20`. Efecto esperado: las próximas señales de
+cs2_rounds_v1 con mejor cuota en Cloudbet se colocan solas a $5 por el brazo.
+
 ## 📅 B. REVISIÓN DEL LUNES (leída el 1-sep noche)
 - **Sombra de la casa**: banco 4.393 (+2.393 desde 2.000), 272 liquidadas 154-114, ROI 21,1 %, CLV exec
   +0,64 %. Por segmento: cards_under_v1 130 liq., 91-39, **+41,8 %**, CLV +0,7 (7d: 52 liq., +37,5 %) ·

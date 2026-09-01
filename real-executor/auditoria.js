@@ -337,23 +337,38 @@ const ok = (cond, txt, detalle) => {
     match: 'MASONIC vs Galorys', odds: 2.1, model_prob: 0.55,
     kickoff_at: new Date(Date.now() + 2 * 3600e3).toISOString() };
   const fEns = RE.crearManualCs2(sbEns, { stake: 30 });
-  const evRawCs2 = { markets: { 'counter-strike.map_round_handicap': { submarkets: {
-    'period=map2': { selections: [
-      { outcome: 'home', params: 'handicap=-6.5&map=2', price: 1.75, marketUrl: 'counter-strike.map_round_handicap/home?map=2', maxStake: 20 },
-      { outcome: 'away', params: 'handicap=6.5&map=2', price: 2.12, marketUrl: 'counter-strike.map_round_handicap/away?map=2', maxStake: 20 },
-      { outcome: 'away', params: 'handicap=8.5&map=2', price: 1.6, marketUrl: 'counter-strike.map_round_handicap/away85?map=2', maxStake: 20 },
+  // FORMATO REAL DE LA CASA (medido el 1-sep en un evento vivo): clave versionada `.v2`, submercado
+  // `period=default&period=map2`, y AMBOS lados comparten `handicap=X` = línea del LOCAL de la casa.
+  const evRawCs2 = { home: { name: 'MASONIC' }, away: { name: 'Galorys' }, markets: { 'counter_strike.map_round_handicap.v2': { submarkets: {
+    'period=default&period=map2': { selections: [
+      { outcome: 'home', params: 'handicap=6.5&map=2', price: 1.75, marketUrl: 'counter_strike.map_round_handicap.v2/home?handicap=6.5&map=2', maxStake: 20 },
+      { outcome: 'away', params: 'handicap=6.5&map=2', price: 2.12, marketUrl: 'counter_strike.map_round_handicap.v2/away?handicap=6.5&map=2', maxStake: 20 },
+      { outcome: 'home', params: 'handicap=8.5&map=2', price: 1.4, marketUrl: 'counter_strike.map_round_handicap.v2/home?handicap=8.5&map=2', maxStake: 20 },
+      { outcome: 'away', params: 'handicap=8.5&map=2', price: 1.6, marketUrl: 'counter_strike.map_round_handicap.v2/away?handicap=8.5&map=2', maxStake: 20 },
     ] },
-    'period=map1': { selections: [
-      { outcome: 'away', params: 'handicap=6.5&map=1', price: 2.4, marketUrl: 'counter-strike.map_round_handicap/away?map=1', maxStake: 20 },
+    'period=default&period=map1': { selections: [
+      { outcome: 'away', params: 'handicap=6.5&map=1', price: 2.4, marketUrl: 'counter_strike.map_round_handicap.v2/away?handicap=6.5&map=1', maxStake: 20 },
     ] },
   } } } };
-  const selE = RE.selectionForCs2(evRawCs2, { map: 2, line: 6.5, side: 'away' });
-  ok(selE && selE.marketUrl === 'counter-strike.map_round_handicap/away?map=2', 'casa la selección EXACTA (línea, lado y mapa)', selE && selE.marketUrl);
-  ok(RE.selectionForCs2(evRawCs2, { map: 3, line: 6.5, side: 'away' }) === null, 'otro mapa no casa');
-  ok(RE.selectionForCs2(evRawCs2, { map: 2, line: 5.5, side: 'away' }) === null, 'otra línea no casa');
+  const URL_OK = 'counter_strike.map_round_handicap.v2/away?handicap=6.5&map=2';
+  const selE = RE.selectionForCs2(evRawCs2, { map: 2, line: 6.5, side: 'away', equipo: 'Galorys' });
+  ok(selE && selE.marketUrl === URL_OK && selE.lado_casa === 'away' && selE.hcp_casa === 6.5, 'casa la selección EXACTA (línea, lado y mapa) con la clave .v2', selE && selE.marketUrl);
+  ok(RE.selectionForCs2(evRawCs2, { map: 3, line: 6.5, side: 'away', equipo: 'Galorys' }) === null, 'otro mapa no casa');
+  ok(RE.selectionForCs2(evRawCs2, { map: 2, line: 5.5, side: 'away', equipo: 'Galorys' }) === null, 'otra línea no casa');
+  // LA CASA REORDENÓ LOCAL/VISITANTE (1-sep, "Galorys v Imperial" cuando la pick nació "Imperial vs Galorys"):
+  // el mismo pick (Galorys da 6,5) tiene que caer en el lado HOME de la casa con hándicap −6,5
+  const evRawSwap = { home: { name: 'Galorys' }, away: { name: 'MASONIC' }, markets: { 'counter_strike.map_round_handicap.v2': { submarkets: {
+    'period=default&period=map2': { selections: [
+      { outcome: 'home', params: 'handicap=-6.5&map=2', price: 2.15, marketUrl: 'counter_strike.map_round_handicap.v2/home?handicap=-6.5&map=2', maxStake: 20 },
+      { outcome: 'away', params: 'handicap=-6.5&map=2', price: 1.72, marketUrl: 'counter_strike.map_round_handicap.v2/away?handicap=-6.5&map=2', maxStake: 20 },
+    ] } } } } };
+  const selS = RE.selectionForCs2(evRawSwap, { map: 2, line: 6.5, side: 'away', equipo: 'Galorys' });
+  ok(selS && selS.lado_casa === 'home' && selS.hcp_casa === -6.5 && selS.price === 2.15, 'con local/visitante invertidos en la casa apuesta al MISMO equipo, no al rival', selS);
+  ok(RE.selectionForCs2({ ...evRawSwap, home: { name: 'Otro' }, away: { name: 'Nadie' } }, { map: 2, line: 6.5, side: 'away', equipo: 'Galorys' }) === null, 'si el equipo no está en el evento de la casa, no adivina');
+  ok(RE.selectionForCs2({ markets: evRawCs2.markets }, { map: 2, line: 6.5, side: 'away', equipo: 'Galorys' }) !== null, 'sin nombres en el evento crudo conserva el lado de la señal');
   const antesEns = casa.colocaciones.length;
   await RE.ensayoCs2(fEns, { eventoId: 'ev-ens-1', evRaw: evRawCs2 });
-  ok(fEns.ensayo_payload && fEns.ensayo_payload.marketUrl === 'counter-strike.map_round_handicap/away?map=2'
+  ok(fEns.ensayo_payload && fEns.ensayo_payload.marketUrl === URL_OK && fEns.ensayo_lado_casa === 'away'
     && fEns.ensayo_payload.price === 2.12 && fEns.ensayo_payload.stake === 5,
     'el payload queda armado con precio vivo y el stake plano de 5 (doctrina 1-sep, aunque la casa deje 20)', fEns.ensayo_payload);
   ok(fEns.status === 'PENDIENTE' && fEns.motivo === 'solo_manual', 'la fila sigue siendo del canal manual', [fEns.status, fEns.motivo]);

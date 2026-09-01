@@ -10,6 +10,7 @@
 - **modelo_sombra**: 0 señales en 1,5 días con listón 6-15 pp; si sigue en 0 dos semanas, bajar a 4 pp.
 - **Cosecha LoL**: no desplegar más de lo necesario (cada deploy mata la pasada). Orden nuevo games-primero.
 - **API_FOOTBALL_KEY**: bloqueado hasta que Alexis genere la key nueva (HANDOFF §E tiene el comando).
+- **CS2 real (arreglado 1-sep noche)**: vigilar la primera colocación automática de CS2 por el brazo (`/api/internal/real` → filas CS2 con `ensayo_lado_casa`); si vuelve a caducar, `ensayo_casa` dice qué vio.
 
 ## ⚡ PENDIENTES FRESCOS (31-ago, tras el cierre por tiers)
 - **PRO/móvil QA visual**: pasar la plataforma con `?asplan=pro` (admin) — free ya está auditado a fondo

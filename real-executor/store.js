@@ -825,7 +825,27 @@ function crearManualCs2(sb, { stake = null } = {}) {
 // que placeBet necesita, verificado contra el precio vivo. Con GP_REAL_CS2_AUTO sin poner (el defecto),
 // jamás se envía nada: es un ensayo. El día del desbloqueo, encender la env convierte el mismo camino
 // auditado en colocación real, con el tope de ~20 USDT que la casa impone en estos mercados como techo.
-const CS2_MARKET_RE = /(^|\.)map_round_handicap$/;
+// (1-sep) la casa versiona la clave: hoy es `counter_strike.map_round_handicap.v2`. El casador viejo exigía
+// que terminara en `map_round_handicap` y desde el cambio NUNCA encontró una selección: todas las filas CS2
+// caducaron con `linea_no_cotizada_ahora` (46 intentos en una sola fila) sin que nada avisara.
+const CS2_MARKET_RE = /(^|\.)map_round_handicap(\.v\d+)?$/;
+// EL LADO SE RESUELVE POR NOMBRE, NO POR POSICIÓN (1-sep). La casa reordena local/visitante en esports
+// cuando el cuadro define quién es "team 1": la pick nació con Imperial de local y a la hora del partido
+// Cloudbet listaba "Galorys v Imperial". Casar por `side` habría apostado al equipo contrario con el
+// hándicap invertido. Se busca el EQUIPO de la señal entre los dos nombres de la casa; si no se resuelve
+// sin ambigüedad, no se coloca — mejor una fila caducada que una apuesta al rival.
+const normEquipo = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function ladoEnLaCasa(evRaw, equipo) {
+  const q = normEquipo(equipo);
+  const h = normEquipo(evRaw && evRaw.home && evRaw.home.name), a = normEquipo(evRaw && evRaw.away && evRaw.away.name);
+  if (!q || (!h && !a)) return null;
+  if (q === h && q !== a) return 'home';
+  if (q === a && q !== h) return 'away';
+  const hc = !!h && (h.includes(q) || q.includes(h)), ac = !!a && (a.includes(q) || q.includes(a));
+  if (hc && !ac) return 'home';
+  if (ac && !hc) return 'away';
+  return null;
+}
 // EL TOPE CS2 ES PLANO Y BAJO (1-sep, orden de Alexis). La casa reparte límites desiguales en estos
 // mercados —$4-5 casi siempre, $30-40 a veces— y eso rompe la matemática de la cartera: cuatro ganadas
 // de $5 no pagan una perdida de $30. La regla nueva iguala el riesgo: TODA apuesta CS2 va a $5; si la
@@ -835,22 +855,34 @@ const CS2_STAKE_TOPE = () => num('GP_REAL_CS2_STAKE', 5);
 // Busca la selección del hándicap de rondas en el evento CRUDO de la casa. La línea de la señal nació de
 // estos mismos mercados, así que se casa EXACTA (línea, lado y mapa) — sin flips de signo: el flip es solo
 // de display. Devuelve las coordenadas de colocación o null.
-function selectionForCs2(evRaw, { map, line, side }) {
+function selectionForCs2(evRaw, { map, line, side, equipo = null }) {
+  // orientación: con `equipo` se resuelve contra los nombres de la casa; sin nombres en el evento crudo
+  // (auditoría, fuente vieja) se conserva el lado tal cual. La línea viaja en perspectiva del LOCAL de la
+  // señal: se pasa a la del equipo y de ahí a la del local DE LA CASA.
+  let outcome = String(side), hcp = Number(line);
+  const tieneNombres = !!(evRaw && ((evRaw.home && evRaw.home.name) || (evRaw.away && evRaw.away.name)));
+  if (equipo && tieneNombres) {
+    const lado = ladoEnLaCasa(evRaw, equipo);
+    if (!lado) return null;
+    const hcpEquipo = side === 'away' ? -Number(line) : Number(line);
+    outcome = lado; hcp = lado === 'home' ? hcpEquipo : -hcpEquipo;
+  }
+  if (Object.is(hcp, -0)) hcp = 0;
   for (const [mk, m] of Object.entries((evRaw && evRaw.markets) || {})) {
     if (!CS2_MARKET_RE.test(mk) || !m || !m.submarkets) continue;
     for (const [smKey, sm] of Object.entries(m.submarkets)) {
       for (const s of ((sm && sm.selections) || [])) {
         const params = String(smKey || '') + '&' + String(s.params || '');
         const l = Number((params.match(/handicap=(-?[\d.]+)/) || [])[1]);
-        if (!Number.isFinite(l) || Math.abs(l - Number(line)) > 1e-9) continue;
+        if (!Number.isFinite(l) || Math.abs(l - hcp) > 1e-9) continue;
         if (map != null) {
-          const pm = (params.match(/map=(\d+)/) || params.match(/period=map(\d+)/) || [])[1];
+          const pm = (params.match(/(?:^|&)map=(\d+)/) || params.match(/period=map_?(\d+)/) || [])[1];
           if (String(pm) !== String(map)) continue;
         }
         const out = String(s.outcome || '').toLowerCase();
-        if (out !== String(side) && !out.endsWith('=' + side)) continue;
+        if (out !== outcome && !out.endsWith('=' + outcome)) continue;
         if (!(Number(s.price) > 1) || !s.marketUrl) continue;
-        return { marketUrl: s.marketUrl, price: Number(s.price),
+        return { marketUrl: s.marketUrl, price: Number(s.price), lado_casa: outcome, hcp_casa: hcp,
           maxStake: Number(s.maxStake) > 0 ? Number(s.maxStake) : null,
           minStake: Number(s.minStake) > 0 ? Number(s.minStake) : null };
       }
@@ -874,8 +906,15 @@ async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
     if (!eventoId) { fila.ensayo_motivo = 'sin_id_de_evento'; save(); return fila; }
     const ev = evRaw || await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', eventoId).catch(() => null);
     if (!ev) { fila.ensayo_motivo = 'evento_ilegible'; save(); return fila; }
-    const sel = selectionForCs2(ev, { map: fila.mapa, line: fila.line, side: fila.side });
-    if (!sel) { fila.ensayo_motivo = 'linea_no_cotizada_ahora'; save(); return fila; }
+    const [homeN, awayN] = String(fila.match || ' vs ').split(' vs ');
+    const equipo = fila.side === 'away' ? awayN : homeN;
+    const sel = selectionForCs2(ev, { map: fila.mapa, line: fila.line, side: fila.side, equipo });
+    if (!sel) {
+      fila.ensayo_motivo = ladoEnLaCasa(ev, equipo) ? 'linea_no_cotizada_ahora' : 'equipo_no_resuelto_en_la_casa';
+      fila.ensayo_casa = { home: ev.home && ev.home.name, away: ev.away && ev.away.name, mercados: Object.keys(ev.markets || {}).filter((k) => CS2_MARKET_RE.test(k)) };
+      save(); return fila;
+    }
+    fila.ensayo_lado_casa = sel.lado_casa; fila.ensayo_hcp_casa = sel.hcp_casa;
     const C = CFG();
     // la regla plana: $5, o el máximo de la casa si es menor; jamás más (ver CS2_STAKE_TOPE)
     const tope = CS2_STAKE_TOPE();

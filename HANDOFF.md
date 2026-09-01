@@ -41,10 +41,21 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
   (Oracle, Hetzner, EdgeUno): no hay bloqueo por ASN de hosting.
 - Nunca fue la llave: es la geografía del servidor. GraphQL colaba porque ese host no está tras la
   misma regla — y ahora está prohibido por la casa.
-- **El brazo**: `relay/cb-relay.js` (sin deps, llave propia GP_RELAY_KEY, /diag con la batería de sondas,
-  /cb reenvío crudo allowlist /pub/) listo para desplegarse en un host de país permitido — Hetzner
-  Helsinki (~€4/mes, red comprobada), Oracle Cloud free tier São Paulo/Santiago (gratis, red comprobada)
-  o Fly.io GRU. Falta que Alexis elija/cree la cuenta del proveedor.
+- **El brazo (DESPLEGADO Y PROBADO, 1-sep)**: `relay/cb-relay.js` (sin deps, TLS autofirmado, llave
+  propia GP_RELAY_KEY, /diag + /cb reenvío crudo allowlist /pub/) corre en **Hetzner Helsinki**
+  (`95.216.171.66:8443`, CX23 €6.49/mes — cx22 ya no existe; cuenta de Alexis, token en el
+  scratchpad como HZK). Cloud-init autosuficiente (nodejs + cert + systemd). **VEREDICTO desde
+  Finlandia**: cuenta/saldo 200 ($65.61 USDT) y `POST /pub/v3/bets/place` con orden inválida →
+  **400 `MALFORMED_REQUEST` en JSON = el motor de apuestas contesta** (antes 403 Cloudflare). El
+  camino Render→Helsinki→Cloudbet está probado de punta a punta con la llave real. El historial
+  (`GET /pub/v3|v4/bets/history`) da 404 "no matching operation": la ruta exacta es otra —
+  pendiente encontrarla en la doc.
+- **Cómo se verifica**: `/api/internal/relay?key=$GP_EXPORT_KEY` (Render llama al /diag del brazo;
+  el sandbox no alcanza IP:8443 — su proxy corta puertos no estándar, otra mordida documentada).
+  Env del servicio principal: `CLOUDBET_RELAY_URL`, `GP_RELAY_KEY`.
+- **PENDIENTE INMEDIATO**: cablear el ejecutor para colocar/consultar por el brazo (REST) y retirar
+  GraphQL, como pidió Klaus; encontrar la ruta real del historial; responder a Klaus (borrador listo);
+  KYC vía CS (lado Alexis).
 
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,

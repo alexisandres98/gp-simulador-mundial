@@ -12646,9 +12646,12 @@ async function shadowSweep() {
       // colocar solo — el dato que decide si el día del desbloqueo se enciende con confianza.
       try {
         const LR2 = RE.load();
+        // con el AUTO encendido (1-sep) las filas ya armadas TAMBIÉN entran: el payload se rearma con
+        // el precio vivo en cada pasada y se envía de verdad; en ensayo puro se arma una sola vez
+        const cs2Auto = String(process.env.GP_REAL_CS2_AUTO) === 'true';
         const filasEns = LR2.bets.filter(b => b.familia === 'CS2_RONDAS' && b.status === 'PENDIENTE'
-          && !b.ensayo_payload && b.kickoff_at && Date.parse(b.kickoff_at) > Date.now() + 5 * 60e3
-          && (b.ensayo_intentos || 0) <= 12);
+          && (cs2Auto || !b.ensayo_payload) && b.kickoff_at && Date.parse(b.kickoff_at) > Date.now() + 5 * 60e3
+          && (b.ensayo_intentos || 0) <= (cs2Auto ? 60 : 12));
         if (filasEns.length) {
           const ESS = require('./esports-engine/store');
           const picksAll = {}; try { for (const p2 of ESS.picksRaw('cs2')) picksAll[p2.pick_id] = p2; } catch { }

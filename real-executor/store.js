@@ -723,7 +723,8 @@ async function liquidar(resultados = {}) {
 // resuelve con nuestro resultado (las picks de esports ya viajan en el mapa de resultados del barrido).
 // El dato que motivó todo esto queda medido en cada fila: la casa capó a Alexis a ~20 USDT por apuesta en
 // estos mercados — ese techo de capacidad ES la explicación de por qué la ineficiencia sobrevive.
-function crearManualCs2(sb, { stake = 30 } = {}) {
+function crearManualCs2(sb, { stake = null } = {}) {
+  if (stake == null) stake = CS2_STAKE_TOPE(); // la regla plana de $5 también al nacer la fila
   if (!sb || sb.segment !== 'cs2_rounds_v1' || sb.book !== CASA) return null;
   const L = load();
   if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro
@@ -758,7 +759,12 @@ function crearManualCs2(sb, { stake = 30 } = {}) {
 // jamás se envía nada: es un ensayo. El día del desbloqueo, encender la env convierte el mismo camino
 // auditado en colocación real, con el tope de ~20 USDT que la casa impone en estos mercados como techo.
 const CS2_MARKET_RE = /(^|\.)map_round_handicap$/;
-const CS2_STAKE_TOPE = 20;   // el techo que la casa le puso a Alexis a mano: el ensayo lo respeta desde ya
+// EL TOPE CS2 ES PLANO Y BAJO (1-sep, orden de Alexis). La casa reparte límites desiguales en estos
+// mercados —$4-5 casi siempre, $30-40 a veces— y eso rompe la matemática de la cartera: cuatro ganadas
+// de $5 no pagan una perdida de $30. La regla nueva iguala el riesgo: TODA apuesta CS2 va a $5; si la
+// casa permite menos, se coloca el máximo disponible; jamás por encima de $5. `GP_REAL_CS2_STAKE` lo
+// mueve sin tocar código.
+const CS2_STAKE_TOPE = () => num('GP_REAL_CS2_STAKE', 5);
 // Busca la selección del hándicap de rondas en el evento CRUDO de la casa. La línea de la señal nació de
 // estos mismos mercados, así que se casa EXACTA (línea, lado y mapa) — sin flips de signo: el flip es solo
 // de display. Devuelve las coordenadas de colocación o null.
@@ -789,41 +795,59 @@ function selectionForCs2(evRaw, { map, line, side }) {
 // manual. `evRaw` inyectable para la auditoría (sin red). Devuelve la fila; nunca lanza.
 async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
   try {
+    const AUTO = String(process.env.GP_REAL_CS2_AUTO) === 'true';
     if (!fila || fila.familia !== 'CS2_RONDAS' || fila.status !== 'PENDIENTE') return fila;
-    if (fila.ensayo_payload) return fila;                       // ya está armado
+    // en ensayo puro, un payload armado es el final del camino; en AUTO se REARMA en cada pasada —
+    // el precio y el tope de la casa cambian, y lo que se envía tiene que ser lo recién verificado
+    if (fila.ensayo_payload && !AUTO) return fila;
     const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
     if (!ko || ko <= Date.now()) return fila;                   // sin KO futuro no hay nada que ensayar
     fila.ensayo_intentos = (fila.ensayo_intentos || 0) + 1;
-    if (fila.ensayo_intentos > 12) return fila;                 // ~2 horas de barridos; después se deja
+    if (fila.ensayo_intentos > (AUTO ? 60 : 12)) return fila;   // en AUTO se insiste hasta cerca del KO
     if (!eventoId) { fila.ensayo_motivo = 'sin_id_de_evento'; save(); return fila; }
     const ev = evRaw || await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', eventoId).catch(() => null);
     if (!ev) { fila.ensayo_motivo = 'evento_ilegible'; save(); return fila; }
     const sel = selectionForCs2(ev, { map: fila.mapa, line: fila.line, side: fila.side });
     if (!sel) { fila.ensayo_motivo = 'linea_no_cotizada_ahora'; save(); return fila; }
     const C = CFG();
-    const stake = Math.min(fila.stake || CS2_STAKE_TOPE, sel.maxStake || CS2_STAKE_TOPE, CS2_STAKE_TOPE);
+    // la regla plana: $5, o el máximo de la casa si es menor; jamás más (ver CS2_STAKE_TOPE)
+    const tope = CS2_STAKE_TOPE();
+    const stake = Math.round(Math.min(tope, sel.maxStake != null ? sel.maxStake : tope) * 100) / 100;
+    if (sel.minStake != null && stake < sel.minStake) { fila.ensayo_motivo = 'minimo_de_la_casa'; save(); return fila; }
+    if (!(stake > 0)) { fila.ensayo_motivo = 'sin_hueco_de_stake'; save(); return fila; }
     fila.ensayo_payload = {
       currency: C.currency, eventId: String(eventoId), marketUrl: sel.marketUrl,
       price: sel.price, stake, referenceId: refIdDe(fila.pick_id, 0),
     };
     fila.ensayo_motivo = null;
     fila.ensayo_at = new Date().toISOString();
-    // LA LLAVE DEL DÍA DEL DESBLOQUEO. Sin la env (el defecto) esto es un ensayo y aquí termina. Con
-    // GP_REAL_CS2_AUTO=true el MISMO payload auditado se envía de verdad — un solo interruptor, cero
-    // código nuevo ese día. El resultado se anota con la misma forma que anotarManual para que el libro
-    // no distinga cómo entró el dinero, solo que entró.
-    if (String(process.env.GP_REAL_CS2_AUTO) === 'true') {
+    // LA LLAVE DEL DÍA DEL DESBLOQUEO — que llegó el 1-sep: con GP_REAL_CS2_AUTO=true el MISMO payload
+    // auditado se envía de verdad por el brazo. Pasa por los MISMOS frenos de cartera que tarjetas.
+    if (AUTO) {
+      const L = load();
+      const f = frenos(stake);
+      if (f) { fila.ensayo_motivo = 'freno:' + f.freno; save(); return fila; }
       const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', fila.ensayo_payload);
       fila.intentos = (fila.intentos || 0) + 1;
-      if (r && r.ok && !/REJECTED/i.test(String((r.body || {}).status || ''))) {
-        fila.status = 'PLACED'; fila.via = 'auto'; fila.motivo = null;
-        fila.odds_real = fila.ensayo_payload.price; fila.stake = stake;
+      fila.via = r.via || null; fila.http = r.status || null;
+      const cod = String(r.betError || '').toUpperCase();
+      if (cod === 'DUPLICATE_REQUEST') {
+        // la casa ya tenía esta referencia: hay dinero posiblemente comprometido — no se reenvía jamás
+        fila.status = 'EN_ACEPTACION'; fila.motivo = 'referencia_ya_usada'; fila.stake_comprometido = stake;
+        save(); return fila;
+      }
+      if (r && r.ok && !/REJECTED/i.test(String(r.betStatus || (r.body || {}).status || ''))) {
+        fila.status = 'PLACED'; fila.motivo = null;
+        fila.odds_real = Number((r.body && r.body.price) || fila.ensayo_payload.price) || fila.ensayo_payload.price;
+        fila.stake = stake;
         fila.placed_at = new Date().toISOString();
-        fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.ensayo_payload.price / fila.odds_sombra - 1)).toFixed(2) : null;
+        fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
         fila.referencia = fila.ensayo_payload.referenceId;
+        // el saldo baja YA, como en tarjetas: el suelo de cartera se juzga contra lo real
+        if (L.saldo && typeof L.saldo.amount === 'number') L.saldo.amount -= stake;
       } else {
         fila.ensayo_motivo = 'colocacion_rechazada';
-        fila.ultimo_rechazo = (r && (r.why || (r.body && r.body.status))) || 'sin_detalle';
+        fila.ultimo_rechazo = cod || (r && (r.why || (r.body && r.body.status))) || 'sin_detalle';
       }
     }
     save();

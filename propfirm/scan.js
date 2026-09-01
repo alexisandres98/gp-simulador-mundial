@@ -142,8 +142,13 @@ function mapMercado(m, home, away) {
     lineaHome = quien === 'home' ? num(mSign[2]) : -num(mSign[2]);
   }
 
-  return { familia, mapa, linea, linea_home: lineaHome, lados: { [l0]: { precio: precios[0], nombre: outs[0] }, [l1]: { precio: precios[1], nombre: outs[1] } },
-    pm_id: String(m.id || m.conditionId || m.slug || q), pregunta: q,
+  // tokens del CLOB alineados con los outcomes (1-sep): son las coordenadas de EJECUCIÓN — la sombra de
+  // Polymarket compra contra el libro real del token y liquida con la resolución del mercado
+  const tks = jarr(m.clobTokenIds);
+  return { familia, mapa, linea, linea_home: lineaHome,
+    lados: { [l0]: { precio: precios[0], nombre: outs[0], token: tks[0] || null, idx: 0 },
+      [l1]: { precio: precios[1], nombre: outs[1], token: tks[1] || null, idx: 1 } },
+    pm_id: String(m.id || m.conditionId || m.slug || q), pm_mid: m.id != null ? String(m.id) : null, pregunta: q,
     liquidez: num(m.liquidityNum != null ? m.liquidityNum : m.liquidity), vol24: num(m.volume24hr) };
 }
 
@@ -218,6 +223,7 @@ async function escanear({ game = 'cs2' } = {}) {
               familia: 'SERIE', lado, equipo: mm.lados[lado].nombre,
               precio_pm: p, consenso: pModelo[lado], books: 0, edge_pp: +edgeM.toFixed(1),
               limite: null, shares: Math.floor(RIESGO_USD() / p), ko: ev.start_at, home, away,
+              token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
               estado: 'ABIERTA', correo_at: 'nunca',   // sombra pura: el correo jamás la toca
             };
             out.senales_nuevas++;
@@ -257,6 +263,7 @@ async function escanear({ game = 'cs2' } = {}) {
           precio_pm: p, consenso: cons[lado], books: cons.books, edge_pp: +edge.toFixed(1),
           liquidez: mm.liquidez != null ? Math.round(mm.liquidez) : null,
           limite, shares, ko: ev.start_at, home, away,
+          token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s;
@@ -360,6 +367,7 @@ async function escanearFutbol({ dbc, eventos } = {}) {
           familia: 'FUT1X2', resultado, lado: outs[i], equipo: `${outs[i]} — ${qq}`,
           precio_pm: p, consenso: consLado, books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: new Date(ev.ko).toISOString(), home: ev.home, away: ev.away,
+          token: jarr(m.clobTokenIds)[i] || null, outcome_idx: i, pm_mid: m.id != null ? String(m.id) : null,
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
@@ -418,6 +426,8 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
       const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
       if (liq != null && liq < LIQ_MIN()) continue;
       const lados = { [l0]: precios[0], [l1]: precios[1] };
+      const tksAf = jarr(m.clobTokenIds);
+      const idxDe = { [l0]: 0, [l1]: 1 };
       for (const ldo of ['home', 'away']) {
         const p = lados[ldo];
         if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
@@ -436,6 +446,7 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
           familia: 'ML', lado: ldo, equipo: ldo === 'home' ? home : away,
           precio_pm: p, consenso: cons[ldo], books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: new Date(ko).toISOString(), home, away,
+          token: tksAf[idxDe[ldo]] || null, outcome_idx: idxDe[ldo], pm_mid: m.id != null ? String(m.id) : null,
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);

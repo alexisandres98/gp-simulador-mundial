@@ -13198,7 +13198,14 @@ async function shadowWeeklyReport({ force = false } = {}) {
   const fmt = (x) => (x >= 0 ? '+' : '') + x;
   const line = (t2, s2) => `${t2}: ${s2.bets} apuestas (${s2.settled} liquidadas: ${s2.w}W-${s2.l}L${s2.voids ? '-' + s2.voids + 'V' : ''}) · apostado $${s2.staked} · P&L $${fmt(s2.pnl)}${s2.roi_pct != null ? ' · ROI ' + fmt(s2.roi_pct) + '%' : ''}${s2.clv_avg != null ? ' · CLV ' + fmt(s2.clv_avg) + '%' : ''}`;
   const cap = (t2, s2) => s2.signals ? `${t2}: ${s2.bets}/${s2.signals} señales ejecutables (${s2.exec_rate_pct}%)${s2.haircut_avg_pct != null ? ' · haircut vs mejor cuota ' + fmt(s2.haircut_avg_pct) + '%' : ''}` : null;
-  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
+  // LA SOMBRA DE POLYMARKET en el mismo correo del lunes (1-sep): banco $2.000 simulado, fills contra el
+  // libro real del CLOB, liquidación por la resolución del venue. La revisión semanal decide si se cablea.
+  let polyTxt = '';
+  try {
+    const PSw = require('./propfirm/polyshadow').estado();
+    polyTxt = `\n\n────────────────────────────\nSOMBRA POLYMARKET (prop firm ejecutada directo en PM, banco simulado $${PSw.banco_inicial})\nEquity: $${PSw.equity} (efectivo $${PSw.efectivo} + expuesto $${PSw.expuesto}) · P&L $${fmt(PSw.pnl_usd)}${PSw.roi_pct != null ? ' · ROI ' + fmt(PSw.roi_pct) + '%' : ''}\nPosiciones: ${PSw.abiertas} abiertas · ${PSw.w}W-${PSw.l}L${PSw.slippage_medio_pp != null ? ' · slippage medio ' + fmt(PSw.slippage_medio_pp) + ' pp (fill real vs precio del aviso)' : ''}\nCapacidad: ${PSw.sin_fill} sin fill ahora · ${PSw.no_entro} nunca entraron (límite jamás alcanzado) · ${PSw.sin_token} sin token\nSi esta sombra da positivo sostenido, se cablea la API real del CLOB y se le mete dinero.`;
+  } catch { /* la sombra poly jamás rompe el reporte */ }
+  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}${polyTxt}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
   if (mailer.isConfigured()) {
     try { await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: `[GP Sombra] ${wk}: $${S.bankroll} (${fmt(report.pnl_total)}) · 7d ${week.w}W-${week.l}L $${fmt(week.pnl)}`, text, html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${text.replace(/</g, '&lt;')}</pre>` }); }
     catch (e) { console.error('[shadow] mail:', e.message); }
@@ -15030,6 +15037,14 @@ async function propfirmSweep() {
   }
   try { out.settle_cs2 = await PF.liquidar({ game: 'cs2' }); } catch (e) { out.settle_cs2 = { error: e.message }; }
   try { out.settle_lol = await PF.liquidar({ game: 'lol' }); } catch (e) { out.settle_lol = { error: e.message }; }
+  // LA SOMBRA DE POLYMARKET (1-sep, orden de Alexis): cada señal operable se "coloca" contra el libro
+  // real del CLOB (banco simulado $2.000) y se liquida con la resolución del propio venue. Si en las
+  // revisiones de los lunes da positivo, se cablea la API real de ejecución y se le mete dinero.
+  try {
+    const PS = require('./propfirm/polyshadow');
+    out.poly = await PS.sincronizar();
+    out.poly_settle = await PS.liquidarPoly();
+  } catch (e) { out.poly_error = e.message; }
   try {
     const pend = PF.pendientesDeCorreo();
     if (pend.length && mailer.isConfigured()) {
@@ -20997,7 +21012,9 @@ async function anotar(pid){
       }
       return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,
         enabled: String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false',
-        aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false' });
+        aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false',
+        // la sombra de ejecución de Polymarket (1-sep): banco simulado, fills contra el CLOB
+        poly_sombra: (() => { try { return require('./propfirm/polyshadow').estado(); } catch (e) { return { error: e.message }; } })() });
     }
     if (p === '/api/internal/real') {
       const xk = process.env.GP_EXPORT_KEY || '';

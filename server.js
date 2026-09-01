@@ -22483,6 +22483,29 @@ async function anotar(pid){
     }
     // CAPA DE OBSERVACIÓN (shadow, solo admin): señales + disponibilidad por jugador + factor λ sugerido.
     // POST = correr el pase ahora. NADA de esto toca el modelo oficial (aplicación pendiente de encendido).
+    // ── sonda del BRAZO (1-sep): llama al relay de país permitido desde Render — el único cliente real.
+    // El sandbox de desarrollo no alcanza IP:8443 (su proxy corta puertos no estándar), así que la
+    // verificación del relay se hace por aquí. El certificado del brazo es autofirmado: se acepta sin
+    // CA pero el tráfico va cifrado y el relay exige su propia llave.
+    if (p === '/api/internal/relay') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const RU = process.env.CLOUDBET_RELAY_URL || '', RKY = process.env.GP_RELAY_KEY || '';
+      if (!RU || !RKY) return json(res, 200, { error: 'sin CLOUDBET_RELAY_URL / GP_RELAY_KEY' });
+      try {
+        const u2 = new URL(RU + '/diag'); u2.searchParams.set('key', RKY);
+        const httpsN = require('https');
+        const body = await new Promise((resolve, reject) => {
+          const rq = httpsN.request(u2, { method: 'GET', rejectUnauthorized: false, timeout: 90000 }, (rs) => {
+            let t = ''; rs.on('data', (c) => { t += c; }); rs.on('end', () => resolve({ status: rs.statusCode, text: t }));
+          });
+          rq.on('error', reject); rq.on('timeout', () => { rq.destroy(new Error('timeout')); });
+          rq.end();
+        });
+        let j2 = null; try { j2 = JSON.parse(body.text); } catch { /* texto crudo */ }
+        return json(res, 200, { relay_status: body.status, diag: j2 || body.text.slice(0, 500) });
+      } catch (e) { return json(res, 502, { error: e.message }); }
+    }
     // ── sonda ESPN con llave (31-ago): iterar formas de site.api.espn.com desde producción — el sandbox
     // de desarrollo recibe 403 de Akamai y sin esto cada ajuste del vivo era un deploy a ciegas. Solo
     // lectura, allowlist del host por construcción, jamás enlazada desde la UI.

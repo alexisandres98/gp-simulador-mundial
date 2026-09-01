@@ -84,8 +84,18 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
 - **Borrador para Klaus**: CREADO en el Gmail de Alexis como respuesta al hilo (cc Monika+Axel) —
   confirma REST desde región permitida, pregunta la ruta del historial, anuncia KYC. Falta que Alexis
   le dé enviar.
-- **PENDIENTE**: KYC vía CS (Alexis; el email a Klaus YA SE ENVIÓ con la pregunta de límites/segunda
-  cuenta); la PRIMERA LIQUIDACIÓN nocturna sobre apuestas del brazo (1-sep ~21:00Z) cierra el ciclo.
+- **RESPUESTA DE KLAUS (1-sep 11:30, la doctrina de la cuenta queda fijada)**:
+  1. Ruta REST del historial: lo están mirando, contestan luego → **GraphQL de LECTURA sigue siendo el
+     camino tolerado hasta entonces** (el fallback ya cableado se queda).
+  2. KYC: proceder con su equipo de CS, sin pack especial de partner — la cuenta es **early access** y
+     el proceso KYC/comercial completo está en curso del lado de ellos. **Pendiente de Alexis, YA.**
+  3. Límites: los fija su trading team y **se revisan según la ACTIVIDAD de la cuenta**; no los suben a
+     petición y NO aprueban segunda cuenta como rodeo. → La estrategia es la que ya corre: volumen
+     limpio y constante (tarjetas a fórmula + CS2 a $5) construye el historial que sube los límites.
+     Preguntar de frente fue lo correcto: la puerta del multi-cuenta quedó cerrada por escrito ANTES
+     de tocarla.
+- **PENDIENTE**: KYC vía CS (Alexis); la PRIMERA LIQUIDACIÓN nocturna sobre apuestas del brazo
+  (1-sep ~21:00Z) cierra el ciclo; esperar la ruta REST del historial de Klaus.
 
 ## 🟣 LA SOMBRA DE POLYMARKET (1-sep, orden de Alexis: "si funciona lo cableamos y le metemos dinero")
 `propfirm/polyshadow.js`: banco simulado de $2.000 donde CADA señal operable de la prop firm se coloca

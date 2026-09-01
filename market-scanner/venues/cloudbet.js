@@ -421,6 +421,36 @@ function selectionFor(evRaw, marketKey, line, outcome) {
   return null;
 }
 
+// ── EL BRAZO DE PAÍS PERMITIDO (1-sep) ─────────────────────────────────────────────────────────────────
+// Klaus (Cloudbet) habilitó la API de trading y pidió DOS cosas: no usar GraphQL y respetar la
+// geo-restricción. Medido el 1-sep: la familia `/pub/v3/bets/*` está geo-cercada (403 Cloudflare desde
+// EE.UU./DE/NL/GB/SG — las 5 regiones de Render—; abierta desde BR/AR/MX/CL/CO/CA/FI), y los dos
+// RESTRICTED del 25-ago eran esa misma jurisdicción una capa más adentro. El brazo es un relay mínimo
+// (relay/cb-relay.js) en Hetzner Helsinki que reenvía la orden tal cual por REST oficial. Su certificado
+// es autofirmado (no hay dominio sobre la IP): se acepta sin CA pero el tráfico va cifrado y el relay
+// exige su propia llave. Con `CLOUDBET_RELAY_URL` + `GP_RELAY_KEY` puestos, colocar y consultar salen
+// por aquí; sin ellos, quedan los caminos viejos.
+async function relayCb(path, method, body, timeoutMs = 25000) {
+  const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+  const rk = process.env.GP_RELAY_KEY || '';
+  if (!base || !rk) return null;
+  const u = new URL(base + '/cb');
+  u.searchParams.set('key', rk); u.searchParams.set('path', path); u.searchParams.set('method', method);
+  const httpsN = require('https');
+  return new Promise((resolve) => {
+    const rq = httpsN.request(u, {
+      method: 'POST', rejectUnauthorized: false, timeout: timeoutMs,
+      headers: { 'content-type': 'application/json' },
+    }, (rs) => {
+      let t = ''; rs.on('data', (c) => { t += c; });
+      rs.on('end', () => { let j2 = null; try { j2 = JSON.parse(t); } catch { /* */ } resolve(j2 || { error: 'respuesta_ilegible', text: t.slice(0, 200) }); });
+    });
+    rq.on('error', (e) => resolve({ error: String(e.message || e).slice(0, 120) }));
+    rq.on('timeout', () => { rq.destroy(); resolve({ error: 'timeout_del_brazo' }); });
+    rq.end(JSON.stringify(body || {}));
+  });
+}
+
 // COLOCAR. Devuelve siempre un objeto con `ok`, nunca lanza: una excepción aquí, en el peor momento, es una
 // apuesta en estado desconocido. El cuerpo entero de la casa se devuelve tal cual para el libro mayor.
 async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, referenceId, acceptPriceChange = 'BETTER' }) {
@@ -443,6 +473,24 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
   // O sea: el borde nos dejó pasar y la restricción se aplicó una capa más adentro, al apostar. Esas dos
   // salieron directas desde Oregón. Mandarlas desde Fráncfort es la forma de comprobarlo, y si acierta,
   // el reenviador que casi borro resulta ser justo lo que hacía falta.
+  // PRIMERO EL BRAZO, POR REST OFICIAL (1-sep): es el único camino que cumple las dos condiciones de la
+  // casa a la vez (sin GraphQL, desde país permitido). La respuesta REST trae el estado en `status`
+  // (ACCEPTED / PENDING_ACCEPTANCE / REJECTED, o el código de error directamente — MALFORMED_REQUEST
+  // llegó así en la prueba); se traduce a la pareja betStatus/betError que el ejecutor ya sabe leer.
+  if (String(process.env.CLOUDBET_RELAY_URL || '').trim() && process.env.GP_RELAY_KEY) {
+    const rr = await relayCb('/pub/v3/bets/place', 'POST', body);
+    const jj = rr && rr.json;
+    const st = jj ? String(jj.status || '').toUpperCase() : '';
+    const OKS = new Set(['ACCEPTED', 'PENDING_ACCEPTANCE']);
+    return {
+      ok: !!jj, status: (rr && rr.status) || 0, body: jj || null,
+      raw: jj ? null : String((rr && (rr.error || rr.text)) || 'sin respuesta del brazo').slice(0, 200),
+      enviado: body, via: 'relay-rest',
+      betStatus: st ? (OKS.has(st) || st === 'REJECTED' ? st : 'REJECTED') : null,
+      betError: jj ? (String(jj.error || (!OKS.has(st) && st !== 'REJECTED' ? st : '')).toUpperCase() || null) : null,
+      cortafuegos: !!(rr && rr.cortafuegos),
+    };
+  }
   const MUT = `mutation Colocar($i: PlaceBetInput!) {
     placeBet(input: $i) { referenceId eventId marketUrl currency price stake side betStatus betErrorCode }
   }`;
@@ -489,6 +537,18 @@ async function placeBet(apiKey, { currency, eventId, marketUrl, price, stake, re
 const ESTADOS_LIQUIDADOS = new Set(['WIN', 'LOSS', 'PUSH', 'HALF_WIN', 'HALF_LOSS', 'PARTIAL']);
 async function betByReference(apiKey, referenceId) {
   if (!apiKey || !referenceId) return null;
+  // por el brazo, REST oficial (1-sep). La forma de la ruta de estado no está confirmada aún: se prueba
+  // y con 2xx+JSON se traduce; con cualquier otra cosa se cae a GraphQL, que sigue funcionando para
+  // LECTURA mientras la casa nos confirma la ruta REST del historial (preguntado a Klaus).
+  if (String(process.env.CLOUDBET_RELAY_URL || '').trim() && process.env.GP_RELAY_KEY) {
+    const rr = await relayCb(`/pub/v3/bets/${encodeURIComponent(referenceId)}/status`, 'GET', null).catch(() => null);
+    const jj = rr && rr.status >= 200 && rr.status < 300 && rr.json;
+    if (jj && (jj.referenceId || jj.status)) {
+      return { ...jj, referenceId: jj.referenceId || referenceId,
+        betStatus: String(jj.betStatus || jj.status || '').toUpperCase() || null,
+        betErrorCode: jj.betErrorCode || jj.error || null };
+    }
+  }
   const r = await gql(apiKey, `query Apuesta($ref: String!) {
     bet(referenceId: $ref) { referenceId eventId marketUrl currency price stake side returnAmount betStatus betErrorCode }
   }`, { ref: referenceId }).catch(() => null);

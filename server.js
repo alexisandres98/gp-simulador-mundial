@@ -21014,6 +21014,41 @@ async function anotar(pid){
             { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
           return json(res, 200, out5);
         }
+        // `run=filas[&estado=PENDIENTE]`: el libro fila a fila — lo que el GET resume en conteos. Para
+        // elegir a mano qué colocar hace falta VER las filas, no contarlas.
+        if (run === 'filas') {
+          const LRf = RE.load();
+          const estQ = String(url.searchParams.get('estado') || '').toUpperCase();
+          const rowsF = LRf.bets.filter((b) => !estQ || String(b.status).toUpperCase() === estQ)
+            .map((b) => ({ pick: b.pick_id, match: b.match, linea: b.line, status: b.status,
+              motivo: b.motivo || null, cuota_sombra: b.odds_sombra, prob: b.model_prob,
+              kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null }));
+          return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, 80) });
+        }
+        // `run=colocar_una&pick=&stake=` (1-sep): colocar UNA fila concreta con stake fijado por orden
+        // humana. Pasa por el MISMO colocar() — id del evento, precio vivo, deslizamiento, frenos —;
+        // lo único distinto es que el monto viene dado y que la reapertura de la fila es explícita.
+        if (run === 'colocar_una') {
+          const pid = String(url.searchParams.get('pick') || '');
+          const stF = +(url.searchParams.get('stake') || 0);
+          const LRc = RE.load();
+          const filaC = LRc.bets.find((b) => b.pick_id === pid);
+          if (!filaC) return json(res, 200, { error: 'sin fila con esa pick', pick: pid });
+          if (['PLACED', 'COLOCADA', 'EN_ACEPTACION'].includes(String(filaC.status))) {
+            return json(res, 200, { error: 'ya comprometida', status: filaC.status, pick: pid });
+          }
+          if (!filaC.kickoff_at || Date.parse(filaC.kickoff_at) <= Date.now()) {
+            return json(res, 200, { error: 'el partido ya empezó', kickoff: filaC.kickoff_at });
+          }
+          filaC.status = 'PENDIENTE'; filaC.motivo = null; filaC.intentos = 0;
+          const rc = await RE.colocar(filaC, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null, stakeFijo: stF })
+            .catch((e) => ({ ...filaC, status: 'ERROR', motivo: e.message }));
+          return json(res, 200, { pick: rc.pick_id, match: rc.match, linea: rc.line, estado: rc.status,
+            motivo: rc.motivo || null, via: rc.via || null, stake: rc.stake || null,
+            cuota_viva: rc.precio_vivo || null, cuota_real: rc.odds_real || null,
+            error_casa: rc.error_casa || null, http: rc.http || null,
+            respuesta: rc.respuesta || null });
+        }
         if (run === 'reset_rechazos') {
           const L5 = RE.load();
           const antes = (L5.rechazos_cuenta && L5.rechazos_cuenta.seguidos) || 0;

@@ -306,7 +306,7 @@ function resolverDiag(fila, slate) {
 }
 
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
-async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
+async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0 } = {}) {
   const C = CFG(), L = load();
   // cinturón además del filtro de reintentar: una fila de otra familia (CS2 manual) apostaría al mercado
   // de tarjetas del partido equivocado. Jamás pasa de aquí.
@@ -342,8 +342,11 @@ async function colocar(fila, { cbIdx = {}, slate = null } = {}) {
   if (on('GP_REAL_EXIGIR_VENTAJA', false) && kellyDe(fila.model_prob, fila.odds_sombra) <= 0) {
     return parar('sin_ventaja', { prob: fila.model_prob });
   }
-  const stake = stakeDe(fila.model_prob, fila.odds_sombra);
+  // stake FIJO (1-sep): una orden humana explícita ("coloca esta con $29") manda sobre la fórmula.
+  // Se respetan igual el tope duro y todos los frenos; solo se salta el cálculo de Kelly.
+  const stake = stakeFijo > 0 ? Math.min(CFG().stakeMax, +stakeFijo) : stakeDe(fila.model_prob, fila.odds_sombra);
   fila.stake = stake;
+  if (stakeFijo > 0) fila.stake_fijado = +stakeFijo;
 
   const f = frenos(stake);
   if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });

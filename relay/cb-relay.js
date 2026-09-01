@@ -42,15 +42,21 @@ const RK = process.env.GP_RELAY_KEY || '';
 
 const j = (res, code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 
-async function cb(path, { method = 'GET', body = null, conLlave = true } = {}) {
+async function cb(path, { method = 'GET', body = null, conLlave = true, full = false } = {}) {
   try {
     const h = { accept: 'application/json', 'user-agent': 'Mozilla/5.0 (compatible; GPSimulador/1.0)' };
     if (conLlave && AK) h['X-API-Key'] = AK;
     if (body) h['content-type'] = 'application/json';
-    const r = await fetch(HOST + path, { method, headers: h, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(15000) });
+    const r = await fetch(HOST + path, { method, headers: h, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(20000) });
     const t = await r.text();
     const cf = /Cloudflare|you have been blocked|Attention Required/i.test(t);
     const ray = (t.match(/Cloudflare Ray ID:\s*<\/strong>\s*<code[^>]*>([a-f0-9-]+)/i) || t.match(/Ray ID:\s*([a-f0-9-]{10,})/i) || [])[1] || (r.headers.get('cf-ray') || null);
+    if (full) {
+      // el modo COMPLETO es el del ejecutor: la respuesta de una apuesta no se trunca jamás —
+      // parseada si es JSON y con el texto entero (acotado en 4000 por si acaso) al lado
+      let j = null; try { j = t ? JSON.parse(t) : null; } catch { /* no era JSON */ }
+      return { status: r.status, cortafuegos: cf, cf_ray: ray, json: j, text: cf ? '(HTML de Cloudflare)' : t.slice(0, 4000) };
+    }
     return { status: r.status, cortafuegos: cf, cf_ray: ray, cuerpo: cf ? '(HTML de Cloudflare)' : t.replace(/\s+/g, ' ').slice(0, 220) };
   } catch (e) { return { error: String(e.message || e).slice(0, 80) }; }
 }
@@ -90,7 +96,7 @@ mkServer(async (req, res) => {
     let raw = ''; req.on('data', (c) => { raw += c; if (raw.length > 65536) req.destroy(); });
     req.on('end', async () => {
       let body = null; try { body = raw ? JSON.parse(raw) : null; } catch { return j(res, 400, { error: 'cuerpo no es JSON' }); }
-      return j(res, 200, await cb(path, { method, body }));
+      return j(res, 200, await cb(path, { method, body, full: true }));
     });
     return;
   }

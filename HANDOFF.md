@@ -1,6 +1,39 @@
-# HANDOFF — estado al 31-ago-2026 (cierre por tiers, prop firm operando, CFL con caras, sesión de dos llaves)
+# HANDOFF — estado al 1-sep-2026 (cierre de la sesión larga: todo guardado, retoma en sesión nueva)
 
-> La sección anterior (21-ago) sigue abajo, intacta. Esto cubre del 24 al 31 de agosto — ~40 despliegues.
+> La sección anterior (21-ago) sigue abajo, intacta. Esto cubre del 24 de agosto al 1 de septiembre.
+
+## 🧳 PUNTO DE RETOMA (1-sep, 21:00Z) — léelo primero en la sesión nueva
+**Dónde están las cosas.**
+- Código: `main` == `claude/gpsim-continuation-vrjuww` (todo empujado; último deploy en vivo = commit "Premium:
+  carga resiliente"). Health 200. Producto = **GP Simulador** (nunca GP Edge/Markets/EDGE Terminal).
+- **Llaves de sesión** (admin token, export key, Render API key, token QA free, Hetzner, relay, JWTs de
+  Cloudbet): en el **Google Drive de Alexis**, archivo `GP Simulador — llaves de sesión (privado)`. Leerlo con
+  el conector de Drive al arrancar, volcarlo a `scratchpad/key.env` (+ `cbk.txt`/`cbk2.txt`) y NO imprimirlo
+  ni versionarlo. Las llaves de PRODUCCIÓN (Anthropic, Resend, Groq, Gemini, Odds API, API-Football…) viven en
+  las env vars de Render: `GET api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/env-vars` con la Render key.
+  Mejora pendiente (lado Alexis): meterlas como variables del *environment* de Claude Code (Settings del
+  entorno en claude.ai/code) para que ninguna sesión tenga que buscarlas.
+- **Cosecha LoL (Leaguepedia):** la copia local se SUBIÓ a Render antes de cerrar (`/api/internal/lolraw`
+  POST): games 43.410 filas (cursor 2022-11-06), players 37.710 (cursor 2023-03-10), drafts 33.185 (cursor
+  2026-08-31, casi completa). Render sigue cosechando solo desde ahí. Fandom ratelimita (14 req/ventana);
+  el harvest local hacía enfriamientos de 3 h. Estado: `/api/internal/lolraw?key=$KEXP`.
+- **Blueprint LoL** (el .docx de Alexis) quedó como texto en `docs/LOL_BLUEPRINT.md`.
+- **QA Playwright** de la carga resiliente: `scripts/qa/premium-robust.mjs` (Chromium en
+  `/opt/pw-browsers/chromium-1194/...`; login local = `POST /api/auth/request` → `demoCode` → `/api/auth/verify`).
+
+**Rutinas/triggers vivos** (Claude Code Remote): auditoría de liquidación de las 5 apuestas relay de
+Cloudbet (22:28Z) y check-in de la cosecha LoL (22:44Z, re-armar ~5 h). Al abrir sesión nueva, listarlos
+(`list_triggers`) y decidir si siguen o se borran — los que apuntan a esta sesión ya no tienen contexto.
+
+**Doctrina congelada (no re-discutir):** canal CS2 de Cloudbet solo señales cloudbet-best-book ("deja todo
+como está"); `GP_REAL_MIN_BALANCE`=5; nada de ETH; el segmento `cards_under_v1` no se toca hasta la
+revisión acordada; las cuatro correcciones del 23-ago están en TODO_NEXT.md.
+
+**Pendiente inmediato:** (1) revisión del lunes — lol_kills, modelo_sombra, prop firm FP-796307 (cierra
+30-sep); (2) LoL Fase 3 walk-forward cuando la base de games cruce 2024; Fases 4+7 (lol-data.js, Draft Room
+V1); (3) opcional: misma sombra de `fetch` resiliente para `public/app.js` (UI pública); (4) rotar
+`API_FOOTBALL_KEY`; (5) externos: Klaus REST history, KYC Cloudbet/Pinnacle, Maven demo, Whop
+`unmatched_plan: 1`.
 
 ## 🔁 LA CAPA PREMIUM YA NO PIDE RECARGAR (1-sep, "me molesta la falta de naturalidad")
 Alexis entró a un partido **en vivo** y vio "Couldn't load this match analysis"; recargando varias veces cargó.

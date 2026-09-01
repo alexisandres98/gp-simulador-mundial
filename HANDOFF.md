@@ -53,9 +53,18 @@ KYC vía CS (pendiente de Alexis). Se midió TODO antes de responderle:
 - **Cómo se verifica**: `/api/internal/relay?key=$GP_EXPORT_KEY` (Render llama al /diag del brazo;
   el sandbox no alcanza IP:8443 — su proxy corta puertos no estándar, otra mordida documentada).
   Env del servicio principal: `CLOUDBET_RELAY_URL`, `GP_RELAY_KEY`.
-- **PENDIENTE INMEDIATO**: cablear el ejecutor para colocar/consultar por el brazo (REST) y retirar
-  GraphQL, como pidió Klaus; encontrar la ruta real del historial; responder a Klaus (borrador listo);
-  KYC vía CS (lado Alexis).
+- **EL EJECUTOR YA COLOCA POR EL BRAZO** (1-sep, misma mañana): `placeBet` sale primero por REST vía
+  relay (`via: relay-rest`); `betByReference` intenta la ruta REST de estado y cae a GraphQL de LECTURA
+  mientras la casa confirma la ruta del historial. `run=filas` (libro fila a fila) y `run=colocar_una`
+  (una fila con stake fijado por orden humana, mismos frenos) nuevos en `/api/internal/real`.
+- **PRIMERA APUESTA REAL POR EL CAMINO NUEVO — ACEPTADA**: Preston vs Bristol City, under 4.5 tarjetas,
+  $29 @ 1.53 (cero slippage), `ACCEPTED`, ref `acd5017f-…`, 1-sep 09:09Z, orden de Alexis. El contador
+  de rechazos (3×RESTRICTED del 25-ago) se reseteó a mano: la causa era la geografía, ya resuelta.
+  Saldo tras colocar: $36.61. ⚠️ `GP_REAL_MIN_BALANCE` bajó de 40 → 5 para poder cumplir la orden —
+  preguntar a Alexis si lo restauramos. El brazo definitivo es `gp-cb-relay-hel2` (2.29.18.155); el v1
+  se borró. Quedan 6 pendientes más (2 CS2 solo_manual + 4 card-under de la misma noche).
+- **PENDIENTE**: ruta REST del historial (preguntada a Klaus en el borrador); responder a Klaus;
+  KYC vía CS (lado Alexis); decidir si `run=recuperar` para las 4 card-under restantes.
 
 ## 🔒 EL CIERRE POR TIERS (la semana abierta venció el 31-ago 05:00Z)
 Deja de ser todo-o-nada; misma línea que combate v3: **free = inteligencia** (pizarras, fichas, rankings,

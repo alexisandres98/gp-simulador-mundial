@@ -21012,7 +21012,8 @@ async function anotar(pid){
         if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset());
         return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
       }
-      return json(res, 200, { ...PF.estado(), last_sweep: global._propfirmLast || null,
+      // `?todas=1`: el libro entero (para la revisión del lunes); sin él, las 20 últimas
+      return json(res, 200, { ...PF.estado({ completo: url.searchParams.get('todas') === '1' }), last_sweep: global._propfirmLast || null,
         enabled: String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false',
         aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false',
         // la sombra de ejecución de Polymarket (1-sep): banco simulado, fills contra el CLOB

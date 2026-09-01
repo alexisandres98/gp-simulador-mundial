@@ -732,10 +732,10 @@ async function liquidar(resultados = {}) {
 
     const ret = raw.returnAmount != null && raw.returnAmount !== '' ? Number(raw.returnAmount) : null;
     const stake = Number(b.stake) || 0;
-    // EL IMPORTE DE LA CASA NO SIGNIFICA LO MISMO POR LAS DOS PUERTAS (1-sep, primera liquidación real por
-    // el brazo). Por REST `returnAmount` es el resultado NETO de la apuesta: +15,37 en una ganada de 29 a
-    // 1,53 y −20,20 en una perdida de 20,20 — una cifra negativa no puede ser un retorno bruto. El código
-    // le restaba el stake otra vez, y la primera ganada real quedó anotada como pérdida. Así que el P&L se
+    // EL IMPORTE DE LA CASA ES NETO, NO BRUTO (1-sep, primera liquidación real; medido con `run=cb_estado`:
+    // la respuesta vino por GraphQL). `returnAmount` es el RESULTADO de la apuesta: +15,37 en una ganada
+    // de 29 a 1,53 y −20,20 en una perdida de 20,20 — una cifra negativa no puede ser un retorno bruto. El
+    // código le restaba el stake otra vez, y la primera ganada real quedó anotada como pérdida. El P&L se
     // calcula con la aritmética de la apuesta —estado de la casa × precio real × stake—, y el importe de la
     // casa se usa como CONTRASTE: si no cuadra ni como neto ni como bruto, se marca `discrepancia_importe`
     // y sale en el parte. El dinero sigue siendo el de la casa: el estado es suyo, el precio es el que ella

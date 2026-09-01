@@ -510,7 +510,7 @@ async function liquidar({ game = 'cs2' } = {}) {
 }
 
 // ---- ESTADO ---------------------------------------------------------------------------------------------
-function estado() {
+function estado({ completo = false } = {}) {
   const st = rd();
   const todas = Object.values(st.senales);
   const resumen = (all) => {
@@ -530,7 +530,7 @@ function estado() {
     // contaminaría las dos lecturas
     modelo_sombra: resumen(todas.filter((s) => s.tipo === 'modelo_sombra')),
     sin_correo: operables.filter((s) => s.estado === 'ABIERTA' && !s.correo_at).length,
-    ultimas: todas.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 20),
+    ultimas: todas.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, completo ? 100000 : 20),
   };
 }
 

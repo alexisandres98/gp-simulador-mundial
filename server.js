@@ -13230,6 +13230,55 @@ if (clubsShadowOn()) {
   }, 10 * 60e3);
 }
 
+// ── VIGILANCIA DEL BRAZO (1-sep, orden de Alexis: "añade vigilancia al servidor para que me avise") ─────
+// El brazo de país permitido es un único servidor: si Helsinki se cae, la colocación se detiene (las
+// filas quedan PENDIENTE reintentando — no se pierde nada, pero no entra dinero). Ping a su /health cada
+// 5 min; tras 3 fallos seguidos (~15 min de caída real, no un parpadeo) se avisa al admin por email UNA
+// vez por caída, y al volver se avisa la recuperación. El estado vive en memoria: un reinicio del
+// contenedor reevalúa desde cero, que para una alerta de caída es el comportamiento correcto.
+if (String(process.env.GP_RELAY_WATCH || 'true') !== 'false') {
+  global._relayWatch = { fallos: 0, avisado: false, ultimo_ok: null };
+  const relayPing = () => new Promise((resolve) => {
+    const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+    if (!base) return resolve(null); // sin brazo configurado no hay nada que vigilar
+    const httpsW = require('https');
+    const rq = httpsW.request(base + '/health', { method: 'GET', rejectUnauthorized: false, timeout: 10000 }, (rs) => {
+      rs.resume(); resolve(rs.statusCode === 200);
+    });
+    rq.on('error', () => resolve(false));
+    rq.on('timeout', () => { rq.destroy(); resolve(false); });
+    rq.end();
+  });
+  setInterval(async () => {
+    try {
+      const ok = await relayPing();
+      if (ok === null) return;
+      const W = global._relayWatch;
+      if (ok) {
+        if (W.avisado) {
+          const adm = String(process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+          mailer.sendMail({ to: adm, noListUnsub: true,
+            subject: '✅ GP · el brazo de Cloudbet VOLVIÓ',
+            text: `El relay de Helsinki responde de nuevo (${new Date().toISOString()}). La colocación automática sigue su curso; las filas pendientes reintentan solas.`,
+          }).catch(() => {});
+        }
+        W.fallos = 0; W.avisado = false; W.ultimo_ok = new Date().toISOString();
+      } else {
+        W.fallos++;
+        if (W.fallos >= 3 && !W.avisado) {
+          W.avisado = true;
+          const adm = String(process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+          mailer.sendMail({ to: adm, noListUnsub: true,
+            subject: '🔴 GP · el brazo de Cloudbet NO RESPONDE',
+            text: `El relay de Helsinki (${String(process.env.CLOUDBET_RELAY_URL || '')}) lleva ~15 minutos sin responder al /health.\n\nQué significa: la colocación automática está detenida; las apuestas quedan PENDIENTE y reintentan solas cuando vuelva — no se pierde dinero, se pierde ventana.\n\nQué mirar: consola de Hetzner (console.hetzner.com) → servidor gp-cb-relay-hel2 → reiniciar si está colgado. Aviso cuando vuelva.`,
+          }).catch(() => {});
+          console.error('[relay-watch] brazo caído: aviso enviado');
+        }
+      }
+    } catch (e) { console.error('[relay-watch]', e.message); }
+  }, 5 * 60 * 1000);
+}
+
 // ===== #7 MOVIMIENTO DE LÍNEA (30-jul) — lo que el archivo de #9 hace posible ============================
 // La investigación de sindicatos fue clara: lo que mueve el cierre en MMA es camp/lesión/pesaje, y los
 // sharps entran temprano. Un movimiento fuerte SIN noticia pública es dinero informado.

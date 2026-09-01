@@ -96,8 +96,14 @@ rescate vía gamma para las viejas). Ledger `poly-sombra.json` en /data/propfirm
 - **Primera pasada real**: 6 posiciones, $509 desplegados, slippage medio +0,43 pp, y la medición
   estrella: una tesis pedía $100 y el libro solo tenía ~$10 bajo el límite (24 shares) — la capacidad
   REAL del venue, medida posición a posición.
+- **Tamaño = estructura de Cloudbet, NO la de la firm** (corrección de Alexis, mismo día): Kelly/4 con
+  tope del 1,5% del banco VIVO (compone con el P&L), suelo $5, tope duro $45, SIN máximo de exposición
+  ni de posiciones — la firm tiene $10.000 y reglas; este banco es de $2.000 y Polymarket no tiene
+  ninguna. El ledger se reseteó y renació con estas reglas (6 posiciones, ~$158 desplegados). Envs:
+  GP_POLYSOMBRA_BANCO (2000), GP_POLYSOMBRA_STAKE_PCT (1.5), _STAKE_MIN (5), _STAKE_MAX (45);
+  `run=poly_reset` (solo a mano) para renacer.
 - Revisión: sección propia en el correo del LUNES de la sombra; probe `/api/internal/propfirm` →
-  `poly_sombra`. Envs: GP_POLYSOMBRA_BANCO (2000), GP_POLYSOMBRA_RIESGO (100).
+  `poly_sombra`.
 - Lectura del lunes: las variantes del mismo cruce entran TODAS (ganan/pierden juntas — como en la firm).
 - **Si da positivo sostenido → cablear la API real del CLOB** (órdenes firmadas EIP-712, wallet propia,
   sin aprobación de nadie) y meterle dinero real.

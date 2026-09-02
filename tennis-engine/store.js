@@ -117,6 +117,29 @@ function marketOf(ev) {
   return out;
 }
 
+// TODAS LAS LÍNEAS, NO SOLO LA DEL CONSENSO (2-sep). El cierre guardaba una sola línea de total y una de
+// hándicap —la mediana entre casas— y la pick se creaba con esa misma mediana… de OTRO momento. Cuando el
+// mercado se movía medio juego, la pick se quedaba sin cierre: 9 de 77 TOTAL tenían CLV (§6.5). Aquí van
+// todas las líneas cotizadas con la mejor cuota de cada lado y su casa, hasta 12 por evento (las más
+// cercanas al consenso), para que la liquidación encuentre la línea exacta de la pick.
+const MAX_LINEAS_CIERRE = 12;
+function lineasDe(rows, consenso, lados) {
+  const por = new Map();
+  for (const x of rows) {
+    if (!Number.isFinite(x.line)) continue;
+    const o = por.get(x.line) || { line: x.line, books: 0 };
+    o.books++;
+    for (const [k, bk] of lados) {
+      if (Number.isFinite(x[k]) && x[k] > (o[k] || 0)) { o[k] = x[k]; o[bk] = x.book; }
+      // Pinnacle aparte: es la referencia del CLV del preregistro (docs/PREREGISTRO_TENIS_TOTAL.md)
+      if (x.book === 'pinnacle' && Number.isFinite(x[k])) o['pin_' + k] = x[k];
+    }
+    por.set(x.line, o);
+  }
+  const ref = Number.isFinite(consenso) ? consenso : 0;
+  return [...por.values()].sort((p, q) => Math.abs(p.line - ref) - Math.abs(q.line - ref) || p.line - q.line).slice(0, MAX_LINEAS_CIERRE).sort((p, q) => p.line - q.line);
+}
+
 // cierres: el último snapshot antes del comienzo ES el cierre (misma mecánica que NFL/esports)
 function snapshotCloses(rows) {
   const st = rdD('closes.json') || { closes: {} };
@@ -131,6 +154,9 @@ function snapshotCloses(rows) {
       ml_p_a: mk.consensus.ml_p_a, ml_a: mk.best.ml_a ? mk.best.ml_a.a : null, ml_b: mk.best.ml_b ? mk.best.ml_b.b : null,
       total_line: mk.consensus.total_line, total_over: mk.best.total_over ? mk.best.total_over.over : null, total_under: mk.best.total_under ? mk.best.total_under.under : null,
       spread_line: mk.consensus.spread_line, spread_a: mk.best.spread_a ? mk.best.spread_a.a : null, spread_b: mk.best.spread_b ? mk.best.spread_b.b : null,
+      // todas las líneas cotizadas, con la mejor cuota por lado y su casa (máx. 12 por evento)
+      totals_all: lineasDe(mk.total, mk.consensus.total_line, [['over', 'over_book'], ['under', 'under_book']]),
+      spreads_all: lineasDe(mk.spread, mk.consensus.spread_line, [['a', 'a_book'], ['b', 'b_book']]),
     };
     dirty = true;
   }
@@ -261,12 +287,14 @@ function gamesPmf(model) {
   if (tabla && Array.isArray(tabla.cuts) && tabla.cuts.length === 2 && Array.isArray(tabla.hist) && tabla.hist.length === 3) {
     const t = md.expGames < tabla.cuts[0] ? 0 : md.expGames < tabla.cuts[1] ? 1 : 2;
     const acc = new Map();
+    let z = 0; // la tabla viaja redondeada a 6 decimales: se renormaliza para que la PMF sume 1 exacto
     for (const [rs, p] of Object.entries(tabla.hist[t])) {
       const x = calG + +rs, f = Math.floor(x), w = x - f;
       acc.set(f, (acc.get(f) || 0) + p * (1 - w));
       if (w > 1e-12) acc.set(f + 1, (acc.get(f + 1) || 0) + p * w);
+      z += p;
     }
-    return { method: 'c6', tercil: t, pairs: [...acc.entries()].sort((x, y) => x[0] - y[0]) };
+    return { method: 'c6', tercil: t, pairs: [...acc.entries()].sort((x, y) => x[0] - y[0]).map(([g, p]) => [g, p / z]) };
   }
   const shift = calG - md.expGames; // la calibración desplaza la dist (misma forma)
   return { method: 'shift', pairs: md.totalGames.map(([g, p]) => [g + shift, p]) };
@@ -572,12 +600,17 @@ async function recordShadow() {
       const key = `${row.id}|${c.family}|${c.side}|${c.line}`;
       if (have.has(key)) continue;
       have.add(key); n++;
-      st.picks.push({
+      const pick = {
         key, event_id: row.id, tkey: row.tkey, tourney: row.tourney, tour: row.tour, surface: row.surface, best_of: row.best_of,
         a: row.a, b: row.b, family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
         p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, benchmark: !!c.benchmark,
         commence: row.commence, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
-      });
+      };
+      // PREREGISTRO TOTAL (2-sep, docs/PREREGISTRO_TENIS_TOTAL.md): la ventaja al nacer queda congelada y
+      // la tesis se marca si entra en la regla fija (TOTAL, ventaja ≥ 8 pp). Se cuenta por EVENTO, no por
+      // pick, y la vara es el CLV medio contra el cierre, no el ROI.
+      if (c.family === 'TOTAL') { pick.edge_pp_at_create = c.edge_pp; pick.prereg_total8 = c.edge_pp >= 8; pick.dist_method = c.dist_method || null; }
+      st.picks.push(pick);
     }
   }
   if (n) wrD('picks.json', st);
@@ -717,11 +750,27 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       p.units = win == null || retired ? 0 : win ? +(p.odds - 1).toFixed(3) : -1;
       const cl = closes.closes[p.event_id];
       if (cl) {
-        let cp = null;
-        if (p.family === 'ML') cp = p.side === 'a' ? cl.ml_a : cl.ml_b;
-        if (p.family === 'TOTAL' && cl.total_line === p.line) cp = p.side === 'over' ? cl.total_over : cl.total_under;
-        if (p.family === 'SPREAD' && cl.spread_line === p.line) cp = p.side === 'a' ? cl.spread_a : cl.spread_b;
-        if (cp) { p.close_price = cp; p.clv_pct = +((p.odds / cp - 1) * 100).toFixed(2); }
+        let cp = null, cpFuente = null;
+        if (p.family === 'ML') { cp = p.side === 'a' ? cl.ml_a : cl.ml_b; cpFuente = 'consenso'; }
+        // TOTAL/SPREAD: primero la línea del consenso al cierre; si el mercado se movió, la línea EXACTA de la
+        // pick entre todas las cotizadas (totals_all/spreads_all). Sin la línea exacta no hay CLV: comparar
+        // cuotas de líneas distintas no mide nada.
+        if (p.family === 'TOTAL') {
+          if (cl.total_line === p.line) { cp = p.side === 'over' ? cl.total_over : cl.total_under; cpFuente = 'consenso'; }
+          else { const ln = (cl.totals_all || []).find((x) => x.line === p.line); if (ln) { cp = p.side === 'over' ? ln.over : ln.under; cpFuente = 'totals_all'; } }
+        }
+        if (p.family === 'SPREAD') {
+          if (cl.spread_line === p.line) { cp = p.side === 'a' ? cl.spread_a : cl.spread_b; cpFuente = 'consenso'; }
+          else { const ln = (cl.spreads_all || []).find((x) => x.line === p.line); if (ln) { cp = p.side === 'a' ? ln.a : ln.b; cpFuente = 'spreads_all'; } }
+        }
+        if (cp) { p.close_price = cp; p.clv_pct = +((p.odds / cp - 1) * 100).toFixed(2); p.close_source = cpFuente; }
+        else if (p.family !== 'ML') p.close_missing = `línea ${p.line} no cotizada al cierre (consenso ${p.family === 'TOTAL' ? cl.total_line : cl.spread_line})`;
+        // y el CLV contra Pinnacle en la misma línea, cuando la cotizó: la vara del preregistro de TOTAL
+        if (p.family === 'TOTAL' || p.family === 'SPREAD') {
+          const ln = ((p.family === 'TOTAL' ? cl.totals_all : cl.spreads_all) || []).find((x) => x.line === p.line);
+          const pin = ln ? ln['pin_' + p.side] : null;
+          if (pin > 1) { p.close_pin = pin; p.clv_pin_pct = +((p.odds / pin - 1) * 100).toFixed(2); }
+        }
       }
       p.settled_at = new Date().toISOString();
       settled++; diag.ok++;
@@ -787,6 +836,41 @@ function track(tour, { limit = 40 } = {}) {
     B.n++; if (p.result === 'WIN') B.w++; B.units += p.units || 0;
     if (p.clv_pct != null) B.clv.push(p.clv_pct);
   }
+  // POR EVENTO (2-sep). 77 picks de TOTAL eran 43 eventos: el mismo partido en varias casas y líneas, y el
+  // ROI por pick contaba tres veces el mismo acierto (§6.5). Aquí cada evento pesa UNA unidad repartida a
+  // partes iguales entre sus picks, el acierto se decide por el signo de esa unidad y el CLV se promedia
+  // dentro del evento antes de promediar entre eventos. Y lo mismo para el corte preregistrado (≥ 8 pp).
+  const porEvento = (picks) => {
+    const ev = new Map();
+    for (const p of picks) { const e = ev.get(p.event_id) || { units: [], clv: [], pin: [] }; e.units.push(p.units || 0); if (p.clv_pct != null) e.clv.push(p.clv_pct); if (p.clv_pin_pct != null) e.pin.push(p.clv_pin_pct); ev.set(p.event_id, e); }
+    const media = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+    const u = [...ev.values()].map((e) => media(e.units));
+    const clv = [...ev.values()].map((e) => media(e.clv)).filter((x) => x != null);
+    const pin = [...ev.values()].map((e) => media(e.pin)).filter((x) => x != null);
+    const dec = u.filter((x) => x !== 0);
+    const se = (a) => { if (a.length < 2) return null; const m = media(a); return Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1) / a.length); };
+    const roi = u.length ? media(u) : null, roiSe = se(u), clvM = clv.length ? media(clv) : null, clvSe = se(clv), pinM = pin.length ? media(pin) : null, pinSe = se(pin);
+    return {
+      eventos: u.length, picks: picks.length,
+      roi_pct: roi != null ? r2(100 * roi) : null, roi_se_pct: roiSe != null ? r2(100 * roiSe) : null, roi_t: roi != null && roiSe ? r2(roi / roiSe) : null,
+      hit_pct: dec.length ? r2(100 * dec.filter((x) => x > 0).length / dec.length) : null, eventos_decididos: dec.length,
+      clv_avg_pct: clvM != null ? r2(clvM) : null, clv_n: clv.length, clv_se_pct: clvSe != null ? r2(clvSe) : null, clv_t: clvM != null && clvSe ? r2(clvM / clvSe) : null,
+      // la vara del preregistro: CLV contra Pinnacle en la línea exacta de la pick
+      clv_pin_avg_pct: pinM != null ? r2(pinM) : null, clv_pin_n: pin.length, clv_pin_se_pct: pinSe != null ? r2(pinSe) : null, clv_pin_t: pinM != null && pinSe ? r2(pinM / pinSe) : null,
+    };
+  };
+  const totalDone = done.filter((p) => p.family === 'TOTAL');
+  const edgeCreate = (p) => (p.edge_pp_at_create != null ? p.edge_pp_at_create : p.edge_pp);
+  const total8 = totalDone.filter((p) => edgeCreate(p) >= 8);
+  const prereg = totalDone.filter((p) => p.prereg_total8 === true);
+  const porEventoTotal = {
+    todas: porEvento(totalDone),
+    edge8: porEvento(total8),
+    // solo las nacidas con la bandera (desde el despliegue del preregistro): es la muestra que decide
+    preregistradas: { ...porEvento(prereg), objetivo_eventos: 60, regla: 'TOTAL, ventaja ≥ 8 pp al nacer, contar eventos, vara CLV medio > 0 (docs/PREREGISTRO_TENIS_TOTAL.md)' },
+    abiertas_prereg: mine.filter((p) => p.status === 'OPEN' && p.prereg_total8 === true).length,
+    nota: 'una unidad por EVENTO repartida entre sus picks; el acierto es el signo de esa unidad; el ROI se anota pero no decide.',
+  };
   return {
     regime: 'shadow', doctrine: DOCTRINE,
     open: mine.filter((p) => p.status === 'OPEN').length,
@@ -811,6 +895,7 @@ function track(tour, { limit = 40 } = {}) {
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
       note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined,
     }])),
+    por_evento: { TOTAL: porEventoTotal },
     recent: done.slice(-limit).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
     // el parte del liquidador viaja con el track: "0 liquidadas" y "la fuente está caída" se parecen

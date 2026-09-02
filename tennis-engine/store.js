@@ -598,7 +598,7 @@ async function settleShadow() {
   return { settled, diag, errors: errs };
 }
 
-function track(tour) {
+function track(tour, { limit = 40 } = {}) {
   const st = rdD('picks.json') || { picks: [] };
   const settleDiag = rdD('settle-diag.json') || null;
   const mine = st.picks.filter((p) => tour == null || p.tour === tour);
@@ -647,7 +647,7 @@ function track(tour) {
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
       note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined,
     }])),
-    recent: done.slice(-40).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-30).reverse(),
+    recent: done.slice(-limit).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
     // el parte del liquidador viaja con el track: "0 liquidadas" y "la fuente está caída" se parecen
     // demasiado como para dejarlos indistinguibles

@@ -19003,7 +19003,7 @@ const server = http.createServer(async (req, res) => {
           const surfQ = { dura: 0, arcilla: 1, hierba: 2, moqueta: 3 }[String(url.searchParams.get('surface') || 'dura')] || 0;
           return json(res, 200, TEN.simMatch(tnQ, a, b2, { surface: surfQ, bestOf: url.searchParams.get('bo') === '5' ? 5 : 3 }));
         }
-        if (p === '/api/tennis/track') return json(res, 200, TEN.track(url.searchParams.has('tour') ? tnQ : null));
+        if (p === '/api/tennis/track') return json(res, 200, TEN.track(url.searchParams.has('tour') ? tnQ : null, { limit: Math.max(1, Math.min(5000, Number(url.searchParams.get('limit')) || 40)) }));
         if (p === '/api/tennis/model') return json(res, 200, TEN.modelCard());
         if (p === '/api/tennis/brief') return json(res, 200, await tennisBrief(tnQ, { force: url.searchParams.get('force') === '1' }));
         if (p === '/api/tennis/search') {
@@ -19215,7 +19215,8 @@ const server = http.createServer(async (req, res) => {
         // fuente de resultados no había nada que liquidar. Devuelve el CLV por delante del ROI a propósito.
         if (p === '/api/esports/track') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
-          return json(res, 200, ES.track(gm));
+          // ?limit= para auditorías completas pick a pick (default 60, tope 5000)
+          return json(res, 200, ES.track(gm, { limit: Math.max(1, Math.min(5000, Number(url.searchParams.get('limit')) || 60)) }));
         }
         if (p === '/api/esports/settle' && req.method === 'POST') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });

@@ -1118,5 +1118,5 @@ async function modelSnapshot() {
 module.exports = { loadBoard, matchDetail,
   DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, resettleShadow, marcadorCoherente, track,
   playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
-  eventModel, marketOf,
+  eventModel, marketOf, gamesPmf, distProbs, ajustesGanador,
 };

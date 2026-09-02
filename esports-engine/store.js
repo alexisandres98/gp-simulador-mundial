@@ -1572,6 +1572,37 @@ function closeOddsFor(pk, closes) {
 
 const RES = require('../data-providers/esports/results');
 
+// RE-LIQUIDACIÓN DE LAS FAMILIAS CON LADO EN KILLS (2-sep). Hasta el arreglo del volteo, KILLS_HANDICAP,
+// KILLS_EQUIPO y KILLS_DNB podían liquidarse con los kills del equipo contrario. Se reabren las liquidadas
+// con veredicto (WIN/LOSS/PUSH; las VOID no cambian), se guarda lo que decían, y se pasan otra vez por
+// settlePicks con ventana larga. KILLS (total) no tiene lado y no se toca. Idempotente.
+async function resettleKills(game, { maxDias = 45 } = {}) {
+  const st = rd(PICKS_F(game));
+  if (!st || !st.picks) return { game, reabiertas: 0 };
+  const FAM = new Set(['KILLS_HANDICAP', 'KILLS_EQUIPO', 'KILLS_DNB']);
+  const antes = { WIN: 0, LOSS: 0, PUSH: 0 };
+  const ids = [];
+  for (const p of Object.values(st.picks)) {
+    if (p.status !== 'SETTLED' || !FAM.has(p.family) || !/^(WIN|LOSS|PUSH)$/.test(String(p.result_code || ''))) continue;
+    antes[p.result_code]++;
+    p.resettled_from = { result_code: p.result_code, units: p.units, final: p.final || null, settled_at: p.settled_at || null };
+    p.status = 'ACTIVE';
+    delete p.result_code; delete p.units; delete p.final; delete p.settled_at; delete p.result_source;
+    ids.push(p.pick_id);
+  }
+  if (ids.length) wr(PICKS_F(game), st);
+  const out = await settlePicks(game, { sinceDays: 4, maxDias });
+  const st2 = rd(PICKS_F(game)) || { picks: {} };
+  const despues = { WIN: 0, LOSS: 0, PUSH: 0, VOID: 0, ACTIVE: 0, cambiaron: 0 };
+  for (const id of ids) {
+    const p = st2.picks[id]; if (!p) continue;
+    if (p.status !== 'SETTLED') { despues.ACTIVE++; continue; }
+    despues[p.result_code] = (despues[p.result_code] || 0) + 1;
+    if (p.resettled_from && p.resettled_from.result_code !== p.result_code) despues.cambiaron++;
+  }
+  return { game, reabiertas: ids.length, antes, despues, settle: out };
+}
+
 async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   const st = rd(PICKS_F(game));
   if (!st || !st.picks) return { game, settled: 0, pending: 0, no_source: false };
@@ -1678,9 +1709,17 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       continue;
     }
     const flip = hit.ka !== kh;
+    // AL VOLTEAR SE VOLTEA TODO LO QUE TIENE LADO (2-sep). Hasta hoy solo se intercambiaban score_a/score_b:
+    // kills_a/kills_b y winner se quedaban en la orientación de la FUENTE, así que en toda serie que la
+    // fuente listara al revés, KILLS_HANDICAP / KILLS_EQUIPO / KILLS_DNB se liquidaban con los kills del
+    // equipo CONTRARIO. La autopsia lo delató: en LoL el "local +x,5 kills" ganaba el 85 % y el "visitante
+    // +x,5" el 41 % con la misma p_gp (0,72); en Dota 2, al revés (26 % / 68 %). Ninguna asimetría real
+    // de mercado produce eso — un volteo a medias sí. Esas familias se re-liquidan con `resettleKills`.
     const r = flip
       ? { ...hit.r, a: hit.r.b, b: hit.r.a, maps_a: hit.r.maps_b, maps_b: hit.r.maps_a,
-          maps: (hit.r.maps || []).map((m) => ({ ...m, score_a: m.score_b, score_b: m.score_a })) }
+          maps: (hit.r.maps || []).map((m) => ({ ...m, score_a: m.score_b, score_b: m.score_a,
+            kills_a: m.kills_b, kills_b: m.kills_a,
+            winner: m.winner === 'a' ? 'b' : m.winner === 'b' ? 'a' : m.winner })) }
       : hit.r;
 
     // UNA FILA DE PARSEO RECHAZADO SOLO PUEDE ANULAR, NUNCA DECIDIR. Sus nombres salen del slug del partido
@@ -2542,7 +2581,7 @@ module.exports = {
   clvWhy, closesBoard, tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,
-  teamSearch, simulate, recordPicks, settlePicks, track, settleOne, picksRaw,
+  teamSearch, simulate, recordPicks, settlePicks, resettleKills, track, settleOne, picksRaw,
   teamsDirectory, teamProfile, playersDirectory, rankingBoard, circuit, resultsRecent, h2h, playerProfile,
   championsBoard,
 };

@@ -105,7 +105,12 @@ function simulate(R, homeId, awayId, { n = 20000, neutral = false, seed = null, 
     },
     // histograma de margen recortado a ±30 para pintar la curva sin outliers que aplasten la escala
     margin_hist: (() => { const h = {}; for (let i = 0; i < n; i++) { const k = Math.max(-30, Math.min(30, margins[i])); h[k] = (h[k] || 0) + 1; } return Object.entries(h).map(([k, v]) => [+k, +(v / n).toFixed(5)]).sort((a, b) => a[0] - b[0]); })(),
-    total_hist: (() => { const h = {}; for (let i = 0; i < n; i++) { const k = Math.round(totals[i] / 5) * 5; h[k] = (h[k] || 0) + 1; } return Object.entries(h).map(([k, v]) => [+k, +(v / n).toFixed(5)]).sort((a, b) => a[0] - b[0]); })(),
+    // RESOLUCIÓN DE UN PUNTO, NO DE CINCO (2-sep). El histograma iba en cubos de 5 (`round(total/5)·5`) y
+    // ESE histograma es el que cotiza el total: P(over 164,5) sumaba los cubos > 164,5, o sea 165 en
+    // adelante — y el cubo 165 recoge los totales 163 y 164, que NO superan la línea. Toda línea justo por
+    // debajo de un múltiplo de 5 (x3,5 · x4 · x4,5) heredaba ~5 pp de over regalados, y el monitor de la
+    // WNBA lo compró tal cual: 22 de sus 31 totales eran overs en esas líneas, con 17-27 % de acierto.
+    total_hist: (() => { const h = {}; for (let i = 0; i < n; i++) { const k = totals[i]; h[k] = (h[k] || 0) + 1; } return Object.entries(h).map(([k, v]) => [+k, +(v / n).toFixed(5)]).sort((a, b) => a[0] - b[0]); })(),
     conf: nH >= 15 && nA >= 15 ? 'alta' : (nH >= 8 && nA >= 8 ? 'media' : 'baja'),
   };
 }

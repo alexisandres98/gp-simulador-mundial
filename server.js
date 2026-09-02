@@ -12600,6 +12600,24 @@ async function shadowSweep() {
     reSup++;
   }
   if (reSup) { save(); opsLog('shadow_resettle_superseded', { fixed: reSup, bankroll: S.bankroll }); }
+  // REPARACIÓN POR PICK RE-LIQUIDADA (2-sep). Cuando una pick de esports se re-liquida (arreglo del volteo de
+  // kills: `resettleKills`) y cambia de veredicto, la apuesta del sombra que ya la había copiado sigue con el
+  // veredicto viejo. Se detecta por `resettled_from` en la pick con una liquidación POSTERIOR a la de la
+  // apuesta, se copia el veredicto nuevo y el bankroll se corrige por la DIFERENCIA. Una sola vez por cambio.
+  let rePick = 0;
+  for (const b of S.bets) {
+    if (b.status !== 'SETTLED' || !/^(WIN|LOSS|PUSH)$/.test(String(b.result || ''))) continue;
+    const p3 = byPick[b.pick_id];
+    if (!p3 || !p3.resettled_from || p3.status !== 'SETTLED' || !/^(WIN|LOSS|PUSH|VOID)$/.test(String(p3.result_code || ''))) continue;
+    if (!(p3.settled_at && b.settled_at && Date.parse(p3.settled_at) > Date.parse(b.settled_at))) continue;
+    if (p3.result_code === b.result) { b.settled_at = p3.settled_at; continue; }
+    const pnl = p3.result_code === 'WIN' ? +(b.stake * (b.odds - 1)).toFixed(2) : p3.result_code === 'LOSS' ? -b.stake : 0;
+    S.bankroll = +(S.bankroll + (pnl - (b.pnl || 0))).toFixed(2);
+    b.resettled_from = { result: b.result, pnl: b.pnl, at: b.settled_at };
+    b.result = p3.result_code; b.pnl = pnl; b.settled_at = p3.settled_at; b.settled_from = 'pick re-liquidada (volteo de kills)';
+    rePick++;
+  }
+  if (rePick) { save(); opsLog('shadow_resettle_from_pick', { fixed: rePick, bankroll: S.bankroll }); }
   // migración de un solo uso: las liquidadas de antes del 17-ago no traían clv_exec y su cierre ya está
   let backCl = 0;
   for (const b of S.bets) {
@@ -19220,6 +19238,11 @@ const server = http.createServer(async (req, res) => {
         }
         if (p === '/api/esports/settle' && req.method === 'POST') {
           if (!okGame) return json(res, 400, { error: 'juego desconocido', games: ES.GAME_ORDER });
+          // ?resettle=kills → reabre y re-liquida las familias de kills con lado (arreglo del volteo, 2-sep)
+          if (url.searchParams.get('resettle') === 'kills') {
+            const rk = await ES.resettleKills(gm).catch((e) => ({ error: e.message }));
+            return json(res, 200, { resettle: rk, track: ES.track(gm) });
+          }
           const rec = await ES.recordPicks(gm).catch((e) => ({ error: e.message }));
           const set = await ES.settlePicks(gm).catch((e) => ({ error: e.message }));
           return json(res, 200, { record: rec, settle: set, track: ES.track(gm) });
@@ -19786,6 +19809,11 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const TEN = require('./tennis-engine/store');
+      // POST ?run=resettle → reabre y re-liquida las picks liquidadas con marcador incompleto (2-sep)
+      if (req.method === 'POST' && url.searchParams.get('run') === 'resettle') {
+        const rs = await TEN.resettleShadow().catch((e) => ({ error: e.message }));
+        return json(res, 200, { resettle: rs, track: TEN.track(null) });
+      }
       const snap = await TEN.modelSnapshot().catch((e) => ({ error: e.message }));
       return json(res, 200, snap);
     }

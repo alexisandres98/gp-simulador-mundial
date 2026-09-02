@@ -477,7 +477,8 @@ async function espnDay(tn, day) {
   let sb = G.sb[key];
   if (sb && Date.now() - sb.at < 10 * 60e3) return sb.j;
   const lg = tn === 0 ? 'atp' : 'wta';
-  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000) });
+  // con user-agent: sin él ESPN devuelve 403 desde algunas redes (visto en el sandbox de desarrollo)
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36', accept: 'application/json' } });
   // ERRORES CON NOMBRE (19-ago): un 403 devolvía HTML, `r.json()` reventaba con "Unexpected token <" y ese
   // error caía en el catch por-pick del liquidador, que hacía `continue` en silencio. Resultado: doce
   // partidos ya jugados sin liquidar y CERO pistas de por qué. Ahora el fallo se llama por su nombre.
@@ -490,19 +491,37 @@ async function espnDay(tn, day) {
 }
 function lastName(s) { const p = D.norm(s).split(' '); return p[p.length - 1] || ''; }
 
-async function settleShadow() {
+// UN MARCADOR SOLO VALE SI ESTÁ ENTERO (2-sep). ESPN marca STATUS_FINAL antes de colgar los sets: en la
+// primera hora tras el partido `linescores` llega vacío o a medias, y este liquidador se lo tragaba: 268 de
+// 429 picks se liquidaron con 0-0 y otras 56 con sets sueltos. Con 0-0, "b −5,5" GANA (0+(−5,5) < 0),
+// "over" PIERDE (0 < línea) y la "a" nunca gana (winner==null y 0 > 0 es falso). El track de tenis (+44 %
+// de ROI, 80 % de acierto en hándicap) era ese artefacto. Regla: el marcador es coherente si hay tantos sets
+// como se necesitan para ganar, los dos jugadores traen el mismo número y el que más sets ganó llegó al
+// número exacto que decide el partido. Si no, se ESPERA — los días históricos de ESPN sí traen los sets.
+function marcadorCoherente(setsA, setsB, bestOf) {
+  const need = Math.ceil((bestOf || 3) / 2);
+  if (!setsA.length || setsA.length !== setsB.length || setsA.length < need) return false;
+  if (setsA.some((v) => !Number.isFinite(v)) || setsB.some((v) => !Number.isFinite(v))) return false;
+  let wa = 0, wb = 0;
+  for (let i = 0; i < setsA.length; i++) { if (setsA[i] > setsB[i]) wa++; else if (setsB[i] > setsA[i]) wb++; }
+  return Math.max(wa, wb) === need && setsA.length <= 2 * need - 1;
+}
+
+async function settleShadow({ voidDays = 10, only = null } = {}) {
   const st = rdD('picks.json') || { picks: [] };
-  const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.commence) < Date.now() - 2 * 3600e3);
+  const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.commence) < Date.now() - 2 * 3600e3 && (!only || only.has(p.key)));
   if (!open.length) return { settled: 0, pending: 0, diag: {} };
   let settled = 0;
   // DIAGNÓSTICO DEL LIQUIDADOR: sin esto, "0 liquidadas" es indistinguible de "la fuente está caída".
   // Se cuenta por MOTIVO y viaja hasta la sonda, que es donde se mira cuando algo no cuadra.
-  const diag = { vencidas: open.length, sin_fuente: 0, sin_cruce: 0, no_final: 0, sin_marcador: 0, ok: 0, void_tiempo: 0 };
+  const diag = { vencidas: open.length, sin_fuente: 0, sin_cruce: 0, no_final: 0, sin_marcador: 0, marcador_incompleto: 0, ok: 0, void_tiempo: 0 };
   const errs = [];
   const closes = rdD('closes.json') || { closes: {} };
   for (const p of open) {
     try {
-      if (Date.parse(p.commence) < Date.now() - 4 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = 'sin resultado casado en 4 días (walkover/cambio de agenda probable)'; settled++; diag.void_tiempo++; continue; }
+      // el plazo de VOID sube de 4 a 10 días: con el marcador incompleto ahora se ESPERA, y ESPN conserva los
+      // días pasados, así que esperar no cuesta nada y anular a los 4 días tiraba datos buenos
+      if (Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = `sin resultado casado en ${voidDays} días (walkover/cambio de agenda probable)`; settled++; diag.void_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
       const j = await espnDay(p.tour, day);
       // ESPN NO SIEMPRE CUELGA LOS EVENTOS EN LA RAÍZ (19-ago). El parte de la pasada anterior lo dejó
@@ -561,9 +580,15 @@ async function settleShadow() {
       const cb = cs.find((x) => { const n = nameOf(x); return n.endsWith(lb) || n.includes(lb); });
       if (!ca || !cb) { diag.sin_marcador++; continue; }
       const setsA = (ca.linescores || []).map((x) => +x.value), setsB = (cb.linescores || []).map((x) => +x.value);
-      const gA = setsA.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0), gB = setsB.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
-      const aWon = ca.winner === true || (ca.winner == null && gA > gB);
       const retired = /RETIRED|WALKOVER/i.test(status);
+      // sin marcador entero no se liquida (salvo retiro, que se anula igual): se vuelve a preguntar en la
+      // siguiente pasada, hasta el plazo de VOID
+      if (!retired && !marcadorCoherente(setsA, setsB, p.best_of)) { diag.marcador_incompleto++; continue; }
+      const gA = setsA.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0), gB = setsB.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+      let wa = 0, wb = 0;
+      for (let i = 0; i < setsA.length; i++) { if (setsA[i] > setsB[i]) wa++; else if (setsB[i] > setsA[i]) wb++; }
+      // el ganador es quien ganó los sets; la bandera de ESPN solo desempata si los sets no lo dicen
+      const aWon = wa !== wb ? wa > wb : (ca.winner === true || (ca.winner == null && gA > gB));
       let win = null;
       if (p.family === 'ML') win = retired ? null : (p.side === 'a' ? (aWon ? 1 : 0) : (aWon ? 0 : 1));
       if (p.family === 'TOTAL') { const total = gA + gB; win = retired ? null : (p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0)); }
@@ -596,6 +621,28 @@ async function settleShadow() {
     wrD('settle-diag.json', { ...dg, at: new Date().toISOString(), diag, errors: errs, settled });
   } catch { }
   return { settled, diag, errors: errs };
+}
+
+// RE-LIQUIDACIÓN DE LO LIQUIDADO CON MARCADOR INCOMPLETO (2-sep). Reabre las picks SETTLED con WIN/LOSS cuyo
+// `final` no es coherente (0-0, sets sueltos) y las pasa otra vez por el liquidador con plazo de VOID largo:
+// ESPN conserva los marcadores de los días pasados, así que casi todas vuelven con el resultado real. Idempotente.
+async function resettleShadow({ voidDays = 60 } = {}) {
+  const st = rdD('picks.json') || { picks: [] };
+  const reabrir = st.picks.filter((p) => p.status === 'SETTLED' && /^(WIN|LOSS|PUSH)$/.test(String(p.result || ''))
+    && !(p.final && marcadorCoherente((p.final.sets_a || []).map(Number), (p.final.sets_b || []).map(Number), p.best_of)));
+  // también las que una pasada anterior reabrió y siguen sin marcador (idempotencia real)
+  const claves = new Set(reabrir.map((p) => p.key).concat(st.picks.filter((p) => p.status === 'OPEN' && p.resettled_from).map((p) => p.key)));
+  for (const p of reabrir) {
+    p.status = 'OPEN';
+    p.resettled_from = { result: p.result, final: p.final, units: p.units, settled_at: p.settled_at };
+    delete p.result; delete p.final; delete p.units; delete p.settled_at; delete p.clv_pct; delete p.close_price; delete p.void_reason;
+  }
+  if (reabrir.length) wrD('picks.json', st);
+  const out = await settleShadow({ voidDays, only: claves });
+  const st2 = rdD('picks.json') || { picks: [] };
+  const despues = st2.picks.filter((p) => claves.has(p.key));
+  const cnt = (f) => despues.filter(f).length;
+  return { reabiertas: reabrir.length, ...out, ahora: { win: cnt((p) => p.result === 'WIN'), loss: cnt((p) => p.result === 'LOSS'), push: cnt((p) => p.result === 'PUSH'), void: cnt((p) => p.result === 'VOID'), abiertas: cnt((p) => p.status === 'OPEN') } };
 }
 
 function track(tour, { limit = 40 } = {}) {
@@ -948,7 +995,7 @@ async function modelSnapshot() {
 }
 
 module.exports = { loadBoard, matchDetail,
-  DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, track,
+  DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, resettleShadow, marcadorCoherente, track,
   playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
   eventModel, marketOf,
 };

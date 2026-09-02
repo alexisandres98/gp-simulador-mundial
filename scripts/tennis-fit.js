@@ -209,5 +209,15 @@ for (const [tour, label] of [[0, 'atp'], [1, 'wta']]) {
   };
 }
 
+// LA TABLA DE RESIDUOS (C6) VIAJA APARTE (2-sep). `constants.gamesResid` la escribe scripts/tennis-resid.js
+// y depende de gamesCal: se conserva aquí para que un re-fit no la borre en silencio, pero tras un re-fit
+// hay que volver a correr tennis-resid.js porque el residuo cambia con la calibración.
+try {
+  const prev = JSON.parse(fs.readFileSync(path.join(BASE, 'model-priors.json'), 'utf8'));
+  for (const lbl of Object.keys(OUT.tours)) {
+    const gr = ((prev.tours || {})[lbl] || {}).constants && prev.tours[lbl].constants.gamesResid;
+    if (gr && OUT.tours[lbl].constants) { OUT.tours[lbl].constants.gamesResid = gr; console.log(`[fit] ${lbl}: gamesResid conservado (re-correr scripts/tennis-resid.js: gamesCal cambió)`); }
+  }
+} catch { /* sin priors previos */ }
 fs.writeFileSync(path.join(BASE, 'model-priors.json'), JSON.stringify(OUT, null, 1));
 console.log('\n[fit] priors escritos en data/tennis/model-priors.json');

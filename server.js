@@ -4237,33 +4237,18 @@ const oddsReserve = () => Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
 //      Cloudbet para CUALQUIER partido cotizado; value/picks requieren modelo y quedan para cuando se fitee.
 //      Se apaga con GP_QUOTES_ALL_SOCCER=false. Nota honesta: amistosos tipo PSG–Madrid NO existen en The
 //      Odds API (no hay clave de friendlies) — esos entran por API-Football (fixtures/contexto), no por aquí.
-const CLUB_CUPS = {
-  libertadores: { name: 'Copa Libertadores', odds_key: 'soccer_conmebol_copa_libertadores', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
-  sudamericana: { name: 'Copa Sudamericana', odds_key: 'soccer_conmebol_copa_sudamericana', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
-  leaguescup:   { name: 'Leagues Cup', odds_key: 'soccer_concacaf_leagues_cup', from: ['mls', 'ligamx'], hfa: 45 },
-  eflcup:       { name: 'EFL Cup', odds_key: 'soccer_england_efl_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
-  facup:        { name: 'FA Cup', odds_key: 'soccer_fa_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
-  dfbpokal:     { name: 'DFB-Pokal', odds_key: 'soccer_germany_dfb_pokal', from: ['bundesliga', 'bundesliga2', 'liga3'], hfa: 55 },
-  copadelrey:   { name: 'Copa del Rey', odds_key: 'soccer_spain_copa_del_rey', from: ['laliga', 'laliga2'], hfa: 55 },
-  coppaitalia:  { name: 'Coppa Italia', odds_key: 'soccer_italy_coppa_italia', from: ['seriea', 'serieb'], hfa: 55 },
-  coupefrance:  { name: 'Coupe de France', odds_key: 'soccer_france_coupe_de_france', from: ['ligue1', 'ligue2'], hfa: 55 },
-  uclq:         { name: 'Champions League · clasificación', odds_key: 'soccer_uefa_champs_league_qualification', from: ['premier', 'laliga', 'bundesliga', 'seriea', 'ligue1', 'eredivisie', 'portugal', 'belgica', 'turquia', 'grecia', 'escocia', 'austria', 'suiza', 'dinamarca', 'noruega', 'suecia', 'polonia', 'irlanda', 'finlandia'], hfa: 55 },
-  saudi:        { name: 'Saudi Pro League', odds_key: 'soccer_saudi_arabia_pro_league', from: [], hfa: 60 },
-  aleague:      { name: 'A-League', odds_key: 'soccer_australia_aleague', from: [], hfa: 60 },
-};
-// Placeholders que YA existían en ratings.json sin odds_key → se les cablea la clave del proveedor.
-const CLUB_CUP_KEY_FIX = { champions: 'soccer_uefa_champs_league', europa: 'soccer_uefa_europa_league', uefa: 'soccer_uefa_europa_conference_league' };
+// 2-sep: la configuración de copas y la fusión de pools viven en clubs-engine/cups.js (compartido con
+// scripts/clubs-cups-gap.js). CAMBIO: los ratings se COPIAN (la liga de origen no se muta) y a los equipos de
+// nivel k se les resta GAP·(k−1) Elo — prior por división DECLARADO (GP_CUP_TIER_GAP_ELO, default 150), no
+// ajustado; el orden de `from` es el nivel. Antes se fusionaba por referencia sin recalibrar escalas y la
+// discrepancia modelo−mercado en copas era el doble que en liga (docs/BACKTESTS_FAMILIAS_2026-09-02.md §3.2).
+const { CLUB_CUPS, CLUB_CUP_KEY_FIX, buildCupLeague } = require('./clubs-engine/cups');
 function clubsEnsureCups(RT) {
   if (!RT || !RT.leagues || RT._cupsDone) return RT;
   for (const [lg, k] of Object.entries(CLUB_CUP_KEY_FIX)) { if (RT.leagues[lg] && !RT.leagues[lg].odds_key) RT.leagues[lg].odds_key = k; }
   for (const [key, cfgC] of Object.entries(CLUB_CUPS)) {
     if (RT.leagues[key]) continue;
-    const merged = {};
-    for (const src of cfgC.from) {
-      const L = RT.leagues[src]; if (!L || !L.ratings) continue;
-      for (const [tid, tr] of Object.entries(L.ratings)) if (!merged[tid]) merged[tid] = tr; // referencia, no copia
-    }
-    RT.leagues[key] = { key, name: cfgC.name, odds_key: cfgC.odds_key, hfa: cfgC.hfa, ratings: merged, cup: true, backtest: { status: 'shadow' } };
+    RT.leagues[key] = buildCupLeague(RT, key, cfgC);
   }
   RT._cupsDone = true;
   return RT;
@@ -5745,22 +5730,33 @@ function clubBaseElo(lg, tid) {
   const L = RT.leagues && RT.leagues[lg];
   return (L && L.ratings && L.ratings[tid] && L.ratings[tid].elo) || 1500;
 }
+// Prior por división de una liga virtual de COPA (clubs-engine/cups.js, 2-sep): el overlay dinámico db.clubElos
+// es GLOBAL por equipo (nace en su liga de origen), así que el prior se SUMA al leer el Elo dentro de la copa y
+// se RESTA al escribirlo (applyClubElo) para que jamás se filtre a la liga de origen. Fuera de copas es 0.
+function clubCupTierOffset(lg, tid) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg];
+  const tr = L && L.cup && L.ratings && L.ratings[tid];
+  return (tr && Number(tr.tier_offset)) || 0;
+}
 function clubElo(lg, tid) {
-  return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] : clubBaseElo(lg, tid);
+  return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] + clubCupTierOffset(lg, tid) : clubBaseElo(lg, tid);
 }
 function applyClubElo(lg, hId, aId, hg, ag) {
   const RT = global._clubsRatings || {};
   const L = RT.leagues && RT.leagues[lg]; if (!L) return;
   db.clubElos = db.clubElos || {};
   const hfa = L.hfa || 60;
-  const eH = clubElo(lg, hId), eA = clubElo(lg, aId);
+  const offH = clubCupTierOffset(lg, hId), offA = clubCupTierOffset(lg, aId); // 0 fuera de copas
+  const eH = clubElo(lg, hId), eA = clubElo(lg, aId); // con el prior de división si el cruce es de copa
   const we = 1 / (1 + Math.pow(10, -((eH + hfa) - eA) / 400)); // esperanza del local con su ventaja de cancha
   const W = hg > ag ? 1 : hg === ag ? 0.5 : 0;
   const margin = Math.abs(hg - ag);
   const G = margin <= 1 ? 1 : margin === 2 ? 1.5 : (11 + margin) / 8;
   const delta = CLUB_ELO_K * G * (W - we);
-  db.clubElos[hId] = Math.round((eH + delta) * 10) / 10;
-  db.clubElos[aId] = Math.round((eA - delta) * 10) / 10;
+  // el overlay se guarda SIN el prior (es el Elo del equipo en su liga; el prior se vuelve a sumar al leer)
+  db.clubElos[hId] = Math.round((eH - offH + delta) * 10) / 10;
+  db.clubElos[aId] = Math.round((eA - offA - delta) * 10) / 10;
 }
 // resetea el overlay si el fit base cambió (nuevo ratings.json): el re-fit ya incorpora los resultados.
 function clubEloReconcileFit() {
@@ -7487,8 +7483,16 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       const rc = clubRestContext(lg, hId, aId, +new Date(kickoff)); // descanso: SOLO acá (ver clubRestContext)
       const pr = matchProbs(rh + (L.hfa || 60) + (rc ? rc.elo : 0), ra); // MISMO modelo 1X2 del cockpit (Elo dinámico + hfa de liga) + descanso
       const sel = {};
-      for (const o of ['home', 'draw', 'away']) { const b = bestOf(o); sel[o] = { model: pr[o], market: cons.fair[o], bestOdds: b.odds, bestBook: b.book, books: booksOf(o) }; }
-      events.push({ eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff, selections: sel, restCtx: rc });
+      // 2-sep: consenso 1X2 con de-vig de SHIN por casa y mediana entre casas (docs/BACKTESTS_FAMILIAS_2026-09-02.md
+      // §3.1: el proporcional sobreestima el longshot — cuota >5: mercado 17,1 % vs observado 13,1 %, n=84).
+      // `cons.fair` (proporcional del scanner) se conserva al lado como market_prob_prop para comparar los dos
+      // en el libro. SOLO el 1X2: los totales (match_total, abajo) y córners/tarjetas siguen con el
+      // proporcional a dos lados de siempre.
+      const byBook3 = {};
+      for (const q of fresh) { (byBook3[q.venue] = byBook3[q.venue] || {})[q.outcome] = q.odds_decimal; }
+      const shin = require('./lib/devig').shinConsensus1x2(Object.values(byBook3));
+      for (const o of ['home', 'draw', 'away']) { const b = bestOf(o); sel[o] = { model: pr[o], market: (shin.fair && shin.fair[o] != null) ? shin.fair[o] : cons.fair[o], marketProp: cons.fair[o], bestOdds: b.odds, bestBook: b.book, books: booksOf(o) }; }
+      events.push({ eventId: mk.event_id, home: meta.home, away: meta.away, homeId: hId, awayId: aId, league: lg, kickoff, selections: sel, restCtx: rc, devig: shin.fair ? 'shin' : 'proportional' });
       out.events_1x2++; st.events++;
     } else if (mk.market_family === 'match_total') {
       // MISMO goal engine del cockpit: λ ataque/defensa de la liga (fallback Elo) + ajuste del observer si activo
@@ -7709,23 +7713,37 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (fam === 'CARDS') return clubPropsGate(lg2, 'cards_total');
     return (L2.backtest && L2.backtest.status) || 'shadow';
   };
-  const mkRecord = (family, ev, fields, key) => ({
+  const mkRecord = (family, ev, fields, key) => {
+    const koAt = clubTsaKickoff(fields.league, fields.homeId, fields.awayId, Date.parse(fields.kickoff)) || fields.kickoff;
+    const koMs = Date.parse(koAt || 0);
+    return {
     pick_id: stable(key), family, is_club: true, league: fields.league,
     gate_status: gateOf(fields.league, family), // approved|shadow — el track privado separa por esto
     competition_name: (RT.leagues[fields.league] && RT.leagues[fields.league].name) || fields.league,
-    event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: clubTsaKickoff(fields.league, fields.homeId, fields.awayId, Date.parse(fields.kickoff)) || fields.kickoff },
+    event: { canonical_event_id: ev, is_canonical: false, club_eid: 'cl-' + fields.league + '-' + fields.homeId + '-' + fields.awayId, home: fields.home, away: fields.away, home_team_id: fields.homeId, away_team_id: fields.awayId, kickoff_at: koAt },
     selection_code: fields.selection_code || null, market_id: fields.market_id || null, side: fields.side || null, line: fields.line != null ? fields.line : null,
     legs: fields.legs || null, // COMBO (12-ago): las patas viajan al feed (la card del cliente las pinta)
     player_name: fields.player_name || null, pid: fields.pid || null, player_family: fields.player_family || null,
     best_odds: fields.best_odds || null, best_book: fields.best_book || null, books: fields.books || null,
+    // 2-sep (preregistros GOALS/CORNERS, docs/PREREGISTRO_*.md): los valores DE CREACIÓN quedan congelados aquí;
+    // refreshClubPickPrices solo toca best_odds/best_book/books y anota books_final. El libro anterior no los
+    // tenía (odds_at_create lo escribía el refresco) y por eso `books` era el de ≤2 h antes del saque.
+    odds_at_create: fields.best_odds || null, best_book_at_create: fields.best_book || null, books_at_create: fields.books || null,
+    hours_to_ko: isFinite(koMs) ? +((koMs - Date.now()) / 3600e3).toFixed(2) : null,
     model_prob: fields.model_prob != null ? fields.model_prob : null, market_prob: fields.market_prob != null ? fields.market_prob : null,
+    // SOLID (2-sep): model_prob = p_pub (probabilidad publicable), model_prob_raw = Elo crudo; market_prob = consenso
+    // Shin y market_prob_prop = el proporcional de antes, para comparar los dos de-vig en el libro.
+    model_prob_raw: fields.model_prob_raw != null ? fields.model_prob_raw : null,
+    market_prob_prop: fields.market_prob_prop != null ? fields.market_prob_prop : null,
+    devig: fields.devig || null, solid_c: fields.solid_c != null ? fields.solid_c : null,
     confidence: fields.confidence != null ? fields.confidence : null, edge_pp: fields.edge_pp != null ? fields.edge_pp : null,
     why_es: fields.why && fields.why.es, why_en: fields.why && fields.why.en,
     regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
     rest_ctx: fields.rest_ctx || null, // descanso aplicado al 1X2 (clubRestContext) — solo SOLID; auditoría del efecto
     solid_lever: fields.solid_lever || false, // SOLID que pasa SOLO por la palanca ajustada (modelo<mercado) — monitoreo
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
-  });
+    };
+  };
   let fresh = []; // (let: las reglas de publicación lo re-filtran antes de persistir)
   // FILTRO ANCLA-SOLID (23-jul, autopsia: el 1X2 no le gana al mercado — CLV −4.5%, bucket conf 60-70 roto
   // −27pp). Una SOLID solo se CREA si es favorito CLARO del consenso (mercado ≥55%), con mercado profundo
@@ -7742,6 +7760,15 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   //   si el sesgo del mercado blando cambia, el lado elegido cambia solo (decisión de diseño de Alexis).
   // INTERMEDIAS → ninguna variante 1X2 validada → no se genera (el resto de familias no cambia).
   // Reemplaza el filtro ancla-global del 23-jul (que ignoraba el régimen: −46% en blandas).
+  // ===== PROBABILIDAD PUBLICABLE DEL 1X2 (2-sep; docs/BACKTESTS_FAMILIAS_2026-09-02.md §3.1 y §3.6) ==========
+  // p_pub = σ( logit(p_mkt_shin) + c·(logit(p_gp) − logit(p_mkt_shin)) ), con c = GP_SOLID_C (default 0).
+  // El blend ajustado en el 60 % temporal dio c = −0,14 (SE 0,22): el Elo NO añade información al 1X2, así que
+  // lo que se publica es el consenso Shin y el modelo entra solo como DESVIACIÓN con peso c. Con c=0 la ventaja
+  // de `lead` es cero por construcción → no genera picks (lo correcto según el backtest); `anchor` sigue vivo
+  // sobre el consenso Shin con su gate de siempre (el Elo crudo no contradice). model_prob = p_pub;
+  // model_prob_raw conserva el Elo crudo para seguir midiéndolo. GOALS/CORNERS/CARDS no pasan por aquí.
+  const SOLID_C = Number(process.env.GP_SOLID_C ?? 0);
+  const { publishableProb } = require('./lib/devig');
   for (const ev of events) {
     const bandE = leagueEfficiency(ev.league).band;
     if (bandE === 'intermedia') continue;
@@ -7750,28 +7777,31 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     if (!fav) continue;
     const f = S[fav]; const m = Number(f.model || 0), k = Number(f.market || 0);
     if (!(m > 0 && k > 0 && k < 1)) continue;
-    const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100; // = (modelo−mercado)/2 en pp
-    const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff, rest_ctx: ev.restCtx || null };
+    const pubF = publishableProb(k, m, SOLID_C); // probabilidad publicable del favorito
+    const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100; // = (Elo crudo−mercado)/2 en pp — gate del ancla, sin cambios
+    const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff, rest_ctx: ev.restCtx || null, devig: ev.devig || 'shin', solid_c: SOLID_C };
     if (bandE === 'eficiente') {
       if (k < 0.55 || (f.books || 0) < 5 || !(f.bestOdds > 1)) continue;
       if (blendEdge < -2) continue; // el modelo contradice al ancla → no se ancla
       const why = compose([{ code: 'MARKET_ANCHOR', w: 3, books: f.books }, ...(m > k ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : [])]);
-      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: m, market_prob: k, confidence: 0.5 * m + 0.5 * k, why, regime: 'anchor' }, ev.eventId + '|SOLID|' + fav));
+      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: fav, best_odds: f.bestOdds, best_book: f.bestBook, books: f.books, model_prob: pubF, model_prob_raw: m, market_prob: k, market_prob_prop: f.marketProp != null ? f.marketProp : null, confidence: 0.5 * pubF + 0.5 * k, why, regime: 'anchor' }, ev.eventId + '|SOLID|' + fav));
     } else { // blanda → modelo líder
       // CORRECCIÓN DE PRODUCTO (27-jul, Alexis): las picks 1X2 son "QUIÉN GANA" — jamás doble chance ni
-      // empate. El modelo evalúa AMBOS lados ganadores (home/away) con su blend y publica el de mayor edge
-      // post-blend ≥2pp A SU CUOTA REAL. Si el lado del modelo fuera el empate, simplemente no se publica.
+      // empate. El modelo evalúa AMBOS lados ganadores (home/away) y publica el de mayor ventaja ≥2pp A SU
+      // CUOTA REAL. Si el lado del modelo fuera el empate, simplemente no se publica.
+      // 2-sep: la ventaja se mide contra p_pub (antes: blend 0,5/0,5 del Elo crudo). Con c=0 es siempre 0.
       let best = null;
       for (const side of ['home', 'away']) {
         const s2 = S[side]; if (!s2 || !(s2.bestOdds > 1) || (s2.books || 0) < 3) continue;
         const m2 = Number(s2.model || 0), k2 = Number(s2.market || 0);
         if (!(m2 > 0 && k2 > 0 && k2 < 1)) continue;
-        const eg2 = ((0.5 * m2 + 0.5 * k2) - k2) * 100;
-        if (eg2 >= 2 && (!best || eg2 > best.eg)) best = { side, s: s2, m: m2, k: k2, eg: eg2 };
+        const pub2 = publishableProb(k2, m2, SOLID_C);
+        const eg2 = (pub2 - k2) * 100;
+        if (eg2 >= 2 && (!best || eg2 > best.eg)) best = { side, s: s2, m: m2, k: k2, pub: pub2, eg: eg2 };
       }
       if (!best) continue;
       const why = compose([{ code: 'MODEL_AGREES_UP', w: 3 }, { code: 'MARKET_ANCHOR', w: 1, books: best.s.books }]);
-      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: best.side, best_odds: best.s.bestOdds, best_book: best.s.bestBook, books: best.s.books, model_prob: best.m, market_prob: best.k, confidence: 0.5 * best.m + 0.5 * best.k, why, regime: 'lead' }, ev.eventId + '|SOLID|' + best.side));
+      fresh.push(mkRecord('SOLID', ev.eventId, { ...base, selection_code: best.side, best_odds: best.s.bestOdds, best_book: best.s.bestBook, books: best.s.books, model_prob: best.pub, model_prob_raw: best.m, market_prob: best.k, market_prob_prop: best.s.marketProp != null ? best.s.marketProp : null, confidence: 0.5 * best.pub + 0.5 * best.k, why, regime: 'lead' }, ev.eventId + '|SOLID|' + best.side));
     }
   }
   // 1 GOALS por evento. POST-MUNDIAL (19-jul, decisión de Alexis): goles al PÚBLICO = solo ANCLA. El mercado de
@@ -7847,6 +7877,18 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       selection_code: legSolid.selection, market_id: legGoals.marketId, side: legGoals.side, line: legGoals.line,
       legs: c.legs, best_odds: c.comboOdds, confidence: c.confidence, why, regime: 'edge',
     }, c.eventId + '|COMBO'));
+  }
+  // ===== PREREGISTROS (2-sep; docs/PREREGISTRO_GOALS_TARDE.md y docs/PREREGISTRO_CORNERS_2CASAS.md) =========
+  // Etiquetas de MEDICIÓN sobre los valores de creación. No cambian ninguna decisión de publicación.
+  //   GOALS "tarde y a precio justo": ≤48 h del saque y cuota ≥ la justa del consenso (best_odds ≥ 1/market_prob).
+  //   CORNERS "≥2 casas": la regla del backtest (+12,1 %) medida por fin con el nº de casas DE CREACIÓN.
+  for (const p of fresh) {
+    if (p.family === 'GOALS') {
+      const k = Number(p.market_prob) || 0, o = Number(p.best_odds) || 0;
+      p.price_vs_fair = (k > 0 && o > 1) ? +(o * k).toFixed(4) : null;
+      p.prereg_goals_late = !!(p.hours_to_ko != null && p.hours_to_ko <= 48 && k > 0 && o >= 1 / k);
+    }
+    if (p.family === 'CORNERS') p.prereg_corners_2books = (Number(p.books_at_create) || 0) >= 2;
   }
   db.clubDailyPicks = db.clubDailyPicks || [];
   // REGLA DE PUBLICACIÓN (autopsia 18-jul): máximo 3 picks PÚBLICAS por evento — SOLID > GOALS > la mejor
@@ -8362,7 +8404,62 @@ function recoverClubSupersededResults() {
   for (const p of Object.values(best)) { p.status = 'ACTIVE'; p.result_code = 'PENDING'; p.settled_at = null; reactivated++; }
   if (reactivated) save();
   const s = settleClubDailyPicks();
-  return { reactivated, settled: s.settled, still_active: (db.clubDailyPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < now).length };
+  const sh = measureClubSupersededShadow();
+  return { reactivated, settled: s.settled, shadow_measured: sh.measured, still_active: (db.clubDailyPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < now).length };
+}
+// LIQUIDACIÓN RETROACTIVA DE SUPERSEDED — SOLO MEDIR (2-sep; docs/BACKTESTS_FAMILIAS_2026-09-02.md §3.5).
+// 276 SOLID, 353 GOALS y 479 CORNERS quedaron SUPERSEDED sin resultado: la regla `lead` poda cuando el mercado
+// se acerca al modelo, así que la muestra decidida del libro está seleccionada EN CONTRA del modelo. Aquí cada
+// SETTLED/SUPERSEDED de SOLID, GOALS y CORNERS recibe shadow_result = { code, units, score, at } cuando el
+// marcador (o el total de córners) existe, SIN tocar status ni result_code: no entra a ningún cuadro, solo al
+// bloque `superseded_medido` del track admin. Las unidades van a odds_at_create (la cuota a la que nació).
+// Idempotente: una pick medida no se vuelve a medir. Score desde el sync vivo o results-<liga>.json (mismas
+// fuentes del liquidador); córners desde clubPropTotal (props-history de la liga).
+function measureClubSupersededShadow() {
+  const { settleOne } = require('./pick-engine/dailyPicks');
+  const now = Date.now();
+  let measured = 0, pending = 0;
+  const resultsOf = (lg) => {
+    global._clubsResults = global._clubsResults || {};
+    if (!global._clubsResults[lg]) { try { global._clubsResults[lg] = JSON.parse(fs.readFileSync(clubDataFile(`results-${lg}.json`), 'utf8')).rows || []; } catch { global._clubsResults[lg] = []; } }
+    return global._clubsResults[lg];
+  };
+  for (const p of (db.clubDailyPicks || [])) {
+    if (p.status !== 'SETTLED' || p.result_code !== 'SUPERSEDED' || p.shadow_result) continue;
+    if (!['SOLID', 'GOALS', 'CORNERS'].includes(p.family)) continue;
+    const ko = Date.parse((p.event && p.event.kickoff_at) || 0);
+    if (!(isFinite(ko) && ko < now - 2 * 3600e3)) continue; // el partido tiene que haber terminado
+    const oddsC = Number(p.odds_at_create) || Number(p.best_odds) || 0;
+    if (!(oddsC > 1)) continue;
+    let code = null, score = null;
+    try {
+      if (p.family === 'CORNERS') {
+        const tot = clubPropTotal(p.league, p.event, 'CORNERS');
+        if (tot == null) { pending++; continue; }
+        if (tot === Number(p.line)) code = 'PUSH';
+        else code = ((p.side === 'over') === (tot > Number(p.line))) ? 'WIN' : 'LOSS';
+        score = { total: tot };
+      } else {
+        let r = (db.clubResults || {})[clubScoreKey(p.league, p.event.home_team_id, p.event.away_team_id)];
+        if (r && r.status !== 'final') { pending++; continue; }
+        if (!r) {
+          const row = resultsOf(p.league).find(m2 => m2.hg != null && ((m2.home_id === p.event.home_team_id && m2.away_id === p.event.away_team_id) || (m2.home_id === p.event.away_team_id && m2.away_id === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+          if (row) r = { status: 'final', home_id: row.home_id, hg: row.hg, ag: row.ag };
+        }
+        if (!r) { pending++; continue; }
+        const homeIsH = r.home_id === p.event.home_team_id;
+        const hg = homeIsH ? r.hg : r.ag, ag = homeIsH ? r.ag : r.hg;
+        code = settleOne(p, { homeGoals: hg, awayGoals: ag });
+        if (!code || code === 'PENDING') { pending++; continue; }
+        score = { hg, ag };
+      }
+    } catch { pending++; continue; }
+    const units = code === 'WIN' ? +(oddsC - 1).toFixed(2) : code === 'LOSS' ? -1 : 0;
+    p.shadow_result = { code, units, score, odds: oddsC, at: new Date().toISOString() };
+    measured++;
+  }
+  if (measured) save();
+  return { measured, pending };
 }
 // F3.4: fallback de liquidación de CORNERS/CARDS vía AF statistics (clubMatchStats) para partidos FINALIZADOS
 // que el backfill de props-history aún no trae (el backfill corre por pasadas; esto liquida en horas, no días).
@@ -8428,8 +8525,13 @@ async function refreshClubPickPrices() {
       }
       if (!rows.length) continue;
       const best = rows.slice().sort((a, b) => b.o - a.o)[0];
+      // 2-sep (preregistros): los valores DE CREACIÓN no se pisan jamás. Las picks nacidas antes del campo se
+      // congelan en su primer refresco (lo que había antes de tocar nada); las nuevas ya los traen de mkRecord.
       if (p.odds_at_create == null) p.odds_at_create = p.best_odds;
+      if (p.books_at_create == null) p.books_at_create = p.books;
+      if (p.best_book_at_create == null) p.best_book_at_create = p.best_book;
       p.best_odds = +Number(best.o).toFixed(3); p.best_book = best.b; p.books = new Set(rows.map(r => r.b)).size;
+      p.books_final = p.books; // nº de casas del último refresco (≤2 h del saque) — lo que antes se leía como `books`
       p.odds_refreshed_at = new Date().toISOString();
       refreshed++;
     } catch { /* siguiente ciclo */ }
@@ -8463,19 +8565,24 @@ async function captureClubPicksClosing({ force = false } = {}) {
       try {
         const ceid = p.event.canonical_event_id;
         const cutoff = new Date(ko + 30 * 60e3).toISOString(); // tolerancia: última observación hasta KO+30min
-        let fair = null, odds = null, at = null;
+        let fair = null, odds = null, at = null, fairShin = null;
         if (p.family === 'SOLID') {
           const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND observed_at <= $2`, [ceid, cutoff]).catch(() => ({ rows: [] }));
           const byBook = {};
           for (const q of r.rows) { (byBook[q.sportsbook_code] = byBook[q.sportsbook_code] || {})[String(q.side).toLowerCase()] = q; }
           const sel = String(p.selection_code || '').toLowerCase();
-          const fairs = [], oddsArr = [];
+          const fairs = [], oddsArr = [], shinFairs = [];
+          const { shinDevig } = require('./lib/devig');
           for (const b of Object.values(byBook)) {
             if (!b.home || !b.draw || !b.away || !b[sel]) continue;
             const inv = 1 / b.home.o + 1 / b.draw.o + 1 / b.away.o;
             fairs.push((1 / b[sel].o) / inv); oddsArr.push(b[sel].o); at = b[sel].observed_at;
+            // 2-sep: la justa de cierre con Shin se guarda AL LADO (fair_prob_shin) para medir; el CLV sigue
+            // calculándose con el proporcional para no romper la serie histórica.
+            const sh = shinDevig([b.home.o, b.draw.o, b.away.o]);
+            if (sh.status === 'ok' && sh.probabilities) shinFairs.push(sh.probabilities[['home', 'draw', 'away'].indexOf(sel)]);
           }
-          fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null;
+          fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null; fairShin = shinFairs.length ? med(shinFairs) : null;
         } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
           const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
           const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at <= $4`, [ceid, fam, p.line, cutoff]).catch(() => ({ rows: [] }));
@@ -8496,7 +8603,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
           at = r.rows.length ? r.rows[0].observed_at : null;
         }
         if (fair == null) { misses++; continue; }
-        p.closing = { fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null, at: at || new Date(ko).toISOString() };
+        p.closing = { fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null, at: at || new Date(ko).toISOString(), ...(fairShin != null ? { fair_prob_shin: +fairShin.toFixed(6) } : {}) };
         captured++;
       } catch { misses++; continue; }
     }
@@ -8549,19 +8656,51 @@ function officialClubRecord() {
 }
 function clubDailyPicksTrackRecord() {
   const agg = {};
+  // 2-sep: cada bloque lleva ADEMÁS pnl_at_create/roi_at_create (a odds_at_create, la cuota a la que nació la
+  // pick; best_odds es la refrescada ≤2 h del saque y a esa cuota los ROI de SOLID salían 4-6 pp mejores de
+  // lo real — BACKTESTS §3.5). Sin odds_at_create (picks viejas sin refresco) se usa best_odds.
+  const bump = (key, code, oddsBest, oddsCreate) => {
+    const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0, pnl_at_create: 0 };
+    a.n++;
+    if (code === 'WIN') { a.wins++; a.pnl += (oddsBest || 1) - 1; a.pnl_at_create += (oddsCreate || oddsBest || 1) - 1; }
+    else if (code === 'LOSS') { a.losses++; a.pnl -= 1; a.pnl_at_create -= 1; }
+    else a.pushes++;
+  };
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
     const keys = ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow'), 'regime:' + (p.regime || 'pre')];
     if (p.family === 'SOLID') keys.push('solid_lever:' + (p.solid_lever ? 'on' : 'off')); // evaluación de la palanca (lunes)
-    for (const key of keys) {
-      const a = agg[key] = agg[key] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl: 0 };
+    // Preregistros (2-sep): desglose por etiqueta; CORNERS además con Liga MX aparte (aportaba 14,8 de las 24,6 u).
+    if (p.family === 'GOALS' && p.prereg_goals_late != null) keys.push('GOALS|prereg_goals_late:' + (p.prereg_goals_late ? 'on' : 'off'));
+    if (p.family === 'CORNERS' && p.prereg_corners_2books != null) {
+      const tag = p.prereg_corners_2books ? 'on' : 'off', mx = p.league === 'ligamx' ? 'ligamx' : 'resto';
+      keys.push('CORNERS|prereg_corners_2books:' + tag, 'CORNERS|' + mx, 'CORNERS|prereg_corners_2books:' + tag + '|' + mx);
+    }
+    for (const key of keys) bump(key, p.result_code, Number(p.best_odds) || 0, Number(p.odds_at_create) || 0);
+  }
+  for (const k in agg) {
+    const a = agg[k]; const dec = a.wins + a.losses;
+    a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi = a.n ? +(a.pnl / a.n).toFixed(3) : null; a.pnl = +a.pnl.toFixed(2);
+    a.roi_at_create = a.n ? +(a.pnl_at_create / a.n).toFixed(3) : null; a.pnl_at_create = +a.pnl_at_create.toFixed(2);
+  }
+  // SUPERSEDED MEDIDAS (2-sep, solo medición): lo que measureClubSupersededShadow liquidó en la sombra. NO entra
+  // a ningún cuadro; sirve para leer el libro sin el sesgo de selección del prune (§3.5). ROI a odds_at_create.
+  const sup = { n: 0, wins: 0, losses: 0, pushes: 0, pnl_at_create: 0, by_family: {} };
+  for (const p of (db.clubDailyPicks || [])) {
+    const s = p.shadow_result; if (!s || p.result_code !== 'SUPERSEDED') continue;
+    const f = sup.by_family[p.family] = sup.by_family[p.family] || { n: 0, wins: 0, losses: 0, pushes: 0, pnl_at_create: 0 };
+    for (const a of [sup, f]) {
       a.n++;
-      if (p.result_code === 'WIN') { a.wins++; a.pnl += (Number(p.best_odds) || 1) - 1; }
-      else if (p.result_code === 'LOSS') { a.losses++; a.pnl -= 1; }
+      if (s.code === 'WIN') { a.wins++; a.pnl_at_create += Number(s.units) || 0; }
+      else if (s.code === 'LOSS') { a.losses++; a.pnl_at_create -= 1; }
       else a.pushes++;
     }
   }
-  for (const k in agg) { const a = agg[k]; const dec = a.wins + a.losses; a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi = a.n ? +(a.pnl / a.n).toFixed(3) : null; a.pnl = +a.pnl.toFixed(2); }
+  for (const a of [sup, ...Object.values(sup.by_family)]) {
+    const dec = a.wins + a.losses;
+    a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi_at_create = a.n ? +(a.pnl_at_create / a.n).toFixed(3) : null; a.pnl_at_create = +a.pnl_at_create.toFixed(2);
+  }
+  agg.superseded_medido = sup;
   return agg;
 }
 // ===== F1 — MI CARTERA: helpers ==============================================================================
@@ -9137,11 +9276,12 @@ async function evaluateClubDailyPicks() {
     const rc = reclassifyClubSegments(); b.reclassified = rc.reclassified;
     const s = settleClubDailyPicks();
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    let sh = { measured: 0 }; try { sh = measureClubSupersededShadow(); } catch { /* solo medición, jamás bloquea */ } // 2-sep: SUPERSEDED a la sombra
     const ri = repairClubPickTeamIds();   // ids de equipo mal resueltos por el matcher viejo (caso Grasshopper 25-jul)
     const kf = refreshClubPickKickoffs(); // kickoff autoritativo TSA (picks vs calendario, caso Tigres 24-jul)
     const rf = await refreshClubPickPrices().catch(() => ({ refreshed: 0 })); // CLV fix: precio ejecutable en la ventana final
     const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, ids: ri, kickoffs: kf, refresh: rf, closing: cl };
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, shadow_superseded: sh, ids: ri, kickoffs: kf, refresh: rf, closing: cl };
     if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
   } finally { _clubPicksRunning = false; }

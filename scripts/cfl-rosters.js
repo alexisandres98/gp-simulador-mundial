@@ -95,6 +95,31 @@ function parseRoster(html) {
   return ded;
 }
 
+// EL CMS NUEVO DE LA LIGA (2-sep): los clubes migrados (BC/CGY/SSK/HAM/OTT) ya no traen tabla — incrustan
+// un iframe de `stats.prod.s.cfl.ca/modules/club-roster?team_id=N`, y ESE módulo llega renderizado en
+// servidor con la tabla entera (NO · foto · NAME · POS · A/N/G · HT · WT · AGE · COLLEGE) y el headshot en
+// `content.cfl.ca/headshots/<id>-headshot.png`. El `/api/tunnel` que parecía la puerta era solo el túnel de
+// Sentry. Un club migrado se detecta por el team_id del iframe en su propia página: sin lista fija, así
+// que los cuatro que aún no han migrado entrarán solos el día que lo hagan.
+function statsModuleUrl(clubHtml) {
+  const m = String(clubHtml || '').match(/club-roster\?team_id=(\d+)/);
+  return m ? `https://stats.prod.s.cfl.ca/modules/club-roster?team_id=${m[1]}&view=all&locale=en-CA&show_title=0` : null;
+}
+function parseStatsModule(html) {
+  const out = [];
+  const rows = String(html || '').split('class="player-table-row').slice(1);
+  const col = (r, c) => { const m = r.match(new RegExp(`class="col-${c}[^"]*"[^>]*>([^<]*)<`)); return m ? strip(m[1]) : null; };
+  for (const r of rows) {
+    const no = col(r, 'no'); const name = col(r, 'name'); if (!no || !name || !/,/.test(name)) continue;
+    const img = (r.match(/<img[^>]+src="(https:\/\/content\.cfl\.ca\/headshots\/[^"]+)"/) || [])[1] || null;
+    out.push({ jersey: no, name: fixName(name), pos: col(r, 'pos'), nat: NAT[(col(r, 'ang') || '').toUpperCase()] || null,
+      ht: col(r, 'ht'), wt: col(r, 'wt'), age: col(r, 'age'), college: col(r, 'college'), photo_url: img });
+  }
+  const seen = new Set(), ded = [];
+  for (const p of out) { const k = slug(p.name); if (seen.has(k)) continue; seen.add(k); ded.push(p); }
+  return ded;
+}
+
 // las caras se AUTO-HOSPEDAN en public/logos/amfoot/cfl/ — mismo criterio que College: el producto no
 // depende de un hotlink que puede caerse. Solo baja las que faltan; un fallo no tumba la cosecha.
 const FOTOS_DIR = path.join(__dirname, '..', 'public', 'logos', 'amfoot', 'cfl');
@@ -163,6 +188,11 @@ async function wikiRoster(teamName) {
     try { html = await get(T.url); } catch (e) { html = null; }
     let rows = parseRoster(html || '');
     let via = 'club';
+    if (!rows.length) {
+      // primero el módulo de estadísticas de la liga (tabla completa CON headshots); Wikipedia solo si tampoco
+      const mu = statsModuleUrl(html);
+      if (mu) { try { rows = parseStatsModule(await get(mu)); via = 'stats.cfl.ca'; } catch { rows = []; } }
+    }
     if (!rows.length) {
       // el club migró al CMS nuevo (Nuxt sin tabla): identidad FRESCA de Wikipedia + riqueza (foto, talla,
       // peso, college) del último snapshot de la web vieja en Wayback — las fotos de static.cfl.ca siguen

@@ -27,9 +27,9 @@
   Al completar una tabla localmente: subirla con POST `/api/internal/lolraw?key=&file=games.json` (gzip;
   rechaza si trae menos filas). Después: **Fase 3** (walk-forward del rating: lado azul/rojo, parche,
   región) y recién entonces abrir más familias de LoL.
-- **Fotos CFL de los 5 clubes migrados** (BC/CGY/SSK/HAM/OTT): el CMS nuevo es Nuxt+`/api/tunnel` opaco.
-  Vías: reversar el tunnel (el bundle de stats.cfl.ca lo usa) o Wayback desde una red que no lo bloquee
-  (los snapshots existen; el proxy de la sesión 31-ago bloqueaba web.archive.org).
+- ~~Fotos CFL de los 5 clubes migrados~~ **hecho 2-sep**: el módulo `stats.prod.s.cfl.ca/modules/club-roster`
+  trae tabla y headshots; 620 de 666 jugadores con cara (HANDOFF §CFL). Refresco: `node scripts/cfl-rosters.js`
+  + `scripts/cfl-headshots-resize.js` (solo en desarrollo).
 - **Cloudbet lecturas**: sin cambios (403 Cloudflare con key válida). La key "affiliate" que llegó el
   31-ago es de OTRA cuenta y solo sirve para feed de cuotas (guardada en scratchpad como respaldo de feed).
 - Fechas: **9-sep kickoff NFL** (jobs listos, todo en sombra) · **17-sep vuelve la WNBA** (muestra v2;

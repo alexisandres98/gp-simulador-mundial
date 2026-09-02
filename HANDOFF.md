@@ -35,6 +35,15 @@ sin converger terminó en **113 llamadas, ~4 minutos** (`node scripts/lol-harves
   solas en un año, no antes.
 - No entró nada de Oracle's Elixir (cuota de Drive agotada; la copia al Drive de Alexis no es descargable por
   la vía disponible y se tiró a la papelera). `RIGHTS.md` tiene el asiento.
+
+## 🏈 CFL — LAS CARAS DE LOS 9 CLUBES, CERRADO (2-sep)
+El `/api/tunnel` que parecía la puerta del CMS nuevo era solo el túnel de Sentry. La plantilla real viaja en un
+**iframe de `stats.prod.s.cfl.ca/modules/club-roster?team_id=N`** que llega renderizado en servidor con la tabla
+entera y el headshot en `content.cfl.ca/headshots/<id>-headshot.png`. `cfl-rosters.js` detecta el team_id en
+la página del club (sin lista fija) y lee ese módulo antes de caer a Wikipedia. Resultado: **666 jugadores,
+620 con cara** (antes 258; los 8 clubes ya migrados entraron por el módulo, Montreal conserva su cosecha de
+club). Los PNG de 150 KB se reescalan a 240 px JPG con `scripts/cfl-headshots-resize.js` (Chromium del
+sandbox; Node puro no tiene resizer) — `public/logos/amfoot/cfl` pesa 7 MB.
 - **Aviso operativo de esta sesión:** el checkout local del sandbox apareció REVERTIDO a un commit del 24-ago a
   mitad de sesión (HEAD y archivos, sin rastro en el reflog). Los cambios se rehicieron sobre un worktree
   limpio de `origin/main` antes de commitear. Si pasa otra vez: `git fetch` + worktree nuevo, nunca commitear

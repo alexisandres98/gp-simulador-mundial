@@ -11424,9 +11424,10 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
   const SC = require('./basketball-engine/scenarios');
   const { simulate, markets } = require('./basketball-engine/simulate');
   const ESPN = require('./data-providers/basketball/espn');
+  const CLV = require('./basketball-engine/clv');
   db.hoopsPicks = db.hoopsPicks || [];
   const have = new Set(db.hoopsPicks.map(hoopsPickKey));
-  const out = { created: 0, considered: 0, leagues: 0 };
+  const out = { created: 0, considered: 0, leagues: 0, saltadas_por_tesis: 0 };
   // EL REGISTRO DE DECISIONES DE LA NOCHE. No solo lo que se publica: también lo que se rechazó y por qué.
   // Es lo que alimenta el panel de NO PICK y lo que permite auditar el criterio meses después.
   const gateDecisions = [];
@@ -11575,9 +11576,28 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
       // muestra del monitor — el track parecería tener el doble de evidencia de la que tiene.
       const famUsed = new Set();
       let perGame = 0;
+      // DESCANSO DIFERENCIAL (preregistro, backtests §5.4). Se calcula UNA vez por partido con el calendario
+      // ESPN de la ventana más el histórico de la liga; solo se guarda en las picks de TOTAL y es una
+      // ETIQUETA: no toca la probabilidad ni el criterio de emisión.
+      const restF = (() => { try { return CLV.restFeatures((gs || []).concat(C.games || []), { id: g.id, date: g.date, home: { id: g.home.id }, away: { id: g.away.id } }); } catch { return null; } })();
       for (const c of cands) {
         if (perGame >= HOOPS_PICK_MAX_PER_GAME() || out.created >= cap) break;
         if (famUsed.has(c.fam)) continue;
+        // ── UNA PICK POR TESIS (backtests §5.3: 79 picks de hándicap eran 15 tesis) ─────────────────
+        // La tesis es partido + familia + lado. Si ya existe una pick con esa tesis —viva o liquidada— no
+        // nace otra con la línea corrida: se anota la re-cotización en la existente y la familia queda
+        // ocupada en este partido para esta pasada.
+        const thesis = c.fam + '|' + c.side + '|' + String(g.id);
+        const prevT = CLV.findByThesis(db.hoopsPicks, thesis);
+        if (prevT) {
+          out.saltadas_por_tesis++;
+          if (CLV.addRequote(prevT, { at: new Date().toISOString(), line: c.line, best_odds: +c.best.o.toFixed(2), model_prob: +c.pModel.toFixed(4), edge_pp: +c.edgePp.toFixed(2) })) save();
+          famUsed.add(c.fam);
+          continue;
+        }
+        // línea principal del mercado para esta familia (la que más casas cotizan): el movimiento se mide
+        // contra ella al cierre, no contra la línea marginal que quizá solo tenía una casa
+        const consensusLine = c.fam === 'match_winner' ? null : CLV.mainLine(list, { ceid, fam: c.fam, near: c.line });
         // El "porqué" se arma acá, con el partido todavía en memoria: después el dossier ya no está.
         const why = hoopsPickWhy({ fam: c.fam, selName: c.selName, side: c.side, line: c.line, pModel: c.pModel,
           sim, hp: intel.teams.home, ap: intel.teams.away, ex: intel.exploit.home, exA: intel.exploit.away,
@@ -11608,6 +11628,20 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           sample_confidence: sim.conf,
           status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
           created_at: new Date().toISOString(),
+          // ── LO QUE HACE FALTA PARA MEDIR BIEN (2-sep, backtests §5.3) ──────────────────────────────
+          // `market_prob` YA ES la probabilidad justa del consenso (mediana de implícitas por lado + Shin)
+          // de ESTA selección en ESTA línea; `market_fair_at_create` la repite con nombre explícito para
+          // que el CLV justa-vs-justa no dependa de saber eso. `market_line_at_create` es la línea sobre la
+          // que se calculó esa probabilidad (la nuestra); `consensus_line_at_create` es la línea principal
+          // del mercado, contra la que se mide el movimiento al cierre.
+          thesis,
+          clv_v: CLV.CLV_V, clv_price_pct: null, close_fair: null, close_line: null, line_moved_pts: null,
+          market_fair_at_create: +c.pMarket.toFixed(4), market_line_at_create: c.line,
+          line_at_create: c.line, consensus_line_at_create: consensusLine,
+          requotes: [],
+          // descanso diferencial: solo etiqueta, solo TOTAL (regla preregistrada en PREREGISTRO_WNBA_DESCANSO.md)
+          ...(c.fam === 'match_total' && restF ? { home_rest_days: restF.home_rest_days, away_rest_days: restF.away_rest_days,
+            rest_diff: restF.rest_diff, prereg_rest_over: !!restF.prereg_rest_over } : {}),
           // sello de versión del régimen de emisión: la muestra v2 (gates de la autopsia del 31-ago) se
           // lee separada de la v1 — juntar muestras con reglas distintas es contaminar las dos.
           regime: String(process.env.GP_HOOPS_V2 || 'true') !== 'false' ? 'hoops_v2' : 'hoops_v1',
@@ -11732,12 +11766,24 @@ async function hoopsPicksCloseline() {
     && Date.parse(p.event.kickoff_at) - now < 25 * 60e3 && Date.parse(p.event.kickoff_at) - now > -3 * 3600e3);
   if (!near.length) return { closed: 0 };
   const MK = require('./basketball-engine/markets');
+  const PRC = require('./basketball-engine/pricing');
+  const CLV = require('./basketball-engine/clv');
   const ceids = [...new Set(near.map((p) => p.ceid))];
   const rows = await MK.loadQuotes(dbc, ceids, { minutes: 40 }).catch(() => []);
   const mkts = MK.groupMarkets(rows);
-  let closed = 0;
+  let closed = 0, touched = 0;
   for (const p of near) {
     const fam = p.family === 'MONEYLINE' ? 'match_winner' : p.family === 'SPREAD' ? 'spread' : 'match_total';
+    // LÍNEA DE CIERRE (backtests §5.5): la principal del mercado en esta familia, aunque la nuestra ya no
+    // cotice. Se guarda aunque el CLV no se pueda calcular, y el movimiento va con signo a favor nuestro.
+    if (fam !== 'match_winner' && p.close_line == null) {
+      const cl = CLV.mainLine(mkts, { ceid: p.ceid, fam, near: p.line });
+      if (cl != null) {
+        p.close_line = cl;
+        p.line_moved_pts = CLV.lineMoved({ family: p.family, side: p.selection_code, lineAtCreate: p.line_at_create != null ? p.line_at_create : p.line, closeLine: cl });
+        touched++;
+      }
+    }
     const m = mkts.find((x) => x.ceid === p.ceid && x.fam === fam && (x.line == null ? p.line == null : Math.abs(x.line - p.line) < 0.01));
     if (!m) continue;
     const q = m.q[p.selection_code]; if (!q || !q.length) continue;
@@ -11745,15 +11791,38 @@ async function hoopsPicksCloseline() {
     const ia = med(m.q[m.sides[0]]), ib = med(m.q[m.sides[1]]);
     const pClose = (p.selection_code === m.sides[0] ? ia : ib) / (ia + ib);
     p.close_odds = +(1 / pClose).toFixed(3);
-    // CLV = cuánto mejor fue nuestro precio que el cierre sin margen. Positivo = compramos barato.
-    p.clv_pct = +(((p.best_odds / p.close_odds) - 1) * 100).toFixed(2);
+    // CLV DE PRECIO (fórmula anterior, se conserva): nuestra cuota CON margen contra el cierre SIN margen.
+    // Arranca en ≈ −3 % aunque nada se mueva, por eso ya no es la vara principal.
+    p.clv_price_pct = CLV.clvPrice(p.best_odds, p.close_odds);
+    // CLV JUSTA VS JUSTA (la vara): prob. justa del consenso al cierre (mismo método que al nacer: mediana
+    // de implícitas + Shin) contra la prob. justa del consenso al nacer. Positivo = el mercado vino hacia
+    // nosotros. Sin sesgo de margen.
+    p.close_fair = CLV.fairFromQuotes(m, p.selection_code, PRC.novig);
+    p.close_fair_method = 'shin';
+    const fairCreate = p.market_fair_at_create != null ? p.market_fair_at_create : p.market_prob;
+    p.market_fair_at_create = fairCreate;
+    p.clv_pct = CLV.clvFair(fairCreate, p.close_fair);
+    p.clv_v = CLV.CLV_V;
     closed++;
   }
-  if (closed) save();
-  return { closed };
+  if (closed || touched) save();
+  return { closed, lines: touched };
+}
+
+// MIGRACIÓN IDEMPOTENTE DEL CLV (clv_v: 2). Las picks cerradas con la fórmula vieja llevan su número a
+// `clv_price_pct` y reciben el CLV justa-vs-justa reconstruido desde `close_odds` (consenso proporcional sin
+// margen) y `market_prob`. Corre en cada arranque de la cadena de baloncesto; tras la primera vez no cambia nada.
+function migrateHoopsClv() {
+  try {
+    const CLV = require('./basketball-engine/clv');
+    const n = CLV.migrateV2(db.hoopsPicks || []);
+    if (n) { save(); console.log('[hoops-picks] CLV migrado a v2 en', n, 'picks'); }
+    return n;
+  } catch (e) { console.error('[hoops-picks] migración CLV:', e.message); return 0; }
 }
 
 // Track del monitor: lo mismo que se le pide a cualquier segmento antes de salir a producción.
+const HOOPS_CLV = require('./basketball-engine/clv');
 function hoopsPicksTrack() {
   const all = db.hoopsPicks || [];
   const clvSd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length;
@@ -11764,14 +11833,23 @@ function hoopsPicksTrack() {
     const u = list.reduce((s, p) => s + (p.units || 0), 0);
     const st = list.length;                                     // 1 unidad plana por pick
     const clv = list.filter((p) => p.clv_pct != null);
+    const clvP = list.filter((p) => p.clv_price_pct != null);
+    const mv = list.filter((p) => p.line_moved_pts != null);
+    const avg = (arr, f) => (arr.length ? +(arr.reduce((s, p) => s + f(p), 0) / arr.length).toFixed(2) : null);
     return {
       n: list.length, w, l: list.length - w,
       hit: list.length ? +(100 * w / list.length).toFixed(1) : null,
       units: +u.toFixed(2), roi: st ? +(100 * u / st).toFixed(2) : null,
-      clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null,
+      // `clv_avg` es la vara PRINCIPAL: CLV justa vs justa (v2). El de precio viaja aparte por continuidad.
+      clv_avg: avg(clv, (p) => p.clv_pct),
       clv_n: clv.length, clv_positive: clv.length ? +(100 * clv.filter((p) => p.clv_pct > 0).length / clv.length).toFixed(1) : null,
       // dispersión del CLV: sin ella la media no se puede juzgar (ver tablero de familias)
       clv_sd: clvSd(clv.map((p) => p.clv_pct)),
+      clv_price_avg: avg(clvP, (p) => p.clv_price_pct), clv_price_n: clvP.length,
+      // movimiento medio de la línea principal con signo a favor nuestro (solo hándicap y total)
+      line_moved_avg: avg(mv, (p) => p.line_moved_pts), line_moved_n: mv.length,
+      // tesis distintas: cuántas apuestas independientes hay detrás de n picks
+      theses: new Set(list.map((p) => HOOPS_CLV.thesisOf(p))).size,
     };
   };
   const byFam = {};
@@ -11783,9 +11861,31 @@ function hoopsPicksTrack() {
     total: agg(settled), by_family: byFam, by_league: leagues,
     active: all.filter((p) => p.status === 'ACTIVE').length,
     all_time: all.length,
-    // el CLV vivo (picks aún sin liquidar pero con cierre congelado) adelanta el veredicto
-    clv_live: (() => { const l = all.filter((p) => p.clv_pct != null); return l.length ? { n: l.length, avg: +(l.reduce((s, p) => s + p.clv_pct, 0) / l.length).toFixed(2) } : null; })(),
+    theses_all_time: new Set(all.map((p) => HOOPS_CLV.thesisOf(p))).size,
+    requotes_total: all.reduce((s, p) => s + ((p.requotes || []).length), 0),
+    // el CLV vivo (picks aún sin liquidar pero con cierre congelado) adelanta el veredicto; ambos CLV
+    clv_live: (() => { const l = all.filter((p) => p.clv_pct != null); const lp = all.filter((p) => p.clv_price_pct != null);
+      return l.length || lp.length ? { n: l.length, avg: l.length ? +(l.reduce((s, p) => s + p.clv_pct, 0) / l.length).toFixed(2) : null,
+        price_n: lp.length, price_avg: lp.length ? +(lp.reduce((s, p) => s + p.clv_price_pct, 0) / lp.length).toFixed(2) : null } : null; })(),
+    clv_v: HOOPS_CLV.CLV_V,
+    clv_pendientes_migracion: all.filter((p) => p.close_odds != null && p.clv_v !== HOOPS_CLV.CLV_V).length,
+    notas: HOOPS_CLV.NOTAS,
   };
+}
+
+// ── BAJAS HISTÓRICO (backtests §5.5) ────────────────────────────────────────────────────────────────────
+// Vuelca el parte de bajas que ya está en `db.hoopsObs` (una fila por equipo y día, con los jugadores fuera)
+// a `<disco persistente>/hoops/injuries-history.jsonl`. Ligero: lee memoria, escribe un archivo. Idempotente
+// por clave, así que correr de más no duplica. Sin esto la capa de plantilla no se puede backtestear.
+function hoopsInjuriesHistoryJob() {
+  try {
+    const IH = require('./basketball-engine/injuries-history');
+    const rows = IH.rowsFromObs(db.hoopsObs || {});
+    if (!rows.length) return { appended: 0, skipped: 0 };
+    const r = IH.record(path.dirname(DB_FILE), rows);
+    if (r.appended) console.log('[hoops-bajas] histórico +' + r.appended, 'filas →', r.file);
+    return r;
+  } catch (e) { console.error('[hoops-bajas] histórico:', e.message); return { error: e.message }; }
 }
 
 // LOS TRES TRABAJOS DE BALONCESTO YA NO ARRANCAN A LA VEZ (16-ago, caída de producción).
@@ -11794,15 +11894,18 @@ function hoopsPicksTrack() {
 // temporizador de 200 s los soltara juntos, y entraba en bucle: arranque → 200 s → muerte → reinicio.
 // Encadenarlos no cambia NADA de la lógica de decisión (sigue congelada hasta el domingo 23): solo evita
 // que tres picos coincidan en el mismo instante.
-const hoopsChain = () => { memMark('hoops:build'); return buildHoopsPicks().catch(() => { })
+const hoopsChain = () => { memMark('hoops:build'); migrateHoopsClv(); return buildHoopsPicks().catch(() => { })
   .then(() => { memMark('hoops:settle'); return settleHoopsPicks().catch(() => { }); })
   .then(() => { memMark('hoops:closeline'); return hoopsPicksCloseline().catch(() => { }); })
+  .then(() => { memMark('hoops:bajas'); hoopsInjuriesHistoryJob(); })
   .then(() => memMark('reposo')); };
 
 if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
   setTimeout(hoopsChain, 200 * 1000);
   setInterval(() => { buildHoopsPicks().catch(() => { }).then(() => settleHoopsPicks().catch(() => { })); }, 30 * 60 * 1000);
   setInterval(() => { hoopsPicksCloseline().catch(() => { }); }, 5 * 60 * 1000);   // el cierre se congela fino
+  // bajas histórico: una pasada al día alcanza porque es idempotente y el parte del día ya está en memoria
+  setInterval(hoopsInjuriesHistoryJob, 24 * 3600 * 1000);
   // CONGELADO HISTÓRICO DIARIO (módulo 12). Cada 6 horas se reescribe el resumen del día en curso: conteos
   // por dominio y hash de los ids. No es un backup — es la prueba de que el estado de ese día fue el que
   // fue. Si mañana algo reescribe el log de eventos, el congelado lo delata.
@@ -18354,10 +18457,12 @@ const server = http.createServer(async (req, res) => {
         const all = (db.hoopsPicks || []).filter((x) => !lgP || lgP === 'all' || x.league === lgP);
         const active = all.filter((x) => x.status === 'ACTIVE').sort((a, b) => Date.parse(a.event.kickoff_at || 0) - Date.parse(b.event.kickoff_at || 0));
         const settled = all.filter((x) => x.status === 'SETTLED').sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
+        // `?limit=` (tope 2000; la ruta ya es solo admin): sin él la exportación del track devolvía 120 de 186
+        const limS = Math.min(2000, Math.max(1, parseInt(url.searchParams.get('limit') || '120', 10) || 120));
         return json(res, 200, {
           monitor_only: true,
           note: 'Monitor privado: estas picks NO se publican. El modelo todavía no bate al cierre, así que apuestan en papel para medir si mejora. La vara es el CLV, no el acierto.',
-          active, settled: settled.slice(0, 120), track: hoopsPicksTrack(),
+          active, settled: settled.slice(0, limS), settled_total: settled.length, limit: limS, track: hoopsPicksTrack(),
           config: { min_edge_pp: HOOPS_PICK_MIN_EDGE(), min_odds: HOOPS_PICK_MIN_ODDS(), max_odds: HOOPS_PICK_MAX_ODDS(), max_per_game: HOOPS_PICK_MAX_PER_GAME() },
           leagues: Object.keys(ST.LEAGUES),
         });
@@ -18753,6 +18858,26 @@ const server = http.createServer(async (req, res) => {
           gates: (db.hoopsGates || [])[0] || null,
           picks_enabled: false,
           monitor: hoopsPicksTrack(),     // el experimento en papel, al lado de la validación del modelo
+          // ── PREREGISTRO DE DESCANSO (PREREGISTRO_WNBA_DESCANSO.md) ─────────────────────────────────
+          // Regla fija "over si away_rest − home_rest > 0,9 d" evaluada sobre los partidos COMPLETADOS del
+          // calendario ESPN. La línea de cierre sale de la pick de TOTAL del monitor si la hay (close_line)
+          // y si no de la cuota guardada con el partido (`odds[0].ou`, que es cierre o casi). `muestra` cuenta
+          // desde el corte; `historico` es la ventana de desarrollo y NO vale para juzgar la regla.
+          preregistro_descanso: (() => {
+            try {
+              const CLVm = require('./basketball-engine/clv');
+              const byGame = {};
+              for (const pk of (db.hoopsPicks || [])) if (pk.league === lg && pk.family === 'TOTAL' && pk.close_line != null) byGame[pk.game_id] = pk.close_line;
+              const closeLineOf = (g) => { if (byGame[String(g.id)] != null) return byGame[String(g.id)]; const o = (g.odds || [])[0]; return o && Number.isFinite(o.ou) ? o.ou : null; };
+              const CORTE = '2026-09-17';
+              const cut = (r) => ({ ...r, rows: undefined });
+              return { umbral_dias: CLVm.REST_OVER_THRESHOLD, corte: CORTE, objetivo_partidos: 60,
+                muestra: cut(CLVm.restPrereg(C.games || [], { since: CORTE, closeLineOf })),
+                historico: cut(CLVm.restPrereg(C.games || [], { closeLineOf })),
+                nota: 'Etiqueta, no modelo: ninguna probabilidad cambia. Se juzga al llegar a 60 partidos de la muestra.' };
+            } catch (e) { return { error: e.message }; }
+          })(),
+          clv_notas: HOOPS_CLV.NOTAS,
           verdict: skill == null ? 'Sin cierre de mercado en la muestra: no se puede medir la vara que importa.'
             : (skill > 0 && sig != null && Math.abs(sig) >= 2) ? 'El modelo bate al cierre y la ventaja es estadísticamente distinguible del ruido. Candidato a encender picks tras verificación en la sombra.'
               : skill > 0 ? 'El modelo bate al cierre en esta muestra, pero la ventaja NO se distingue del ruido (t < 2). No alcanza para encender picks.'

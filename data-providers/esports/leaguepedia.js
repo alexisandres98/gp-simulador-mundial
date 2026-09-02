@@ -18,19 +18,26 @@
 const UA = 'GPSimulador/1.0 (codigo@gpsimulador.com)';
 const CACHE = { at: 0, since: null, rows: [] };
 
-async function cargo(where, limit = 500) {
+// POR LA PUERTA ANCHA (2-sep). `api.php` capa a 500 filas al anónimo y en Render devolvía bastantes menos
+// (la re-liquidación de kills vio 39 series desde el 29-ago cuando la wiki tenía 715 partidas desde el 17):
+// con eso, toda pick de más de dos o tres días era inliquidable para siempre — así se apilaron las 137
+// "atascadas" de LoL. `Special:CargoExport` es la misma consulta Cargo, acepta 5.000 filas y en una sola
+// llamada trae la ventana entera (medido: 715 filas en 0,7 s). Misma forma de fila que api.php.
+async function cargo(where, limit = 5000) {
   const q = new URLSearchParams({
-    action: 'cargoquery', format: 'json', tables: 'ScoreboardGames',
+    format: 'json', tables: 'ScoreboardGames',
     fields: ['Team1', 'Team2', 'Team1Kills', 'Team2Kills', 'Team1Score', 'Team2Score',
       'Gamelength_Number', 'WinTeam', 'DateTime_UTC'].map((f) => 'ScoreboardGames.' + f).join(','),
-    where, order_by: 'ScoreboardGames.DateTime_UTC DESC', limit: String(limit),
+    where, order_by: 'ScoreboardGames.DateTime_UTC DESC', limit: String(Math.min(5000, Math.max(50, limit))),
   });
-  const r = await fetch('https://lol.fandom.com/api.php?' + q, {
-    headers: { 'user-agent': UA }, signal: AbortSignal.timeout(35000),
+  const r = await fetch('https://lol.fandom.com/wiki/Special:CargoExport?' + q, {
+    headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(60000), redirect: 'follow',
   });
-  const j = await r.json();
-  if (j.error) throw new Error(j.error.info || j.error.code);
-  return (j.cargoquery || []).map((x) => x.title);
+  const txt = await r.text();
+  let j;
+  try { j = JSON.parse(txt); } catch { throw new Error(`leaguepedia CargoExport: respuesta no-JSON (HTTP ${r.status})`); }
+  if (!Array.isArray(j)) throw new Error((j && j.error && (j.error.info || j.error.code)) || 'leaguepedia CargoExport: forma inesperada');
+  return j;
 }
 
 const N = (x) => (x == null || x === '' ? null : Number(x));

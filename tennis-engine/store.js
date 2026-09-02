@@ -477,8 +477,10 @@ async function espnDay(tn, day) {
   let sb = G.sb[key];
   if (sb && Date.now() - sb.at < 10 * 60e3) return sb.j;
   const lg = tn === 0 ? 'atp' : 'wta';
-  // con user-agent: sin él ESPN devuelve 403 desde algunas redes (visto en el sandbox de desarrollo)
-  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36', accept: 'application/json' } });
+  // USER-AGENT MEDIDO (2-sep): ESPN devuelve 403 al UA por defecto de Node ("node"), a un UA de navegador y a
+  // uno propio, y 200 a un UA de curl — probado desde el sandbox y desde Render la misma mañana. Se manda
+  // el que pasa. Sin esto el liquidador de tenis se quedó ciego (334 picks vencidas con "sin_fuente").
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/tennis/${lg}/scoreboard?dates=${day}`, { signal: AbortSignal.timeout(15000), headers: { 'user-agent': 'curl/8.5.0', accept: '*/*' } });
   // ERRORES CON NOMBRE (19-ago): un 403 devolvía HTML, `r.json()` reventaba con "Unexpected token <" y ese
   // error caía en el catch por-pick del liquidador, que hacía `continue` en silencio. Resultado: doce
   // partidos ya jugados sin liquidar y CERO pistas de por qué. Ahora el fallo se llama por su nombre.
@@ -521,7 +523,9 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
     try {
       // el plazo de VOID sube de 4 a 10 días: con el marcador incompleto ahora se ESPERA, y ESPN conserva los
       // días pasados, así que esperar no cuesta nada y anular a los 4 días tiraba datos buenos
-      if (Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = `sin resultado casado en ${voidDays} días (walkover/cambio de agenda probable)`; settled++; diag.void_tiempo++; continue; }
+      // una pick REABIERTA por la re-liquidación nunca se anula por plazo en la pasada normal: espera a que la
+      // fuente conteste (o a que resettleShadow, con su propio plazo largo, decida)
+      if (!p.resettled_from && Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = `sin resultado casado en ${voidDays} días (walkover/cambio de agenda probable)`; settled++; diag.void_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
       const j = await espnDay(p.tour, day);
       // ESPN NO SIEMPRE CUELGA LOS EVENTOS EN LA RAÍZ (19-ago). El parte de la pasada anterior lo dejó

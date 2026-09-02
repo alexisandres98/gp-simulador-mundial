@@ -85,6 +85,9 @@ function vetoTree(mapStrength, { bo = 3, pool = MAP_POOL, depth = null } = {}) {
 
   const used = new Set(), seq = [];
   const step = (who, kind, arr) => {
+    // el último mapa en pie es el DECISIVO, no se veta: con un pool medido de menos de siete mapas la
+    // secuencia estándar seguía vetando y dejaba un BO3 con dos mapas y sin decisivo (2-sep).
+    if (kind === 'ban' && maps.length - used.size <= 1) return;
     const t = arr.filter((x) => !used.has(x.map)).sort((x, y) => y.p - x.p)[0];
     if (!t) return; used.add(t.map); seq.push({ who, kind, map: t.map, name: t.name, p: t.p });
   };
@@ -363,7 +366,9 @@ function analyze({ market, ratings, bo = 3, sample = 0 }) {
     : m.p_a == null ? null : sg(lg(C.clamp(m.p_a, 0.03, 0.97)) + d)));
   let mapShift = 0, shiftBracketed = false;
   if (hasShape && pSeries != null) {
-    const serieAt = (d) => C.simulateSeries(0.5, bo, { perMap: shiftBy(d).filter((x) => x != null), n: 2500, seed: 8171 }).p_series_a;
+    // si el veto deja menos mapas de los que la serie puede necesitar, el resto va a la p implícita de la
+    // serie (no a 0,5): es el mismo respaldo que usa la simulación final, y así las dos cuadran.
+    const serieAt = (d) => C.simulateSeries(pMap != null ? pMap : 0.5, bo, { perMap: shiftBy(d).filter((x) => x != null), n: 2500, seed: 8171 }).p_series_a;
     let lo = -3.5, hi = 3.5;
     if (serieAt(lo) < pSeries && serieAt(hi) > pSeries) {
       for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (serieAt(mid) < pSeries) lo = mid; else hi = mid; }

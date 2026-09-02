@@ -14311,7 +14311,7 @@ async function buildCombatPicks({ dryRun = false } = {}) {
     }
   }
   if (!dryRun) {
-    if (out.added || out.superseded || out.closing_updated || out.why_sanitized || out.phantom_voided || out.deep_read_reset) save();
+    if (out.added || out.superseded || out.closing_updated || out.why_sanitized || out.phantom_voided || out.deep_read_reset || out.t24_evaluated) save();
     out.active = (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length;
     delete out.candidates;
   }
@@ -14326,6 +14326,9 @@ async function buildCombatPicks({ dryRun = false } = {}) {
 // techo es el cinturón mientras se acumula evidencia nueva con el modelo ya calibrado. Los estelares NO se
 // excluyen: su desastre (1-5) era el mismo problema — 4 de sus 6 picks eran underdogs a cuota ≥4.
 const COMBAT_MAX_ODDS = Number(process.env.GP_COMBAT_MAX_ODDS || 3);
+// PREREGISTRO (2-sep, backtests §7): etiquetas al nacer + re-evaluación T−24 h + desgloses del track. Puro,
+// separado de ratings.js a propósito: no toca ni el blend ni el umbral ni el techo (ver combat-engine/monitor.js).
+const CBM = require('./combat-engine/monitor');
 async function buildCombatPicksOrg(org, out, dryRun) {
   const CE = require('./combat-engine/ratings');
   const C = combatLoad(org);
@@ -14367,6 +14370,10 @@ async function buildCombatPicksOrg(org, out, dryRun) {
   for (const ev of (C.upcoming || [])) {
     if (!ev.date || Date.parse(ev.date) <= now) continue; // solo prepartido (estado por reloj)
     if (ev.date_tbd) continue; // fecha por confirmar (boxeo): cuotas especulativas — sin picks hasta que confirme
+    // HIGIENE (2-sep): fecha placeholder (31-dic 22/23h) o pelea a >120 días → sin picks, sea la org que sea.
+    // Las 11 picks de boxeo del 10-17-ago sobre "Moses Itauma" nacieron así y acabaron todas VOID; la
+    // agenda restaurada de db.boxingAgenda puede traer date_tbd perdido, y esta guarda no depende de él.
+    if (CBM.isPlaceholderDate(ev.date, now)) { out.placeholder_skipped = (out.placeholder_skipped || 0) + (ev.fights || []).length; continue; }
     for (const ft of ev.fights) {
       if (!ft.f1.id || !ft.f2.id) continue;
       const dup = esFantasma(ft, ev.date);
@@ -14403,9 +14410,18 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const kel = Math.max(0, (bestSide.blend * (bestSide.odds - 1) - (1 - bestSide.blend)) / (bestSide.odds - 1)) / 4;
       const pickName = bestSide.side === 'f1' ? ft.f1.name : ft.f2.name;
       const rivalName = bestSide.side === 'f1' ? ft.f2.name : ft.f1.name;
-      const bdW = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, combatWeighCtx(C, ft));
+      const wctx = combatWeighCtx(C, ft);
+      const bdW = CE.fightBreakdown(C.elo, ft.f1.id, ft.f2.id, ev.date, wctx);
       const whyPair = combatPickWhy({ name: pickName, rival: rivalName, m: bestSide.m, k: bestSide.k, eg: bestSide.eg, books: mo.books, slot: ft.main ? 'main' : 'prelim', parts: bdW && bdW.parts, side: bestSide.side });
+      // PREREGISTRO (2-sep): lo que la regla preregistrada necesita para juzgar esta pick DESPUÉS se guarda
+      // AHORA (fair del consenso, favorito 0,50/0,45, orden ESPN, pesaje, prensa, antelación). Son etiquetas:
+      // ninguna cambia la compuerta ni la probabilidad. Las señales de prensa se evalúan dentro de un try
+      // porque son display y jamás pueden tumbar la generación de la pick.
+      let pressFlags = [];
+      try { pressFlags = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft)); } catch { pressFlags = []; }
+      const tags = CBM.pickTags({ k: bestSide.k, side: bestSide.side, org, wctx, flags: pressFlags, evDate: ev.date, now });
       fresh.push({
+        ...tags,
         why_es: whyPair.es, why_en: whyPair.en,
         pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
         sport: 'combat', family: 'FIGHT', league: org, // 'ufc' | 'mma' (Bellator/PFL)
@@ -14505,6 +14521,16 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     const k = p.selection_code === 'f1' ? mo.fair_f1 : 1 - mo.fair_f1;
     const odds = mo.best[p.selection_code];
     if (odds > 1) { p.closing = { odds, fair: +k.toFixed(4), books: mo.books, at: new Date().toISOString() }; out.closing_updated++; }
+    // RE-EVALUACIÓN T−24 h (2-sep, segunda regla del preregistro): misma fuente de cuotas que la pick
+    // (combatFightOdds). Anota odds_t24/drift y marca degraded_monitor si nuestro lado se alargó >5 % o si el
+    // fair actual deja la ventaja post-blend bajo 2 pp. NO cambia status: la pick sigue ACTIVE y liquida igual;
+    // el track la desglosa. Idempotente (una sola foto por pick, ver monitor.js).
+    const t24 = CBM.t24Eval(p, { oddsNow: odds, fairNow: k, now });
+    if (t24) {
+      Object.assign(p, t24);
+      out.t24_evaluated = (out.t24_evaluated || 0) + 1;
+      if (t24.degraded_monitor) out.t24_degraded = (out.t24_degraded || 0) + 1;
+    }
   }
   if (dryRun) return out;
   const byId = new Set(db.combatPicks.map(p => p.pick_id));
@@ -14667,6 +14693,8 @@ function cbPushDerivPick(fresh, out, org, { slot, ev, ft }, d) {
     pick_id: d.stable('cb-' + ft.comp_id + '|' + d.family + '|' + d.selection_code),
     sport: 'combat', family: d.family, league: org,
     gate_status: 'shadow', regime: 'monitor',
+    // PREREGISTRO (2-sep): en las derivadas basta el fair del mercado al crear y la antelación
+    market_fair_at_create: +d.mkt.toFixed(4), hours_to_event: CBM.hoursToEvent(ev.date, Date.now()),
     card_slot: slot, league_band: slot === 'main' ? 'eficiente' : 'blanda',
     competition_name: ev.name,
     event: { canonical_event_id: 'cb-' + ft.comp_id, espn_event_id: ev.id, home: ft.f1.name, away: ft.f2.name, home_id: ft.f1.id, away_id: ft.f2.id, kickoff_at: ev.date, weight: ft.weight, rounds: ft.rounds || 3 },
@@ -14728,7 +14756,13 @@ function combatPicksTrack({ since = 0, excludeLeagues = null, excludeFamilies = 
     const clv = list.filter(p => p.clv_pct != null);
     return { n: list.length, w, l: list.length - w, hit: list.length ? +(w / list.length * 100).toFixed(1) : null, units: +u.toFixed(2), clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null };
   };
-  return { total: agg(rows), main: agg(rows.filter(p => p.card_slot === 'main')), prelim: agg(rows.filter(p => p.card_slot !== 'main')), active: (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length };
+  return {
+    total: agg(rows), main: agg(rows.filter(p => p.card_slot === 'main')), prelim: agg(rows.filter(p => p.card_slot !== 'main')),
+    active: (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length,
+    // PREREGISTRO (2-sep): desgloses SOLO de FIGHT — regla del favorito (prereg_fav45), degradación T−24 h y
+    // CLV por lado del mercado, cada uno con n, acierto, ROI y CLV medio ± se. ROUNDS/METHOD no cambian.
+    fight_breakdown: CBM.trackBreakdown(rows.filter(p => (p.family || 'FIGHT') === 'FIGHT')),
+  };
 }
 // corte del lanzamiento público de combate (5-ago): lo que el NO-admin puede ver de picks/rendimiento
 const CB_PUBLIC_SINCE = () => Date.parse(process.env.GP_COMBAT_PUBLIC_SINCE || '2026-08-05T00:00:00Z');

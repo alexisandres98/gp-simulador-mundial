@@ -119,6 +119,13 @@ de una casa, (3) concentrarse en totales y en el mercado principal de ligas meno
 sombra con el listón real. **No tocar la lógica de decisión antes de esa fecha**: cambiarla a mitad de la
 ventana destruye la muestra. Motivo de fondo: el backtest al cierre da −7,27% de ROI en NBA con t = −2,72,
 y las picks prometían 56,5% de acierto contra 43,6% real.
+**Autopsia del 2-sep (`docs/AUTOPSIA_MODELOS_2026-09-02.md`):** con los libros completos, el Brier del modelo
+pierde contra el mercado en todas las familias; el peso que merece el modelo (`c`) es ≤0 salvo en CARDS y
+tenis TOTAL. Lo que gana (cs2_rounds_v1, cards_under_v1) gana por precio y momento. Fórmula operativa:
+`p* = σ(logit(p_mkt sin margen) + c·[logit(p_gp) − logit(p_mkt)])`, `c` por familia fuera de muestra. Las
+decisiones están listadas al principio de `TODO_NEXT.md` y las toma Alexis. Y ojo: **tres liquidadores
+mentían** (tenis 0-0, kills sin voltear, totales en cubos de 5) — antes de leer un track, comprobar que el
+marcador con el que se liquidó es coherente.
 
 ## Documentos hermanos
 - `HANDOFF.md` — **punto de retoma**: estado exacto, qué está cerrado, qué está pendiente y por qué.

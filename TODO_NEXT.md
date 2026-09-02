@@ -1,5 +1,22 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⚡ DECISIONES TRAS LA AUTOPSIA DE MODELOS (2-sep) — ver `docs/AUTOPSIA_MODELOS_2026-09-02.md`
+Ninguna se aplicó: cambian decisiones vivas y las toma Alexis.
+- **Fútbol**: apagar `lead` en SOLID (432 picks, −12,6 %, el mercado tenía razón) y `anchor` en GOALS (CLV
+  −1,3 t −4,1); convertir el 1X2 en familia de PRECIO. Corners: el total es la media de la liga
+  (`TOTALS_DAMP=0`) y el árbitro no llega a `project` (server.js 7239) — enchufarlo antes de esperar edge.
+- **Blend por familia**: estimar `c` fuera de muestra y publicar `p* = σ(logit(p_mkt) + c·Δlogit)`;
+  esports y tenis publican `p_gp` tal cual hoy, y su `p_market` lleva margen (`1/cuota`).
+- **Valorant**: cerrar picks hasta anclar la probabilidad de mapa al mercado (como CS2) y arreglar el signo
+  del ban (`valorant.js:73`) y el empate de prórroga.
+- **WNBA**: reabrir el monitor de TOTALES con el histograma corregido; 60 picks preregistradas.
+- **Combate FIGHT**: peso del mercado ≥0,8 y veto si la línea se movió en contra desde la apertura.
+- **Tenis**: TOTAL a preregistro (150 picks, CLV contra Pinnacle); ML/SPREAD siguen como benchmark.
+- **CS2**: medir cada lunes el edge AL CIERRE por familia y casa (`roi al precio de cierre`): la estrategia es
+  de precio (Pinnacle solo, línea joven, perro), no de modelo.
+- Vigilar que las 37 picks de tenis y las 157 de LoL sin casar se liquiden en las pasadas automáticas
+  (nombres: "RED Canids" vs `gp:red-canids`).
+
 ## ⚡ PENDIENTES FRESCOS (1-sep noche, tras la auditoría de la primera liquidación real)
 - **Ruta REST de estado/historial de Cloudbet**: sigue sin confirmar; la liquidación real lee por GraphQL
   (`_fuente` lo dice). Cuando Klaus conteste, probar con `run=cb_estado&ref=` ANTES de fiarse: el importe

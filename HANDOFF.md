@@ -1,4 +1,24 @@
-# HANDOFF — estado al 2-sep-2026 (LoL cerrado: base propia completa, Fase 3 con linaje propio, fichas y Draft Room encendidos)
+# HANDOFF — estado al 2-sep-2026 (autopsia de los modelos frente al mercado + LoL cerrado)
+
+## 🔬 AUTOPSIA DE LOS MODELOS (2-sep, tarde) — léelo antes de tocar cualquier familia
+Informe completo: **`docs/AUTOPSIA_MODELOS_2026-09-02.md`**. Lo esencial:
+- **Tres liquidadores mentían y se arreglaron y re-liquidaron en producción**: tenis (268 picks con 0-0: el
+  +44 % de ROI era artefacto → +7,3 % real, CLV −12,5 %), esports (kills sin voltear: 85 de 245 picks de LoL
+  cambiaron de veredicto; KILLS_HANDICAP pasa de +14,7 u a +4,7 u; Dota re-liquidado), baloncesto (totales en
+  cubos de 5 regalaban ~5 pp de over en líneas x4,5: los 31 totales del monitor WNBA salían de ahí).
+- **El Brier del modelo pierde contra el mercado en TODAS las familias con dato.** El peso que merece el
+  modelo (regresión `c` sobre logit(p_gp)−logit(p_mkt)) es ≤0 en LoL, GOALS, CS2 RONDAS, Valorant, CORNERS;
+  ≈0,2-0,4 en SOLID, CS2 RONDAS_HANDICAP, tenis ML/SPREAD, FIGHT; >1 solo en **CARDS (1,41, t 2,8)**, **tenis
+  TOTAL (6,0, t 2,8)** y WNBA SPREAD crudo (1,5). Publicamos `p_gp` tal cual en fútbol, esports y tenis.
+- **Donde ganamos, ganamos por precio y momento, no por modelo**: CS2 = Pinnacle cotizando solo, línea joven,
+  lado perro (+15,6 %, CLV +1,7 t 4,4; RONDAS_HANDICAP conserva +5,7 % al cierre); cards under = cierre
+  ineficiente con sesgo público al over (+11 % con CLV −0,5).
+- Fórmula operativa propuesta: `p* = σ(logit(p_mkt_sin_margen) + c·[logit(p_gp) − logit(p_mkt)])`, `c` por
+  familia fuera de muestra, c=0 donde t<1; familias con c≤0 pasan a "familia de precio" (desviación de una
+  casa frente al consenso). Decisiones pendientes de Alexis en §7 del informe. **No se cambió ninguna regla
+  de apuesta**: solo medición.
+- Nuevo: `?limit=` en `/api/esports/track` y `/api/tennis/track`; `POST /api/internal/tennis?run=resettle`;
+  `POST /api/esports/settle?game=X&resettle=kills`; Leaguepedia por CargoExport; OpenDota paginado.
 
 ## 🎮 LoL — CERRADO EL 2-SEP (Fases 1, 3, 4 y 7 del blueprint, con datos de verdad)
 **Lo que cambió la ecuación:** `Special:CargoExport` de Leaguepedia es la misma consulta Cargo por otra puerta,

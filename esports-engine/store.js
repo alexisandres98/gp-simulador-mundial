@@ -738,6 +738,35 @@ function uncertaintyFor(family, model, baseUnc, books) {
   const market = books >= 3 ? 1.5 : books >= 1 ? 3.5 : 6;
   return C.r2(Math.sqrt(profile * profile + market * market));
 }
+// SOLO VALORANT (2-sep). `RONDAS_EQUIPO` está en VOLUME_FAMILIES y por eso pagaba solo el perfil del mapa,
+// pero su tesis es de MARGEN —"este equipo saca más rondas que el otro"— y el backtest del 2-sep midió que en
+// Valorant el nivel del par es justo lo que no sabemos (favorito de producción 45 % en 106 mapas). Así que
+// en Valorant las dos familias de margen de rondas pagan además la incertidumbre del nivel: el término de
+// muestra del par (14/√n) que `core.uncertainty` ya calcula. `RONDAS_HANDICAP` no está en VOLUME_FAMILIES y
+// ya cobraba la epistémica entera —que lo incluye—, así que no se le suma dos veces. CS2 y LoL no pasan por
+// aquí: `cs2_rounds_v1` y `lol_kills_hcp_v1` están congelados.
+const VAL_LEVEL_FAMILIES = new Set(['RONDAS_EQUIPO', 'RONDAS_HANDICAP']);
+function valUncertaintyFor(family, model, baseUnc, books) {
+  const base = uncertaintyFor(family, model, baseUnc, books);
+  if (!VAL_LEVEL_FAMILIES.has(family)) return base;
+  if (!VOLUME_FAMILIES.has(family)) return base;        // RONDAS_HANDICAP: la epistémica ya trae el nivel
+  const drv = ((model.uncertainty && model.uncertainty.drivers) || []).find((d) => d.source === 'muestra propia del par');
+  const level = drv && Number.isFinite(drv.pp) ? drv.pp : 14;
+  return C.r2(Math.sqrt(base * base + level * level));
+}
+// lo que la pick de Valorant guarda de su nacimiento para poder desglosar el registro después: de qué nivel
+// de mapa salió (mercado vs modelo), cuánto se corrigió al modelo y con qué pRound se simuló.
+function valPickMeta(model, Rrow) {
+  const MA = model.map_anchoring || null;
+  const R = Rrow || model.rounds || null;
+  return {
+    p_map_market: R && R.p_map_a != null ? R.p_map_a : (MA ? MA.p_map_market : null),
+    p_map_model: R && R.p_map_a_model != null ? R.p_map_a_model : null,
+    shift_logit: MA ? MA.shift_logit : null,
+    p_round_solved: R && R.p_round_solved != null ? R.p_round_solved : null,
+    dist_method: R && R.dist_method ? R.dist_method : 'bisect',
+  };
+}
 
 function evaluateAll({ game, model, mk, ev, bo, sample }) {
   const rows = (mk && mk.markets) || [];
@@ -780,7 +809,8 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
     const byMapR = model.rounds_by_map || null;
     const Rrow = r.map != null && byMapR ? (byMapR[r.map] || null) : (model.rounds || null);
     const calPp = calibrationPp(r.family, Rrow, r.line, r.team);
-    const uncF = C.r2(Math.sqrt(uncertaintyFor(r.family, model, unc, nBooks) ** 2 + calPp ** 2));
+    const uncFam = game === 'valorant' ? valUncertaintyFor(r.family, model, unc, nBooks) : uncertaintyFor(r.family, model, unc, nBooks);
+    const uncF = C.r2(Math.sqrt(uncFam ** 2 + calPp ** 2));
     const ev2 = C.evaluateEdge({
       pGp: got.p, odds: r.odds, uncertaintyPp: uncF,
       minEdgePp: 3, family: r.family, marketBooks: nBooks,
@@ -803,8 +833,12 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
     }
     const row = { ...ev2, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team,
       calibration_pp: calPp,
-      uncertainty_pp: uncF, uncertainty_kind: VOLUME_FAMILIES.has(r.family) ? 'perfil de la liga' : 'conocimiento del emparejamiento',
+      uncertainty_pp: uncF, uncertainty_kind: VOLUME_FAMILIES.has(r.family)
+        ? (game === 'valorant' && VAL_LEVEL_FAMILIES.has(r.family) ? 'perfil de la liga + nivel del par' : 'perfil de la liga')
+        : 'conocimiento del emparejamiento',
       label: r.family_label, how: got.how, max_stake: r.max_stake,
+      // solo Valorant: el rastro del anclaje por mapa y de la inversión de pRound viaja con la fila
+      ...(game === 'valorant' ? valPickMeta(model, Rrow) : {}),
       // de QUÉ casa sale el precio que se está recomendando, y contra cuántas se midió. Una pick sin casa es
       // una pick que nadie puede tomar.
       book: r.book || null, books_quoting: nBooks,
@@ -1397,6 +1431,15 @@ async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
         p_gp: p.p_gp, p_market: p.p_market, edge_pp: p.edge_pp,
         uncertainty_pp: p.uncertainty_pp, calibration_pp: p.calibration_pp,
         thesis: p.thesis, stake_pct: p.stake_pct,
+        // solo Valorant (2-sep): nivel del mapa (mercado y modelo), corrección aplicada al modelo, pRound
+        // resuelto y método de la distribución, para que el registro se pueda desglosar por `dist_method`
+        ...(game === 'valorant' ? {
+          p_map_market: p.p_map_market != null ? p.p_map_market : null,
+          p_map_model: p.p_map_model != null ? p.p_map_model : null,
+          shift_logit: p.shift_logit != null ? p.shift_logit : null,
+          p_round_solved: p.p_round_solved != null ? p.p_round_solved : null,
+          dist_method: p.dist_method || 'bisect',
+        } : {}),
         born_at: new Date().toISOString(),
         status: 'ACTIVE', result_code: null, units: null, clv_pct: null, close_odds: null,
       };
@@ -1910,6 +1953,29 @@ function track(game, { limit = 60 } = {}) {
     by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, v]) => [k,
       { family: v.family, book: v.book, n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null,
         units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
+    // SOLO VALORANT (2-sep): el registro cortado por cómo nació la distribución de rondas. Las picks
+    // anteriores al 2-sep no llevan `dist_method` y salen como 'clamp' (el ×0,44); las nuevas, 'bisect'.
+    // Mezclarlas en un solo ROI sería juzgar al modelo nuevo con los errores del viejo.
+    ...(game === 'valorant' ? { by_dist_method: (() => {
+      const by = {};
+      for (const p of settled) {
+        const k = p.dist_method || 'clamp';
+        by[k] = by[k] || { n: 0, w: 0, units: 0, clv: [], by_family: {} };
+        by[k].n++; if (p.result_code === 'WIN') by[k].w++;
+        by[k].units += p.units || 0;
+        if (p.clv_pct != null) by[k].clv.push(p.clv_pct);
+        const f = p.family || '?';
+        by[k].by_family[f] = by[k].by_family[f] || { n: 0, w: 0, units: 0 };
+        by[k].by_family[f].n++; if (p.result_code === 'WIN') by[k].by_family[f].w++;
+        by[k].by_family[f].units += p.units || 0;
+      }
+      return Object.fromEntries(Object.entries(by).map(([k, v]) => [k, {
+        n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null, units: +v.units.toFixed(2),
+        roi_pct: v.n ? +(100 * v.units / v.n).toFixed(2) : null, clv_avg_pct: avg(v.clv), clv_n: v.clv.length,
+        by_family: Object.fromEntries(Object.entries(v.by_family).map(([f, x]) => [f,
+          { n: x.n, hit_pct: x.n ? +(100 * x.w / x.n).toFixed(1) : null, units: +x.units.toFixed(2) }])),
+      }]));
+    })() } : {}),
     // la advertencia va DENTRO del dato, no en una nota aparte: con esta muestra el ROI no significa nada
     reading: settled.length < 30
       ? `muestra de ${settled.length}: el ROI todavía es ruido. El CLV es el número que ya dice algo, y hacen falta centenares de picks liquidadas por familia para hablar de ventaja.`

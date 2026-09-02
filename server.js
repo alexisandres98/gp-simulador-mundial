@@ -18106,6 +18106,17 @@ const server = http.createServer(async (req, res) => {
         if (!AFx.LEAGUES[lgX]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AFx.LEAGUES) });
         return json(res, 200, { league: lgX, track: AFx.track(lgX), exported_at: new Date().toISOString() });
       }
+      // ?shadow=1 / ?real=1 (2-sep): el libro COMPLETO de la sombra y del ejecutor real. Las rutas de estado
+      // (/api/internal/shadow y /real) capan a las últimas 40 filas; el análisis apuesta por apuesta
+      // (stake plano hipotético, rachas, papel contra dinero) necesita todas. Solo lectura.
+      if (url.searchParams.get('shadow')) {
+        const Sx = shadowInit();
+        return json(res, 200, { count: (Sx.bets || []).length, bets: Sx.bets || [], unexec: Sx.unexec || [], bankroll: Sx.bankroll, start: Sx.start, exported_at: new Date().toISOString() });
+      }
+      if (url.searchParams.get('real')) {
+        const Lx = require('./real-executor/store').load();
+        return json(res, 200, { count: (Lx.bets || []).length, bets: Lx.bets || [], dias: Lx.dias || {}, nocional_inicial: Lx.nocional_inicial, nocional: Lx.nocional, realizado: Lx.realizado, exported_at: new Date().toISOString() });
+      }
       return json(res, 200, { count: db.dailyPicks.length, picks: db.dailyPicks, track_record: dailyPicksTrackRecord(), quant: dailyPicksQuant(), exported_at: new Date().toISOString() });
     }
     // REEMPLAZO EDITORIAL de una pick ACTIVE (one-off, misma key): la vieja queda SUPERSEDED (fuera del feed y

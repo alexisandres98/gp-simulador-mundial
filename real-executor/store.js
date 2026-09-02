@@ -60,6 +60,10 @@ const CFG = () => ({
   stakePct: num('GP_REAL_STAKE_CAP_PCT', 1.5) / 100, // tope de Kelly/4
   stakeMin: num('GP_REAL_STAKE_MIN', 5),
   stakeMax: num('GP_REAL_MAX_STAKE', 45),            // tope duro en dólares, por si el banco se descuadra
+  // stake PLANO (2-sep, orden de Alexis): si está puesto, toda apuesta automática entra con esta cantidad en
+  // vez de Kelly/4. Se respetan igual el tope duro, el mínimo y todos los frenos. CS2 tiene su propia regla
+  // plana (GP_REAL_CS2_STAKE) y no se toca. Sin la variable, la fórmula sigue siendo la del sombra.
+  stakeFlat: num('GP_REAL_STAKE_FLAT', 0),
   maxOpen: num('GP_REAL_MAX_OPEN', 400),             // exposición abierta simultánea
   minBalance: num('GP_REAL_MIN_BALANCE', 40),        // suelo de cartera: por debajo, no se apuesta
   dayStopPct: num('GP_REAL_DAY_STOP_PCT', 6) / 100,  // pérdida diaria que apaga hasta mañana
@@ -124,6 +128,8 @@ function kellyDe(prob, odds) {
 }
 function stakeDe(prob, odds) {
   const C = CFG(), L = load();
+  // stake plano por orden humana: manda sobre la fórmula, nunca sobre el tope duro ni el mínimo.
+  if (C.stakeFlat > 0) return Math.min(C.stakeMax, Math.max(C.stakeMin, Math.round(C.stakeFlat * 100) / 100));
   const banco = L.nocional > 0 ? L.nocional : C.nocional;
   const f = kellyDe(prob, odds);
   // `f || C.stakePct` es la fórmula EXACTA del sombra, y se conserva a propósito aunque tenga una arista:
@@ -1011,6 +1017,7 @@ function board({ limit = 40 } = {}) {
       perimetro: { segmento: SEGMENTO, familia: FAMILIA, lado: LADO, casa: CASA },
       nocional_inicial: L.nocional_inicial, nocional_vivo: L.nocional,
       stake_tope_pct: +(C.stakePct * 100).toFixed(2), stake_max: C.stakeMax, stake_min: C.stakeMin,
+      stake_plano: C.stakeFlat > 0 ? C.stakeFlat : null, stake_cs2: CS2_STAKE_TOPE(),
       exposicion_max: C.maxOpen, suelo_saldo: C.minBalance,
       parada_diaria_pct: +(C.dayStopPct * 100).toFixed(1), deslizamiento_max_pct: +(C.minOddsSlipPct * 100).toFixed(1),
     },

@@ -25,6 +25,34 @@ Las 31 picks de TOTAL anteriores al corte están contaminadas por el bug de los 
 - **Qué NO se hace durante la muestra:** ni tocar w, ni el umbral, ni el histograma, ni añadir capas. Si
   aparece un bug de medición, se documenta y se reinicia el contador.
 
+## Enmienda del 2 de septiembre (antes del corte del 17-sep, sin picks nuevas en medio)
+
+Los backtests del 2-sep (§5.3 de `BACKTESTS_FAMILIAS_2026-09-02.md`) encontraron dos defectos de MEDICIÓN,
+no de criterio. Como la WNBA no juega hasta el 17-sep, se corrigen ahora y entran en la regla congelada
+**antes** de que exista una sola pick de la muestra; ningún umbral de emisión cambia (w, `edge_pp`, cuotas,
+`gates.js` siguen tal cual).
+
+1. **Una pick por tesis.** La tesis es partido + familia + lado (`thesis = fam|side|game_id`). Si ya existe una
+   pick con esa tesis —viva o liquidada— no nace otra con la línea corrida: la re-cotización se anota en la
+   existente (`requotes[]`, máximo 20) y el constructor cuenta `saltadas_por_tesis`. Antes, 79 picks de
+   hándicap eran 15 tesis: la muestra de 60 picks de TOTAL serán **60 tesis**, no 60 decimales de las mismas.
+2. **CLV justa contra justa.** La vara principal pasa a ser `clv_pct = (prob. justa del consenso al cierre /
+   prob. justa del consenso al nacer − 1) × 100`, ambas con el mismo método (mediana de implícitas por lado +
+   Shin). La fórmula anterior —mejor cuota CON margen contra cierre SIN margen, que arrancaba en ≈ −3,2 %
+   aunque nada se moviera— se conserva como `clv_price_pct` y **no decide**. Los criterios de éxito y fracaso
+   de arriba se leen sobre el nuevo `clv_pct`; el "−4,6 en hándicap" de la sección siguiente era el número
+   viejo (−3,16 de margen + −1,46 de movimiento real). Cada pick guarda además `line_at_create`,
+   `consensus_line_at_create`, `close_line` y `line_moved_pts` (positivo = el cierre nos dio la razón).
+
+**Aviso sobre los overs.** El régimen `GP_HOOPS_V2` (gates de la autopsia del 31-ago) deja pasar solo unders
+en TOTAL, así que esta muestra **no valida los overs**, que es justo donde vivía el sesgo del histograma. Si
+se quiere validar el arreglo completo hay que permitir overs en el monitor, y eso es un cambio de regla que
+se decide antes del 17-sep o se deja para la muestra siguiente — no a mitad. Nota de código, para quien lo
+revise: el filtro de overs compara `m.fam === 'total'` mientras la familia se llama `match_total`, así que
+hay que comprobar en la primera semana de la muestra si de verdad no aparecen overs (`selection_code ===
+'over'` con `regime: 'hoops_v2'`); si aparecen, se documenta como parte de la regla vigente y la lectura se
+hace por lado.
+
 ## Por qué 60 y por qué CLV
 
 Con 60 picks el CLV medio tiene un error estándar de ~1,2 puntos (sd ≈ 9 en el monitor actual): alcanza para

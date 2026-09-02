@@ -41,6 +41,12 @@ const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=
 const ONLY = arg('only', '');
 const FORCE = process.argv.includes('--force');
 const SLEEP = +arg('sleep', 3500);
+// MODO EXPORT (2-sep): `Special:CargoExport` es la MISMA consulta Cargo por otra puerta — acepta 5.000 filas
+// por llamada (api.php capa a 500 para anónimos) y, medido desde el sandbox, 6 páginas seguidas en 3 s sin
+// ratelimit. Diez veces menos llamadas por la misma tabla: players (450k filas) pasa de 900 páginas a 90.
+// Misma paginación por fecha, misma fusión por clave, mismo archivo: solo cambia el transporte.
+const EXPORT = process.argv.includes('--export');
+const LIMIT = Math.max(50, Math.min(+arg('limit', EXPORT ? 5000 : 500), EXPORT ? 5000 : 500));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UA = 'GP-Simulador/1.0 (codigo@gpsimulador.com; cosecha lenta y reanudable, contacto en el UA)';
 
@@ -51,14 +57,24 @@ const UA = 'GP-Simulador/1.0 (codigo@gpsimulador.com; cosecha lenta y reanudable
 // no pasa, se LANZA error: el job sale con código ≠ 0 y la siguiente pasada reanuda desde el cursor.
 let calls = 0;
 async function cargo(params) {
-  const qs = new URLSearchParams({ action: 'cargoquery', format: 'json', limit: '500', ...params });
-  const url = 'https://lol.fandom.com/api.php?' + qs.toString();
+  const qs = EXPORT
+    ? new URLSearchParams({ format: 'json', limit: String(LIMIT), ...params })
+    : new URLSearchParams({ action: 'cargoquery', format: 'json', limit: String(LIMIT), ...params });
+  const url = (EXPORT ? 'https://lol.fandom.com/wiki/Special:CargoExport?' : 'https://lol.fandom.com/api.php?') + qs.toString();
   let netTries = 0;
   for (let i = 0; i < 14; i++) {
     calls++;
     try {
-      const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(40000) });
-      const j = await r.json();
+      const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(90000), redirect: 'follow' });
+      let j;
+      if (EXPORT) {
+        // CargoExport devuelve el array a pelo; un ratelimit llega como 429 o como HTML — las dos cosas se
+        // tratan igual que el `ratelimited` de api.php.
+        const txt = await r.text();
+        if (r.status === 429) j = { error: { code: 'ratelimited' } };
+        else { try { j = JSON.parse(txt); } catch { j = { error: r.ok ? { code: 'ratelimited' } : { code: 'http_' + r.status, info: txt.slice(0, 120) } }; } }
+        if (Array.isArray(j)) return j;
+      } else j = await r.json();
       if (j.error && j.error.code === 'ratelimited') {
         const wait = i === 0 ? 90e3 : 600e3;   // primero corto por si fue el final del cubo; después la ventana entera
         console.log(`[lol] ratelimited (${i + 1}/14), espero ${Math.round(wait / 1000)}s…`);
@@ -126,8 +142,8 @@ async function harvestTable({ file, table, fields, since, keyOf, slim, extraWher
     console.log(`[lol] ${table}: +${added} (total ${total}) · cursor ${cursor} · ${calls} llamadas`);
     if (added === 0) { stall++; if (stall >= 4) { console.log(`[lol] ${table}: 4 páginas sin filas nuevas — fin`); break; } }
     else stall = 0;
-    if (rows.length < 480 && added === 0) break;
-    if (rows.length < 480 && stall === 0) { /* última página con filas nuevas: una vuelta más confirma el fin */ }
+    if (rows.length < LIMIT * 0.96 && added === 0) break;
+    if (rows.length < LIMIT * 0.96 && stall === 0) { /* última página con filas nuevas: una vuelta más confirma el fin */ }
     await sleep(SLEEP);
   }
   // se marca AQUÍ y no antes: llegar al final del bucle es la única forma de saber que la tabla terminó.

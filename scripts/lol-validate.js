@@ -24,8 +24,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const DIR = path.join(__dirname, '..', 'data', 'esports', 'lol');
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
+// --dir= apunta a OTRA base con el mismo esquema (la cosecha propia de Leaguepedia en vez del espejo):
+// mismas constantes en las dos ⇒ el rating no depende de quién numeró las partidas.
+const DIR = path.resolve(arg('dir', path.join(__dirname, '..', 'data', 'esports', 'lol')));
 const K0 = +arg('k', 0);          // 0 = barrer
 const MIN_N = +arg('min-n', 10);
 const OUT = arg('json', null);

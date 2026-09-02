@@ -1,5 +1,5 @@
 {
- "at": "2026-08-18T17:37:19.298Z",
+ "at": "2026-09-02T08:05:07.766Z",
  "model_version": "lol-elo-side-patch-1",
  "source": "base propia (Leaguepedia, research_attribution_ccbysa)",
  "constants": {
@@ -8,67 +8,67 @@
   "side_step": 1,
   "min_n": 10
  },
- "side_advantage_elo": 20.4,
- "blue_wr_pct": 52.78,
- "games": 84586,
- "teams": 2885,
+ "side_advantage_elo": 24.5,
+ "blue_wr_pct": 52.79,
+ "games": 97588,
+ "teams": 3251,
  "validation": {
   "development": {
    "gp": {
     "name": "gp",
-    "n": 62238,
-    "brier": 0.22496,
-    "skill_pct": 10.01,
-    "auc": 0.6797,
-    "ece": 0.0129,
-    "hit_pct": 63.22
+    "n": 72903,
+    "brier": 0.22443,
+    "skill_pct": 10.23,
+    "auc": 0.6814,
+    "ece": 0.0127,
+    "hit_pct": 63.34
    },
    "elo": {
     "name": "elo",
-    "n": 62238,
-    "brier": 0.22573,
-    "skill_pct": 9.71,
-    "auc": 0.6798,
-    "ece": 0.0314,
-    "hit_pct": 62.88
+    "n": 72903,
+    "brier": 0.22517,
+    "skill_pct": 9.93,
+    "auc": 0.6816,
+    "ece": 0.0307,
+    "hit_pct": 63
    },
    "lado": {
     "name": "lado",
-    "n": 62238,
-    "brier": 0.2492,
-    "skill_pct": 0.32,
-    "auc": 0.4971,
+    "n": 72903,
+    "brier": 0.24915,
+    "skill_pct": 0.34,
+    "auc": 0.4964,
     "ece": 0.001,
-    "hit_pct": 52.88
+    "hit_pct": 52.94
    }
   },
   "holdout_120d": {
    "gp": {
     "name": "gp",
-    "n": 4567,
-    "brier": 0.21813,
-    "skill_pct": 12.75,
-    "auc": 0.7001,
-    "ece": 0.0146,
-    "hit_pct": 64.79
+    "n": 4372,
+    "brier": 0.22059,
+    "skill_pct": 11.76,
+    "auc": 0.6893,
+    "ece": 0.0161,
+    "hit_pct": 64.41
    },
    "elo": {
     "name": "elo",
-    "n": 4567,
-    "brier": 0.2186,
-    "skill_pct": 12.56,
-    "auc": 0.7009,
-    "ece": 0.0288,
-    "hit_pct": 64.02
+    "n": 4372,
+    "brier": 0.22172,
+    "skill_pct": 11.31,
+    "auc": 0.6894,
+    "ece": 0.0365,
+    "hit_pct": 63.17
    },
    "lado": {
     "name": "lado",
-    "n": 4567,
-    "brier": 0.24831,
-    "skill_pct": 0.67,
-    "auc": 0.4934,
-    "ece": 0.0161,
-    "hit_pct": 54.41
+    "n": 4372,
+    "brier": 0.2478,
+    "skill_pct": 0.88,
+    "auc": 0.5062,
+    "ece": 0.025,
+    "hit_pct": 55.31
    }
   },
   "note": "walk-forward estricto; constantes elegidas SOLO en desarrollo; la ventana de 120 días se evaluó una única vez. Brier skill NO es rentabilidad: sin histórico de cuotas propio de LoL, esto dice que el modelo predice, no que gane dinero — por eso la probabilidad publicada sigue anclada a mercado y el peso propio sube con esta evidencia."

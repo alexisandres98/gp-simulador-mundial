@@ -1,3 +1,47 @@
+# HANDOFF — estado al 2-sep-2026 (LoL cerrado: base propia completa, Fase 3 con linaje propio, fichas y Draft Room encendidos)
+
+## 🎮 LoL — CERRADO EL 2-SEP (Fases 1, 3, 4 y 7 del blueprint, con datos de verdad)
+**Lo que cambió la ecuación:** `Special:CargoExport` de Leaguepedia es la misma consulta Cargo por otra puerta,
+acepta **5.000 filas por llamada** (api.php capa a 500 a los anónimos) y desde el sandbox no tiene el cubo de
+~10 minutos que tenía a Render a 2 páginas por pasada de 2,5 h. La cosecha entera que llevaba desde el 18-ago
+sin converger terminó en **113 llamadas, ~4 minutos** (`node scripts/lol-harvest.js --export`).
+
+| tabla | filas | ventana | id |
+|---|---|---|---|
+| games.json | **97.588** partidas | 2020-01-03 → 2026-09-01 | GameId Leaguepedia |
+| players.json | **535.478** filas de scoreboard | 2023-01-06 → 2026-09-01 | GameId·Link |
+| drafts.json | 33.185 drafts con orden | 2024-01-01 → 2026-08-31 | GameId |
+
+- **Fase 3 con linaje propio, cerrada.** `lol-validate.js --dir=<crudo>` sobre la base propia elige LAS MISMAS
+  constantes que el espejo (K=32, patchDecay=1, sideStep=1). Ventana intacta 120 d (n=4.372): gp **11,76 %** de
+  skill vs elo 11,31 % vs lado 0,88 % (ECE 0,016); lado azul **+24,5 Elo** (52,8 % azul). Espejo: 12,75/12,56/
+  0,67 y +20,4. Distinta numeración, distinta ventana, misma conclusión ⇒ el rating no depende de quién numeró.
+  `priors.json` lleva ahora las constantes de la base propia.
+- **La base que viaja en el repo es la propia** (`games.json.gz` 4,6 MB, `drafts.json.gz`): kills/objetivos
+  nativos (adiós al backfill del espejo), llega a AYER y sus ids casan con players y drafts. El espejo de
+  HuggingFace queda fuera.
+- **Fases 4 y 7 encendidas** (verificado en local con la base nueva): `player-stats.json` **2.883 jugadores**
+  con rating GP por rol (≥8 partidas en 365 d), `champions.json` 18.695 filas parche×rol×campeón + bans;
+  Ranking GP (BLG #1, Elo 1.914), ficha de equipo con roster de cinco resuelto (T1: Doran/Oner/Faker/Peyz/Keria
+  con rating), ficha de jugador (Faker: 201 partidas, pool con recencia), **Draft Room V1 resuelto en los dos
+  lados** (HLE–T1: fragilidad 16,4 % vs 19 %). El crudo de jugadores (145 MB) NO viaja en el repo.
+- **El archivo del crudo es `/data/lol-raw` en Render.** `PUT /api/internal/lolraw?key=&file=` (gzip por
+  firma; **rechaza si trae menos filas que el disco**). La cadena `lolHarvestJob` queda en modo `--export`
+  pero **apagada** (`GP_LOL_HARVEST=0`): con 145 MB de players el hijo de 220 MB moría y en Render no aporta.
+- **Refresco (chore mensual, ~5 min, desde una sesión):** bajar `lolraw?file=players.json|games.json|drafts.json`
+  a un dir → `GP_LOL_DIR=<dir> node scripts/lol-harvest.js --export --force --sleep=1000` (reanuda desde el
+  cursor de cada tabla) → `node scripts/lol-aggregate.js --raw-dir=<dir> --base` → commit de
+  `data/esports/lol/*` → subir el crudo con PUT. Mastery y forma son features de 365 d: sin refresco se apagan
+  solas en un año, no antes.
+- No entró nada de Oracle's Elixir (cuota de Drive agotada; la copia al Drive de Alexis no es descargable por
+  la vía disponible y se tiró a la papelera). `RIGHTS.md` tiene el asiento.
+- **Aviso operativo de esta sesión:** el checkout local del sandbox apareció REVERTIDO a un commit del 24-ago a
+  mitad de sesión (HEAD y archivos, sin rastro en el reflog). Los cambios se rehicieron sobre un worktree
+  limpio de `origin/main` antes de commitear. Si pasa otra vez: `git fetch` + worktree nuevo, nunca commitear
+  desde un árbol cuyo HEAD no coincide con `origin/main`.
+
+---
+
 # HANDOFF — estado al 1-sep-2026, noche (sesión de continuación: liquidación real auditada y corregida)
 
 ## 🧳 PUNTO DE RETOMA (1-sep, 22:00Z) — léelo primero

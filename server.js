@@ -493,7 +493,9 @@ async function lolHarvestJob() {
       const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
       if (st && st.complete) { opsLog('lol_harvest_done', { complete: true, at: st.at }); return; }
     } catch { }
-    const out = await opsSpawn('lol_harvest', ['scripts/lol-harvest.js', '--sleep=3500'], { heapMb: 220, timeoutMin: 150 });
+    // 2-sep: modo --export (Special:CargoExport, 5.000 filas/llamada) — la cosecha entera cabe en ~110 llamadas.
+    // players.json completo pesa 145 MB planos: el hijo necesita heap de sobra o muere sin escribir nada.
+    const out = await opsSpawn('lol_harvest', ['scripts/lol-harvest.js', '--export', '--sleep=1500'], { heapMb: 900, timeoutMin: 60 });
     opsLog('lol_harvest_pass', { code: out.code != null ? out.code : out.error });
     setTimeout(lolHarvestJob, 20 * 60e3);
   } catch (e) { opsLog('lol_harvest', { error: e.message }); setTimeout(lolHarvestJob, 30 * 60e3); }

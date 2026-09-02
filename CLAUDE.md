@@ -66,6 +66,11 @@
   **Boleto GP:** combinador de piernas en todas las pick cards (cuota combinada, prob GP, EV, ¼ Kelly tope 2 %).
   **Cloudbet no publica resultados** (comprobado): no hay rating propio hasta que entre OpenDota/Riot; lo
   que sí se acumula es el cierre de mercado en `data/esports/`.
+  **LoL sí tiene base propia (2-sep):** 97.588 partidas 2020→hoy + 535k filas de jugador, cosechadas de
+  Leaguepedia con `scripts/lol-harvest.js --export` (CargoExport, 5.000 filas/llamada; la cadena en Render está
+  APAGADA con `GP_LOL_HARVEST=0`). Rating validado walk-forward (`priors.json`), fichas, campeones por parche y
+  Draft Room encendidos. Crudo archivado en `/data/lol-raw` (PUT `/api/internal/lolraw`). Derechos: CC BY-SA →
+  admin-only, nunca pick pública (`data/esports/lol/RIGHTS.md`).
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

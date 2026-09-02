@@ -20,6 +20,12 @@ const path = require('path');
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
 const DIR = path.resolve(arg('raw-dir', path.join(__dirname, '..', 'data', 'esports', 'lol')));
 const OUTD = path.join(__dirname, '..', 'data', 'esports', 'lol');
+// --base: además de los agregados, EMBARCA la base cruda (games.json.gz + drafts.json.gz) desde el crudo.
+// Desde el 2-sep la base que viaja en el repo es la cosecha PROPIA de Leaguepedia (97.588 partidas 2020→hoy,
+// kills/objetivos nativos, ids de Leaguepedia que casan con players y drafts), no el espejo de HuggingFace.
+// --comps: escribe comps.json (dataset de investigación del draft, ~decenas de MB; nadie lo lee en runtime).
+const SHIP_BASE = process.argv.includes('--base');
+const WRITE_COMPS = process.argv.includes('--comps');
 const rd = (f) => JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8'));
 const wr = (f, o) => { fs.mkdirSync(OUTD, { recursive: true }); fs.writeFileSync(path.join(OUTD, f), JSON.stringify(o)); };
 const majorPatch = (p) => { const m = String(p || '').match(/^(\d+)\.(\d+)/); return m ? `${m[1]}.${m[2]}` : null; };
@@ -151,9 +157,20 @@ function main() {
   });
   console.log(`[agg:lol] champions: ${Object.values(champRole).length} filas parche×rol×campeón · bans de ${Object.keys(D.rows || {}).length} drafts`);
 
-  wr('comps.json', { at: new Date().toISOString(), rights_class: G.rights_class, rows: comps });
-  wr('meta.json', { at: new Date().toISOString(), source: 'Leaguepedia (lol.fandom.com) — CC BY-SA, atribución requerida',
+  if (WRITE_COMPS) wr('comps.json', { at: new Date().toISOString(), rights_class: G.rights_class, rows: comps });
+  else console.log(`[agg:lol] comps: ${Object.keys(comps).length} partidas con composición (no se escribe sin --comps)`);
+  if (SHIP_BASE) {
+    const zlib = require('zlib');
+    fs.mkdirSync(OUTD, { recursive: true });
+    for (const f of ['games.json', 'drafts.json']) {
+      let raw; try { raw = fs.readFileSync(path.join(DIR, f)); } catch { console.log(`[agg:lol] sin ${f} en el crudo — no se embarca`); continue; }
+      fs.writeFileSync(path.join(OUTD, f + '.gz'), zlib.gzipSync(raw, { level: 9 }));
+      console.log(`[agg:lol] base embarcada: ${f}.gz (${(raw.length / 1e6).toFixed(1)} MB planos)`);
+    }
+  }
+  wr('meta.json', { at: new Date().toISOString(), source: G.source || 'Leaguepedia (lol.fandom.com) Cargo API', license: 'CC BY-SA — atribución a Leaguepedia requerida',
     rights_class: G.rights_class, games: games.length, players_rows: pRows.length, drafts: Object.keys(D.rows || {}).length,
+    players_window: { from: pRows.reduce((m, r) => (r.at && r.at < m ? r.at : m), '9999'), to: lastAt },
     window: { from: games[0] && games.reduce((m, g) => (g.at < m ? g.at : m), '9999'), to: lastAt } });
   console.log('[agg:lol] LISTO');
 }

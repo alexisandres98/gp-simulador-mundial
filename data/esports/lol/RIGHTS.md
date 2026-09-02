@@ -30,3 +30,15 @@ Leaguepedia/lol.fandom.com — MISMA clase de derechos (`research_attribution_cc
 atribución obligatoria a Leaguepedia, mismo veto a uso betting_commercial. 84.586 partidas
 2021→ago-2026 con picks/bans. El scoreboard POR JUGADOR sigue pendiente de la cadena de
 Leaguepedia (fichas de jugador y pools del Draft Room a media luz hasta que entre).
+
+## Actualización 2-sep-2026 — la base propia de Leaguepedia entra ENTERA y sustituye al espejo
+La cosecha directa terminó en 113 llamadas por `Special:CargoExport` (5.000 filas por llamada, sin el cubo
+de ~10 minutos que tenía a `api.php` a 2 páginas por pasada en Render). Base embarcada en el repo:
+**97.588 partidas 2020-01 → 2026-09-01** (kills, dragones, barones, torres y oro por lado, nativos),
+**535.478 filas de scoreboard por jugador 2023-01 →** (agregadas en `player-stats.json` y `champions.json`;
+el crudo NO viaja en el repo, vive en `/data/lol-raw` de Render) y **33.185 drafts con orden 2024-01 →**.
+Misma fuente, misma clase de derechos (`research_attribution_ccbysa`), misma atribución obligatoria a
+Leaguepedia, mismo veto a uso `betting_commercial`. El espejo de HuggingFace deja de usarse (ids propios
+de Leaguepedia en las tres tablas ⇒ players y drafts casan con games por `GameId`).
+Oracle's Elixir se volvió a intentar como atajo (la cuota de descarga de Drive seguía agotada; una copia al
+Drive del propietario tampoco es descargable por la vía disponible) — no entró ningún dato de OE.

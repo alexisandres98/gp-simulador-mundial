@@ -8,7 +8,10 @@
   HANDOFF §B). Y anotar lo colocado en FP-796307 con `run=anotar` para que la sombra y la cuenta cuadren.
 - **lol_kills_hcp_v1**: primera lectura cuando Leaguepedia cargue los scoreboards del 1-sep (≈1 día).
 - **modelo_sombra**: 0 señales en 1,5 días con listón 6-15 pp; si sigue en 0 dos semanas, bajar a 4 pp.
-- **Cosecha LoL**: no desplegar más de lo necesario (cada deploy mata la pasada). Orden nuevo games-primero.
+- **LoL — CERRADO 2-sep** (Fases 1, 3, 4, 7): base propia completa embarcada, cadena de Render apagada
+  (`GP_LOL_HARVEST=0`). Único chore: refresco mensual del crudo + re-agregado (receta en HANDOFF §LoL). Lo
+  que sigue siendo estratégico y NO técnico: derechos `betting_commercial_ok` (GRID) antes de cualquier pick
+  pública de LoL (LOL-0038).
 - **API_FOOTBALL_KEY**: bloqueado hasta que Alexis genere la key nueva (HANDOFF §E tiene el comando).
 - **CS2 real (arreglado 1-sep noche)**: vigilar la primera colocación automática de CS2 por el brazo (`/api/internal/real` → filas CS2 con `ensayo_lado_casa`); si vuelve a caducar, `ensayo_casa` dice qué vio.
 

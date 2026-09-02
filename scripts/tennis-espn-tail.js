@@ -29,10 +29,19 @@
 // Cuesta que un jugador conocido pueda arrancar de cero si ESPN lo escribe raro —y eso se ve en el
 // informe—, pero es infinitamente mejor que mezclarlo con otro.
 //
+// EL FORMATO SALE DEL MARCADOR, NO DE ESPN (2-sep). `format.regulation.periods` venía a 5 en TODOS los
+// partidos ATP —514 de nivel 250 etiquetados al mejor de cinco— y en 508 de la WTA (§6.7 del backtest del
+// 2-sep). No toca al Elo (data.js ignora best_of) pero sí a cualquier re-fit y a la calibración de juegos.
+// Regla: 3 sets ganados → bo5, 2 → bo3; si el marcador no lo decide (retiro) manda el torneo: Grand Slam
+// masculino = 5, todo lo demás = 3. Un Grand Slam masculino con dos sets ganados es un retiro, no un bo3.
+// La misma regla REPARA las filas ya escritas (cola desde tail.from) en cada pasada con --apply, y
+// `--repara-bo` la corre sola, sin red, para arreglar una copia y salir.
+//
 // USO
 //   node scripts/tennis-espn-tail.js                 # informa, no escribe
 //   node scripts/tennis-espn-tail.js --apply         # escribe matches/players/meta
 //   node scripts/tennis-espn-tail.js --desde=20260526 --hasta=20260819 --paso=2
+//   node scripts/tennis-espn-tail.js --repara-bo [--apply]   # solo repara best_of de la cola ya escrita
 'use strict';
 
 const fs = require('fs');
@@ -40,6 +49,7 @@ const path = require('path');
 
 const arg = (k, d) => { const h = process.argv.find((a) => a.startsWith(`--${k}=`)); return h ? h.split('=')[1] : d; };
 const APPLY = process.argv.includes('--apply');
+const REPARA_BO = process.argv.includes('--repara-bo');
 // SE LEE DE DONDE ESTÉ LO MÁS NUEVO Y SE ESCRIBE DONDE SOBREVIVA. En Render la base refrescada vive en el
 // disco persistente: escribirla en el repo la perdería en el siguiente despliegue, y leerla solo del repo
 // haría que cada pasada recosechara desde mayo. En local, sin disco, las dos rutas son la misma carpeta.
@@ -98,6 +108,37 @@ const masDias = (n, d) => { const t = Date.parse(aISO(n) + 'T00:00:00Z') + d * 8
   const meta = JSON.parse(fs.readFileSync(lee('meta.json'), 'utf8'));
   const F = {}; M.schema.forEach((k, i) => { F[k] = i; });
 
+  // ESCRITURA ATÓMICA. matches.json pesa 8 MB y lo lee el motor al arrancar: si un despliegue corta la
+  // escritura por la mitad, el tenis entero se cae con un JSON truncado y no hay vuelta atrás.
+  const escribe = (n, obj, pretty) => {
+    const tmp = path.join(OUT, '.' + n + '.tmp');
+    fs.writeFileSync(tmp, JSON.stringify(obj, null, pretty ? 1 : undefined));
+    fs.renameSync(tmp, path.join(OUT, n));
+  };
+
+  // ── formato (best_of) desde el marcador; ver cabecera ─────────────────────────────────────────────────
+  const formatoDe = (tn, setsGanador, nivel) => (setsGanador === 3 ? 5 : (tn === 0 && nivel === 'G') ? 5 : 3);
+  const reparaFormato = () => {
+    const desdeCola = +((meta.tail || {}).from || 0);
+    if (!(desdeCola > 20000000)) return { revisadas: 0, cambiadas: 0 };
+    let revisadas = 0, cambiadas = 0;
+    for (const r of M.rows) {
+      if (r[F.date] < desdeCola) continue;
+      revisadas++;
+      const bo = formatoDe(r[F.tour], r[F.sets_w], r[F.level]);
+      if (r[F.best_of] !== bo) { r[F.best_of] = bo; cambiadas++; }
+    }
+    return { revisadas, cambiadas };
+  };
+  const rep = reparaFormato();
+  if (rep.revisadas) console.log(`[cola] formato: ${rep.revisadas} filas de la cola revisadas · ${rep.cambiadas} con best_of corregido desde el marcador`);
+  if (REPARA_BO) {
+    if (!APPLY) { console.log('[cola] (simulacro: sin --apply no se escribe nada)'); return { repaired: rep.cambiadas, written: false }; }
+    if (rep.cambiadas) { escribe('matches.json', { schema: M.schema, tourneys: M.tourneys, rows: M.rows }); console.log(`[cola] escrito en ${OUT} (solo reparación de formato)`); }
+    else console.log('[cola] nada que reparar');
+    return { repaired: rep.cambiadas, written: !!rep.cambiadas, out: OUT };
+  }
+
   const lm = meta.last_match_date || {};
   const desdeBase = Math.max(+lm.atp || 0, +lm.wta || 0);
   // SE VUELVE DOS DÍAS ATRÁS, NO AL DÍA SIGUIENTE. Dos motivos y ninguno es prudencia: los partidos del
@@ -111,7 +152,12 @@ const masDias = (n, d) => { const t = Date.parse(aISO(n) + 'T00:00:00Z') + d * 8
   // ESTAR AL DÍA NO ES UN FALLO. La primera versión salía con código 1 cuando la base ya llegaba a hoy
   // —que es el estado NORMAL una vez la cola funciona— y el trabajo diario registraba un error todos los
   // días. Un error que sale siempre deja de leerse, y el día que sea de verdad tampoco se va a leer.
-  if (hasta < desde) { console.log(`[cola] la base ya llega a ${desdeBase}: nada que traer`); return { rows: 0, last: lm, out: OUT }; }
+  if (hasta < desde) {
+    console.log(`[cola] la base ya llega a ${desdeBase}: nada que traer`);
+    // la reparación de formato se persiste aunque no haya nada nuevo que traer
+    if (APPLY && rep.cambiadas) { escribe('matches.json', { schema: M.schema, tourneys: M.tourneys, rows: M.rows }); console.log(`[cola] escrito en ${OUT} (solo reparación de formato)`); }
+    return { rows: 0, last: lm, out: OUT, repaired: rep.cambiadas };
+  }
 
   // ── índices para resolver identidad ───────────────────────────────────────────────────────────────────
   // ── IDENTIDAD DEL JUGADOR ─────────────────────────────────────────────────────────────────────────────
@@ -315,10 +361,12 @@ const masDias = (n, d) => { const t = Date.parse(aISO(n) + 'T00:00:00Z') + d * 8
             const sup = t0.s;
             inf['sup_' + t0.como] = (inf['sup_' + t0.como] || 0) + 1;
             inf.torneos.add(nombreT);
-            const bo = ((c.format || {}).regulation || {}).periods === 5 ? 5 : 3;
+            // el formato sale del marcador (ver cabecera): `format.regulation.periods` de ESPN decía 5 en todo
+            const nivel = ev.major ? 'G' : (tn === 0 ? 'A' : 'I');
+            const bo = formatoDe(tn, sw, nivel);
             const fila = new Array(M.schema.length).fill(-1);
             fila[F.tour] = tn; fila[F.date] = fecha; fila[F.tid] = tidDe(tn, nombreT);
-            fila[F.surface] = sup; fila[F.level] = ev.major ? 'G' : (tn === 0 ? 'A' : 'I');
+            fila[F.surface] = sup; fila[F.level] = nivel;
             fila[F.best_of] = bo; fila[F.round] = ronda;
             fila[F.wid] = rw.id; fila[F.lid] = rl.id;
             fila[F.sets_w] = sw; fila[F.sets_l] = sl; fila[F.games_w] = gw; fila[F.games_l] = gl;
@@ -358,18 +406,16 @@ const masDias = (n, d) => { const t = Date.parse(aISO(n) + 'T00:00:00Z') + d * 8
   if (inf.errores.length) console.log('[cola] errores:', inf.errores.join(' | '));
 
   if (!APPLY) { console.log('[cola] (simulacro: sin --apply no se escribe nada)'); return; }
-  if (!filas.length) { console.log('[cola] nada que escribir'); return; }
+  if (!filas.length) {
+    // sin partidos nuevos la reparación de formato se guarda igual: es idempotente y barata
+    if (rep.cambiadas) { escribe('matches.json', { schema: M.schema, tourneys: M.tourneys, rows: M.rows }); console.log(`[cola] escrito en ${OUT} (solo reparación de formato)`); }
+    else console.log('[cola] nada que escribir');
+    return;
+  }
 
   M.rows = M.rows.concat(filas).sort((a, b) => a[F.date] - b[F.date]);
   const ultimo = { atp: +lm.atp || 0, wta: +lm.wta || 0 };
   for (const f of filas) { const t = f[F.tour] === 0 ? 'atp' : 'wta'; if (f[F.date] > ultimo[t]) ultimo[t] = f[F.date]; }
-  // ESCRITURA ATÓMICA. matches.json pesa 8 MB y lo lee el motor al arrancar: si un despliegue corta la
-  // escritura por la mitad, el tenis entero se cae con un JSON truncado y no hay vuelta atrás.
-  const escribe = (n, obj, pretty) => {
-    const tmp = path.join(OUT, '.' + n + '.tmp');
-    fs.writeFileSync(tmp, JSON.stringify(obj, null, pretty ? 1 : undefined));
-    fs.renameSync(tmp, path.join(OUT, n));
-  };
   escribe('matches.json', { schema: M.schema, tourneys: M.tourneys, rows: M.rows });
   escribe('players.json', P);
   escribe('meta.json', {

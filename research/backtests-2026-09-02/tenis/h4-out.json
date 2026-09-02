@@ -1,0 +1,600 @@
+{
+ "atp": {
+  "n_total": 23877,
+  "n_ret": 585,
+  "ret_pct": 2.45,
+  "por_superficie": {
+   "dura": {
+    "n": 13941,
+    "ret_pct": 2.66
+   },
+   "arcilla": {
+    "n": 7354,
+    "ret_pct": 2.23
+   },
+   "hierba": {
+    "n": 2530,
+    "ret_pct": 1.94
+   },
+   "desconocida": {
+    "n": 52,
+    "ret_pct": 1.92
+   }
+  },
+  "por_formato": {
+   "bo3": {
+    "n": 19297,
+    "ret_pct": 2.32
+   },
+   "bo5": {
+    "n": 4580,
+    "ret_pct": 3.01
+   }
+  },
+  "por_nivel": {
+   "A": {
+    "n": 12616,
+    "ret_pct": 2.34
+   },
+   "G": {
+    "n": 4420,
+    "ret_pct": 3.17
+   },
+   "D": {
+    "n": 1711,
+    "ret_pct": 1.17
+   },
+   "M": {
+    "n": 4886,
+    "ret_pct": 2.6
+   },
+   "F": {
+    "n": 181,
+    "ret_pct": 1.66
+   },
+   "O": {
+    "n": 63,
+    "ret_pct": 0
+   }
+  },
+  "por_ronda": {
+   "R32": {
+    "n": 7635,
+    "ret_pct": 2.42
+   },
+   "R16": {
+    "n": 3989,
+    "ret_pct": 2.16
+   },
+   "QF": {
+    "n": 2064,
+    "ret_pct": 3.25
+   },
+   "SF": {
+    "n": 1082,
+    "ret_pct": 2.77
+   },
+   "F": {
+    "n": 546,
+    "ret_pct": 0.92
+   },
+   "R128": {
+    "n": 3040,
+    "ret_pct": 3.26
+   },
+   "R64": {
+    "n": 5521,
+    "ret_pct": 2.05
+   }
+  },
+  "por_mes": {
+   "10": {
+    "n": 2136,
+    "ret_pct": 2.43
+   },
+   "11": {
+    "n": 674,
+    "ret_pct": 1.63
+   },
+   "12": {
+    "n": 206,
+    "ret_pct": 2.91
+   },
+   "01": {
+    "n": 2272,
+    "ret_pct": 2.9
+   },
+   "02": {
+    "n": 3460,
+    "ret_pct": 2.11
+   },
+   "03": {
+    "n": 1975,
+    "ret_pct": 2.18
+   },
+   "04": {
+    "n": 2145,
+    "ret_pct": 2.61
+   },
+   "05": {
+    "n": 2421,
+    "ret_pct": 2.31
+   },
+   "06": {
+    "n": 1773,
+    "ret_pct": 2.09
+   },
+   "07": {
+    "n": 2576,
+    "ret_pct": 1.75
+   },
+   "08": {
+    "n": 2439,
+    "ret_pct": 3.77
+   },
+   "09": {
+    "n": 1800,
+    "ret_pct": 2.67
+   }
+  },
+  "juegos_medios": {
+   "completos": 25.92,
+   "con_retiro": 15.95
+  },
+  "modelo_retiro_partido": {
+   "n_dev": 18833,
+   "n_holdout": 5044,
+   "tasa_base_dev_pct": 2.38,
+   "tasa_holdout_pct": 2.7,
+   "coef_t": {
+    "intercept": -16.28,
+    "suma_edad": -0.13,
+    "suma_edad_mayor30": 0.02,
+    "suma_log_rank": -3,
+    "suma_ret365": -1.25,
+    "suma_ret_prev": -0.51,
+    "suma_tasa_ret_carrera": 7.71,
+    "suma_days_log": 1.42,
+    "suma_layoff30": -2.77,
+    "suma_min_prev": -0.76,
+    "suma_n7": -1.47,
+    "bo5_o_slam": 1.46,
+    "arcilla": -2.93,
+    "hierba": -1.7,
+    "ronda_temprana": -2.76
+   },
+   "coef": {
+    "intercept": -2.5669,
+    "suma_edad": -0.0014,
+    "suma_edad_mayor30": 0.0028,
+    "suma_log_rank": -0.0947,
+    "suma_ret365": -0.0646,
+    "suma_ret_prev": -0.1429,
+    "suma_tasa_ret_carrera": 0.2287,
+    "suma_days_log": 0.0587,
+    "suma_layoff30": -0.3641,
+    "suma_min_prev": -0.0351,
+    "suma_n7": -0.0465,
+    "bo5_o_slam": 0.2008,
+    "arcilla": -0.3156,
+    "hierba": -0.2761,
+    "ronda_temprana": -0.3343
+   },
+   "holdout": {
+    "auc": 0.5893,
+    "logloss": 0.1226,
+    "brier": 0.02615,
+    "logloss_base_rate": 0.1242,
+    "brier_base_rate": 0.02625,
+    "delta_logloss_base_minus_modelo": {
+     "mean": 0.00165,
+     "t": 1.62
+    }
+   },
+   "deciles_holdout": [
+    {
+     "decil": 1,
+     "n": 504,
+     "p_media_pct": 1.27,
+     "ret_real_pct": 0.99
+    },
+    {
+     "decil": 2,
+     "n": 504,
+     "p_media_pct": 1.57,
+     "ret_real_pct": 2.18
+    },
+    {
+     "decil": 3,
+     "n": 505,
+     "p_media_pct": 1.77,
+     "ret_real_pct": 1.98
+    },
+    {
+     "decil": 4,
+     "n": 504,
+     "p_media_pct": 1.97,
+     "ret_real_pct": 2.78
+    },
+    {
+     "decil": 5,
+     "n": 505,
+     "p_media_pct": 2.15,
+     "ret_real_pct": 1.98
+    },
+    {
+     "decil": 6,
+     "n": 504,
+     "p_media_pct": 2.36,
+     "ret_real_pct": 2.58
+    },
+    {
+     "decil": 7,
+     "n": 504,
+     "p_media_pct": 2.6,
+     "ret_real_pct": 3.97
+    },
+    {
+     "decil": 8,
+     "n": 505,
+     "p_media_pct": 2.91,
+     "ret_real_pct": 3.17
+    },
+    {
+     "decil": 9,
+     "n": 504,
+     "p_media_pct": 3.4,
+     "ret_real_pct": 2.58
+    },
+    {
+     "decil": 10,
+     "n": 505,
+     "p_media_pct": 5.02,
+     "ret_real_pct": 4.75
+    }
+   ]
+  },
+  "quien_se_retira_holdout": {
+   "n_ret": 136,
+   "acierto_riesgo_pct": 58.1,
+   "acierto_elo_underdog_pct": 44.1,
+   "acierto_peor_ranking_pct": 50.7,
+   "coef_t_jugador": {
+    "intercept": -28.94,
+    "edad": 2.3,
+    "edad_mayor30": -0.9,
+    "log_rank": -1.48,
+    "ret365": -2.66,
+    "ret_prev": -0.28,
+    "tasa_ret_carrera": 11.11,
+    "days_log": -0.38,
+    "layoff30": -1.78,
+    "min_prev": -1.93,
+    "n7": -3.04,
+    "bo5_o_slam": 0.72,
+    "arcilla": -4.01,
+    "hierba": -1.89,
+    "ronda_temprana": -4.08
+   }
+  },
+  "riesgo_en_ML_completos": {
+   "n_dev": 18384,
+   "n_holdout": 4908,
+   "gamma": -0.068,
+   "t_gamma_dev": -2.47,
+   "holdout_base": {
+    "logloss": 0.623,
+    "skill_pct": 10.12
+   },
+   "holdout_var": {
+    "logloss": 0.6213,
+    "skill_pct": 10.37
+   },
+   "delta_logloss": {
+    "mean": 0.00168,
+    "t": 4.94
+   }
+  }
+ },
+ "wta": {
+  "n_total": 22033,
+  "n_ret": 634,
+  "ret_pct": 2.88,
+  "por_superficie": {
+   "dura": {
+    "n": 13286,
+    "ret_pct": 2.91
+   },
+   "arcilla": {
+    "n": 6164,
+    "ret_pct": 2.99
+   },
+   "hierba": {
+    "n": 2468,
+    "ret_pct": 2.51
+   },
+   "desconocida": {
+    "n": 115,
+    "ret_pct": 1.74
+   }
+  },
+  "por_formato": {
+   "bo3": {
+    "n": 22033,
+    "ret_pct": 2.88
+   }
+  },
+  "por_nivel": {
+   "I": {
+    "n": 7313,
+    "ret_pct": 3.21
+   },
+   "P": {
+    "n": 5177,
+    "ret_pct": 3.84
+   },
+   "G": {
+    "n": 4428,
+    "ret_pct": 1.36
+   },
+   "D": {
+    "n": 1424,
+    "ret_pct": 1.62
+   },
+   "PM": {
+    "n": 3110,
+    "ret_pct": 2.86
+   },
+   "F": {
+    "n": 150,
+    "ret_pct": 2.67
+   },
+   "W": {
+    "n": 303,
+    "ret_pct": 5.94
+   },
+   "O": {
+    "n": 128,
+    "ret_pct": 4.69
+   }
+  },
+  "por_ronda": {
+   "R32": {
+    "n": 7312,
+    "ret_pct": 2.86
+   },
+   "R16": {
+    "n": 3450,
+    "ret_pct": 3.88
+   },
+   "QF": {
+    "n": 1789,
+    "ret_pct": 4.19
+   },
+   "SF": {
+    "n": 921,
+    "ret_pct": 3.47
+   },
+   "F": {
+    "n": 467,
+    "ret_pct": 2.78
+   },
+   "R128": {
+    "n": 3008,
+    "ret_pct": 1.56
+   },
+   "R64": {
+    "n": 5086,
+    "ret_pct": 2.44
+   }
+  },
+  "por_mes": {
+   "10": {
+    "n": 1606,
+    "ret_pct": 4.79
+   },
+   "11": {
+    "n": 340,
+    "ret_pct": 2.06
+   },
+   "12": {
+    "n": 225,
+    "ret_pct": 4.89
+   },
+   "01": {
+    "n": 2520,
+    "ret_pct": 1.94
+   },
+   "02": {
+    "n": 2329,
+    "ret_pct": 2.71
+   },
+   "03": {
+    "n": 1861,
+    "ret_pct": 3.17
+   },
+   "04": {
+    "n": 2372,
+    "ret_pct": 2.78
+   },
+   "05": {
+    "n": 2352,
+    "ret_pct": 2.93
+   },
+   "06": {
+    "n": 1922,
+    "ret_pct": 2.65
+   },
+   "07": {
+    "n": 2234,
+    "ret_pct": 2.82
+   },
+   "08": {
+    "n": 2521,
+    "ret_pct": 2.54
+   },
+   "09": {
+    "n": 1751,
+    "ret_pct": 3.14
+   }
+  },
+  "juegos_medios": {
+   "completos": 21.82,
+   "con_retiro": 13.04
+  },
+  "modelo_retiro_partido": {
+   "n_dev": 17441,
+   "n_holdout": 4592,
+   "tasa_base_dev_pct": 3.04,
+   "tasa_holdout_pct": 2.26,
+   "coef_t": {
+    "intercept": -15.89,
+    "suma_edad": 3.34,
+    "suma_edad_mayor30": -1.93,
+    "suma_log_rank": -4,
+    "suma_ret365": -2.64,
+    "suma_ret_prev": -0.06,
+    "suma_tasa_ret_carrera": 10.17,
+    "suma_days_log": -0.05,
+    "suma_layoff30": -2.48,
+    "suma_min_prev": 0.72,
+    "suma_n7": -0.66,
+    "bo5_o_slam": -4.2,
+    "arcilla": 0.57,
+    "hierba": 0.12,
+    "ronda_temprana": -3.33
+   },
+   "coef": {
+    "intercept": -2.2595,
+    "suma_edad": 0.0347,
+    "suma_edad_mayor30": -0.2224,
+    "suma_log_rank": -0.1093,
+    "suma_ret365": -0.1202,
+    "suma_ret_prev": -0.0143,
+    "suma_tasa_ret_carrera": 0.2616,
+    "suma_days_log": -0.0018,
+    "suma_layoff30": -0.323,
+    "suma_min_prev": 0.0278,
+    "suma_n7": -0.019,
+    "bo5_o_slam": -0.6328,
+    "arcilla": 0.0563,
+    "hierba": 0.0175,
+    "ronda_temprana": -0.3691
+   },
+   "holdout": {
+    "auc": 0.6496,
+    "logloss": 0.1071,
+    "brier": 0.02216,
+    "logloss_base_rate": 0.1093,
+    "brier_base_rate": 0.0222,
+    "delta_logloss_base_minus_modelo": {
+     "mean": 0.00219,
+     "t": 1.78
+    }
+   },
+   "deciles_holdout": [
+    {
+     "decil": 1,
+     "n": 459,
+     "p_media_pct": 1.01,
+     "ret_real_pct": 1.09
+    },
+    {
+     "decil": 2,
+     "n": 459,
+     "p_media_pct": 1.51,
+     "ret_real_pct": 1.96
+    },
+    {
+     "decil": 3,
+     "n": 459,
+     "p_media_pct": 1.89,
+     "ret_real_pct": 0.65
+    },
+    {
+     "decil": 4,
+     "n": 459,
+     "p_media_pct": 2.26,
+     "ret_real_pct": 0.87
+    },
+    {
+     "decil": 5,
+     "n": 460,
+     "p_media_pct": 2.59,
+     "ret_real_pct": 1.3
+    },
+    {
+     "decil": 6,
+     "n": 459,
+     "p_media_pct": 2.95,
+     "ret_real_pct": 1.96
+    },
+    {
+     "decil": 7,
+     "n": 459,
+     "p_media_pct": 3.34,
+     "ret_real_pct": 3.49
+    },
+    {
+     "decil": 8,
+     "n": 459,
+     "p_media_pct": 3.88,
+     "ret_real_pct": 2.83
+    },
+    {
+     "decil": 9,
+     "n": 459,
+     "p_media_pct": 4.69,
+     "ret_real_pct": 3.7
+    },
+    {
+     "decil": 10,
+     "n": 460,
+     "p_media_pct": 7.47,
+     "ret_real_pct": 4.78
+    }
+   ]
+  },
+  "quien_se_retira_holdout": {
+   "n_ret": 104,
+   "acierto_riesgo_pct": 67.3,
+   "acierto_elo_underdog_pct": 54.8,
+   "acierto_peor_ranking_pct": 51.9,
+   "coef_t_jugador": {
+    "intercept": -29.83,
+    "edad": 4.77,
+    "edad_mayor30": -2.41,
+    "log_rank": -3.51,
+    "ret365": -3.48,
+    "ret_prev": -0.25,
+    "tasa_ret_carrera": 13.8,
+    "days_log": -1.57,
+    "layoff30": -1.66,
+    "min_prev": 0.68,
+    "n7": -1.82,
+    "bo5_o_slam": -3.84,
+    "arcilla": -0.87,
+    "hierba": -0.63,
+    "ronda_temprana": -4.4
+   }
+  },
+  "riesgo_en_ML_completos": {
+   "n_dev": 16911,
+   "n_holdout": 4488,
+   "gamma": 0.0426,
+   "t_gamma_dev": 1.62,
+   "holdout_base": {
+    "logloss": 0.6106,
+    "skill_pct": 11.91
+   },
+   "holdout_var": {
+    "logloss": 0.6105,
+    "skill_pct": 11.92
+   },
+   "delta_logloss": {
+    "mean": 0.0001,
+    "t": 0.25
+   }
+  }
+ }
+}

@@ -1,0 +1,293 @@
+
+====================================================================================================
+ORG UFC — 8987 peleas (1997-02-07 → 2026-08-01) · fine join 2199 · pesajes casados 209 (lbs conocidas 144) · warm 3145
+
+GANADOR (OOS) · postko 1148 · lay18 443 · miss 167 · women 897
+  Elo puro         {"n":5842,"acc":0.568,"brier":0.24324,"skill":0.00676,"logloss":0.6793,"cal_err":0.0404}
+  ACTUAL           {"n":5842,"acc":0.6111,"brier":0.23316,"skill":0.01684,"logloss":0.6584,"cal_err":0.0504}
+  +a               {"n":5842,"acc":0.6087,"brier":0.23374,"skill":0.01626,"logloss":0.6597,"cal_err":0.0512}
+  +b               {"n":5842,"acc":0.6085,"brier":0.2332,"skill":0.0168,"logloss":0.6584,"cal_err":0.0503}
+  +c               {"n":5842,"acc":0.6104,"brier":0.23298,"skill":0.01702,"logloss":0.658,"cal_err":0.05}
+  +d1              {"n":5842,"acc":0.6114,"brier":0.23312,"skill":0.01688,"logloss":0.6583,"cal_err":0.0506}
+  +d2              {"n":5842,"acc":0.6113,"brier":0.23312,"skill":0.01688,"logloss":0.6583,"cal_err":0.0503}
+  +d3              {"n":5842,"acc":0.6109,"brier":0.23311,"skill":0.01689,"logloss":0.6583,"cal_err":0.0506}
+  +e               {"n":5842,"acc":0.6106,"brier":0.23319,"skill":0.01681,"logloss":0.6585,"cal_err":0.0507}
+  +f               {"n":5842,"acc":0.6085,"brier":0.23322,"skill":0.01678,"logloss":0.6585,"cal_err":0.0507}
+  +a+b+c           {"n":5842,"acc":0.6085,"brier":0.2336,"skill":0.0164,"logloss":0.6593,"cal_err":0.0499}
+  +b+c             {"n":5842,"acc":0.6075,"brier":0.23302,"skill":0.01698,"logloss":0.658,"cal_err":0.0494}
+  ALL              {"n":5842,"acc":0.6058,"brier":0.23364,"skill":0.01636,"logloss":0.6594,"cal_err":0.0507}
+  +c+d2            {"n":5842,"acc":0.6106,"brier":0.23294,"skill":0.01706,"logloss":0.6579,"cal_err":0.0498}
+  +c+e             {"n":5842,"acc":0.6102,"brier":0.23301,"skill":0.01699,"logloss":0.658,"cal_err":0.0498}
+
+BOOTSTRAP PAREADO ΔBrier (variante − ACTUAL; negativo = mejor) ×1e4:
+  all|+a                       n= 5842  Δ=   5.78  IC95 [1.68, 9.82]  P(mejor)=0.005
+  all|+b                       n= 5842  Δ=   0.39  IC95 [-3.01, 3.86]  P(mejor)=0.414
+  all|+c                       n= 5842  Δ=  -1.83  IC95 [-3.72, -0.09]  P(mejor)=0.98
+  all|+d1                      n= 5842  Δ=  -0.35  IC95 [-1.78, 1.03]  P(mejor)=0.694
+  all|+d2                      n= 5842  Δ=   -0.4  IC95 [-1.07, 0.3]  P(mejor)=0.869
+  all|+d3                      n= 5842  Δ=  -0.52  IC95 [-2.16, 1.2]  P(mejor)=0.737
+  all|+e                       n= 5842  Δ=   0.35  IC95 [-0.11, 0.81]  P(mejor)=0.07
+  all|+f                       n= 5842  Δ=   0.65  IC95 [-3.46, 4.49]  P(mejor)=0.388
+  all|+a+b+c                   n= 5842  Δ=   4.38  IC95 [-1.27, 10.11]  P(mejor)=0.065
+  all|+b+c                     n= 5842  Δ=  -1.36  IC95 [-5.24, 2.32]  P(mejor)=0.764
+  all|ALL                      n= 5842  Δ=   4.85  IC95 [-2.02, 12.09]  P(mejor)=0.089
+  all|+c+d2                    n= 5842  Δ=  -2.24  IC95 [-4.09, -0.33]  P(mejor)=0.991
+  all|+c+e                     n= 5842  Δ=  -1.46  IC95 [-3.38, 0.5]  P(mejor)=0.938
+  era:2020-26|+a               n= 3590  Δ=   7.32  IC95 [1.8, 12.87]  P(mejor)=0.003
+  era:2020-26|+b               n= 3590  Δ=   1.69  IC95 [-2.94, 6.3]  P(mejor)=0.233
+  era:2020-26|+c               n= 3590  Δ=  -2.72  IC95 [-5.47, 0.37]  P(mejor)=0.964
+  era:2020-26|+d1              n= 3590  Δ=  -0.66  IC95 [-2.81, 1.61]  P(mejor)=0.719
+  era:2020-26|+d2              n= 3590  Δ=   -0.7  IC95 [-1.82, 0.4]  P(mejor)=0.887
+  era:2020-26|+d3              n= 3590  Δ=  -0.98  IC95 [-3.75, 1.71]  P(mejor)=0.759
+  era:2020-26|+e               n= 3590  Δ=   0.48  IC95 [-0.22, 1.13]  P(mejor)=0.089
+  era:2020-26|+f               n= 3590  Δ=  -0.08  IC95 [-4.17, 4.05]  P(mejor)=0.512
+  era:2020-26|+a+b+c           n= 3590  Δ=   6.37  IC95 [-0.96, 13.93]  P(mejor)=0.041
+  era:2020-26|+b+c             n= 3590  Δ=  -0.92  IC95 [-6.35, 4.37]  P(mejor)=0.632
+  era:2020-26|ALL              n= 3590  Δ=   5.87  IC95 [-3.56, 15.66]  P(mejor)=0.104
+  era:2020-26|+c+d2            n= 3590  Δ=  -3.43  IC95 [-6.52, -0.4]  P(mejor)=0.99
+  era:2020-26|+c+e             n= 3590  Δ=   -2.2  IC95 [-4.95, 0.71]  P(mejor)=0.935
+  div:women|+a                 n=  897  Δ=   6.42  IC95 [-5.41, 18.14]  P(mejor)=0.14
+  div:women|+b                 n=  897  Δ=   3.59  IC95 [-5.52, 12.3]  P(mejor)=0.228
+  div:women|+c                 n=  897  Δ=   3.47  IC95 [-1.25, 8.23]  P(mejor)=0.075
+  div:women|+d1                n=  897  Δ=   1.53  IC95 [-1.77, 4.83]  P(mejor)=0.171
+  div:women|+d2                n=  897  Δ=  -0.18  IC95 [-2.04, 1.66]  P(mejor)=0.56
+  div:women|+d3                n=  897  Δ=   1.42  IC95 [-2.54, 5.49]  P(mejor)=0.239
+  div:women|+e                 n=  897  Δ=   0.89  IC95 [-0.72, 2.43]  P(mejor)=0.13
+  div:women|+f                 n=  897  Δ=   7.67  IC95 [-2.13, 16.98]  P(mejor)=0.061
+  div:women|+a+b+c             n=  897  Δ=  13.54  IC95 [-2.4, 28.89]  P(mejor)=0.053
+  div:women|+b+c               n=  897  Δ=   7.14  IC95 [-2.67, 18.05]  P(mejor)=0.071
+  div:women|ALL                n=  897  Δ=  23.13  IC95 [4.42, 42.15]  P(mejor)=0.008
+  div:women|+c+d2              n=  897  Δ=   3.28  IC95 [-1.9, 8.71]  P(mejor)=0.108
+  div:women|+c+e               n=  897  Δ=   4.28  IC95 [-0.79, 9.14]  P(mejor)=0.044
+  postko:sí|+a                 n= 1148  Δ=   9.23  IC95 [-0.44, 18.81]  P(mejor)=0.03
+  postko:sí|+b                 n= 1148  Δ=   8.22  IC95 [-1.93, 17.93]  P(mejor)=0.061
+  postko:sí|+c                 n= 1148  Δ=  -3.78  IC95 [-7.92, 0.5]  P(mejor)=0.96
+  postko:sí|+d1                n= 1148  Δ=   1.29  IC95 [-3.26, 5.81]  P(mejor)=0.272
+  postko:sí|+d2                n= 1148  Δ=   0.51  IC95 [-1.01, 2.02]  P(mejor)=0.258
+  postko:sí|+d3                n= 1148  Δ=   1.74  IC95 [-3.83, 6.96]  P(mejor)=0.278
+  postko:sí|+e                 n= 1148  Δ=  -0.08  IC95 [-1.2, 1.02]  P(mejor)=0.537
+  postko:sí|+f                 n= 1148  Δ=  -1.25  IC95 [-10.31, 7.88]  P(mejor)=0.6
+  postko:sí|+a+b+c             n= 1148  Δ=  14.02  IC95 [0.07, 28.58]  P(mejor)=0.022
+  postko:sí|+b+c               n= 1148  Δ=   4.76  IC95 [-6.5, 16.03]  P(mejor)=0.203
+  postko:sí|ALL                n= 1148  Δ=  13.96  IC95 [-4.99, 32.28]  P(mejor)=0.069
+  postko:sí|+c+d2              n= 1148  Δ=  -3.29  IC95 [-7.83, 1.29]  P(mejor)=0.925
+  postko:sí|+c+e               n= 1148  Δ=  -3.81  IC95 [-8.24, 0.63]  P(mejor)=0.956
+  lay18:sí|+a                  n=  443  Δ=   8.49  IC95 [-5.84, 22.3]  P(mejor)=0.117
+  lay18:sí|+b                  n=  443  Δ=  -0.77  IC95 [-31.12, 33.08]  P(mejor)=0.536
+  lay18:sí|+c                  n=  443  Δ=   2.31  IC95 [-5.04, 9.51]  P(mejor)=0.257
+  lay18:sí|+d1                 n=  443  Δ=   2.36  IC95 [-4, 8.66]  P(mejor)=0.224
+  lay18:sí|+d2                 n=  443  Δ=   0.32  IC95 [-2.27, 2.81]  P(mejor)=0.421
+  lay18:sí|+d3                 n=  443  Δ=   2.51  IC95 [-4.89, 9.53]  P(mejor)=0.217
+  lay18:sí|+e                  n=  443  Δ=  -0.64  IC95 [-2.91, 1.43]  P(mejor)=0.734
+  lay18:sí|+f                  n=  443  Δ=   0.13  IC95 [-13.37, 13.86]  P(mejor)=0.495
+  lay18:sí|+a+b+c              n=  443  Δ=  11.26  IC95 [-24.3, 48.11]  P(mejor)=0.255
+  lay18:sí|+b+c                n=  443  Δ=    1.6  IC95 [-29.69, 33.14]  P(mejor)=0.459
+  lay18:sí|ALL                 n=  443  Δ=  13.78  IC95 [-25.07, 50.69]  P(mejor)=0.231
+  lay18:sí|+c+d2               n=  443  Δ=   2.56  IC95 [-4.61, 10.01]  P(mejor)=0.253
+  lay18:sí|+c+e                n=  443  Δ=   1.81  IC95 [-5.62, 9.85]  P(mejor)=0.34
+  miss:sí|+a                   n=  167  Δ=  -7.77  IC95 [-36.63, 19.65]  P(mejor)=0.718
+  miss:sí|+b                   n=  167  Δ=  12.35  IC95 [-9.88, 32.81]  P(mejor)=0.133
+  miss:sí|+c                   n=  167  Δ=  -2.95  IC95 [-15.1, 8.72]  P(mejor)=0.679
+  miss:sí|+d1                  n=  167  Δ= -13.72  IC95 [-60.2, 35.08]  P(mejor)=0.715
+  miss:sí|+d2                  n=  167  Δ= -13.11  IC95 [-35.78, 9.33]  P(mejor)=0.871
+  miss:sí|+d3                  n=  167  Δ= -18.87  IC95 [-77.09, 39.16]  P(mejor)=0.722
+  miss:sí|+e                   n=  167  Δ=   1.34  IC95 [-2.17, 4.94]  P(mejor)=0.221
+  miss:sí|+f                   n=  167  Δ=   12.9  IC95 [-5.08, 31.63]  P(mejor)=0.083
+  miss:sí|+a+b+c               n=  167  Δ=   2.35  IC95 [-37.19, 39.95]  P(mejor)=0.444
+  miss:sí|+b+c                 n=  167  Δ=      9  IC95 [-15.01, 34.28]  P(mejor)=0.242
+  miss:sí|ALL                  n=  167  Δ=  -4.58  IC95 [-73.88, 66.86]  P(mejor)=0.579
+  miss:sí|+c+d2                n=  167  Δ= -16.37  IC95 [-42.55, 9.67]  P(mejor)=0.893
+  miss:sí|+c+e                 n=  167  Δ=   -1.6  IC95 [-13.98, 11.55]  P(mejor)=0.605
+
+SEGMENTOS (Brier ACTUAL → mejor variante del segmento):
+  div:heavy      n=  887  ACTUAL 0.23862  +a 0.23907  +b 0.23945  +c 0.23846  +d3 0.23864  +e 0.2387  ALL 0.24007   mejor: +c 0.23846
+  div:mid        n= 3048  ACTUAL 0.23242  +a 0.23291  +b 0.23221  +c 0.23211  +d3 0.23226  +e 0.23242  ALL 0.23194   mejor: +b+c 0.23191
+  div:small      n= 1010  ACTUAL 0.22652  +a 0.22742  +b 0.22634  +c 0.22623  +d3 0.22656  +e 0.22657  ALL 0.22745   mejor: +b+c 0.22604
+  div:women      n=  897  ACTUAL 0.23775  +a 0.23839  +b 0.23811  +c 0.2381  +d3 0.23789  +e 0.23784  ALL 0.24006   mejor: +d2 0.23773
+  era:2013-19    n= 2252  ACTUAL 0.23642  +a 0.23675  +b 0.23625  +c 0.23638  +d3 0.23644  +e 0.23643  ALL 0.23674   mejor: +b+c 0.23622
+  era:2020-26    n= 3590  ACTUAL 0.23111  +a 0.23185  +b 0.23128  +c 0.23084  +d3 0.23102  +e 0.23116  ALL 0.2317   mejor: +c+d2 0.23077
+  lay18:sí       n=  443  ACTUAL 0.23135  +a 0.2322  +b 0.23127  +c 0.23158  +d3 0.2316  +e 0.23128  ALL 0.23273   mejor: +b 0.23127
+  miss:sí        n=  167  ACTUAL 0.23416  +a 0.23338  +b 0.2354  +c 0.23387  +d3 0.23227  +e 0.2343  ALL 0.2337   mejor: +d3 0.23227
+  postko:sí      n= 1148  ACTUAL 0.23011  +a 0.23104  +b 0.23093  +c 0.22973  +d3 0.23029  +e 0.2301  ALL 0.23151   mejor: +c 0.22973
+  sched:3R       n= 5315  ACTUAL 0.2327  +a 0.23328  +b 0.23272  +c 0.2325  +d3 0.23264  +e 0.23271  ALL 0.23293   mejor: +c+d2 0.23246
+  sched:5R       n=  527  ACTUAL 0.23777  +a 0.23832  +b 0.23805  +c 0.23773  +d3 0.2378  +e 0.23808  ALL 0.24081   mejor: +c 0.23773
+
+H2f REFIT POR LOTES ANUAL (mismas 5842 peleas OOS; años 2015-2026):
+  SGD ACTUAL (prod)   brier 0.23316
+  lotes ACTUAL       {"n":5842,"acc":0.6075,"brier":0.23413,"skill":0.01587,"logloss":0.6606,"cal_err":0.0472}
+  lotes +a           {"n":5842,"acc":0.6053,"brier":0.23419,"skill":0.01581,"logloss":0.6608,"cal_err":0.0479}
+  lotes +b           {"n":5842,"acc":0.6032,"brier":0.23419,"skill":0.01581,"logloss":0.6607,"cal_err":0.0466}
+  lotes +c           {"n":5842,"acc":0.6065,"brier":0.23409,"skill":0.01591,"logloss":0.6605,"cal_err":0.0445}
+  lotes +d2          {"n":5842,"acc":0.6063,"brier":0.2342,"skill":0.0158,"logloss":0.6608,"cal_err":0.0475}
+  lotes +e           {"n":5842,"acc":0.6089,"brier":0.23419,"skill":0.01581,"logloss":0.6607,"cal_err":0.0471}
+  lotes +f           {"n":5842,"acc":0.6058,"brier":0.23413,"skill":0.01587,"logloss":0.6606,"cal_err":0.0485}
+  lotes +c+e         {"n":5842,"acc":0.6085,"brier":0.23415,"skill":0.01585,"logloss":0.6606,"cal_err":0.0443}
+  lotes ALL          {"n":5842,"acc":0.6046,"brier":0.23426,"skill":0.01574,"logloss":0.6608,"cal_err":0.0457}
+  lotes ACTUAL vs SGD ACTUAL         Δ=   9.66  IC95 [-1.82, 21.5]  P(mejor)=0.049
+  lotes +a vs SGD ACTUAL             Δ=   10.3  IC95 [-1.88, 23.17]  P(mejor)=0.045
+  lotes +a vs lotes ACTUAL           Δ=   0.64  IC95 [-4.07, 5.53]  P(mejor)=0.398
+  lotes +b vs SGD ACTUAL             Δ=  10.32  IC95 [-1.84, 23.22]  P(mejor)=0.05
+  lotes +b vs lotes ACTUAL           Δ=   0.66  IC95 [-4.82, 6.27]  P(mejor)=0.407
+  lotes +c vs SGD ACTUAL             Δ=    9.3  IC95 [-4.71, 22.24]  P(mejor)=0.087
+  lotes +c vs lotes ACTUAL           Δ=  -0.36  IC95 [-7.28, 6.6]  P(mejor)=0.535
+  lotes +d2 vs SGD ACTUAL            Δ=  10.41  IC95 [-1.51, 22.72]  P(mejor)=0.041
+  lotes +d2 vs lotes ACTUAL          Δ=   0.75  IC95 [-2.36, 3.97]  P(mejor)=0.324
+  lotes +e vs SGD ACTUAL             Δ=  10.27  IC95 [-1.47, 22.21]  P(mejor)=0.043
+  lotes +e vs lotes ACTUAL           Δ=   0.61  IC95 [-1.74, 3.01]  P(mejor)=0.316
+  lotes +f vs SGD ACTUAL             Δ=   9.74  IC95 [-2.76, 22.32]  P(mejor)=0.067
+  lotes +f vs lotes ACTUAL           Δ=   0.08  IC95 [-5.71, 5.64]  P(mejor)=0.498
+  lotes +c+e vs SGD ACTUAL           Δ=   9.91  IC95 [-3.88, 22.94]  P(mejor)=0.081
+  lotes +c+e vs lotes ACTUAL         Δ=   0.25  IC95 [-6.81, 7.65]  P(mejor)=0.473
+  lotes ALL vs SGD ACTUAL            Δ=  11.04  IC95 [-5.48, 27.36]  P(mejor)=0.098
+  lotes ALL vs lotes ACTUAL          Δ=   1.38  IC95 [-10.08, 13.6]  P(mejor)=0.4
+
+PESOS LOTES (ajuste final con TODO, solo descriptivo) ALL: {"elo":0.9299,"reach":0.2908,"exp":-0.0143,"years":-0.25,"age":-0.528,"chin":-0.0615,"streak":-1.5029,"mileage":0.5499,"misswt":-0.0425,"slpm":-0.2153,"td15":0.1624,"tddef":0.5498,"ctrl":0.1878,"kdr":0.0305,"ageb0":-0.06,"ageb1":0.0337,"ageb2":0.0692,"ageb3":-0.0051,"ageb4":-0.0378,"ageXheavy":0.1984,"ageXsmall":-0.1271,"ageXwomen":0.0427,"lay18":0.1678,"laylog":0.2195,"postko":-0.1115,"postko6":0.1309,"qform":1.4948,"oppq":-0.0039,"missflag":-0.3205,"eloXwomen":-0.0487,"eloXheavy":0.203,"eloXsmall":0.1676,"eloX5R":0.1854,"southpaw":0.1408,"height":-0.0306}
+
+PESOS ALL: {"elo":0.8124,"reach":0.2088,"exp":-0.0135,"years":-0.3292,"age":-0.4978,"chin":-0.1392,"streak":0.0427,"mileage":0.3615,"misswt":-0.126,"slpm":-0.1394,"td15":0.121,"tddef":0.0561,"ctrl":0.0391,"kdr":-0.0134,"ageb0":0.0828,"ageb1":0.1004,"ageb2":0.044,"ageb3":-0.0847,"ageb4":-0.1426,"ageXheavy":0.0714,"ageXsmall":-0.0991,"ageXwomen":0.0132,"lay18":0.0758,"laylog":0.0862,"postko":-0.0758,"postko6":0.0329,"qform":0.2357,"oppq":0.1361,"missflag":-0.0909,"eloXwomen":-0.0233,"eloXheavy":0.0296,"eloXsmall":0.0436,"eloX5R":0.0199,"southpaw":0.1343,"height":-0.006}
+
+====================================================================================================
+ORG MMA — 4233 peleas (2009-04-03 → 2026-08-08) · fine join 0 · pesajes casados 26 (lbs conocidas 4) · warm 1481
+
+GANADOR (OOS) · postko 365 · lay18 377 · miss 21 · women 208
+  Elo puro         {"n":2752,"acc":0.6265,"brier":0.23163,"skill":0.01837,"logloss":0.6551,"cal_err":0.0861}
+  ACTUAL           {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.6324,"cal_err":0.0654}
+  +a               {"n":2752,"acc":0.649,"brier":0.22136,"skill":0.02864,"logloss":0.633,"cal_err":0.0653}
+  +b               {"n":2752,"acc":0.6479,"brier":0.22122,"skill":0.02878,"logloss":0.6327,"cal_err":0.0663}
+  +c               {"n":2752,"acc":0.6486,"brier":0.22114,"skill":0.02886,"logloss":0.6325,"cal_err":0.0657}
+  +d1              {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.6324,"cal_err":0.0654}
+  +d2              {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.6324,"cal_err":0.0655}
+  +d3              {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.6324,"cal_err":0.0655}
+  +e               {"n":2752,"acc":0.6486,"brier":0.22103,"skill":0.02897,"logloss":0.6323,"cal_err":0.0656}
+  +f               {"n":2752,"acc":0.6453,"brier":0.22115,"skill":0.02885,"logloss":0.6325,"cal_err":0.0654}
+  +a+b+c           {"n":2752,"acc":0.645,"brier":0.22151,"skill":0.02849,"logloss":0.6333,"cal_err":0.0654}
+  +b+c             {"n":2752,"acc":0.6483,"brier":0.22126,"skill":0.02874,"logloss":0.6328,"cal_err":0.0657}
+  ALL              {"n":2752,"acc":0.6457,"brier":0.22149,"skill":0.02851,"logloss":0.6333,"cal_err":0.0665}
+  +c+d2            {"n":2752,"acc":0.6486,"brier":0.22115,"skill":0.02885,"logloss":0.6325,"cal_err":0.0657}
+  +c+e             {"n":2752,"acc":0.6501,"brier":0.22107,"skill":0.02893,"logloss":0.6323,"cal_err":0.0661}
+
+BOOTSTRAP PAREADO ΔBrier (variante − ACTUAL; negativo = mejor) ×1e4:
+  all|+a                       n= 2752  Δ=   2.51  IC95 [-2.57, 7.8]  P(mejor)=0.162
+  all|+b                       n= 2752  Δ=   1.16  IC95 [-0.76, 3.08]  P(mejor)=0.102
+  all|+c                       n= 2752  Δ=   0.36  IC95 [-1.29, 2.09]  P(mejor)=0.332
+  all|+d1                      n= 2752  Δ=  -0.01  IC95 [-0.03, 0]  P(mejor)=0.742
+  all|+d2                      n= 2752  Δ=   0.05  IC95 [-0.06, 0.16]  P(mejor)=0.202
+  all|+d3                      n= 2752  Δ=   0.04  IC95 [-0.07, 0.15]  P(mejor)=0.262
+  all|+e                       n= 2752  Δ=  -0.72  IC95 [-1.41, -0.02]  P(mejor)=0.981
+  all|+f                       n= 2752  Δ=   0.41  IC95 [-3.81, 4.82]  P(mejor)=0.425
+  all|+a+b+c                   n= 2752  Δ=   4.06  IC95 [-1.82, 9.69]  P(mejor)=0.079
+  all|+b+c                     n= 2752  Δ=   1.58  IC95 [-0.94, 4.08]  P(mejor)=0.122
+  all|ALL                      n= 2752  Δ=   3.84  IC95 [-3.56, 11.27]  P(mejor)=0.146
+  all|+c+d2                    n= 2752  Δ=   0.41  IC95 [-1.17, 2.02]  P(mejor)=0.312
+  all|+c+e                     n= 2752  Δ=  -0.38  IC95 [-2.08, 1.31]  P(mejor)=0.673
+  era:2020-26|+a               n= 1493  Δ=   0.92  IC95 [-8.09, 9.37]  P(mejor)=0.423
+  era:2020-26|+b               n= 1493  Δ=   1.21  IC95 [-1.42, 3.73]  P(mejor)=0.178
+  era:2020-26|+c               n= 1493  Δ=   1.19  IC95 [-1.28, 3.72]  P(mejor)=0.181
+  era:2020-26|+d1              n= 1493  Δ=  -0.02  IC95 [-0.06, 0]  P(mejor)=0.731
+  era:2020-26|+d2              n= 1493  Δ=   0.08  IC95 [-0.1, 0.28]  P(mejor)=0.189
+  era:2020-26|+d3              n= 1493  Δ=   0.07  IC95 [-0.14, 0.27]  P(mejor)=0.273
+  era:2020-26|+e               n= 1493  Δ=  -1.01  IC95 [-2.15, 0.19]  P(mejor)=0.949
+  era:2020-26|+f               n= 1493  Δ=  -0.23  IC95 [-5.08, 4.96]  P(mejor)=0.53
+  era:2020-26|+a+b+c           n= 1493  Δ=   3.45  IC95 [-5.39, 12.78]  P(mejor)=0.22
+  era:2020-26|+b+c             n= 1493  Δ=   2.56  IC95 [-0.97, 6.09]  P(mejor)=0.075
+  era:2020-26|ALL              n= 1493  Δ=    2.3  IC95 [-7.83, 12.41]  P(mejor)=0.331
+  era:2020-26|+c+d2            n= 1493  Δ=   1.27  IC95 [-1.18, 3.66]  P(mejor)=0.158
+  era:2020-26|+c+e             n= 1493  Δ=   0.17  IC95 [-2.47, 2.85]  P(mejor)=0.453
+  div:women|+a                 n=  208  Δ=   1.08  IC95 [-20.55, 24.74]  P(mejor)=0.472
+  div:women|+b                 n=  208  Δ=   7.85  IC95 [-0.22, 15.77]  P(mejor)=0.027
+  div:women|+c                 n=  208  Δ=   4.47  IC95 [-0.84, 10.34]  P(mejor)=0.053
+  div:women|+d1                n=  208  Δ=      0  IC95 [0, 0.01]  P(mejor)=0.21
+  div:women|+d2                n=  208  Δ=  -0.03  IC95 [-0.2, 0.15]  P(mejor)=0.629
+  div:women|+d3                n=  208  Δ=  -0.02  IC95 [-0.19, 0.16]  P(mejor)=0.623
+  div:women|+e                 n=  208  Δ=  -5.69  IC95 [-9.28, -2.05]  P(mejor)=1
+  div:women|+f                 n=  208  Δ=   5.82  IC95 [-10.74, 24.03]  P(mejor)=0.249
+  div:women|+a+b+c             n=  208  Δ=  12.77  IC95 [-11.64, 37.11]  P(mejor)=0.147
+  div:women|+b+c               n=  208  Δ=  12.17  IC95 [2.44, 21.78]  P(mejor)=0.007
+  div:women|ALL                n=  208  Δ=  13.25  IC95 [-14.68, 44.3]  P(mejor)=0.196
+  div:women|+c+d2              n=  208  Δ=   4.45  IC95 [-1.04, 10.17]  P(mejor)=0.052
+  div:women|+c+e               n=  208  Δ=  -1.18  IC95 [-7.68, 4.97]  P(mejor)=0.635
+  postko:sí|+a                 n=  365  Δ=   4.06  IC95 [-10.24, 18.72]  P(mejor)=0.298
+  postko:sí|+b                 n=  365  Δ=   5.14  IC95 [-4.81, 15.51]  P(mejor)=0.151
+  postko:sí|+c                 n=  365  Δ=   2.94  IC95 [-2.28, 7.91]  P(mejor)=0.133
+  postko:sí|+d1                n=  365  Δ=      0  IC95 [0, 0.01]  P(mejor)=0.158
+  postko:sí|+d2                n=  365  Δ=   0.05  IC95 [-0.01, 0.13]  P(mejor)=0.045
+  postko:sí|+d3                n=  365  Δ=   0.05  IC95 [0, 0.13]  P(mejor)=0.038
+  postko:sí|+e                 n=  365  Δ=   0.17  IC95 [-2.07, 2.3]  P(mejor)=0.441
+  postko:sí|+f                 n=  365  Δ=   7.97  IC95 [-3.76, 19.88]  P(mejor)=0.096
+  postko:sí|+a+b+c             n=  365  Δ=  12.51  IC95 [-4.78, 29.28]  P(mejor)=0.08
+  postko:sí|+b+c               n=  365  Δ=   8.29  IC95 [-3.02, 18.76]  P(mejor)=0.07
+  postko:sí|ALL                n=  365  Δ=  20.34  IC95 [-0.24, 41.26]  P(mejor)=0.027
+  postko:sí|+c+d2              n=  365  Δ=   2.99  IC95 [-1.74, 7.95]  P(mejor)=0.115
+  postko:sí|+c+e               n=  365  Δ=   3.11  IC95 [-1.89, 8.38]  P(mejor)=0.119
+  lay18:sí|+a                  n=  377  Δ=  -1.62  IC95 [-13.84, 11.12]  P(mejor)=0.601
+  lay18:sí|+b                  n=  377  Δ=   2.48  IC95 [-7.48, 12.21]  P(mejor)=0.308
+  lay18:sí|+c                  n=  377  Δ=   2.95  IC95 [-1.95, 7.61]  P(mejor)=0.117
+  lay18:sí|+d1                 n=  377  Δ=      0  IC95 [-0.01, 0]  P(mejor)=0.762
+  lay18:sí|+d2                 n=  377  Δ=   0.27  IC95 [-0.01, 0.73]  P(mejor)=0.044
+  lay18:sí|+d3                 n=  377  Δ=   0.27  IC95 [-0.02, 0.76]  P(mejor)=0.043
+  lay18:sí|+e                  n=  377  Δ=   0.08  IC95 [-1.9, 1.94]  P(mejor)=0.466
+  lay18:sí|+f                  n=  377  Δ=  -0.68  IC95 [-12.92, 12.13]  P(mejor)=0.553
+  lay18:sí|+a+b+c              n=  377  Δ=   3.71  IC95 [-13.81, 21.15]  P(mejor)=0.34
+  lay18:sí|+b+c                n=  377  Δ=   5.78  IC95 [-5.78, 17.65]  P(mejor)=0.158
+  lay18:sí|ALL                 n=  377  Δ=   3.38  IC95 [-18.29, 25.04]  P(mejor)=0.385
+  lay18:sí|+c+d2               n=  377  Δ=   3.23  IC95 [-1.65, 8.09]  P(mejor)=0.09
+  lay18:sí|+c+e                n=  377  Δ=   3.04  IC95 [-2.08, 8.32]  P(mejor)=0.128
+  miss:sí|+a                   n=   21  Δ= -20.65  IC95 [-77.91, 42.41]  P(mejor)=0.778
+  miss:sí|+b                   n=   21  Δ=   4.28  IC95 [-22.09, 28.69]  P(mejor)=0.366
+  miss:sí|+c                   n=   21  Δ=  -16.2  IC95 [-40.81, 4.69]  P(mejor)=0.919
+  miss:sí|+d1                  n=   21  Δ=  -1.32  IC95 [-3.97, 0.01]  P(mejor)=0.88
+  miss:sí|+d2                  n=   21  Δ=   5.64  IC95 [-7.51, 19.39]  P(mejor)=0.212
+  miss:sí|+d3                  n=   21  Δ=   4.31  IC95 [-8.55, 18.22]  P(mejor)=0.262
+  miss:sí|+e                   n=   21  Δ=  -4.34  IC95 [-13.98, 2.04]  P(mejor)=0.855
+  miss:sí|+f                   n=   21  Δ=  16.43  IC95 [-18.4, 51.16]  P(mejor)=0.179
+  miss:sí|+a+b+c               n=   21  Δ= -34.29  IC95 [-100.7, 34.63]  P(mejor)=0.846
+  miss:sí|+b+c                 n=   21  Δ= -12.75  IC95 [-56.62, 26.38]  P(mejor)=0.714
+  miss:sí|ALL                  n=   21  Δ= -17.46  IC95 [-93.13, 63.63]  P(mejor)=0.676
+  miss:sí|+c+d2                n=   21  Δ= -10.49  IC95 [-30.93, 9.36]  P(mejor)=0.851
+  miss:sí|+c+e                 n=   21  Δ= -20.57  IC95 [-48.87, 4.07]  P(mejor)=0.947
+
+SEGMENTOS (Brier ACTUAL → mejor variante del segmento):
+  div:heavy      n=  341  ACTUAL 0.23837  +a 0.23941  +b 0.23839  +c 0.23795  +d3 0.23837  +e 0.23837  ALL 0.2392   mejor: +c+e 0.23793
+  div:mid        n= 2072  ACTUAL 0.21653  +a 0.21672  +b 0.21657  +c 0.21659  +d3 0.21653  +e 0.21651  ALL 0.21676   mejor: +f 0.21644
+  div:small      n=  131  ACTUAL 0.24682  +a 0.24614  +b 0.24721  +c 0.24693  +d3 0.24684  +e 0.24641  ALL 0.24692   mejor: +a 0.24614
+  div:women      n=  208  ACTUAL 0.22225  +a 0.22235  +b 0.22303  +c 0.22269  +d3 0.22224  +e 0.22168  ALL 0.22357   mejor: +e 0.22168
+  era:2013-19    n= 1259  ACTUAL 0.22252  +a 0.22296  +b 0.22263  +c 0.22246  +d3 0.22252  +e 0.22248  ALL 0.22309   mejor: +c+e 0.22242
+  era:2020-26    n= 1493  ACTUAL 0.21991  +a 0.22  +b 0.22003  +c 0.22003  +d3 0.21992  +e 0.21981  ALL 0.22014   mejor: +e 0.21981
+  lay18:sí       n=  377  ACTUAL 0.21955  +a 0.21939  +b 0.2198  +c 0.21984  +d3 0.21957  +e 0.21956  ALL 0.21989   mejor: +a 0.21939
+  postko:sí      n=  365  ACTUAL 0.22688  +a 0.22729  +b 0.2274  +c 0.22718  +d3 0.22689  +e 0.2269  ALL 0.22892   mejor: ACTUAL 0.22688
+  sched:3R       n= 2546  ACTUAL 0.22182  +a 0.22229  +b 0.22196  +c 0.22181  +d3 0.22182  +e 0.22177  ALL 0.22244   mejor: +c+e 0.22176
+  sched:5R       n=  206  ACTUAL 0.21228  +a 0.20984  +b 0.21209  +c 0.2129  +d3 0.21228  +e 0.21192  ALL 0.20981   mejor: ALL 0.20981
+
+H2f REFIT POR LOTES ANUAL (mismas 2752 peleas OOS; años 2016-2026):
+  SGD ACTUAL (prod)   brier 0.22111
+  lotes ACTUAL       {"n":2752,"acc":0.6472,"brier":0.22094,"skill":0.02906,"logloss":0.6323,"cal_err":0.0666}
+  lotes +a           {"n":2752,"acc":0.6486,"brier":0.22159,"skill":0.02841,"logloss":0.6338,"cal_err":0.0659}
+  lotes +b           {"n":2752,"acc":0.6486,"brier":0.22135,"skill":0.02865,"logloss":0.6333,"cal_err":0.0664}
+  lotes +c           {"n":2752,"acc":0.6468,"brier":0.22088,"skill":0.02912,"logloss":0.6322,"cal_err":0.064}
+  lotes +d2          {"n":2752,"acc":0.6475,"brier":0.22115,"skill":0.02885,"logloss":0.6328,"cal_err":0.0665}
+  lotes +e           {"n":2752,"acc":0.645,"brier":0.22026,"skill":0.02974,"logloss":0.6312,"cal_err":0.0656}
+  lotes +f           {"n":2752,"acc":0.6486,"brier":0.22096,"skill":0.02904,"logloss":0.6325,"cal_err":0.065}
+  lotes +c+e         {"n":2752,"acc":0.645,"brier":0.22024,"skill":0.02976,"logloss":0.6311,"cal_err":0.0647}
+  lotes ALL          {"n":2752,"acc":0.6457,"brier":0.22167,"skill":0.02833,"logloss":0.6343,"cal_err":0.0644}
+  lotes ACTUAL vs SGD ACTUAL         Δ=  -1.69  IC95 [-18.49, 16.21]  P(mejor)=0.596
+  lotes +a vs SGD ACTUAL             Δ=   4.81  IC95 [-12.68, 23.64]  P(mejor)=0.311
+  lotes +a vs lotes ACTUAL           Δ=    6.5  IC95 [0.11, 13.1]  P(mejor)=0.021
+  lotes +b vs SGD ACTUAL             Δ=   2.45  IC95 [-15.58, 19.98]  P(mejor)=0.413
+  lotes +b vs lotes ACTUAL           Δ=   4.13  IC95 [-2.46, 11.11]  P(mejor)=0.111
+  lotes +c vs SGD ACTUAL             Δ=  -2.25  IC95 [-19.41, 15.97]  P(mejor)=0.598
+  lotes +c vs lotes ACTUAL           Δ=  -0.56  IC95 [-5.7, 4.65]  P(mejor)=0.57
+  lotes +d2 vs SGD ACTUAL            Δ=   0.43  IC95 [-15.98, 17.95]  P(mejor)=0.461
+  lotes +d2 vs lotes ACTUAL          Δ=   2.12  IC95 [0.45, 4.24]  P(mejor)=0.004
+  lotes +e vs SGD ACTUAL             Δ=  -8.42  IC95 [-27.5, 10.56]  P(mejor)=0.808
+  lotes +e vs lotes ACTUAL           Δ=  -6.74  IC95 [-15.81, 2.47]  P(mejor)=0.935
+  lotes +f vs SGD ACTUAL             Δ=  -1.46  IC95 [-18.6, 15.58]  P(mejor)=0.553
+  lotes +f vs lotes ACTUAL           Δ=   0.23  IC95 [-3.16, 3.75]  P(mejor)=0.435
+  lotes +c+e vs SGD ACTUAL           Δ=  -8.68  IC95 [-29, 9.95]  P(mejor)=0.817
+  lotes +c+e vs lotes ACTUAL         Δ=     -7  IC95 [-17.17, 3.53]  P(mejor)=0.906
+  lotes ALL vs SGD ACTUAL            Δ=   5.67  IC95 [-17.21, 27.82]  P(mejor)=0.305
+  lotes ALL vs lotes ACTUAL          Δ=   7.36  IC95 [-7.38, 22.13]  P(mejor)=0.171
+
+PESOS LOTES (ajuste final con TODO, solo descriptivo) ALL: {"elo":0.7595,"reach":0.1785,"exp":0.3617,"years":-0.4984,"age":-0.587,"chin":-0.193,"streak":0.3189,"mileage":0.2765,"misswt":-0.3816,"slpm":0,"td15":0,"tddef":0,"ctrl":0,"kdr":0,"ageb0":-0.0274,"ageb1":-0.0194,"ageb2":-0.055,"ageb3":0.0181,"ageb4":0.0838,"ageXheavy":0.1162,"ageXsmall":0.103,"ageXwomen":0.3321,"lay18":0.1184,"laylog":0.0308,"postko":-0.1258,"postko6":0.2855,"qform":-0.0872,"oppq":0.521,"missflag":0.143,"eloXwomen":0.5015,"eloXheavy":-0.1832,"eloXsmall":-0.8235,"eloX5R":0.5508,"southpaw":0.013,"height":0.0533}
+
+PESOS ALL: {"elo":0.9618,"reach":0.0728,"exp":0.0578,"years":-0.3053,"age":-0.4306,"chin":-0.1877,"streak":0.0503,"mileage":0.196,"misswt":-0.0197,"slpm":0,"td15":0,"tddef":0,"ctrl":0,"kdr":0,"ageb0":0.1673,"ageb1":0.0984,"ageb2":-0.1061,"ageb3":-0.0976,"ageb4":-0.062,"ageXheavy":-0.0219,"ageXsmall":-0.0423,"ageXwomen":0.0714,"lay18":0.0765,"laylog":0.0029,"postko":-0.0543,"postko6":0.0478,"qform":0.082,"oppq":0.0413,"missflag":0.0022,"eloXwomen":0.0633,"eloXheavy":-0.0334,"eloXsmall":-0.0812,"eloX5R":0.0434,"southpaw":0.0072,"height":0.1093}
+
+escrito /tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/combate/h2_result_ufc_mma.json

@@ -1,0 +1,46 @@
+
+══════ ATP ══════ dev n=18384 holdout n=4906
+  distribuciones calculadas en 76s (cache 6791)
+  calibración lineal dev: bo3 a=-10.797 b=1.379 · bo5 a=-18.559 b=1.374 (repo: {"bo3":[-10.984670328897677,1.3862991981847836],"bo5":[-18.923830543603664,1.3824464847218159]})
+  dev: s*=1 (logscore 3.2646) · λ*=0.7 (logscore 3.1480)
+  (a) holdout bo3_shift_prod: {"n":3930,"pred_mean":23.516,"act_mean":23.484,"pred_sd_avg":5.881,"act_sd":5.99,"rmse_mean":5.941,"p_act_gt_median":0.441,"cov50":0.533,"cov80":0.801,"cov90":0.894,"pit_hist_pct":[7.735,9.72,12.952,11.323,14.58,9.567,7.455,5.954,8.524,12.188]}
+  (a) holdout bo3_raw: {"n":3930,"pred_mean":24.884,"act_mean":23.484,"pred_sd_avg":5.881,"act_sd":5.99,"rmse_mean":6.104,"p_act_gt_median":0.367,"cov50":0.466,"cov80":0.765,"cov90":0.869,"pit_hist_pct":[15.394,11.883,12.723,10.941,10.254,9.364,6.31,7.048,7.964,8.117]}
+  (a) holdout bo5_shift_prod: {"n":976,"pred_mean":36.848,"act_mean":37.144,"pred_sd_avg":8.832,"act_sd":9.588,"rmse_mean":9.395,"p_act_gt_median":0.498,"cov50":0.49,"cov80":0.805,"cov90":0.897,"pit_hist_pct":[5.943,12.602,15.369,8.607,8.402,9.734,10.861,6.967,7.992,13.525]}
+  (a) holdout bo5_raw: {"n":976,"pred_mean":40.332,"act_mean":37.144,"pred_sd_avg":8.832,"act_sd":9.588,"rmse_mean":9.898,"p_act_gt_median":0.352,"cov50":0.417,"cov80":0.72,"cov90":0.845,"pit_hist_pct":[21.311,14.447,10.143,8.914,8.811,9.324,6.352,7.172,6.865,6.66]}
+  (a) fiabilidad P(over mediana_raw+0.5) producción: {"1":{"n":1,"p_pred":0.146,"hit":1},"2":{"n":80,"p_pred":0.28,"hit":0.4},"3":{"n":1119,"p_pred":0.364,"hit":0.351},"4":{"n":3706,"p_pred":0.432,"hit":0.367}}
+  (b) shift_prod: MAE media 5.6238 mediana 5.5965 · logscore 3.2772 · CRPS 3.7837 · Brier over@med 0.2346 (@+2 0.2071, @−2 0.2502) · Δ vs prod: MAE 0.0000 (t NaN) logscore 0.0000 (t NaN) CRPS 0.0000 (t NaN) Brier 0.00000 (t NaN)
+  (b) rescale: MAE media 5.6238 mediana 5.6037 · logscore 4.7906 · CRPS 3.9666 · Brier over@med 0.2357 (@+2 0.2127, @−2 0.2507) · Δ vs prod: MAE 0.0000 (t 0.19) logscore 1.5135 (t 38.36) CRPS 0.1830 (t 24.02) Brier 0.00109 (t 3.54)
+  (b) locscale: MAE media 5.6238 mediana 5.5965 · logscore 3.2772 · CRPS 3.7837 · Brier over@med 0.2346 (@+2 0.2071, @−2 0.2502) · Δ vs prod: MAE 0.0000 (t NaN) logscore 0.0000 (t NaN) CRPS 0.0000 (t NaN) Brier 0.00000 (t NaN)
+  (b) mix_emp: MAE media 5.6496 mediana 5.5151 · logscore 3.1675 · CRPS 3.7614 · Brier over@med 0.2324 (@+2 0.2058, @−2 0.2456) · Δ vs prod: MAE 0.0257 (t 1.82) logscore -0.1097 (t -16.87) CRPS -0.0223 (t -2.19) Brier -0.00220 (t -2.49)
+  (b) resid_emp: MAE media 5.6224 mediana 7.3343 · logscore 3.1821 · CRPS 3.7581 · Brier over@med 0.2317 (@+2 0.2052, @−2 0.2451) · Δ vs prod: MAE -0.0014 (t -11.12) logscore -0.0951 (t -12.92) CRPS -0.0256 (t -4.30) Brier -0.00289 (t -3.33)
+  (b) MAE ingenuo (media dev por formato) en holdout: 5.6861
+  por formato×superficie (prod):  {"bo3_s0":{"n":2272,"bias":0.093,"mae":5.055,"sd_act":5.985,"sd_pred":5.887},"bo5_s0":{"n":373,"bias":0.499,"mae":7.788,"sd_act":9.623,"sd_pred":8.844},"bo3_s1":{"n":1317,"bias":0.293,"mae":4.996,"sd_act":5.862,"sd_pred":5.868},"bo5_s1":{"n":357,"bias":-0.626,"mae":8.047,"sd_act":9.539,"sd_pred":8.829},"bo3_s2":{"n":341,"bias":-1.371,"mae":5.383,"sd_act":6.291,"sd_pred":5.889},"bo5_s2":{"n":246,"bias":-1.024,"mae":7.773,"sd_act":9.524,"sd_pred":8.817}}
+
+══════ WTA ══════ dev n=16911 holdout n=4488
+  distribuciones calculadas en 43s (cache 10860)
+  calibración lineal dev: bo3 a=3.267 b=0.773 · bo5 a=0.000 b=1.000 (repo: {"bo3":[3.11673028652258,0.7790035032206774],"bo5":[0,1]})
+  dev: s*=1 (logscore 3.0965) · λ*=0.7 (logscore 3.0309)
+  (a) holdout bo3_shift_prod: {"n":4444,"pred_mean":21.73,"act_mean":21.957,"pred_sd_avg":5.766,"act_sd":5.835,"rmse_mean":5.785,"p_act_gt_median":0.486,"cov50":0.544,"cov80":0.817,"cov90":0.907,"pit_hist_pct":[6.053,9.676,11.274,13.704,12.916,10.531,8.213,7.111,8.303,12.219]}
+  (a) holdout bo3_raw: {"n":4444,"pred_mean":23.888,"act_mean":21.957,"pred_sd_avg":5.766,"act_sd":5.835,"rmse_mean":6.093,"p_act_gt_median":0.358,"cov50":0.447,"cov80":0.739,"cov90":0.848,"pit_hist_pct":[19.779,13.231,10.779,10.306,8.528,9.046,7.786,7.696,6.503,6.346]}
+  (a) fiabilidad P(over mediana_raw+0.5) producción: {"3":{"n":2594,"p_pred":0.385,"hit":0.357},"4":{"n":1894,"p_pred":0.416,"hit":0.35}}
+  (b) shift_prod: MAE media 4.9586 mediana 4.8851 · logscore 3.1611 · CRPS 3.358 · Brier over@med 0.2316 (@+2 0.2017, @−2 0.2487) · Δ vs prod: MAE 0.0000 (t NaN) logscore 0.0000 (t NaN) CRPS 0.0000 (t NaN) Brier 0.00000 (t NaN)
+  (b) rescale: MAE media 4.9586 mediana 4.891 · logscore 3.3785 · CRPS 3.4064 · Brier over@med 0.2309 (@+2 0.2064, @−2 0.2485) · Δ vs prod: MAE 0.0000 (t 0.91) logscore 0.2174 (t 15.60) CRPS 0.0485 (t 7.74) Brier -0.00071 (t -1.16)
+  (b) locscale: MAE media 4.9586 mediana 4.8851 · logscore 3.1611 · CRPS 3.358 · Brier over@med 0.2316 (@+2 0.2017, @−2 0.2487) · Δ vs prod: MAE 0.0000 (t NaN) logscore 0.0000 (t NaN) CRPS 0.0000 (t NaN) Brier 0.00000 (t NaN)
+/tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:67
+  const mixDist = (p, lam) => { const e = emp[`${p.bo}_${p.surf}`] || emp[`${p.bo}_0`]; const m = new Map(); for (const [g, q] of shiftDist(p)) m.set(g, (m.get(g) || 0) + (1 - lam) * q); for (const [g, q] of e) m.set(g, (m.get(g) || 0) + lam * q); return [...m.entries()].sort((a, b) => a[0] - b[0]); };
+                                                                                                                                                                                                                ^
+
+TypeError: e is not iterable
+    at mixDist (/tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:67:209)
+    at mix_emp (/tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:78:115)
+    at /tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:95:45
+    at Array.map (<anonymous>)
+    at evalV (/tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:95:22)
+    at Object.<anonymous> (/tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis/h3_total.js:103:15)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object..js (node:internal/modules/cjs/loader:1838:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+
+Node.js v22.22.2
+done

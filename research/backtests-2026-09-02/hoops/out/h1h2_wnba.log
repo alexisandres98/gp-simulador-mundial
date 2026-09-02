@@ -1,0 +1,70 @@
+
+══════════ WNBA · H1 histograma 1 pt (cur) vs cubos de 5 (old) · 203 partidos (2026-05-29T02:00Z → 2026-08-15T02:00Z) · sims 8000
+  total      NUEVO {"n":104,"wins":51,"losses":53,"pushes":0,"hit_pct":49.04,"roi_pct":-6.39,"roi_se_pp":9.4,"t":-0.68,"avg_edge_pp":6.39}
+             VIEJO {"n":116,"wins":59,"losses":57,"pushes":0,"hit_pct":50.86,"roi_pct":-2.9,"roi_se_pp":8.9,"t":-0.33,"avg_edge_pp":6.32}
+  spread     NUEVO {"n":134,"wins":71,"losses":63,"pushes":0,"hit_pct":52.99,"roi_pct":1.15,"roi_se_pp":8.26,"t":0.14,"avg_edge_pp":9.84}
+             VIEJO {"n":134,"wins":71,"losses":63,"pushes":0,"hit_pct":52.99,"roi_pct":1.15,"roi_se_pp":8.26,"t":0.14,"avg_edge_pp":9.84}
+  moneyline  NUEVO {"n":122,"wins":40,"losses":82,"pushes":0,"hit_pct":32.79,"roi_pct":-13.71,"roi_se_pp":14.21,"t":-0.96,"avg_edge_pp":9.15}
+             VIEJO {"n":122,"wins":40,"losses":82,"pushes":0,"hit_pct":32.79,"roi_pct":-13.71,"roi_se_pp":14.21,"t":-0.96,"avg_edge_pp":9.15}
+  TOTAL por residuo de la línea (línea mod 5) — bug: x3,5/x4/x4,5 regalaban over; x0,5/x1/x1,5 regalaban under
+    old residuo  0.5: n= 21 overs=  4 unders= 17 hit=38.1% roi=-27.28%
+    old residuo  1.5: n= 31 overs=  7 unders= 24 hit=48.39% roi=-7.63%
+    old residuo  2.5: n= 25 overs= 11 unders= 14 hit=52% roi=-0.73%
+    old residuo  3.5: n= 14 overs=  6 unders=  8 hit=35.71% roi=-31.82%
+    old residuo  4.5: n= 25 overs= 17 unders=  8 hit=72% roi=37.45%
+    cur residuo  0.5: n= 18 overs= 11 unders=  7 hit=50% roi=-4.55%
+    cur residuo  1.5: n= 28 overs= 10 unders= 18 hit=46.43% roi=-11.37%
+    cur residuo  2.5: n= 25 overs= 11 unders= 14 hit=52% roi=-0.73%
+    cur residuo  3.5: n= 12 overs=  3 unders=  9 hit=41.67% roi=-20.46%
+    cur residuo  4.5: n= 21 overs=  6 unders= 15 hit=52.38% roi=0%
+  sesgo de p(over) viejo − nuevo por residuo (pp): {"0.5":{"n":35,"mean_pp":-4.33},"1.5":{"n":45,"mean_pp":-2.12},"2.5":{"n":45,"mean_pp":0},"3.5":{"n":34,"mean_pp":2.13},"4.5":{"n":43,"mean_pp":4.26}}
+  old TOTAL over {"n":45,"wins":29,"losses":16,"pushes":0,"hit_pct":64.44,"roi_pct":23.02,"roi_se_pp":13.78,"t":1.67,"avg_edge_pp":6.83}
+      TOTAL under {"n":71,"wins":30,"losses":41,"pushes":0,"hit_pct":42.25,"roi_pct":-19.34,"roi_se_pp":11.27,"t":-1.72,"avg_edge_pp":5.99}
+  old TOTAL por banda: 2-4pp n=31 hit=38.71 roi=-26.1±16.98 | 4-6pp n=33 hit=51.52 roi=-1.66±16.87 | 6-8pp n=32 hit=50 roi=-4.55±17.14 | 8-12pp n=12 hit=66.67 roi=27.27±27.13 | 12-100pp n=8 hit=75 roi=43.17±31.24
+  cur TOTAL over {"n":41,"wins":24,"losses":17,"pushes":0,"hit_pct":58.54,"roi_pct":11.75,"roi_se_pp":14.87,"t":0.79,"avg_edge_pp":7.17}
+      TOTAL under {"n":63,"wins":27,"losses":36,"pushes":0,"hit_pct":42.86,"roi_pct":-18.19,"roi_se_pp":12,"t":-1.52,"avg_edge_pp":5.88}
+  cur TOTAL por banda: 2-4pp n=31 hit=38.71 roi=-26.1±16.98 | 4-6pp n=32 hit=53.13 roi=1.42±17.11 | 6-8pp n=10 hit=50 roi=-4.55±31.82 | 8-12pp n=25 hit=52 roi=-0.73±19.47 | 12-100pp n=6 hit=66.67 roi=27.27±40.25
+  solapamiento de picks TOTAL viejo/nuevo: {"only_old":30,"only_cur":18,"both":86}
+
+  DIAGNÓSTICO TOTAL (histograma correcto): {"n":202,"bias_model_pts":2.42,"mae_model":15.73,"sd_model_err":20.01,"bias_market_pts":2.77,"mae_market":15.62,"sd_market_err":19.63,"sd_model_minus_market":3.27,"mean_model_minus_market":0.34,"beta_actual_vs_model_disagreement":-0.216,"beta_se":0.424,"beta_t":-0.51,"corr_model_err_market_err":0.987}
+    → β = cuánto del desacuerdo modelo−mercado se traduce en resultado (1 = el modelo tiene razón, 0 = ruido puro). λ óptimo ≈ β.
+  calibración p(over) modelo: 0-0.35: n=2 p̄=0.318 real=0 | 0.35-0.45: n=55 p̄=0.417 real=0.582 | 0.45-0.55: n=108 p̄=0.493 real=0.565 | 0.55-0.65: n=34 p̄=0.593 real=0.588 | 0.65-1.01: n=3 p̄=0.692 real=0.667
+
+══════════ H2 TOTAL · desarrollo: partidos 60–156 · evaluación: 157–262
+  (a) mezcla log-odds hacia 0,5 (w = peso del modelo; w=0 ⇒ p=0,5 ⇒ cero picks, no se lista) — DESARROLLO:
+     w=1 th=2: {"n":50,"wins":24,"losses":26,"pushes":0,"hit_pct":48,"roi_pct":-8.37,"roi_se_pp":13.62,"t":-0.61,"avg_edge_pp":6.75}
+     w=1 th=3: {"n":41,"wins":20,"losses":21,"pushes":0,"hit_pct":48.78,"roi_pct":-6.88,"roi_se_pp":15.09,"t":-0.46,"avg_edge_pp":7.66}
+     w=1 th=4: {"n":36,"wins":19,"losses":17,"pushes":0,"hit_pct":52.78,"roi_pct":0.75,"roi_se_pp":16.11,"t":0.05,"avg_edge_pp":8.23}
+     w=1 th=6: {"n":22,"wins":12,"losses":10,"pushes":0,"hit_pct":54.55,"roi_pct":4.13,"roi_se_pp":20.74,"t":0.2,"avg_edge_pp":10.19}
+     w=0.5 th=2: {"n":21,"wins":11,"losses":10,"pushes":0,"hit_pct":52.38,"roi_pct":0,"roi_se_pp":21.32,"t":0,"avg_edge_pp":10.38}
+     w=0.5 th=3: {"n":18,"wins":9,"losses":9,"pushes":0,"hit_pct":50,"roi_pct":-4.55,"roi_se_pp":23.15,"t":-0.2,"avg_edge_pp":10.85}
+     w=0.5 th=4: {"n":7,"wins":3,"losses":4,"pushes":0,"hit_pct":42.86,"roi_pct":-18.19,"roi_se_pp":38.57,"t":-0.47,"avg_edge_pp":13.53}
+     w=0.5 th=6: {"n":2,"wins":2,"losses":0,"pushes":0,"hit_pct":100,"roi_pct":90.9,"roi_se_pp":0,"t":null,"avg_edge_pp":18.59}
+     w=0.233 th=2: {"n":2,"wins":2,"losses":0,"pushes":0,"hit_pct":100,"roi_pct":90.9,"roi_se_pp":0,"t":null,"avg_edge_pp":18.59}
+     w=0.233 th=3: {"n":1,"wins":1,"losses":0,"pushes":0,"hit_pct":100,"roi_pct":90.9,"roi_se_pp":0,"t":null,"avg_edge_pp":20.61}
+     w=0.233 th=4: {"n":0}
+     w=0.233 th=6: {"n":0}
+  → elegido en desarrollo: w=1 th=3 · EVALUACIÓN {"n":46,"wins":24,"losses":22,"pushes":0,"hit_pct":52.17,"roi_pct":-0.4,"roi_se_pp":14.22,"t":-0.03,"avg_edge_pp":6.68}
+  (b) mezcla en espacio de línea: σ_dev=21.57 · β_dev=-0.419 (λ óptimo estimado en desarrollo)
+     λ=1 th=2: {"n":44,"wins":23,"losses":21,"pushes":0,"hit_pct":52.27,"roi_pct":-0.21,"roi_se_pp":14.54,"t":-0.01,"avg_edge_pp":5.91}
+     λ=1 th=3: {"n":36,"wins":18,"losses":18,"pushes":0,"hit_pct":50,"roi_pct":-4.55,"roi_se_pp":16.13,"t":-0.28,"avg_edge_pp":6.7}
+     λ=1 th=4: {"n":31,"wins":17,"losses":14,"pushes":0,"hit_pct":54.84,"roi_pct":4.69,"roi_se_pp":17.34,"t":0.27,"avg_edge_pp":7.23}
+     λ=1 th=6: {"n":17,"wins":10,"losses":7,"pushes":0,"hit_pct":58.82,"roi_pct":12.29,"roi_se_pp":23.49,"t":0.52,"avg_edge_pp":8.94}
+     λ=0.75 th=2: {"n":33,"wins":17,"losses":16,"pushes":0,"hit_pct":51.52,"roi_pct":-1.66,"roi_se_pp":16.87,"t":-0.1,"avg_edge_pp":4.71}
+     λ=0.75 th=3: {"n":26,"wins":16,"losses":10,"pushes":0,"hit_pct":61.54,"roi_pct":17.48,"roi_se_pp":18.57,"t":0.94,"avg_edge_pp":5.27}
+     λ=0.75 th=4: {"n":15,"wins":9,"losses":6,"pushes":0,"hit_pct":60,"roi_pct":14.54,"roi_se_pp":24.99,"t":0.58,"avg_edge_pp":6.47}
+     λ=0.75 th=6: {"n":6,"wins":5,"losses":1,"pushes":0,"hit_pct":83.33,"roi_pct":59.08,"roi_se_pp":31.82,"t":1.86,"avg_edge_pp":8.36}
+     λ=0.5 th=2: {"n":15,"wins":9,"losses":6,"pushes":0,"hit_pct":60,"roi_pct":14.54,"roi_se_pp":24.99,"t":0.58,"avg_edge_pp":3.55}
+     λ=0.5 th=3: {"n":9,"wins":6,"losses":3,"pushes":0,"hit_pct":66.67,"roi_pct":27.27,"roi_se_pp":31.82,"t":0.86,"avg_edge_pp":4.25}
+     λ=0.5 th=4: {"n":4,"wins":3,"losses":1,"pushes":0,"hit_pct":75,"roi_pct":43.18,"roi_se_pp":47.73,"t":0.9,"avg_edge_pp":5.59}
+     λ=0.5 th=6: {"n":1,"wins":1,"losses":0,"pushes":0,"hit_pct":100,"roi_pct":90.9,"roi_se_pp":0,"t":null,"avg_edge_pp":7.84}
+     λ=0.25 th=2: {"n":1,"wins":1,"losses":0,"pushes":0,"hit_pct":100,"roi_pct":90.9,"roi_se_pp":0,"t":null,"avg_edge_pp":2.77}
+     λ=0.25 th=3: {"n":0}
+     λ=0.25 th=4: {"n":0}
+     λ=0.25 th=6: {"n":0}
+     λ=0.05 th=2: {"n":0}
+     λ=0.05 th=3: {"n":0}
+     λ=0.05 th=4: {"n":0}
+     λ=0.05 th=6: {"n":0}
+  → elegido en desarrollo: λ=1 th=2 · EVALUACIÓN {"n":43,"wins":23,"losses":20,"pushes":0,"hit_pct":53.49,"roi_pct":2.11,"roi_se_pp":14.69,"t":0.14,"avg_edge_pp":5.59}
+  β en evaluación (fuera de muestra): -0.173 (n=105)

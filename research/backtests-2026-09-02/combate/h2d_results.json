@@ -1,0 +1,326 @@
+{
+ "ufc": {
+  "n": 5842,
+  "n_stance_active": 1560,
+  "n_height_active": 4823,
+  "variants": {
+   "ACTUAL": {
+    "acc": 0.6111,
+    "brier": 0.23313
+   },
+   "+stance": {
+    "acc": 0.6075,
+    "brier": 0.23307
+   },
+   "+height": {
+    "acc": 0.6101,
+    "brier": 0.23321
+   },
+   "+stance+height": {
+    "acc": 0.608,
+    "brier": 0.23315
+   }
+  },
+  "paired": {
+   "+stance": {
+    "n": 5842,
+    "dBrier": -0.000058,
+    "se": 0.000174,
+    "t": -0.335,
+    "pBoot": 0.643
+   },
+   "+height": {
+    "n": 5842,
+    "dBrier": 0.000086,
+    "se": 0.000084,
+    "t": 1.022,
+    "pBoot": 0.152
+   },
+   "+stance+height": {
+    "n": 5842,
+    "dBrier": 0.000026,
+    "se": 0.000193,
+    "t": 0.135,
+    "pBoot": 0.451
+   }
+  },
+  "paired_2020": {
+   "+stance": {
+    "n": 3590,
+    "dBrier": -0.000118,
+    "se": 0.00017,
+    "t": -0.696,
+    "pBoot": 0.752
+   },
+   "+height": {
+    "n": 3590,
+    "dBrier": 0.000084,
+    "se": 0.000087,
+    "t": 0.976,
+    "pBoot": 0.162
+   },
+   "+stance+height": {
+    "n": 3590,
+    "dBrier": -0.000036,
+    "se": 0.000193,
+    "t": -0.188,
+    "pBoot": 0.583
+   }
+  },
+  "paired_active": {
+   "+stance": {
+    "n": 1560,
+    "dBrier": -0.000115,
+    "se": 0.000648,
+    "t": -0.177,
+    "pBoot": 0.553
+   },
+   "+height": {
+    "n": 4823,
+    "dBrier": 0.000117,
+    "se": 0.000102,
+    "t": 1.155,
+    "pBoot": 0.124
+   },
+   "+stance+height": {
+    "n": 1560,
+    "dBrier": 0.000071,
+    "se": 0.00067,
+    "t": 0.106,
+    "pBoot": 0.49
+   }
+  },
+  "weights": {
+   "ACTUAL": {
+    "elo": 0.8041,
+    "reach": 0.2145,
+    "exp": -0.0195,
+    "years": -0.3132,
+    "age": -0.6302,
+    "chin": -0.1717,
+    "streak": 0.1438,
+    "mileage": 0.3617,
+    "misswt": -0.146,
+    "slpm": -0.1393,
+    "td15": 0.1212,
+    "tddef": 0.0558,
+    "ctrl": 0.0414,
+    "kdr": -0.002
+   },
+   "+stance": {
+    "elo": 0.8033,
+    "reach": 0.2158,
+    "exp": -0.024,
+    "years": -0.3157,
+    "age": -0.6339,
+    "chin": -0.1708,
+    "streak": 0.145,
+    "mileage": 0.3663,
+    "misswt": -0.1453,
+    "slpm": -0.1415,
+    "td15": 0.1232,
+    "tddef": 0.0553,
+    "ctrl": 0.0417,
+    "kdr": -0.0087,
+    "stance": 0.1375
+   },
+   "+height": {
+    "elo": 0.8037,
+    "reach": 0.2068,
+    "exp": -0.0197,
+    "years": -0.3128,
+    "age": -0.6291,
+    "chin": -0.1723,
+    "streak": 0.1448,
+    "mileage": 0.3622,
+    "misswt": -0.1462,
+    "slpm": -0.1382,
+    "td15": 0.1243,
+    "tddef": 0.0565,
+    "ctrl": 0.0417,
+    "kdr": -0.0014,
+    "height": 0.0081
+   },
+   "+stance+height": {
+    "elo": 0.803,
+    "reach": 0.2088,
+    "exp": -0.0243,
+    "years": -0.3153,
+    "age": -0.6328,
+    "chin": -0.1715,
+    "streak": 0.146,
+    "mileage": 0.3669,
+    "misswt": -0.1456,
+    "slpm": -0.1404,
+    "td15": 0.1262,
+    "tddef": 0.0561,
+    "ctrl": 0.0419,
+    "kdr": -0.0082,
+    "stance": 0.1383,
+    "height": 0.0072
+   }
+  }
+ },
+ "mma": {
+  "n": 2752,
+  "n_stance_active": 110,
+  "n_height_active": 2189,
+  "variants": {
+   "ACTUAL": {
+    "acc": 0.6483,
+    "brier": 0.22111
+   },
+   "+stance": {
+    "acc": 0.6475,
+    "brier": 0.22113
+   },
+   "+height": {
+    "acc": 0.6453,
+    "brier": 0.22108
+   },
+   "+stance+height": {
+    "acc": 0.645,
+    "brier": 0.2211
+   }
+  },
+  "paired": {
+   "+stance": {
+    "n": 2752,
+    "dBrier": 0.000019,
+    "se": 0.000016,
+    "t": 1.168,
+    "pBoot": 0.116
+   },
+   "+height": {
+    "n": 2752,
+    "dBrier": -0.000032,
+    "se": 0.000184,
+    "t": -0.173,
+    "pBoot": 0.585
+   },
+   "+stance+height": {
+    "n": 2752,
+    "dBrier": -0.000012,
+    "se": 0.000184,
+    "t": -0.067,
+    "pBoot": 0.538
+   }
+  },
+  "paired_2020": {
+   "+stance": {
+    "n": 1493,
+    "dBrier": 0.000018,
+    "se": 0.000013,
+    "t": 1.326,
+    "pBoot": 0.084
+   },
+   "+height": {
+    "n": 1493,
+    "dBrier": -0.000096,
+    "se": 0.000229,
+    "t": -0.419,
+    "pBoot": 0.664
+   },
+   "+stance+height": {
+    "n": 1493,
+    "dBrier": -0.000079,
+    "se": 0.000229,
+    "t": -0.343,
+    "pBoot": 0.628
+   }
+  },
+  "paired_active": {
+   "+stance": {
+    "n": 110,
+    "dBrier": 0.000493,
+    "se": 0.000411,
+    "t": 1.199,
+    "pBoot": 0.122
+   },
+   "+height": {
+    "n": 2189,
+    "dBrier": -0.000042,
+    "se": 0.000231,
+    "t": -0.18,
+    "pBoot": 0.561
+   },
+   "+stance+height": {
+    "n": 110,
+    "dBrier": 0.000655,
+    "se": 0.000965,
+    "t": 0.679,
+    "pBoot": 0.242
+   }
+  },
+  "weights": {
+   "ACTUAL": {
+    "elo": 0.9775,
+    "reach": 0.1049,
+    "exp": 0.0597,
+    "years": -0.3089,
+    "age": -0.5478,
+    "chin": -0.1892,
+    "streak": 0.0968,
+    "mileage": 0.2003,
+    "misswt": 0.0034,
+    "slpm": 0,
+    "td15": 0,
+    "tddef": 0,
+    "ctrl": 0,
+    "kdr": 0
+   },
+   "+stance": {
+    "elo": 0.9774,
+    "reach": 0.1049,
+    "exp": 0.0597,
+    "years": -0.3089,
+    "age": -0.5479,
+    "chin": -0.1895,
+    "streak": 0.097,
+    "mileage": 0.2003,
+    "misswt": 0.0034,
+    "slpm": 0,
+    "td15": 0,
+    "tddef": 0,
+    "ctrl": 0,
+    "kdr": 0,
+    "stance": 0.0097
+   },
+   "+height": {
+    "elo": 0.9785,
+    "reach": 0.0754,
+    "exp": 0.0573,
+    "years": -0.3077,
+    "age": -0.5457,
+    "chin": -0.1886,
+    "streak": 0.096,
+    "mileage": 0.1992,
+    "misswt": 0.0034,
+    "slpm": 0,
+    "td15": 0,
+    "tddef": 0,
+    "ctrl": 0,
+    "kdr": 0,
+    "height": 0.1194
+   },
+   "+stance+height": {
+    "elo": 0.9785,
+    "reach": 0.0754,
+    "exp": 0.0573,
+    "years": -0.3078,
+    "age": -0.5458,
+    "chin": -0.1889,
+    "streak": 0.0961,
+    "mileage": 0.1992,
+    "misswt": 0.0034,
+    "slpm": 0,
+    "td15": 0,
+    "tddef": 0,
+    "ctrl": 0,
+    "kdr": 0,
+    "stance": 0.0098,
+    "height": 0.1194
+   }
+  }
+ }
+}

@@ -1,0 +1,3 @@
+[atp] preds 23877 · dists 2658 · 224.6s
+[wta] preds 22033 · dists 1345 · 110.4s
+[pass] escrito preds-atp.json / preds-wta.json en /tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/tenis-skeptic/rerun

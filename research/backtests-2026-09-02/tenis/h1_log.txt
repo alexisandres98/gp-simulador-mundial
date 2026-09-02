@@ -1,0 +1,70 @@
+
+══════ ATP ══════ dev n=18384 · holdout n=4908 (espina 4185) · minutos medios dev 115.9
+  rasgo n7: media dif -0.030 sd 1.561
+  rasgo tMatches: media dif -0.010 sd 0.500
+  rasgo tMinH: media dif -0.016 sd 1.191
+  rasgo prevMinH: media dif 0.002 sd 0.884
+  rasgo prevMiss: media dif -0.014 sd 0.244
+  rasgo prevDec: media dif 0.003 sd 0.652
+  rasgo restL: media dif -0.008 sd 1.074
+  rasgo newP: media dif -0.015 sd 0.148
+  rasgo ageD: media dif 0.971 sd 0.848
+  rasgo ageOld: media dif 0.276 sd 0.446
+  rasgo ageYoung: media dif -0.071 sd 0.173
+  BASE ensamble u=0.45: holdout LL 0.6230 Brier 0.2174 skill 10.13% · espina LL 0.6194 Brier 0.2159 skill 10.64%
+  [recal] coef: logit_ens=1.042(t 46.1)
+     holdout LL 0.6230 Brier 0.2174 skill 10.12% AUC 0.7072 · ΔLL vs base 0.00006 (t 0.31, IC95 [-0.00032, 0.00024]) · ΔBrier 0.00002 (t 0.30)
+     espina  LL 0.6194 Brier 0.2159 skill 10.64% · ΔLL vs base -0.00002 (t -0.10)
+  [fatiga] coef: logit_ens=1.023(t 42.4) n7=0.030(t 2.7) tMatches=0.082(t 1.4) tMinH=-0.154(t -6.4) prevMinH=0.043(t 1.7) prevMiss=-0.402(t -6.1) prevDec=0.043(t 1.4) restL=-0.131(t -6.3)
+     holdout LL 0.6282 Brier 0.2194 skill 9.37% AUC 0.7023 · ΔLL vs base 0.00521 (t 3.03, IC95 [0.00151, 0.00670]) · ΔBrier 0.00207 (t 2.79) · ΔLL vs recal 0.00514 (t 3.00)
+     espina  LL 0.6189 Brier 0.2157 skill 10.72% · ΔLL vs base -0.00055 (t -0.35)
+  [fatiga_min] coef: logit_ens=1.068(t 46.1) n7=0.030(t 2.7) prevDec=0.019(t 0.8) restL=-0.090(t -5.5)
+     holdout LL 0.6206 Brier 0.2163 skill 10.47% AUC 0.7114 · ΔLL vs base -0.00237 (t -3.08, IC95 [-0.00311, -0.00137]) · ΔBrier -0.00109 (t -3.23) · ΔLL vs recal -0.00243 (t -3.21)
+     espina  LL 0.6175 Brier 0.2150 skill 10.91% · ΔLL vs base -0.00189 (t -2.24)
+  [fatiga_new] coef: logit_ens=1.019(t 42.3) n7=0.031(t 2.8) tMatches=0.079(t 1.3) tMinH=-0.148(t -6.1) prevMinH=0.046(t 1.8) prevMiss=-0.216(t -2.9) prevDec=0.033(t 1.0) restL=-0.124(t -5.9) newP=-0.676(t -5.2)
+     holdout LL 0.6257 Brier 0.2183 skill 9.73% AUC 0.7064 · ΔLL vs base 0.00275 (t 1.55, IC95 [-0.00009, 0.00397]) · ΔBrier 0.00096 (t 1.25) · ΔLL vs recal 0.00269 (t 1.52)
+     espina  LL 0.6172 Brier 0.2149 skill 10.96% · ΔLL vs base -0.00219 (t -1.30)
+  [edad] coef: logit_ens=1.056(t 46.3) ageD=-0.124(t -5.0) ageOld=-0.017(t -0.3) ageYoung=-0.308(t -2.8)
+     holdout LL 0.6189 Brier 0.2156 skill 10.71% AUC 0.7107 · ΔLL vs base -0.00403 (t -4.30, IC95 [-0.00551, -0.00293]) · ΔBrier -0.00175 (t -4.16) · ΔLL vs recal -0.00409 (t -4.42)
+     espina  LL 0.6149 Brier 0.2140 skill 11.28% · ΔLL vs base -0.00446 (t -4.43)
+  [fatiga_min_edad] coef: logit_ens=1.084(t 46.3) n7=0.026(t 2.3) prevDec=0.021(t 0.9) restL=-0.098(t -5.9) ageD=-0.130(t -5.2) ageOld=-0.009(t -0.2) ageYoung=-0.310(t -2.8)
+     holdout LL 0.6163 Brier 0.2144 skill 11.08% AUC 0.7147 · ΔLL vs base -0.00662 (t -5.54, IC95 [-0.00817, -0.00490]) · ΔBrier -0.00293 (t -5.50) · ΔLL vs recal -0.00668 (t -5.60)
+     espina  LL 0.6129 Brier 0.2131 skill 11.58% · ΔLL vs base -0.00650 (t -5.03)
+  [fold 2023-24, n=5938] base skill 10.28% · recal 10.27% · fatiga 10.67% · ΔLL fatiga−recal -0.00280 (t -2.12)
+  univariante holdout Δn7: {"0":{"n":2635,"win_X":0.495,"ens_X":0.519},"1":{"n":722,"win_X":0.425,"ens_X":0.435},"2":{"n":231,"win_X":0.584,"ens_X":0.524},"3":{"n":149,"win_X":0.638,"ens_X":0.571},"-3":{"n":150,"win_X":0.32,"ens_X":0.486},"-1":{"n":782,"win_X":0.538,"ens_X":0.595},"-2":{"n":239,"win_X":0.372,"ens_X":0.502}}
+  univariante holdout ΔprevDec: {"0":{"n":2835,"win_X":0.486,"ens_X":0.516},"1":{"n":1038,"win_X":0.504,"ens_X":0.518},"-1":{"n":1035,"win_X":0.483,"ens_X":0.526}}
+
+══════ WTA ══════ dev n=16911 · holdout n=4488 (espina 3685) · minutos medios dev 102.0
+  rasgo n7: media dif 0.030 sd 1.427
+  rasgo tMatches: media dif -0.013 sd 0.403
+  rasgo tMinH: media dif 0.006 sd 1.039
+  rasgo prevMinH: media dif 0.023 sd 0.905
+  rasgo prevMiss: media dif -0.015 sd 0.249
+  rasgo prevDec: media dif 0.009 sd 0.660
+  rasgo restL: media dif -0.017 sd 0.954
+  rasgo newP: media dif -0.016 sd 0.159
+  rasgo ageD: media dif 0.882 sd 0.806
+  rasgo ageOld: media dif 0.144 sd 0.350
+  rasgo ageYoung: media dif -0.121 sd 0.247
+  BASE ensamble u=0.15: holdout LL 0.6106 Brier 0.2119 skill 11.91% · espina LL 0.6111 Brier 0.2119 skill 11.84%
+  [recal] coef: logit_ens=0.963(t 45.1)
+     holdout LL 0.6105 Brier 0.2118 skill 11.92% AUC 0.7232 · ΔLL vs base -0.00008 (t -0.38, IC95 [-0.00023, 0.00018]) · ΔBrier -0.00005 (t -0.66)
+     espina  LL 0.6109 Brier 0.2118 skill 11.86% · ΔLL vs base -0.00015 (t -0.65)
+  [fatiga] coef: logit_ens=0.961(t 42.9) n7=0.039(t 3.0) tMatches=0.242(t 3.6) tMinH=-0.160(t -5.9) prevMinH=-0.005(t -0.2) prevMiss=-0.484(t -7.0) prevDec=0.049(t 1.4) restL=-0.094(t -4.1)
+     holdout LL 0.6098 Brier 0.2114 skill 12.03% AUC 0.7244 · ΔLL vs base -0.00083 (t -0.56, IC95 [-0.00110, 0.00105]) · ΔBrier -0.00042 (t -0.64) · ΔLL vs recal -0.00075 (t -0.52)
+     espina  LL 0.6096 Brier 0.2113 skill 12.05% · ΔLL vs base -0.00148 (t -0.91)
+  [fatiga_min] coef: logit_ens=0.976(t 45.0) n7=0.043(t 3.3) prevDec=-0.012(t -0.5) restL=-0.101(t -5.2)
+     holdout LL 0.6087 Brier 0.2109 skill 12.19% AUC 0.7263 · ΔLL vs base -0.00192 (t -1.98, IC95 [-0.00222, -0.00086]) · ΔBrier -0.00096 (t -2.29) · ΔLL vs recal -0.00184 (t -2.00)
+     espina  LL 0.6098 Brier 0.2112 skill 12.03% · ΔLL vs base -0.00130 (t -1.17)
+  [fatiga_new] coef: logit_ens=0.959(t 42.8) n7=0.041(t 3.1) tMatches=0.252(t 3.7) tMinH=-0.155(t -5.7) prevMinH=0.005(t 0.2) prevMiss=-0.220(t -2.7) prevDec=0.030(t 0.9) restL=-0.077(t -3.4) newP=-0.784(t -5.7)
+     holdout LL 0.6083 Brier 0.2108 skill 12.24% AUC 0.7266 · ΔLL vs base -0.00226 (t -1.53, IC95 [-0.00260, -0.00102]) · ΔBrier -0.00107 (t -1.68) · ΔLL vs recal -0.00219 (t -1.52)
+     espina  LL 0.6094 Brier 0.2111 skill 12.09% · ΔLL vs base -0.00171 (t -1.07)
+  [edad] coef: logit_ens=0.965(t 45.1) ageD=-0.108(t -4.3) ageOld=-0.083(t -1.3) ageYoung=-0.315(t -3.8)
+     holdout LL 0.6111 Brier 0.2121 skill 11.84% AUC 0.7222 · ΔLL vs base 0.00047 (t 0.46, IC95 [-0.00050, 0.00183]) · ΔBrier 0.00026 (t 0.59) · ΔLL vs recal 0.00055 (t 0.55)
+     espina  LL 0.6111 Brier 0.2119 skill 11.84% · ΔLL vs base -0.00001 (t -0.01)
+  [fatiga_min_edad] coef: logit_ens=0.979(t 45.0) n7=0.041(t 3.2) prevDec=-0.014(t -0.6) restL=-0.105(t -5.4) ageD=-0.110(t -4.4) ageOld=-0.082(t -1.3) ageYoung=-0.297(t -3.6)
+     holdout LL 0.6092 Brier 0.2112 skill 12.11% AUC 0.7255 · ΔLL vs base -0.00140 (t -0.99, IC95 [-0.00185, 0.00022]) · ΔBrier -0.00068 (t -1.11) · ΔLL vs recal -0.00132 (t -0.96)
+     espina  LL 0.6099 Brier 0.2112 skill 12.01% · ΔLL vs base -0.00116 (t -0.73)
+  [fold 2023-24, n=5396] base skill 11.46% · recal 11.46% · fatiga 11.51% · ΔLL fatiga−recal -0.00034 (t -0.19)
+  univariante holdout Δn7: {"0":{"n":2474,"win_X":0.504,"ens_X":0.514},"1":{"n":696,"win_X":0.447,"ens_X":0.42},"2":{"n":186,"win_X":0.656,"ens_X":0.544},"3":{"n":142,"win_X":0.592,"ens_X":0.55},"-2":{"n":184,"win_X":0.418,"ens_X":0.475},"-1":{"n":664,"win_X":0.535,"ens_X":0.622},"-3":{"n":142,"win_X":0.43,"ens_X":0.456}}
+  univariante holdout ΔprevDec: {"0":{"n":2448,"win_X":0.498,"ens_X":0.516},"1":{"n":1015,"win_X":0.496,"ens_X":0.509},"-1":{"n":1025,"win_X":0.522,"ens_X":0.515}}

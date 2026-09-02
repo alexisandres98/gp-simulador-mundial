@@ -1,0 +1,106 @@
+{
+ "brier_por_w": {
+  "n": 48,
+  "todo": {
+   "0": 0.2414,
+   "1": 0.2103,
+   "0.25": 0.2278,
+   "0.5": 0.2182,
+   "0.6": 0.2154,
+   "0.7": 0.2132,
+   "0.8": 0.2116,
+   "0.9": 0.2106
+  },
+  "primera_mitad": {
+   "0": 0.1968,
+   "1": 0.1398,
+   "0.25": 0.1761,
+   "0.5": 0.1597,
+   "0.6": 0.1544,
+   "0.7": 0.1497,
+   "0.8": 0.1457,
+   "0.9": 0.1424
+  },
+  "segunda_mitad": {
+   "0": 0.286,
+   "1": 0.2808,
+   "0.25": 0.2796,
+   "0.5": 0.2766,
+   "0.6": 0.2764,
+   "0.7": 0.2767,
+   "0.8": 0.2775,
+   "0.9": 0.2789
+  }
+ },
+ "w_elegido_en_1a_mitad": 1,
+ "brier_2a_mitad_con_w_elegido": 0.2808,
+ "brier_2a_mitad_con_w05": 0.2766,
+ "brier_2a_mitad_mercado": 0.2808,
+ "winners_curse": {
+  "n": 48,
+  "p_modelo": 0.57,
+  "p_mercado": 0.43,
+  "real": 0.396,
+  "sobreconfianza_modelo_pp": 17.4,
+  "sobreconfianza_mercado_pp": 3.4
+ },
+ "post_techo_2ago": {
+  "roi": {
+   "n": 25,
+   "wins": 11,
+   "roi_pct": -9.5,
+   "se_pct": 21.4
+  },
+  "clv": {
+   "n": 25,
+   "clv_avg": -2.95,
+   "pct_neg": 48
+  },
+  "perros": {
+   "roi": {
+    "n": 16,
+    "wins": 7,
+    "roi_pct": 0.4,
+    "se_pct": 29.6
+   },
+   "clv": {
+    "n": 16,
+    "clv_avg": -7.06,
+    "pct_neg": 62.5
+   }
+  },
+  "favoritos": {
+   "roi": {
+    "n": 9,
+    "wins": 4,
+    "roi_pct": -27,
+    "se_pct": 29.1
+   },
+   "clv": {
+    "n": 9,
+    "clv_avg": 4.36,
+    "pct_neg": 22.2
+   }
+  }
+ },
+ "pre_techo": {
+  "roi": {
+   "n": 23,
+   "wins": 8,
+   "roi_pct": -28,
+   "se_pct": 23.2
+  },
+  "clv": {
+   "n": 23,
+   "clv_avg": -7.56,
+   "pct_neg": 78.3
+  }
+ },
+ "edge_pp_distribucion": {
+  "min": 4,
+  "q25": 5.6,
+  "mediana": 10.8,
+  "q75": 21.2,
+  "max": 41.9
+ }
+}

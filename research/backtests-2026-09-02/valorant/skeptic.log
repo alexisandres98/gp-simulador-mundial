@@ -1,0 +1,130 @@
+
+[skeptic] BO1 eval 2025-07→2026-01 · p de H1 (elomap_24, temp 0,85) (n=104)
+┌─────────────────┬─────┬───────────────┬────────────────┬───────────────┐
+│ (index)         │ n   │ brier_totales │ brier_handicap │ brier_ganador │
+├─────────────────┼─────┼───────────────┼────────────────┼───────────────┤
+│ actual          │ 104 │ 0.2259        │ 0.2238         │ 0.2565        │
+│ v1              │ 104 │ 0.2203        │ 0.2076         │ 0.239         │
+│ flat            │ 104 │ 0.2214        │ 0.2181         │ 0.2498        │
+│ v1_shrink50     │ 104 │ 0.2207        │ 0.2074         │ 0.2366        │
+│ actual_shrink50 │ 104 │ 0.2202        │ 0.2064         │ 0.2371        │
+└─────────────────┴─────┴───────────────┴────────────────┴───────────────┘
+  Δ v1_vs_actual: totales -0.0056 (SE 0.0059) · hándicap -0.0162 (SE 0.0074) · ganador -0.0175 (SE 0.0093)
+  Δ flat_vs_actual: totales -0.0045 (SE 0.0095) · hándicap -0.0058 (SE 0.0181) · ganador -0.0067 (SE 0.025)
+  Δ flat_vs_v1: totales 0.0011 (SE 0.0038) · hándicap 0.0104 (SE 0.011) · ganador 0.0108 (SE 0.016)
+  Δ v1shrink_vs_v1: totales 0.0004 (SE 0.003) · hándicap -0.0002 (SE 0.0058) · ganador -0.0023 (SE 0.008)
+
+[skeptic] Libro 2026 (128 mapas) · p de H1 (n=128)
+┌─────────────────┬─────┬───────────────┬────────────────┬───────────────┐
+│ (index)         │ n   │ brier_totales │ brier_handicap │ brier_ganador │
+├─────────────────┼─────┼───────────────┼────────────────┼───────────────┤
+│ actual          │ 128 │ 0.229         │ 0.2165         │ 0.2629        │
+│ v1              │ 128 │ 0.2192        │ 0.2017         │ 0.2485        │
+│ flat            │ 128 │ 0.2151        │ 0.201          │ 0.2499        │
+│ v1_shrink50     │ 128 │ 0.2157        │ 0.1982         │ 0.2453        │
+│ actual_shrink50 │ 128 │ 0.2178        │ 0.2002         │ 0.247         │
+└─────────────────┴─────┴───────────────┴────────────────┴───────────────┘
+  Δ v1_vs_actual: totales -0.0099 (SE 0.0042) · hándicap -0.0148 (SE 0.0055) · ganador -0.0144 (SE 0.0075)
+  Δ flat_vs_actual: totales -0.014 (SE 0.0065) · hándicap -0.0155 (SE 0.0124) · ganador -0.0129 (SE 0.0193)
+  Δ flat_vs_v1: totales -0.0041 (SE 0.0023) · hándicap -0.0008 (SE 0.0071) · ganador 0.0014 (SE 0.012)
+  Δ v1shrink_vs_v1: totales -0.0035 (SE 0.0019) · hándicap -0.0035 (SE 0.0038) · ganador -0.0032 (SE 0.0061)
+
+[skeptic] event-maps del libro con p_mapa de producción recuperada: 106; |p−0,5| medio 0.075; favorito de producción ganó 45.28 % (SE binomial 4.86)
+
+[skeptic] Libro 2026 · p_mapa de PRODUCCIÓN (H5) — lo que el motor usó de verdad (n=106)
+┌─────────────────┬─────┬───────────────┬────────────────┬───────────────┐
+│ (index)         │ n   │ brier_totales │ brier_handicap │ brier_ganador │
+├─────────────────┼─────┼───────────────┼────────────────┼───────────────┤
+│ actual          │ 106 │ 0.2146        │ 0.2254         │ 0.2958        │
+│ v1              │ 106 │ 0.2127        │ 0.2076         │ 0.2695        │
+│ flat            │ 106 │ 0.2125        │ 0.1956         │ 0.2501        │
+│ v1_shrink50     │ 106 │ 0.2127        │ 0.2009         │ 0.2588        │
+│ actual_shrink50 │ 106 │ 0.2127        │ 0.2066         │ 0.268         │
+└─────────────────┴─────┴───────────────┴────────────────┴───────────────┘
+  Δ v1_vs_actual: totales -0.0018 (SE 0.0018) · hándicap -0.0177 (SE 0.0042) · ganador -0.0264 (SE 0.0065)
+  Δ flat_vs_actual: totales -0.0021 (SE 0.0026) · hándicap -0.0298 (SE 0.0092) · ganador -0.0458 (SE 0.0146)
+  Δ flat_vs_v1: totales -0.0003 (SE 0.0008) · hándicap -0.012 (SE 0.005) · ganador -0.0194 (SE 0.0081)
+  Δ v1shrink_vs_v1: totales -0.0001 (SE 0.0005) · hándicap -0.0067 (SE 0.0024) · ganador -0.0106 (SE 0.0039)
+
+[skeptic] Libro 2026 · mismo subconjunto · p de H1 (n=106)
+┌─────────────────┬─────┬───────────────┬────────────────┬───────────────┐
+│ (index)         │ n   │ brier_totales │ brier_handicap │ brier_ganador │
+├─────────────────┼─────┼───────────────┼────────────────┼───────────────┤
+│ actual          │ 106 │ 0.2254        │ 0.2164         │ 0.2641        │
+│ v1              │ 106 │ 0.2164        │ 0.2035         │ 0.25          │
+│ flat            │ 106 │ 0.2125        │ 0.2038         │ 0.2499        │
+│ v1_shrink50     │ 106 │ 0.2131        │ 0.2008         │ 0.2464        │
+│ actual_shrink50 │ 106 │ 0.2152        │ 0.2023         │ 0.2484        │
+└─────────────────┴─────┴───────────────┴────────────────┴───────────────┘
+  Δ v1_vs_actual: totales -0.009 (SE 0.0044) · hándicap -0.0128 (SE 0.0059) · ganador -0.0142 (SE 0.008)
+  Δ flat_vs_actual: totales -0.0129 (SE 0.0068) · hándicap -0.0126 (SE 0.0131) · ganador -0.0142 (SE 0.0203)
+  Δ flat_vs_v1: totales -0.004 (SE 0.0024) · hándicap 0.0002 (SE 0.0074) · ganador 0 (SE 0.0125)
+  Δ v1shrink_vs_v1: totales -0.0034 (SE 0.0019) · hándicap -0.0028 (SE 0.0039) · ganador -0.0036 (SE 0.0064)
+
+[skeptic] B) under re-cotizados con |p−0,5| de PRODUCCIÓN y bisección sola:
+{
+ "n": 80,
+ "recuperacion_actual": {
+  "p_gp_medio": 0.4957,
+  "p_under_recuperado_medio": 0.4981,
+  "err_abs_medio": 0.0026,
+  "nacen": 80
+ },
+ "p_prod_medio": 0.6803,
+ "p_prod_ge_0_65_pct": 87.5,
+ "v1_con_p_prod": {
+  "p_under_medio": 0.418,
+  "edge_medio_pp": 1.64,
+  "brier": 0.2206,
+  "nacen": 0,
+  "win": 0,
+  "roi_pct": null
+ },
+ "original": {
+  "brier": 0.2398,
+  "roi_pct": -14.63,
+  "win": 28
+ },
+ "brier_mercado": 0.2208
+}
+
+[skeptic] C) H6 con error por clúster:
+{
+ "n_picks": 73,
+ "n_event_maps": 59,
+ "brier_corr_mkt": 0.2164,
+ "brier_mercado": 0.2198,
+ "brier_orig": 0.2422,
+ "delta_corr_vs_mercado_cluster": {
+  "mean": -0.0035,
+  "se": 0.0016,
+  "ci95": [
+   -0.0064,
+   -0.0003
+  ]
+ },
+ "delta_orig_vs_mercado_cluster": {
+  "mean": 0.0225,
+  "se": 0.0121,
+  "ci95": [
+   -0.0019,
+   0.0454
+  ]
+ },
+ "corr_medio_p_under_vs_mercado": -0.0114,
+ "hit_real_pct": 32.88
+}
+
+[skeptic] D) sesgo de selección en el "anti-predictivo":
+{
+ "n_event_maps": 106,
+ "fav_prod_gano_pct": 45.28,
+ "se_binomial_pct": 4.86,
+ "z_vs_50": -0.97,
+ "fav_h1_gano_pct": 53.77,
+ "brier_prod": 0.2697,
+ "brier_h1": 0.25,
+ "nota": "las picks del libro existen PORQUE producción discrepó del mercado: condicionado a discrepancia, el favorito de GP pierde más de lo normal aunque el predictor sea neutro en población (H1 intacta: wr_8 Brier 0,244 < 0,25)"
+}
+
+[skeptic] escrito skeptic_result.json

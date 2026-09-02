@@ -1,0 +1,22 @@
+
+═══ NBA · filas 5274 · partidos 911 · won recalculado ≠ b.won: 0
+edge_pp recalculado ≠ fila (tol 0,06): 0
+H1 picks por familia (regla de producción th/EV):
+  total     NUEVO {"n":582,"pushes":0,"hit":51.2,"roi":-2.25,"se":3.96,"t":-0.57}  VIEJO {"n":585,"pushes":0,"hit":51.97,"roi":-0.8,"se":3.95,"t":-0.2}
+  spread    NUEVO {"n":674,"pushes":0,"hit":47.77,"roi":-8.8,"se":3.68,"t":-2.39}  VIEJO {"n":674,"pushes":0,"hit":47.77,"roi":-8.8,"se":3.68,"t":-2.39}
+  moneyline NUEVO {"n":662,"pushes":0,"hit":32.02,"roi":-10.7,"se":5.82,"t":-1.84}  VIEJO {"n":662,"pushes":0,"hit":32.02,"roi":-10.7,"se":5.82,"t":-1.84}
+partidos con total entero: 0 (empujes reales 0) · con hándicap entero: 0 (empujes reales 0)
+picks a ambos lados del mismo partido/familia: 0
+p_over viejo − nuevo por residuo (pp): 0.5: -3.99 (sd 0.37, n 168) | 1.5: -1.99 (sd 0.23, n 178) | 2.5: 0 (sd 0, n 152) | 3.5: 2.02 (sd 0.21, n 185) | 4.5: 3.94 (sd 0.36, n 196)
+  VIEJO TOTAL picks: over {"n":336,"pushes":0,"hit":51.79,"roi":-1.14,"se":5.21,"t":-0.22} under {"n":249,"pushes":0,"hit":52.21,"roi":-0.33,"se":6.06,"t":-0.06}
+  NUEVO TOTAL picks: over {"n":333,"pushes":0,"hit":51.35,"roi":-1.97,"se":5.24,"t":-0.38} under {"n":249,"pushes":0,"hit":51,"roi":-2.63,"se":6.06,"t":-0.43}
+β total = -0.051 · bootstrap IC95 [-0.286, 0.178] · sd(modelo−mercado) 5.15 · sesgo modelo -1.36 pts, mercado 0.42 pts
+signo del desacuerdo (|d|≥2) acierta el residuo: 50.25% (n=597, se 2.05) · break-even −110 = 52,4%
+H2(a) corte 50/50: elegido w=1 th=2 dev {"n":257,"pushes":0,"hit":47.08,"roi":-10.12,"se":5.96,"t":-1.7} → TEST {"n":323,"pushes":0,"hit":54.18,"roi":3.43,"se":5.3,"t":0.65}
+   celdas positivas en dev Y test (n≥20 ambos): ninguna
+H2(a) corte 60/40: elegido w=1 th=2 dev {"n":317,"pushes":0,"hit":49.84,"roi":-4.85,"se":5.37,"t":-0.9} → TEST {"n":263,"pushes":0,"hit":52.47,"roi":0.17,"se":5.89,"t":0.03}
+   celdas positivas en dev Y test (n≥20 ambos): ninguna
+H2(a) corte 70/30: elegido w=1 th=2 dev {"n":375,"pushes":0,"hit":51.2,"roi":-2.26,"se":4.93,"t":-0.46} → TEST {"n":205,"pushes":0,"hit":50.73,"roi":-3.15,"se":6.68,"t":-0.47}
+   celdas positivas en dev Y test (n≥20 ambos): ninguna
+regla de producción (w=0,233, th 2, EV 2) TOTAL en toda la muestra: {"n":73,"pushes":0,"hit":43.84,"roi":-16.32,"se":11.16,"t":-1.46}
+regla de producción SPREAD (w=0,233, th 2): {"n":146,"pushes":0,"hit":47.95,"roi":-8.47,"se":7.92,"t":-1.07}

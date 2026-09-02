@@ -1,0 +1,990 @@
+{
+ "families": {
+  "FIGHT": {
+   "label": "FIGHT",
+   "n": 48,
+   "wins": 19,
+   "hit": 39.6,
+   "roi_taken": -18.4,
+   "roi_se": 15.7,
+   "t": -1.17,
+   "roi_ci95_boot": [
+    -47.1,
+    11.8
+   ],
+   "roi_at_close": -17.2,
+   "n_close": 48,
+   "ev_at_close_fair": -6.1,
+   "clv_mean": -5.16,
+   "clv_se": 1.98,
+   "avg_odds": 2.89,
+   "avg_model": 0.57,
+   "avg_mkt": 0.43,
+   "implied_hit_model": 57,
+   "implied_hit_mkt": 43
+  },
+  "ROUNDS": {
+   "label": "ROUNDS",
+   "n": 39,
+   "wins": 18,
+   "hit": 46.2,
+   "roi_taken": -1.2,
+   "roi_se": 17.9,
+   "t": -0.07,
+   "roi_ci95_boot": [
+    -36.1,
+    33.3
+   ],
+   "roi_at_close": -5.8,
+   "n_close": 37,
+   "ev_at_close_fair": -3.7,
+   "clv_mean": 2.13,
+   "clv_se": 0.82,
+   "avg_odds": 2.26,
+   "avg_model": 0.55,
+   "avg_mkt": 0.434,
+   "implied_hit_model": 55,
+   "implied_hit_mkt": 43.4
+  },
+  "METHOD": {
+   "label": "METHOD",
+   "n": 18,
+   "wins": 4,
+   "hit": 22.2,
+   "roi_taken": -3.4,
+   "roi_se": 51.4,
+   "t": -0.07,
+   "roi_ci95_boot": [
+    -87.8,
+    107.1
+   ],
+   "roi_at_close": -8.1,
+   "n_close": 17,
+   "ev_at_close_fair": -11,
+   "clv_mean": 0.25,
+   "clv_se": 3.66,
+   "avg_odds": 7.5,
+   "avg_model": 0.324,
+   "avg_mkt": 0.201,
+   "implied_hit_model": 32.4,
+   "implied_hit_mkt": 20.1
+  }
+ },
+ "fight_brier": {
+  "n": 48,
+  "model": 0.2414,
+  "market_taken": 0.2103,
+  "blend": 0.2182,
+  "close_fair": 0.2075,
+  "logloss": {
+   "model": 0.686,
+   "market_taken": 0.6096,
+   "blend": 0.6348,
+   "close_fair": 0.6047
+  },
+  "grid": [
+   {
+    "w_market": 0,
+    "brier": 0.2414
+   },
+   {
+    "w_market": 0.2,
+    "brier": 0.2302
+   },
+   {
+    "w_market": 0.4,
+    "brier": 0.2216
+   },
+   {
+    "w_market": 0.5,
+    "brier": 0.2182
+   },
+   {
+    "w_market": 0.6,
+    "brier": 0.2154
+   },
+   {
+    "w_market": 0.8,
+    "brier": 0.2116
+   },
+   {
+    "w_market": 1,
+    "brier": 0.2103
+   }
+  ]
+ },
+ "rules": {
+  "w0.5 (actual, edge_raw>=4pp)": {
+   "label": "w0.5 (actual, edge_raw>=4pp)",
+   "n": 48,
+   "wins": 19,
+   "hit": 39.6,
+   "roi_taken": -18.4,
+   "roi_se": 15.7,
+   "t": -1.17,
+   "roi_ci95_boot": [
+    -47.1,
+    11.8
+   ],
+   "roi_at_close": -17.2,
+   "n_close": 48,
+   "ev_at_close_fair": -6.1,
+   "clv_mean": -5.16,
+   "clv_se": 1.98,
+   "avg_odds": 2.89,
+   "avg_model": 0.57,
+   "avg_mkt": 0.43,
+   "implied_hit_model": 57,
+   "implied_hit_mkt": 43
+  },
+  "w0.6 (edge_raw>=5pp)": {
+   "label": "w0.6 (edge_raw>=5pp)",
+   "n": 39,
+   "wins": 15,
+   "hit": 38.5,
+   "roi_taken": -20.9,
+   "roi_se": 17.4,
+   "t": -1.2,
+   "roi_ci95_boot": [
+    -53.9,
+    13.5
+   ],
+   "roi_at_close": -20.3,
+   "n_close": 39,
+   "ev_at_close_fair": -7.2,
+   "clv_mean": -6.45,
+   "clv_se": 2.28,
+   "avg_odds": 3.05,
+   "avg_model": 0.584,
+   "avg_mkt": 0.422,
+   "implied_hit_model": 58.4,
+   "implied_hit_mkt": 42.2
+  },
+  "w0.7 (edge_raw>=6.67pp)": {
+   "label": "w0.7 (edge_raw>=6.67pp)",
+   "n": 31,
+   "wins": 11,
+   "hit": 35.5,
+   "roi_taken": -26,
+   "roi_se": 19.6,
+   "t": -1.33,
+   "roi_ci95_boot": [
+    -62.7,
+    15.1
+   ],
+   "roi_at_close": -24.5,
+   "n_close": 31,
+   "ev_at_close_fair": -8.3,
+   "clv_mean": -7.66,
+   "clv_se": 2.7,
+   "avg_odds": 3.32,
+   "avg_model": 0.585,
+   "avg_mkt": 0.395,
+   "implied_hit_model": 58.5,
+   "implied_hit_mkt": 39.5
+  },
+  "w0.8 (edge_raw>=10pp)": {
+   "label": "w0.8 (edge_raw>=10pp)",
+   "n": 24,
+   "wins": 9,
+   "hit": 37.5,
+   "roi_taken": -30,
+   "roi_se": 19.6,
+   "t": -1.53,
+   "roi_ci95_boot": [
+    -66.9,
+    6.8
+   ],
+   "roi_at_close": -29.2,
+   "n_close": 24,
+   "ev_at_close_fair": -9.3,
+   "clv_mean": -8.87,
+   "clv_se": 2.68,
+   "avg_odds": 3.63,
+   "avg_model": 0.591,
+   "avg_mkt": 0.37,
+   "implied_hit_model": 59.1,
+   "implied_hit_mkt": 37
+  },
+  "w0.9 (edge_raw>=20pp)": {
+   "label": "w0.9 (edge_raw>=20pp)",
+   "n": 13,
+   "wins": 5,
+   "hit": 38.5,
+   "roi_taken": -23,
+   "roi_se": 28.9,
+   "t": -0.8,
+   "roi_ci95_boot": [
+    -75.2,
+    31.8
+   ],
+   "roi_at_close": -20.5,
+   "n_close": 13,
+   "ev_at_close_fair": -4.4,
+   "clv_mean": -4.43,
+   "clv_se": 2.38,
+   "avg_odds": 3.68,
+   "avg_model": 0.636,
+   "avg_mkt": 0.346,
+   "implied_hit_model": 63.6,
+   "implied_hit_mkt": 34.6
+  },
+  "w1.0 (mercado puro: eg=0 → 0 picks)": {
+   "label": "w1.0 (mercado puro: eg=0 → 0 picks)",
+   "n": 0
+  },
+  "techo cuota <3": {
+   "label": "techo cuota <3",
+   "n": 35,
+   "wins": 18,
+   "hit": 51.4,
+   "roi_taken": 1.3,
+   "roi_se": 17.7,
+   "t": 0.07,
+   "roi_ci95_boot": [
+    -33.3,
+    36
+   ],
+   "roi_at_close": 2.2,
+   "n_close": 35,
+   "ev_at_close_fair": -4.2,
+   "clv_mean": -2.85,
+   "clv_se": 2.28,
+   "avg_odds": 2.05,
+   "avg_model": 0.622,
+   "avg_mkt": 0.505,
+   "implied_hit_model": 62.2,
+   "implied_hit_mkt": 50.5
+  },
+  "techo cuota <2.5": {
+   "label": "techo cuota <2.5",
+   "n": 28,
+   "wins": 15,
+   "hit": 53.6,
+   "roi_taken": -1.4,
+   "roi_se": 18.4,
+   "t": -0.07,
+   "roi_ci95_boot": [
+    -37.6,
+    34.1
+   ],
+   "roi_at_close": -1.4,
+   "n_close": 28,
+   "ev_at_close_fair": -2.8,
+   "clv_mean": -1.38,
+   "clv_se": 2.38,
+   "avg_odds": 1.89,
+   "avg_model": 0.645,
+   "avg_mkt": 0.539,
+   "implied_hit_model": 64.5,
+   "implied_hit_mkt": 53.9
+  },
+  "techo cuota <2.0 (favoritos)": {
+   "label": "techo cuota <2.0 (favoritos)",
+   "n": 15,
+   "wins": 9,
+   "hit": 60,
+   "roi_taken": -5.1,
+   "roi_se": 21,
+   "t": -0.24,
+   "roi_ci95_boot": [
+    -46.5,
+    34.7
+   ],
+   "roi_at_close": -8.3,
+   "n_close": 15,
+   "ev_at_close_fair": -0.3,
+   "clv_mean": 1.39,
+   "clv_se": 2.5,
+   "avg_odds": 1.55,
+   "avg_model": 0.742,
+   "avg_mkt": 0.638,
+   "implied_hit_model": 74.2,
+   "implied_hit_mkt": 63.8
+  },
+  "cuota >=3 (lo que el techo quitó)": {
+   "label": "cuota >=3 (lo que el techo quitó)",
+   "n": 13,
+   "wins": 1,
+   "hit": 7.7,
+   "roi_taken": -71.2,
+   "roi_se": 28.8,
+   "t": -2.47,
+   "roi_ci95_boot": [
+    -100,
+    -13.5
+   ],
+   "roi_at_close": -69.2,
+   "n_close": 13,
+   "ev_at_close_fair": -10.9,
+   "clv_mean": -11.37,
+   "clv_se": 3.52,
+   "avg_odds": 5.18,
+   "avg_model": 0.43,
+   "avg_mkt": 0.227,
+   "implied_hit_model": 43,
+   "implied_hit_mkt": 22.7
+  },
+  "cuota 2.5-3": {
+   "label": "cuota 2.5-3",
+   "n": 7,
+   "wins": 3,
+   "hit": 42.9,
+   "roi_taken": 11.7,
+   "roi_se": 52.7,
+   "t": 0.22,
+   "roi_ci95_boot": [
+    -63.9,
+    120.1
+   ],
+   "roi_at_close": 16.3,
+   "n_close": 7,
+   "ev_at_close_fair": -10,
+   "clv_mean": -8.75,
+   "clv_se": 6.21,
+   "avg_odds": 2.68,
+   "avg_model": 0.528,
+   "avg_mkt": 0.367,
+   "implied_hit_model": 52.8,
+   "implied_hit_mkt": 36.7
+  },
+  "con deriva EN CONTRA pre-publicación (veto candidato)": {
+   "label": "con deriva EN CONTRA pre-publicación (veto candidato)",
+   "n": 11,
+   "wins": 6,
+   "hit": 54.5,
+   "roi_taken": 33.2,
+   "roi_se": 41.3,
+   "t": 0.8,
+   "roi_ci95_boot": [
+    -44,
+    113.6
+   ],
+   "roi_at_close": 37.4,
+   "n_close": 11,
+   "ev_at_close_fair": -3.3,
+   "clv_mean": -2.03,
+   "clv_se": 3.5,
+   "avg_odds": 2.5,
+   "avg_model": 0.458,
+   "avg_mkt": 0.406,
+   "implied_hit_model": 45.8,
+   "implied_hit_mkt": 40.6
+  },
+  "sin deriva en contra (lo que queda tras el veto)": {
+   "label": "sin deriva en contra (lo que queda tras el veto)",
+   "n": 37,
+   "wins": 13,
+   "hit": 35.1,
+   "roi_taken": -33.7,
+   "roi_se": 15.7,
+   "t": -2.15,
+   "roi_ci95_boot": [
+    -62.4,
+    -1.9
+   ],
+   "roi_at_close": -33.4,
+   "n_close": 37,
+   "ev_at_close_fair": -6.9,
+   "clv_mean": -6.09,
+   "clv_se": 2.35,
+   "avg_odds": 3.01,
+   "avg_model": 0.603,
+   "avg_mkt": 0.437,
+   "implied_hit_model": 60.3,
+   "implied_hit_mkt": 43.7
+  },
+  "opening == publicación (sin historia previa)": {
+   "label": "opening == publicación (sin historia previa)",
+   "n": 35,
+   "wins": 12,
+   "hit": 34.3,
+   "roi_taken": -37.1,
+   "roi_se": 15.5,
+   "t": -2.39,
+   "roi_ci95_boot": [
+    -66.7,
+    -6.5
+   ],
+   "roi_at_close": -36.4,
+   "n_close": 35,
+   "ev_at_close_fair": -7.5,
+   "clv_mean": -6.75,
+   "clv_se": 2.43,
+   "avg_odds": 3.07,
+   "avg_model": 0.594,
+   "avg_mkt": 0.431,
+   "implied_hit_model": 59.4,
+   "implied_hit_mkt": 43.1
+  },
+  "con deriva A FAVOR pre-publicación": {
+   "label": "con deriva A FAVOR pre-publicación",
+   "n": 0
+  },
+  "combinada: cuota<2.5 & sin deriva en contra": {
+   "label": "combinada: cuota<2.5 & sin deriva en contra",
+   "n": 22,
+   "wins": 11,
+   "hit": 50,
+   "roi_taken": -12.5,
+   "roi_se": 19.8,
+   "t": -0.63,
+   "roi_ci95_boot": [
+    -50,
+    25.9
+   ],
+   "roi_at_close": -11.6,
+   "n_close": 22,
+   "ev_at_close_fair": -3.6,
+   "clv_mean": -2.21,
+   "clv_se": 2.93,
+   "avg_odds": 1.83,
+   "avg_model": 0.68,
+   "avg_mkt": 0.56,
+   "implied_hit_model": 68,
+   "implied_hit_mkt": 56
+  },
+  "combinada: cuota<3 & w0.8": {
+   "label": "combinada: cuota<3 & w0.8",
+   "n": 13,
+   "wins": 9,
+   "hit": 69.2,
+   "roi_taken": 29.2,
+   "roi_se": 26.8,
+   "t": 1.09,
+   "roi_ci95_boot": [
+    -21.2,
+    76.8
+   ],
+   "roi_at_close": 30.7,
+   "n_close": 13,
+   "ev_at_close_fair": -7,
+   "clv_mean": -6.03,
+   "clv_se": 3.44,
+   "avg_odds": 2.05,
+   "avg_model": 0.715,
+   "avg_mkt": 0.5,
+   "implied_hit_model": 71.5,
+   "implied_hit_mkt": 50
+  },
+  "liga ufc": {
+   "label": "liga ufc",
+   "n": 27,
+   "wins": 12,
+   "hit": 44.4,
+   "roi_taken": -8.4,
+   "roi_se": 21.9,
+   "t": -0.38,
+   "roi_ci95_boot": [
+    -48.2,
+    35.1
+   ],
+   "roi_at_close": -6.4,
+   "n_close": 27,
+   "ev_at_close_fair": -3.1,
+   "clv_mean": -3.28,
+   "clv_se": 1.91,
+   "avg_odds": 2.54,
+   "avg_model": 0.582,
+   "avg_mkt": 0.436,
+   "implied_hit_model": 58.2,
+   "implied_hit_mkt": 43.6
+  },
+  "liga mma (Bellator/PFL)": {
+   "label": "liga mma (Bellator/PFL)",
+   "n": 18,
+   "wins": 6,
+   "hit": 33.3,
+   "roi_taken": -27.7,
+   "roi_se": 25.1,
+   "t": -1.1,
+   "roi_ci95_boot": [
+    -73.3,
+    22.6
+   ],
+   "roi_at_close": -27.5,
+   "n_close": 18,
+   "ev_at_close_fair": -11.3,
+   "clv_mean": -8.79,
+   "clv_se": 4.38,
+   "avg_odds": 3.7,
+   "avg_model": 0.505,
+   "avg_mkt": 0.363,
+   "implied_hit_model": 50.5,
+   "implied_hit_mkt": 36.3
+  },
+  "liga boxing": {
+   "label": "liga boxing",
+   "n": 3,
+   "wins": 1,
+   "hit": 33.3,
+   "roi_taken": -52,
+   "roi_se": 48,
+   "t": -1.08,
+   "roi_ci95_boot": [
+    -100,
+    44
+   ],
+   "roi_at_close": -52,
+   "n_close": 3,
+   "ev_at_close_fair": -1.7,
+   "clv_mean": -0.28,
+   "clv_se": 0.28,
+   "avg_odds": 1.27,
+   "avg_model": 0.85,
+   "avg_mkt": 0.77,
+   "implied_hit_model": 85,
+   "implied_hit_mkt": 77
+  },
+  "books>=5": {
+   "label": "books>=5",
+   "n": 19,
+   "wins": 8,
+   "hit": 42.1,
+   "roi_taken": -7.2,
+   "roi_se": 28.2,
+   "t": -0.25,
+   "roi_ci95_boot": [
+    -57.7,
+    49.4
+   ],
+   "roi_at_close": -4.4,
+   "n_close": 19,
+   "ev_at_close_fair": -2.4,
+   "clv_mean": -2.87,
+   "clv_se": 2,
+   "avg_odds": 2.62,
+   "avg_model": 0.599,
+   "avg_mkt": 0.456,
+   "implied_hit_model": 59.9,
+   "implied_hit_mkt": 45.6
+  },
+  "books<=2": {
+   "label": "books<=2",
+   "n": 25,
+   "wins": 10,
+   "hit": 40,
+   "roi_taken": -24,
+   "roi_se": 19.5,
+   "t": -1.23,
+   "roi_ci95_boot": [
+    -61.8,
+    14.1
+   ],
+   "roi_at_close": -23.2,
+   "n_close": 25,
+   "ev_at_close_fair": -6.9,
+   "clv_mean": -4.9,
+   "clv_se": 3.02,
+   "avg_odds": 2.72,
+   "avg_model": 0.561,
+   "avg_mkt": 0.431,
+   "implied_hit_model": 56.1,
+   "implied_hit_mkt": 43.1
+  },
+  "main card": {
+   "label": "main card",
+   "n": 7,
+   "wins": 4,
+   "hit": 57.1,
+   "roi_taken": 7.7,
+   "roi_se": 40,
+   "t": 0.19,
+   "roi_ci95_boot": [
+    -58.9,
+    78
+   ],
+   "roi_at_close": 13,
+   "n_close": 7,
+   "ev_at_close_fair": -5.6,
+   "clv_mean": -6.67,
+   "clv_se": 3.71,
+   "avg_odds": 2.85,
+   "avg_model": 0.573,
+   "avg_mkt": 0.413,
+   "implied_hit_model": 57.3,
+   "implied_hit_mkt": 41.3
+  },
+  "prelim": {
+   "label": "prelim",
+   "n": 41,
+   "wins": 15,
+   "hit": 36.6,
+   "roi_taken": -22.8,
+   "roi_se": 17.1,
+   "t": -1.33,
+   "roi_ci95_boot": [
+    -54,
+    13.4
+   ],
+   "roi_at_close": -22.3,
+   "n_close": 41,
+   "ev_at_close_fair": -6.1,
+   "clv_mean": -4.9,
+   "clv_se": 2.24,
+   "avg_odds": 2.9,
+   "avg_model": 0.569,
+   "avg_mkt": 0.433,
+   "implied_hit_model": 56.9,
+   "implied_hit_mkt": 43.3
+  },
+  "lado favorito del mercado (k>=0.5)": {
+   "label": "lado favorito del mercado (k>=0.5)",
+   "n": 14,
+   "wins": 9,
+   "hit": 64.3,
+   "roi_taken": 1.6,
+   "roi_se": 21.3,
+   "t": 0.08,
+   "roi_ci95_boot": [
+    -39.6,
+    41.9
+   ],
+   "roi_at_close": -1.8,
+   "n_close": 14,
+   "ev_at_close_fair": 1.6,
+   "clv_mean": 3.31,
+   "clv_se": 1.73,
+   "avg_odds": 1.52,
+   "avg_model": 0.75,
+   "avg_mkt": 0.648,
+   "implied_hit_model": 75,
+   "implied_hit_mkt": 64.8
+  },
+  "lado perro del mercado (k<0.5)": {
+   "label": "lado perro del mercado (k<0.5)",
+   "n": 34,
+   "wins": 10,
+   "hit": 29.4,
+   "roi_taken": -26.6,
+   "roi_se": 20.3,
+   "t": -1.31,
+   "roi_ci95_boot": [
+    -65.6,
+    15
+   ],
+   "roi_at_close": -23.5,
+   "n_close": 34,
+   "ev_at_close_fair": -9.2,
+   "clv_mean": -8.64,
+   "clv_se": 2.47,
+   "avg_odds": 3.46,
+   "avg_model": 0.496,
+   "avg_mkt": 0.34,
+   "implied_hit_model": 49.6,
+   "implied_hit_mkt": 34
+  }
+ },
+ "h4": {
+  "n": 48,
+  "corr_drift_vs_win": {
+   "r": -0.311,
+   "t": -2.22
+  },
+  "corr_closefair_minus_mkt_vs_win": {
+   "r": 0.238,
+   "t": 1.66
+  },
+  "corr_lead_vs_drift": {
+   "r": -0.174,
+   "t": -1.2
+  },
+  "corr_lead_vs_win": {
+   "r": -0.111,
+   "t": -0.76
+  },
+  "corr_modeledge_vs_drift": {
+   "r": 0.075,
+   "t": 0.51
+  },
+  "moved_against": {
+   "label": "cierre > tomada (mercado en contra, >2%)",
+   "n": 27,
+   "hit": 25.9,
+   "roi": -40.8,
+   "avg_model": 0.514,
+   "avg_mkt": 0.346,
+   "avg_close": 0.31
+  },
+  "moved_for": {
+   "label": "cierre < tomada (mercado a favor)",
+   "n": 14,
+   "hit": 50,
+   "roi": -9.9,
+   "avg_model": 0.639,
+   "avg_mkt": 0.515,
+   "avg_close": 0.566
+  },
+  "flat": {
+   "label": "plano ±2%",
+   "n": 7,
+   "hit": 71.4,
+   "roi": 51.1,
+   "avg_model": 0.649,
+   "avg_mkt": 0.583,
+   "avg_close": 0.588
+  },
+  "share_moved_against": 56.3,
+  "avg_drift_log": 0.0646,
+  "avg_taken": 2.89,
+  "avg_close": 3.31,
+  "lead_terciles": {
+   "cut_days": [
+    2.8,
+    8.6
+   ],
+   "early": {
+    "label": "antelación ≥8.6d",
+    "n": 16,
+    "hit": 37.5,
+    "roi": -37.6,
+    "avg_model": 0.666,
+    "avg_mkt": 0.505,
+    "avg_close": 0.512
+   },
+   "mid": {
+    "label": "tercil medio",
+    "n": 16,
+    "hit": 43.8,
+    "roi": -0.6,
+    "avg_model": 0.505,
+    "avg_mkt": 0.374,
+    "avg_close": 0.35
+   },
+   "late": {
+    "label": "antelación <2.8d",
+    "n": 16,
+    "hit": 37.5,
+    "roi": -16.8,
+    "avg_model": 0.539,
+    "avg_mkt": 0.41,
+    "avg_close": 0.413
+   }
+  },
+  "lead_vs_drift_by_tercile": {
+   "early": 0.0306,
+   "mid": 0.1349,
+   "late": 0.0284
+  },
+  "drift_by_edge": {
+   "edge_lt10": 0.0256,
+   "edge_10_20": 0.1682,
+   "edge_ge20": 0.0491,
+   "n": [
+    24,
+    11,
+    13
+   ]
+  },
+  "hit_by_edge": {
+   "edge_lt10": {
+    "label": "<10pp",
+    "n": 24,
+    "hit": 41.7,
+    "roi": -6.7,
+    "avg_model": 0.549,
+    "avg_mkt": 0.49,
+    "avg_close": 0.495
+   },
+   "edge_10_20": {
+    "label": "10-20pp",
+    "n": 11,
+    "hit": 36.4,
+    "roi": -38.3,
+    "avg_model": 0.537,
+    "avg_mkt": 0.398,
+    "avg_close": 0.375
+   },
+   "edge_ge20": {
+    "label": ">=20pp",
+    "n": 13,
+    "hit": 38.5,
+    "roi": -23,
+    "avg_model": 0.636,
+    "avg_mkt": 0.346,
+    "avg_close": 0.338
+   }
+  }
+ },
+ "derived": {
+  "ROUNDS": {
+   "by_side": {
+    "over": {
+     "label": "over",
+     "n": 20,
+     "wins": 11,
+     "hit": 55,
+     "roi_taken": 10.6,
+     "roi_se": 24,
+     "t": 0.44,
+     "roi_ci95_boot": [
+      -36.5,
+      56.4
+     ],
+     "roi_at_close": -0.4,
+     "n_close": 19,
+     "ev_at_close_fair": -4,
+     "clv_mean": 1.8,
+     "clv_se": 1.25,
+     "avg_odds": 2.09,
+     "avg_model": 0.593,
+     "avg_mkt": 0.47,
+     "implied_hit_model": 59.3,
+     "implied_hit_mkt": 47
+    },
+    "under": {
+     "label": "under",
+     "n": 19,
+     "wins": 7,
+     "hit": 36.8,
+     "roi_taken": -13.6,
+     "roi_se": 27,
+     "t": -0.5,
+     "roi_ci95_boot": [
+      -61.4,
+      40.5
+     ],
+     "roi_at_close": -11.5,
+     "n_close": 18,
+     "ev_at_close_fair": -3.4,
+     "clv_mean": 2.48,
+     "clv_se": 1.09,
+     "avg_odds": 2.43,
+     "avg_model": 0.504,
+     "avg_mkt": 0.396,
+     "implied_hit_model": 50.4,
+     "implied_hit_mkt": 39.6
+    }
+   },
+   "by_league": {
+    "ufc": {
+     "label": "ufc",
+     "n": 18,
+     "wins": 4,
+     "hit": 22.2,
+     "roi_taken": -45.7,
+     "roi_se": 24.7,
+     "t": -1.85,
+     "roi_ci95_boot": [
+      -88.1,
+      4.2
+     ],
+     "roi_at_close": -42.3,
+     "n_close": 17,
+     "ev_at_close_fair": -5.2,
+     "clv_mean": 0.45,
+     "clv_se": 0.5,
+     "avg_odds": 2.43,
+     "avg_model": 0.497,
+     "avg_mkt": 0.397,
+     "implied_hit_model": 49.7,
+     "implied_hit_mkt": 39.7
+    },
+    "mma": {
+     "label": "mma",
+     "n": 19,
+     "wins": 13,
+     "hit": 68.4,
+     "roi_taken": 38.1,
+     "roi_se": 23.5,
+     "t": 1.62,
+     "roi_ci95_boot": [
+      -8.4,
+      81.8
+     ],
+     "roi_at_close": 26.1,
+     "n_close": 18,
+     "ev_at_close_fair": -2.7,
+     "clv_mean": 3.2,
+     "clv_se": 1.54,
+     "avg_odds": 2.1,
+     "avg_model": 0.58,
+     "avg_mkt": 0.469,
+     "implied_hit_model": 58,
+     "implied_hit_mkt": 46.9
+    },
+    "boxing": {
+     "label": "boxing",
+     "n": 2,
+     "wins": 1,
+     "hit": 50,
+     "roi_taken": 25.5,
+     "roi_se": 125.5,
+     "t": 0.2,
+     "roi_ci95_boot": [
+      -100,
+      151
+     ],
+     "roi_at_close": 17.5,
+     "n_close": 2,
+     "ev_at_close_fair": 0.7,
+     "clv_mean": 6.83,
+     "clv_se": 0.03,
+     "avg_odds": 2.19,
+     "avg_model": 0.74,
+     "avg_mkt": 0.437,
+     "implied_hit_model": 74,
+     "implied_hit_mkt": 43.7
+    }
+   },
+   "brier": {
+    "model": 0.2414,
+    "market": 0.2344,
+    "blend": 0.2336
+   }
+  },
+  "METHOD": {
+   "brier": {
+    "model": 0.1629,
+    "market": 0.1703,
+    "blend": 0.1621
+   },
+   "odds_lt3": {
+    "label": "<3",
+    "n": 5,
+    "wins": 2,
+    "hit": 40,
+    "roi_taken": -4.2,
+    "roi_se": 59,
+    "t": -0.07,
+    "roi_ci95_boot": [
+     -100,
+     99.4
+    ],
+    "roi_at_close": -13.2,
+    "n_close": 5,
+    "ev_at_close_fair": -9.8,
+    "clv_mean": 0.65,
+    "clv_se": 6.59,
+    "avg_odds": 2.23,
+    "avg_model": 0.516,
+    "avg_mkt": 0.416,
+    "implied_hit_model": 51.6,
+    "implied_hit_mkt": 41.6
+   },
+   "odds_ge3": {
+    "label": ">=3",
+    "n": 13,
+    "wins": 2,
+    "hit": 15.4,
+    "roi_taken": -3.1,
+    "roi_se": 68.8,
+    "t": -0.04,
+    "roi_ci95_boot": [
+     -100,
+     149.8
+    ],
+    "roi_at_close": -6,
+    "n_close": 12,
+    "ev_at_close_fair": -11.5,
+    "clv_mean": 0.08,
+    "clv_se": 4.58,
+    "avg_odds": 9.52,
+    "avg_model": 0.25,
+    "avg_mkt": 0.118,
+    "implied_hit_model": 25,
+    "implied_hit_mkt": 11.8
+   }
+  }
+ }
+}

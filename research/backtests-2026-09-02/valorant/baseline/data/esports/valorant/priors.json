@@ -1,0 +1,48 @@
+{
+ "at": "2026-09-02T11:04:22.161Z",
+ "model_version": "val-elo-series-1",
+ "source": "base propia (vlr.gg, research_only — RIGHTS.md)",
+ "constants": {
+  "K": 32,
+  "margin_boost": 1.7,
+  "idle_boost": 1.5,
+  "min_n": 10,
+  "idle_days": 60
+ },
+ "series": 32508,
+ "teams": 5273,
+ "validation": {
+  "development": {
+   "gp": {
+    "name": "gp",
+    "n": 14116,
+    "brier": 0.21827,
+    "skill_pct": 12.69,
+    "auc": 0.6986,
+    "ece": 0.0261,
+    "hit_pct": 64.91
+   }
+  },
+  "holdout_120d": {
+   "gp": {
+    "name": "gp",
+    "n": 893,
+    "brier": 0.23011,
+    "skill_pct": 7.96,
+    "auc": 0.6638,
+    "ece": 0.0502,
+    "hit_pct": 63.27
+   },
+   "elo_plain": {
+    "name": "elo",
+    "n": 893,
+    "brier": 0.22994,
+    "skill_pct": 8.02,
+    "auc": 0.6602,
+    "ece": 0.0493,
+    "hit_pct": 63.38
+   }
+  },
+  "note": "walk-forward estricto a nivel de SERIE; constantes elegidas SOLO en desarrollo; la ventana de 120 días se evaluó una única vez. Brier skill NO es rentabilidad: la probabilidad publicada sigue anclada a mercado y el peso propio sube con esta evidencia. La resolución por mapa/lado llega cuando el detalle termine de cosecharse."
+ }
+}

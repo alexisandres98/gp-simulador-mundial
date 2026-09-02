@@ -1,0 +1,1746 @@
+{
+ "at": "2026-09-02T12:17:25.086Z",
+ "eco": 0.068,
+ "A1": {
+  "tabla": {
+   "actual": {
+    "n": 104,
+    "brier_totales": 0.2259,
+    "brier_handicap": 0.2238,
+    "brier_ganador": 0.2565
+   },
+   "v1": {
+    "n": 104,
+    "brier_totales": 0.2203,
+    "brier_handicap": 0.2076,
+    "brier_ganador": 0.239
+   },
+   "flat": {
+    "n": 104,
+    "brier_totales": 0.2214,
+    "brier_handicap": 0.2181,
+    "brier_ganador": 0.2498
+   },
+   "v1_shrink50": {
+    "n": 104,
+    "brier_totales": 0.2207,
+    "brier_handicap": 0.2074,
+    "brier_ganador": 0.2366
+   },
+   "actual_shrink50": {
+    "n": 104,
+    "brier_totales": 0.2202,
+    "brier_handicap": 0.2064,
+    "brier_ganador": 0.2371
+   }
+  },
+  "deltas": {
+   "v1_vs_actual": {
+    "bt": {
+     "delta": -0.0056,
+     "se": 0.0059,
+     "ci95": [
+      -0.0178,
+      0.0056
+     ]
+    },
+    "bh": {
+     "delta": -0.0162,
+     "se": 0.0074,
+     "ci95": [
+      -0.0309,
+      -0.0013
+     ]
+    },
+    "bw": {
+     "delta": -0.0175,
+     "se": 0.0093,
+     "ci95": [
+      -0.0369,
+      0.0002
+     ]
+    }
+   },
+   "flat_vs_actual": {
+    "bt": {
+     "delta": -0.0045,
+     "se": 0.0095,
+     "ci95": [
+      -0.024,
+      0.0133
+     ]
+    },
+    "bh": {
+     "delta": -0.0058,
+     "se": 0.0181,
+     "ci95": [
+      -0.0417,
+      0.0296
+     ]
+    },
+    "bw": {
+     "delta": -0.0067,
+     "se": 0.025,
+     "ci95": [
+      -0.0572,
+      0.0412
+     ]
+    }
+   },
+   "flat_vs_v1": {
+    "bt": {
+     "delta": 0.0011,
+     "se": 0.0038,
+     "ci95": [
+      -0.0067,
+      0.0083
+     ]
+    },
+    "bh": {
+     "delta": 0.0104,
+     "se": 0.011,
+     "ci95": [
+      -0.0111,
+      0.0324
+     ]
+    },
+    "bw": {
+     "delta": 0.0108,
+     "se": 0.016,
+     "ci95": [
+      -0.0218,
+      0.0411
+     ]
+    }
+   },
+   "v1shrink_vs_v1": {
+    "bt": {
+     "delta": 0.0004,
+     "se": 0.003,
+     "ci95": [
+      -0.0059,
+      0.006
+     ]
+    },
+    "bh": {
+     "delta": -0.0002,
+     "se": 0.0058,
+     "ci95": [
+      -0.0115,
+      0.0114
+     ]
+    },
+    "bw": {
+     "delta": -0.0023,
+     "se": 0.008,
+     "ci95": [
+      -0.0185,
+      0.0129
+     ]
+    }
+   }
+  }
+ },
+ "A2": {
+  "tabla": {
+   "actual": {
+    "n": 128,
+    "brier_totales": 0.229,
+    "brier_handicap": 0.2165,
+    "brier_ganador": 0.2629
+   },
+   "v1": {
+    "n": 128,
+    "brier_totales": 0.2192,
+    "brier_handicap": 0.2017,
+    "brier_ganador": 0.2485
+   },
+   "flat": {
+    "n": 128,
+    "brier_totales": 0.2151,
+    "brier_handicap": 0.201,
+    "brier_ganador": 0.2499
+   },
+   "v1_shrink50": {
+    "n": 128,
+    "brier_totales": 0.2157,
+    "brier_handicap": 0.1982,
+    "brier_ganador": 0.2453
+   },
+   "actual_shrink50": {
+    "n": 128,
+    "brier_totales": 0.2178,
+    "brier_handicap": 0.2002,
+    "brier_ganador": 0.247
+   }
+  },
+  "deltas": {
+   "v1_vs_actual": {
+    "bt": {
+     "delta": -0.0099,
+     "se": 0.0042,
+     "ci95": [
+      -0.0183,
+      -0.0018
+     ]
+    },
+    "bh": {
+     "delta": -0.0148,
+     "se": 0.0055,
+     "ci95": [
+      -0.0262,
+      -0.004
+     ]
+    },
+    "bw": {
+     "delta": -0.0144,
+     "se": 0.0075,
+     "ci95": [
+      -0.0299,
+      -0.0001
+     ]
+    }
+   },
+   "flat_vs_actual": {
+    "bt": {
+     "delta": -0.014,
+     "se": 0.0065,
+     "ci95": [
+      -0.0271,
+      -0.0015
+     ]
+    },
+    "bh": {
+     "delta": -0.0155,
+     "se": 0.0124,
+     "ci95": [
+      -0.0413,
+      0.0086
+     ]
+    },
+    "bw": {
+     "delta": -0.0129,
+     "se": 0.0193,
+     "ci95": [
+      -0.0536,
+      0.0238
+     ]
+    }
+   },
+   "flat_vs_v1": {
+    "bt": {
+     "delta": -0.0041,
+     "se": 0.0023,
+     "ci95": [
+      -0.0089,
+      0.0004
+     ]
+    },
+    "bh": {
+     "delta": -0.0008,
+     "se": 0.0071,
+     "ci95": [
+      -0.0155,
+      0.0129
+     ]
+    },
+    "bw": {
+     "delta": 0.0014,
+     "se": 0.012,
+     "ci95": [
+      -0.0239,
+      0.0241
+     ]
+    }
+   },
+   "v1shrink_vs_v1": {
+    "bt": {
+     "delta": -0.0035,
+     "se": 0.0019,
+     "ci95": [
+      -0.0073,
+      0
+     ]
+    },
+    "bh": {
+     "delta": -0.0035,
+     "se": 0.0038,
+     "ci95": [
+      -0.0114,
+      0.0038
+     ]
+    },
+    "bw": {
+     "delta": -0.0032,
+     "se": 0.0061,
+     "ci95": [
+      -0.0162,
+      0.0083
+     ]
+    }
+   }
+  }
+ },
+ "A3": {
+  "tabla": {
+   "actual": {
+    "n": 106,
+    "brier_totales": 0.2146,
+    "brier_handicap": 0.2254,
+    "brier_ganador": 0.2958
+   },
+   "v1": {
+    "n": 106,
+    "brier_totales": 0.2127,
+    "brier_handicap": 0.2076,
+    "brier_ganador": 0.2695
+   },
+   "flat": {
+    "n": 106,
+    "brier_totales": 0.2125,
+    "brier_handicap": 0.1956,
+    "brier_ganador": 0.2501
+   },
+   "v1_shrink50": {
+    "n": 106,
+    "brier_totales": 0.2127,
+    "brier_handicap": 0.2009,
+    "brier_ganador": 0.2588
+   },
+   "actual_shrink50": {
+    "n": 106,
+    "brier_totales": 0.2127,
+    "brier_handicap": 0.2066,
+    "brier_ganador": 0.268
+   }
+  },
+  "deltas": {
+   "v1_vs_actual": {
+    "bt": {
+     "delta": -0.0018,
+     "se": 0.0018,
+     "ci95": [
+      -0.0053,
+      0.0017
+     ]
+    },
+    "bh": {
+     "delta": -0.0177,
+     "se": 0.0042,
+     "ci95": [
+      -0.026,
+      -0.0092
+     ]
+    },
+    "bw": {
+     "delta": -0.0264,
+     "se": 0.0065,
+     "ci95": [
+      -0.0391,
+      -0.0136
+     ]
+    }
+   },
+   "flat_vs_actual": {
+    "bt": {
+     "delta": -0.0021,
+     "se": 0.0026,
+     "ci95": [
+      -0.0069,
+      0.0029
+     ]
+    },
+    "bh": {
+     "delta": -0.0298,
+     "se": 0.0092,
+     "ci95": [
+      -0.0477,
+      -0.0114
+     ]
+    },
+    "bw": {
+     "delta": -0.0458,
+     "se": 0.0146,
+     "ci95": [
+      -0.0747,
+      -0.0167
+     ]
+    }
+   },
+   "flat_vs_v1": {
+    "bt": {
+     "delta": -0.0003,
+     "se": 0.0008,
+     "ci95": [
+      -0.0018,
+      0.0012
+     ]
+    },
+    "bh": {
+     "delta": -0.012,
+     "se": 0.005,
+     "ci95": [
+      -0.0218,
+      -0.0021
+     ]
+    },
+    "bw": {
+     "delta": -0.0194,
+     "se": 0.0081,
+     "ci95": [
+      -0.0349,
+      -0.0032
+     ]
+    }
+   },
+   "v1shrink_vs_v1": {
+    "bt": {
+     "delta": -0.0001,
+     "se": 0.0005,
+     "ci95": [
+      -0.0011,
+      0.0009
+     ]
+    },
+    "bh": {
+     "delta": -0.0067,
+     "se": 0.0024,
+     "ci95": [
+      -0.0115,
+      -0.0018
+     ]
+    },
+    "bw": {
+     "delta": -0.0106,
+     "se": 0.0039,
+     "ci95": [
+      -0.018,
+      -0.0029
+     ]
+    }
+   }
+  }
+ },
+ "A3b": {
+  "tabla": {
+   "actual": {
+    "n": 106,
+    "brier_totales": 0.2254,
+    "brier_handicap": 0.2164,
+    "brier_ganador": 0.2641
+   },
+   "v1": {
+    "n": 106,
+    "brier_totales": 0.2164,
+    "brier_handicap": 0.2035,
+    "brier_ganador": 0.25
+   },
+   "flat": {
+    "n": 106,
+    "brier_totales": 0.2125,
+    "brier_handicap": 0.2038,
+    "brier_ganador": 0.2499
+   },
+   "v1_shrink50": {
+    "n": 106,
+    "brier_totales": 0.2131,
+    "brier_handicap": 0.2008,
+    "brier_ganador": 0.2464
+   },
+   "actual_shrink50": {
+    "n": 106,
+    "brier_totales": 0.2152,
+    "brier_handicap": 0.2023,
+    "brier_ganador": 0.2484
+   }
+  },
+  "deltas": {
+   "v1_vs_actual": {
+    "bt": {
+     "delta": -0.009,
+     "se": 0.0044,
+     "ci95": [
+      -0.0179,
+      -0.0006
+     ]
+    },
+    "bh": {
+     "delta": -0.0128,
+     "se": 0.0059,
+     "ci95": [
+      -0.0242,
+      -0.0014
+     ]
+    },
+    "bw": {
+     "delta": -0.0142,
+     "se": 0.008,
+     "ci95": [
+      -0.0304,
+      0.0015
+     ]
+    }
+   },
+   "flat_vs_actual": {
+    "bt": {
+     "delta": -0.0129,
+     "se": 0.0068,
+     "ci95": [
+      -0.0269,
+      -0.0004
+     ]
+    },
+    "bh": {
+     "delta": -0.0126,
+     "se": 0.0131,
+     "ci95": [
+      -0.038,
+      0.0121
+     ]
+    },
+    "bw": {
+     "delta": -0.0142,
+     "se": 0.0203,
+     "ci95": [
+      -0.0555,
+      0.0244
+     ]
+    }
+   },
+   "flat_vs_v1": {
+    "bt": {
+     "delta": -0.004,
+     "se": 0.0024,
+     "ci95": [
+      -0.009,
+      0.0006
+     ]
+    },
+    "bh": {
+     "delta": 0.0002,
+     "se": 0.0074,
+     "ci95": [
+      -0.0144,
+      0.0143
+     ]
+    },
+    "bw": {
+     "delta": 0,
+     "se": 0.0125,
+     "ci95": [
+      -0.0249,
+      0.0235
+     ]
+    }
+   },
+   "v1shrink_vs_v1": {
+    "bt": {
+     "delta": -0.0034,
+     "se": 0.0019,
+     "ci95": [
+      -0.0075,
+      0.0001
+     ]
+    },
+    "bh": {
+     "delta": -0.0028,
+     "se": 0.0039,
+     "ci95": [
+      -0.0103,
+      0.0047
+     ]
+    },
+    "bw": {
+     "delta": -0.0036,
+     "se": 0.0064,
+     "ci95": [
+      -0.0166,
+      0.0084
+     ]
+    }
+   }
+  }
+ },
+ "B": {
+  "n": 80,
+  "recuperacion_actual": {
+   "p_gp_medio": 0.4957,
+   "p_under_recuperado_medio": 0.4981,
+   "err_abs_medio": 0.0026,
+   "nacen": 80
+  },
+  "p_prod_medio": 0.6803,
+  "p_prod_ge_0_65_pct": 87.5,
+  "v1_con_p_prod": {
+   "p_under_medio": 0.418,
+   "edge_medio_pp": 1.64,
+   "brier": 0.2206,
+   "nacen": 0,
+   "win": 0,
+   "roi_pct": null
+  },
+  "original": {
+   "brier": 0.2398,
+   "roi_pct": -14.63,
+   "win": 28
+  },
+  "brier_mercado": 0.2208
+ },
+ "C": {
+  "n_picks": 73,
+  "n_event_maps": 59,
+  "brier_corr_mkt": 0.2164,
+  "brier_mercado": 0.2198,
+  "brier_orig": 0.2422,
+  "delta_corr_vs_mercado_cluster": {
+   "mean": -0.0035,
+   "se": 0.0016,
+   "ci95": [
+    -0.0064,
+    -0.0003
+   ]
+  },
+  "delta_orig_vs_mercado_cluster": {
+   "mean": 0.0225,
+   "se": 0.0121,
+   "ci95": [
+    -0.0019,
+    0.0454
+   ]
+  },
+  "corr_medio_p_under_vs_mercado": -0.0114,
+  "hit_real_pct": 32.88
+ },
+ "D": {
+  "n_event_maps": 106,
+  "fav_prod_gano_pct": 45.28,
+  "se_binomial_pct": 4.86,
+  "z_vs_50": -0.97,
+  "fav_h1_gano_pct": 53.77,
+  "brier_prod": 0.2697,
+  "brier_h1": 0.25,
+  "nota": "las picks del libro existen PORQUE producción discrepó del mercado: condicionado a discrepancia, el favorito de GP pierde más de lo normal aunque el predictor sea neutro en población (H1 intacta: wr_8 Brier 0,244 < 0,25)"
+ },
+ "requote_unders": [
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.05,
+   "y": 0,
+   "p_gp": 0.4476,
+   "p_market": 0.3279,
+   "p_prod": 0.7103,
+   "p_under_actual_recup": 0.4528,
+   "p_under_v1": 0.3489,
+   "edge_v1": 2.1,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.05,
+   "y": 0,
+   "p_gp": 0.3907,
+   "p_market": 0.3279,
+   "p_prod": 0.6604,
+   "p_under_actual_recup": 0.3939,
+   "p_under_v1": 0.3237,
+   "edge_v1": -0.42,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4464,
+   "p_market": 0.3165,
+   "p_prod": 0.7103,
+   "p_under_actual_recup": 0.4528,
+   "p_under_v1": 0.3489,
+   "edge_v1": 3.24,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4402,
+   "p_market": 0.3165,
+   "p_prod": 0.7055,
+   "p_under_actual_recup": 0.4398,
+   "p_under_v1": 0.3483,
+   "edge_v1": 3.18,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6337,
+   "p_market": 0.5455,
+   "p_prod": 0.6933,
+   "p_under_actual_recup": 0.6361,
+   "p_under_v1": 0.5501,
+   "edge_v1": 0.46,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6257,
+   "p_market": 0.5455,
+   "p_prod": 0.6829,
+   "p_under_actual_recup": 0.6291,
+   "p_under_v1": 0.548,
+   "edge_v1": 0.25,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_3",
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.419,
+   "p_market": 0.3155,
+   "p_prod": 0.6867,
+   "p_under_actual_recup": 0.4214,
+   "p_under_v1": 0.3332,
+   "edge_v1": 1.77,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_21.5_4",
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 0,
+   "p_gp": 0.6138,
+   "p_market": 0.5238,
+   "p_prod": 0.6729,
+   "p_under_actual_recup": 0.6183,
+   "p_under_v1": 0.5449,
+   "edge_v1": 2.11,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.39,
+   "y": 1,
+   "p_gp": 0.4906,
+   "p_market": 0.4184,
+   "p_prod": 0.6526,
+   "p_under_actual_recup": 0.4898,
+   "p_under_v1": 0.4262,
+   "edge_v1": 0.78,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 1,
+   "p_gp": 0.3763,
+   "p_market": 0.3155,
+   "p_prod": 0.6437,
+   "p_under_actual_recup": 0.376,
+   "p_under_v1": 0.3241,
+   "edge_v1": 0.86,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.15,
+   "y": 0,
+   "p_gp": 0.3882,
+   "p_market": 0.3175,
+   "p_prod": 0.6591,
+   "p_under_actual_recup": 0.3907,
+   "p_under_v1": 0.3233,
+   "edge_v1": 0.58,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_under_18.5_2",
+   "line": 18.5,
+   "odds": 3.76,
+   "y": 0,
+   "p_gp": 0.4037,
+   "p_market": 0.266,
+   "p_prod": 0.7521,
+   "p_under_actual_recup": 0.4031,
+   "p_under_v1": 0.2807,
+   "edge_v1": 1.47,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 2,
+   "y": 1,
+   "p_gp": 0.582,
+   "p_market": 0.5,
+   "p_prod": 0.6376,
+   "p_under_actual_recup": 0.5829,
+   "p_under_v1": 0.5338,
+   "edge_v1": 3.38,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_20.5_3",
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 0,
+   "p_gp": 0.4876,
+   "p_market": 0.4149,
+   "p_prod": 0.6512,
+   "p_under_actual_recup": 0.4898,
+   "p_under_v1": 0.4249,
+   "edge_v1": 1,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.4325,
+   "p_market": 0.3145,
+   "p_prod": 0.6997,
+   "p_under_actual_recup": 0.4355,
+   "p_under_v1": 0.3412,
+   "edge_v1": 2.67,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_3",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.3868,
+   "p_market": 0.3145,
+   "p_prod": 0.6582,
+   "p_under_actual_recup": 0.3907,
+   "p_under_v1": 0.3233,
+   "edge_v1": 0.88,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.4851,
+   "p_market": 0.4132,
+   "p_prod": 0.6497,
+   "p_under_actual_recup": 0.4875,
+   "p_under_v1": 0.4249,
+   "edge_v1": 1.17,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_under_20.5_3",
+   "line": 20.5,
+   "odds": 2.28,
+   "y": 0,
+   "p_gp": 0.5289,
+   "p_market": 0.4386,
+   "p_prod": 0.6958,
+   "p_under_actual_recup": 0.5338,
+   "p_under_v1": 0.4459,
+   "edge_v1": 0.73,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.12,
+   "y": 0,
+   "p_gp": 0.3788,
+   "p_market": 0.3205,
+   "p_prod": 0.6462,
+   "p_under_actual_recup": 0.3781,
+   "p_under_v1": 0.3251,
+   "edge_v1": 0.46,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.8696,
+   "y": 1,
+   "p_gp": 0.5815,
+   "p_market": 0.5349,
+   "p_prod": 0.6376,
+   "p_under_actual_recup": 0.5829,
+   "p_under_v1": 0.5338,
+   "edge_v1": -0.11,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_18.5_1",
+   "line": 18.5,
+   "odds": 3.65,
+   "y": 0,
+   "p_gp": 0.3808,
+   "p_market": 0.274,
+   "p_prod": 0.7371,
+   "p_under_actual_recup": 0.3805,
+   "p_under_v1": 0.2734,
+   "edge_v1": -0.06,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 2.82,
+   "y": 0,
+   "p_gp": 0.4154,
+   "p_market": 0.3546,
+   "p_prod": 0.6844,
+   "p_under_actual_recup": 0.4179,
+   "p_under_v1": 0.3354,
+   "edge_v1": -1.92,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4068,
+   "p_market": 0.3145,
+   "p_prod": 0.6747,
+   "p_under_actual_recup": 0.4102,
+   "p_under_v1": 0.3311,
+   "edge_v1": 1.66,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.5991,
+   "p_market": 0.5348,
+   "p_prod": 0.6606,
+   "p_under_actual_recup": 0.6009,
+   "p_under_v1": 0.5378,
+   "edge_v1": 0.3,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4048,
+   "p_market": 0.3145,
+   "p_prod": 0.6725,
+   "p_under_actual_recup": 0.4067,
+   "p_under_v1": 0.3311,
+   "edge_v1": 1.66,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.885,
+   "y": 1,
+   "p_gp": 0.5771,
+   "p_market": 0.5305,
+   "p_prod": 0.6357,
+   "p_under_actual_recup": 0.5792,
+   "p_under_v1": 0.5338,
+   "edge_v1": 0.33,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.5979,
+   "p_market": 0.5348,
+   "p_prod": 0.6601,
+   "p_under_actual_recup": 0.5987,
+   "p_under_v1": 0.5378,
+   "edge_v1": 0.3,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.28,
+   "y": 1,
+   "p_gp": 0.5421,
+   "p_market": 0.4386,
+   "p_prod": 0.7072,
+   "p_under_actual_recup": 0.5494,
+   "p_under_v1": 0.4532,
+   "edge_v1": 1.46,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.24,
+   "y": 0,
+   "p_gp": 0.5059,
+   "p_market": 0.4464,
+   "p_prod": 0.6684,
+   "p_under_actual_recup": 0.5065,
+   "p_under_v1": 0.4344,
+   "edge_v1": -1.2,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 1,
+   "p_gp": 0.4613,
+   "p_market": 0.3165,
+   "p_prod": 0.7213,
+   "p_under_actual_recup": 0.462,
+   "p_under_v1": 0.3538,
+   "edge_v1": 3.73,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 1,
+   "p_gp": 0.566,
+   "p_market": 0.5238,
+   "p_prod": 0.6196,
+   "p_under_actual_recup": 0.5688,
+   "p_under_v1": 0.5336,
+   "edge_v1": 0.98,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_3",
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.4917,
+   "p_market": 0.4167,
+   "p_prod": 0.6544,
+   "p_under_actual_recup": 0.4933,
+   "p_under_v1": 0.4262,
+   "edge_v1": 0.95,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.39,
+   "y": 0,
+   "p_gp": 0.5312,
+   "p_market": 0.4184,
+   "p_prod": 0.6972,
+   "p_under_actual_recup": 0.5386,
+   "p_under_v1": 0.4459,
+   "edge_v1": 2.75,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 2,
+   "y": 1,
+   "p_gp": 0.624,
+   "p_market": 0.5,
+   "p_prod": 0.679,
+   "p_under_actual_recup": 0.6267,
+   "p_under_v1": 0.5475,
+   "edge_v1": 4.75,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.8,
+   "y": 0,
+   "p_gp": 0.619,
+   "p_market": 0.5556,
+   "p_prod": 0.6762,
+   "p_under_actual_recup": 0.6244,
+   "p_under_v1": 0.5475,
+   "edge_v1": -0.81,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:global~varrel_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5132,
+   "p_market": 0.4132,
+   "p_prod": 0.6759,
+   "p_under_actual_recup": 0.5159,
+   "p_under_v1": 0.4381,
+   "edge_v1": 2.49,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.9174,
+   "y": 0,
+   "p_gp": 0.5623,
+   "p_market": 0.5215,
+   "p_prod": 0.6164,
+   "p_under_actual_recup": 0.5621,
+   "p_under_v1": 0.5298,
+   "edge_v1": 0.83,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.6153,
+   "p_market": 0.5348,
+   "p_prod": 0.6744,
+   "p_under_actual_recup": 0.6215,
+   "p_under_v1": 0.5449,
+   "edge_v1": 1.01,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 1,
+   "p_gp": 0.4968,
+   "p_market": 0.4149,
+   "p_prod": 0.6624,
+   "p_under_actual_recup": 0.498,
+   "p_under_v1": 0.4282,
+   "edge_v1": 1.33,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.952381,
+   "y": 0,
+   "p_gp": 0.5939,
+   "p_market": 0.5122,
+   "p_prod": 0.6526,
+   "p_under_actual_recup": 0.5943,
+   "p_under_v1": 0.5357,
+   "edge_v1": 2.35,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_3",
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 1,
+   "p_gp": 0.5985,
+   "p_market": 0.5238,
+   "p_prod": 0.6604,
+   "p_under_actual_recup": 0.6009,
+   "p_under_v1": 0.5378,
+   "edge_v1": 1.4,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4053,
+   "p_market": 0.3145,
+   "p_prod": 0.673,
+   "p_under_actual_recup": 0.4067,
+   "p_under_v1": 0.3311,
+   "edge_v1": 1.66,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_3",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.4012,
+   "p_market": 0.3145,
+   "p_prod": 0.6679,
+   "p_under_actual_recup": 0.4023,
+   "p_under_v1": 0.3295,
+   "edge_v1": 1.5,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 2.94,
+   "y": 0,
+   "p_gp": 0.4325,
+   "p_market": 0.3401,
+   "p_prod": 0.6997,
+   "p_under_actual_recup": 0.4355,
+   "p_under_v1": 0.3412,
+   "edge_v1": 0.11,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_21.5_2",
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6263,
+   "p_market": 0.5455,
+   "p_prod": 0.6834,
+   "p_under_actual_recup": 0.631,
+   "p_under_v1": 0.548,
+   "edge_v1": 0.25,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.14,
+   "y": 0,
+   "p_gp": 0.4445,
+   "p_market": 0.3185,
+   "p_prod": 0.7098,
+   "p_under_actual_recup": 0.4485,
+   "p_under_v1": 0.3489,
+   "edge_v1": 3.04,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.952381,
+   "y": 1,
+   "p_gp": 0.6372,
+   "p_market": 0.5122,
+   "p_prod": 0.6965,
+   "p_under_actual_recup": 0.6381,
+   "p_under_v1": 0.5535,
+   "edge_v1": 4.13,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 1,
+   "p_gp": 0.4405,
+   "p_market": 0.3155,
+   "p_prod": 0.7055,
+   "p_under_actual_recup": 0.4398,
+   "p_under_v1": 0.3483,
+   "edge_v1": 3.28,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.4033,
+   "p_market": 0.3155,
+   "p_prod": 0.6705,
+   "p_under_actual_recup": 0.4048,
+   "p_under_v1": 0.3295,
+   "edge_v1": 1.4,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5827,
+   "p_market": 0.4132,
+   "p_prod": 0.7308,
+   "p_under_actual_recup": 0.5862,
+   "p_under_v1": 0.4674,
+   "edge_v1": 5.42,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5365,
+   "p_market": 0.4132,
+   "p_prod": 0.699,
+   "p_under_actual_recup": 0.5414,
+   "p_under_v1": 0.4459,
+   "edge_v1": 3.27,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_3",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5261,
+   "p_market": 0.4132,
+   "p_prod": 0.6915,
+   "p_under_actual_recup": 0.5301,
+   "p_under_v1": 0.441,
+   "edge_v1": 2.78,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4086,
+   "p_market": 0.3165,
+   "p_prod": 0.675,
+   "p_under_actual_recup": 0.4102,
+   "p_under_v1": 0.3311,
+   "edge_v1": 1.46,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fullsense~onside_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.37,
+   "y": 0,
+   "p_gp": 0.5781,
+   "p_market": 0.4219,
+   "p_prod": 0.7291,
+   "p_under_actual_recup": 0.5828,
+   "p_under_v1": 0.4626,
+   "edge_v1": 4.07,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 2,
+   "y": 0,
+   "p_gp": 0.6155,
+   "p_market": 0.5,
+   "p_prod": 0.6747,
+   "p_under_actual_recup": 0.6215,
+   "p_under_v1": 0.5449,
+   "edge_v1": 4.49,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_3",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5324,
+   "p_market": 0.4132,
+   "p_prod": 0.6973,
+   "p_under_actual_recup": 0.5386,
+   "p_under_v1": 0.4459,
+   "edge_v1": 3.27,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5198,
+   "p_market": 0.4132,
+   "p_prod": 0.6849,
+   "p_under_actual_recup": 0.5232,
+   "p_under_v1": 0.4387,
+   "edge_v1": 2.55,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5022,
+   "p_market": 0.4132,
+   "p_prod": 0.6655,
+   "p_under_actual_recup": 0.5048,
+   "p_under_v1": 0.43,
+   "edge_v1": 1.68,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:detonationfocusme~zetadivision_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.37,
+   "y": 1,
+   "p_gp": 0.4999,
+   "p_market": 0.4219,
+   "p_prod": 0.6642,
+   "p_under_actual_recup": 0.501,
+   "p_under_v1": 0.43,
+   "edge_v1": 0.81,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.15,
+   "y": 0,
+   "p_gp": 0.4086,
+   "p_market": 0.3175,
+   "p_prod": 0.675,
+   "p_under_actual_recup": 0.4102,
+   "p_under_v1": 0.3311,
+   "edge_v1": 1.36,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:eintrachtfrankfurt~liquid_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.12,
+   "y": 1,
+   "p_gp": 0.434,
+   "p_market": 0.3205,
+   "p_prod": 0.7035,
+   "p_under_actual_recup": 0.4398,
+   "p_under_v1": 0.3447,
+   "edge_v1": 2.42,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.36,
+   "y": 0,
+   "p_gp": 0.5042,
+   "p_market": 0.4237,
+   "p_prod": 0.6665,
+   "p_under_actual_recup": 0.5048,
+   "p_under_v1": 0.43,
+   "edge_v1": 0.63,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_3",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6121,
+   "p_market": 0.5348,
+   "p_prod": 0.6722,
+   "p_under_actual_recup": 0.6183,
+   "p_under_v1": 0.5449,
+   "edge_v1": 1.01,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.6271,
+   "p_market": 0.5348,
+   "p_prod": 0.684,
+   "p_under_actual_recup": 0.631,
+   "p_under_v1": 0.548,
+   "edge_v1": 1.32,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 1,
+   "p_gp": 0.5033,
+   "p_market": 0.4167,
+   "p_prod": 0.6662,
+   "p_under_actual_recup": 0.5048,
+   "p_under_v1": 0.43,
+   "edge_v1": 1.33,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 0,
+   "p_gp": 0.4858,
+   "p_market": 0.4149,
+   "p_prod": 0.6499,
+   "p_under_actual_recup": 0.4875,
+   "p_under_v1": 0.4249,
+   "edge_v1": 1,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.4997,
+   "p_market": 0.4167,
+   "p_prod": 0.6642,
+   "p_under_actual_recup": 0.501,
+   "p_under_v1": 0.43,
+   "edge_v1": 1.33,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.3765,
+   "p_market": 0.3155,
+   "p_prod": 0.6442,
+   "p_under_actual_recup": 0.376,
+   "p_under_v1": 0.3241,
+   "edge_v1": 0.86,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 1,
+   "p_gp": 0.5176,
+   "p_market": 0.4149,
+   "p_prod": 0.6779,
+   "p_under_actual_recup": 0.5186,
+   "p_under_v1": 0.4381,
+   "edge_v1": 2.32,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_2",
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5049,
+   "p_market": 0.4132,
+   "p_prod": 0.6667,
+   "p_under_actual_recup": 0.5048,
+   "p_under_v1": 0.43,
+   "edge_v1": 1.68,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.3835,
+   "p_market": 0.3145,
+   "p_prod": 0.6504,
+   "p_under_actual_recup": 0.3836,
+   "p_under_v1": 0.3251,
+   "edge_v1": 1.06,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_21.5_1",
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6069,
+   "p_market": 0.5348,
+   "p_prod": 0.6659,
+   "p_under_actual_recup": 0.6082,
+   "p_under_v1": 0.5404,
+   "edge_v1": 0.56,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_19.5_1",
+   "line": 19.5,
+   "odds": 2.98,
+   "y": 0,
+   "p_gp": 0.4363,
+   "p_market": 0.3356,
+   "p_prod": 0.7047,
+   "p_under_actual_recup": 0.4398,
+   "p_under_v1": 0.3447,
+   "edge_v1": 0.91,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_18.5_1",
+   "line": 18.5,
+   "odds": 4.07,
+   "y": 0,
+   "p_gp": 0.3521,
+   "p_market": 0.2457,
+   "p_prod": 0.717,
+   "p_under_actual_recup": 0.3543,
+   "p_under_v1": 0.2555,
+   "edge_v1": 0.98,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:xipto~zetadivision_RONDAS_under_20.5_1",
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.5705,
+   "p_market": 0.4167,
+   "p_prod": 0.7248,
+   "p_under_actual_recup": 0.5741,
+   "p_under_v1": 0.4603,
+   "edge_v1": 4.36,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_18.5_1",
+   "line": 18.5,
+   "odds": 4.02,
+   "y": 0,
+   "p_gp": 0.4027,
+   "p_market": 0.2488,
+   "p_prod": 0.7519,
+   "p_under_actual_recup": 0.4031,
+   "p_under_v1": 0.2807,
+   "edge_v1": 3.19,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_18.5_1",
+   "line": 18.5,
+   "odds": 4.32,
+   "y": 0,
+   "p_gp": 0.4492,
+   "p_market": 0.2315,
+   "p_prod": 0.7842,
+   "p_under_actual_recup": 0.4465,
+   "p_under_v1": 0.2973,
+   "edge_v1": 6.58,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3,
+   "y": 0,
+   "p_gp": 0.4011,
+   "p_market": 0.3333,
+   "p_prod": 0.6679,
+   "p_under_actual_recup": 0.4023,
+   "p_under_v1": 0.3295,
+   "edge_v1": -0.38,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_3",
+   "line": 19.5,
+   "odds": 3.06,
+   "y": 1,
+   "p_gp": 0.3935,
+   "p_market": 0.3268,
+   "p_prod": 0.6632,
+   "p_under_actual_recup": 0.3966,
+   "p_under_v1": 0.3237,
+   "edge_v1": -0.31,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_19.5_2",
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4509,
+   "p_market": 0.3165,
+   "p_prod": 0.7127,
+   "p_under_actual_recup": 0.4567,
+   "p_under_v1": 0.3489,
+   "edge_v1": 3.24,
+   "nace_v1": false,
+   "nace_actual_recup": true
+  }
+ ]
+}

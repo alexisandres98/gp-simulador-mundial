@@ -1,0 +1,346 @@
+{
+ "corners": {
+  "ligamx_ge2": {
+   "resumen": {
+    "n": 25,
+    "hit": 0.6,
+    "roi": 0.5936,
+    "se": 0.2834,
+    "t": 2.095,
+    "pnl_u": 14.84,
+    "p_mkt": 0.363,
+    "obs_menos_mkt_pp": 23.7015,
+    "t_obs_mkt": 2.361,
+    "odds": 2.706
+   },
+   "side": {
+    "over": 24,
+    "under": 1
+   },
+   "semana": {
+    "w32": 2,
+    "w33": 1,
+    "w34": 13,
+    "w35": 9
+   },
+   "casa": {
+    "draftkings": 18,
+    "betrivers": 6,
+    "leovegas": 1
+   },
+   "lineas": {
+    "11.5": 14,
+    "10.5": 4,
+    "9.5": 6,
+    "8.5": 1
+   }
+  },
+  "ge2_sin_ligamx": {
+   "n": 179,
+   "hit": 0.6927,
+   "roi": 0.0545,
+   "se": 0.0564,
+   "t": 0.965,
+   "pnl_u": 9.75,
+   "p_mkt": 0.6156,
+   "obs_menos_mkt_pp": 7.7153,
+   "t_obs_mkt": 2.223,
+   "odds": 1.5335
+  },
+  "ge2_sin_ligamx_eval60": {
+   "n": 72,
+   "hit": 0.6944,
+   "roi": 0.0547,
+   "se": 0.0864,
+   "t": 0.633,
+   "pnl_u": 3.94,
+   "p_mkt": 0.626,
+   "obs_menos_mkt_pp": 6.8463,
+   "t_obs_mkt": 1.22,
+   "odds": 1.5082
+  },
+  "ge2_sin_ligamx_eval50": {
+   "n": 92,
+   "hit": 0.6848,
+   "roi": 0.0428,
+   "se": 0.0774,
+   "t": 0.553,
+   "pnl_u": 3.94,
+   "p_mkt": 0.6186,
+   "obs_menos_mkt_pp": 6.6139,
+   "t_obs_mkt": 1.352,
+   "odds": 1.5278
+  },
+  "ligamx_books1": {
+   "n": 2,
+   "hit": 1,
+   "roi": 1.735,
+   "se": 1.465,
+   "t": 1.184,
+   "pnl_u": 3.47,
+   "p_mkt": 0.4614,
+   "obs_menos_mkt_pp": 53.8568,
+   "t_obs_mkt": 2.172,
+   "odds": 2.735
+  },
+  "ligamx_all_corners": {
+   "n": 27,
+   "hit": 0.6296,
+   "roi": 0.6781,
+   "se": 0.2796,
+   "t": 2.425,
+   "pnl_u": 18.31,
+   "p_mkt": 0.3703,
+   "obs_menos_mkt_pp": 25.9352,
+   "t_obs_mkt": 2.73,
+   "odds": 2.7081
+  },
+  "creacion1_refresco_ge2": {
+   "n": 65,
+   "hit": 0.7385,
+   "roi": 0.1777,
+   "se": 0.0992,
+   "t": 1.792,
+   "pnl_u": 11.55,
+   "p_mkt": 0.5982,
+   "obs_menos_mkt_pp": 14.0256,
+   "t_obs_mkt": 2.431,
+   "odds": 1.5635
+  },
+  "creacion_ge2_refresco_ge2": {
+   "n": 139,
+   "hit": 0.6547,
+   "roi": 0.0938,
+   "se": 0.0774,
+   "t": 1.213,
+   "pnl_u": 13.04,
+   "p_mkt": 0.5783,
+   "obs_menos_mkt_pp": 7.6397,
+   "t_obs_mkt": 1.902,
+   "odds": 1.7303
+  },
+  "books1_por_casa_lado": {
+   "leovegas|under": 212,
+   "fanduel|over": 3,
+   "leovegas|over": 61,
+   "betrivers|over": 23,
+   "betrivers|under": 9,
+   "virginbet|under": 4,
+   "livescorebet|under": 2,
+   "pinnacle|under": 44,
+   "pinnacle|over": 8,
+   "cloudbet|under": 12,
+   "cloudbet|over": 4,
+   "fanduel|under": 1
+  },
+  "leovegas_unders_1casa": {
+   "n": 212,
+   "hit": 0.5991,
+   "roi": -0.108,
+   "se": 0.0515,
+   "t": -2.095,
+   "pnl_u": -22.9,
+   "p_mkt": 0.6069,
+   "obs_menos_mkt_pp": -0.7875,
+   "t_obs_mkt": -0.235,
+   "odds": 1.5137
+  },
+  "books1_sin_leovegas": {
+   "n": 110,
+   "hit": 0.5818,
+   "roi": -0.0853,
+   "se": 0.0806,
+   "t": -1.058,
+   "pnl_u": -9.38,
+   "p_mkt": 0.5828,
+   "obs_menos_mkt_pp": -0.0997,
+   "t_obs_mkt": -0.022,
+   "odds": 1.6609
+  },
+  "ge2_eventos_con_mas_de_1_pick": 0,
+  "ge2_boot_cluster_liga_semana": {
+   "n_clusters": 35,
+   "se_cluster": 0.06,
+   "ci95": [
+    0.0129,
+    0.2511
+   ],
+   "t_cluster": 2.008
+  },
+  "ge2_boot_cluster_liga": {
+   "n_clusters": 16,
+   "se_cluster": 0.0703,
+   "ci95": [
+    0.0081,
+    0.2785
+   ],
+   "t_cluster": 1.715
+  },
+  "ge2_boot_cluster_fecha_kickoff": {
+   "n_clusters": 28,
+   "se_cluster": 0.0417,
+   "ci95": [
+    0.0423,
+    0.204
+   ],
+   "t_cluster": 2.892
+  },
+  "ge2_boot_iid": {
+   "n_clusters": 204,
+   "se_cluster": 0.0618,
+   "ci95": [
+    -0.0034,
+    0.2421
+   ],
+   "t_cluster": 1.951
+  },
+  "ge2_eval60_boot_cluster_liga_semana": {
+   "n_clusters": 19,
+   "se_cluster": 0.1277,
+   "ci95": [
+    -0.0475,
+    0.4419
+   ],
+   "t_cluster": 1.214
+  },
+  "ge2_eval60_boot_cluster_fecha": {
+   "n_clusters": 9,
+   "se_cluster": 0.0861,
+   "ci95": [
+    0.0287,
+    0.3618
+   ],
+   "t_cluster": 1.799
+  },
+  "ge2_top5_dias_pnl": [
+   {
+    "d": "2026-08-22",
+    "n": 27,
+    "pnl": 4.35
+   },
+   {
+    "d": "2026-08-15",
+    "n": 10,
+    "pnl": 4.26
+   },
+   {
+    "d": "2026-08-31",
+    "n": 6,
+    "pnl": 4.07
+   },
+   {
+    "d": "2026-09-01",
+    "n": 14,
+    "pnl": 3.91
+   },
+   {
+    "d": "2026-08-23",
+    "n": 24,
+    "pnl": 2.65
+   }
+  ],
+  "ge2_n_dias": 28,
+  "ge2_pnl_total": 24.59,
+  "ge2_sin_top3_dias": {
+   "n": 161,
+   "hit": 0.6522,
+   "roi": 0.074,
+   "se": 0.0698,
+   "t": 1.06,
+   "pnl_u": 11.91,
+   "p_mkt": 0.5811,
+   "obs_menos_mkt_pp": 7.106,
+   "t_obs_mkt": 1.877,
+   "odds": 1.6881
+  },
+  "margen_implicito": {
+   "ge2": 5.4746,
+   "b1": 6.5001,
+   "nota": "pp de diferencia entre la implícita de la mejor cuota y market_prob (≈ margen que carga la mejor cuota frente al consenso sin margen)"
+  }
+ },
+ "solid": {
+  "copas_loo": {
+   "coppaitalia": {
+    "n_quitado": 14,
+    "roi_sin": -0.5997,
+    "se_sin": 0.137,
+    "t_sin": -4.377,
+    "obs_menos_mkt_sin_pp": -11.1909
+   },
+   "libertadores": {
+    "n_quitado": 4,
+    "roi_sin": -0.286,
+    "se_sin": 0.2726,
+    "t_sin": -1.049,
+    "obs_menos_mkt_sin_pp": -7.4651
+   },
+   "sudamericana": {
+    "n_quitado": 4,
+    "roi_sin": -0.286,
+    "se_sin": 0.2726,
+    "t_sin": -1.049,
+    "obs_menos_mkt_sin_pp": -7.3872
+   },
+   "uclq": {
+    "n_quitado": 4,
+    "roi_sin": -0.3133,
+    "se_sin": 0.2724,
+    "t_sin": -1.15,
+    "obs_menos_mkt_sin_pp": -8.3409
+   },
+   "dfbpokal": {
+    "n_quitado": 15,
+    "roi_sin": -0.1876,
+    "se_sin": 0.3289,
+    "t_sin": -0.57,
+    "obs_menos_mkt_sin_pp": -7.0248
+   },
+   "eflcup": {
+    "n_quitado": 18,
+    "roi_sin": -0.2304,
+    "se_sin": 0.3479,
+    "t_sin": -0.662,
+    "obs_menos_mkt_sin_pp": -8.6035
+   },
+   "leaguescup": {
+    "n_quitado": 3,
+    "roi_sin": -0.4144,
+    "se_sin": 0.2638,
+    "t_sin": -1.571,
+    "obs_menos_mkt_sin_pp": -12.1578
+   }
+  },
+  "copas_boot_cluster_fecha": {
+   "n_clusters": 13,
+   "se_cluster": 0.2402,
+   "ci95": [
+    -0.7142,
+    0.2324
+   ],
+   "t_cluster": -1.382
+  },
+  "copas_boot_iid": {
+   "n_clusters": 62,
+   "se_cluster": 0.2537,
+   "ci95": [
+    -0.7475,
+    0.221
+   ],
+   "t_cluster": -1.309
+  },
+  "permutacion_etiqueta_copa": {
+   "diff_obs_menos_mkt_pp": -3.8193,
+   "p_valor_perm": 0.2677,
+   "diff_roi": -0.2407,
+   "p_valor_perm_roi": 0.1255,
+   "sims": 4000,
+   "nota": "Permuta la etiqueta copa/no copa entre las 432 SOLID; p = P(diferencia ≤ observada) bajo independencia."
+  },
+  "permutacion_estratificada_cuota": {
+   "p_valor_perm_obs_menos_mkt": 0.1665,
+   "p_valor_perm_roi": 0.1288,
+   "sims": 4000
+  }
+ }
+}

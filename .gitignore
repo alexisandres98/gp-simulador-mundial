@@ -65,3 +65,6 @@ data/esports/lol/.kills-backfill.lock
 
 # estado local del canal prop firm (en prod vive en /data/propfirm)
 data/propfirm/
+
+# scripts de investigación del 2-sep viajan aunque se llamen backtest.js
+!research/backtests-2026-09-02/**/backtest.js

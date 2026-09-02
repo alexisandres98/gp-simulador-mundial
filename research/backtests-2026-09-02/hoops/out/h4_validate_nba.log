@@ -1,0 +1,24 @@
+[nba] 1292 partidos · 3 bloques · 2000 simulaciones por partido
+cobertura de tramos: 100.0%
+  bloque 1: entrena 516 · evalúa 258 · RAPM 708 jugadores λ=1000 · peso de mezcla w=0.4
+  bloque 2: entrena 774 · evalúa 259 · RAPM 709 jugadores λ=1000 · peso de mezcla w=0
+  bloque 3: entrena 1033 · evalúa 259 · RAPM 719 jugadores λ=1000 · peso de mezcla w=0
+
+═══ RESULTADO FUERA DE MUESTRA ═══
+partidos evaluados: 772 · con cierre de mercado: 772
+Brier del CIERRE:            0.18779
+1. BASE (rating de equipo)       n= 772 · Brier 0.20829 (mercado 0.18779) · skill -0.02050 · acierto 66.7%
+2. + contexto de calendario      n= 772 · Brier 0.20839 (mercado 0.18779) · skill -0.02061 · acierto 67.9%
+3. + plantilla (RAPM×minutos)    n= 772 · Brier 0.21006 (mercado 0.18779) · skill -0.02227 · acierto 67.7%
+4. + mezcla con el mercado       n= 772 · Brier 0.18962 (mercado 0.18779) · skill -0.00184 · acierto 71.4%
+MAE de margen: base 12.11 → con plantilla 12.17
+
+veredicto guardado en data/basketball/validation-nba.json
+capas encendidas: blend
+
+SKILL FINAL vs cierre: -0.00184 ± 0.00089 (t = -2.06, n = 772)
+→ todavía por detrás del cierre.
+
+real	0m15.201s
+user	0m16.102s
+sys	0m1.127s

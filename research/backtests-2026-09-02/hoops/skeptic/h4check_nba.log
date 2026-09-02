@@ -1,0 +1,32 @@
+
+═══ NBA · H4 rest_diff · n=879
+corr(rest_diff, real−línea) toda la muestra: -0.007 (t -0.22)
+colinealidad: corr(rest_diff, home_rest)=0.529 corr(rest_diff, away_rest)=-0.382
+  rest_diff [-8,-1.5): n=30 over 17 (56.67%) resid medio 4 pts · ROI over 8.18%
+  rest_diff [-1.5,-0.5): n=127 over 61 (48.03%) resid medio -0.26 pts · ROI over -8.31%
+  rest_diff [-0.5,0.5): n=516 over 252 (48.84%) resid medio -0.04 pts · ROI over -6.77%
+  rest_diff [0.5,1.5): n=150 over 80 (53.33%) resid medio 2.65 pts · ROI over 1.81%
+  rest_diff [1.5,8): n=56 over 25 (44.64%) resid medio -1.61 pts · ROI over -14.78%
+corte 50/50: corr dev -0.05 (n393) test 0.022 (n486) · umbral p75_dev=0.21 · dev n=98 43W ROI -16.24±9.62 · TEST n=114 64W ROI 7.17±8.91
+     test umbral 0: n=189 103W ROI 4.04
+     test umbral 0.5: n=112 63W ROI 7.38
+     test umbral 1: n=58 32W ROI 5.32
+     test umbral 1.5: n=30 16W ROI 1.81
+     test umbral 2: n=23 10W ROI -17
+corte 60/40: corr dev -0.027 (n490) test 0.017 (n389) · umbral p75_dev=0.19 · dev n=122 60W ROI -6.11±8.68 · TEST n=93 48W ROI -1.47±9.95
+     test umbral 0: n=144 76W ROI 0.75
+     test umbral 0.5: n=90 47W ROI -0.31
+     test umbral 1: n=48 26W ROI 3.4
+     test umbral 1.5: n=25 14W ROI 6.9
+     test umbral 2: n=18 8W ROI -15.16
+corte 70/30: corr dev -0.027 (n587) test 0.029 (n292) · umbral p75_dev=0.75 · dev n=145 69W ROI -9.16±7.94 · TEST n=58 34W ROI 11.91±12.45
+     test umbral 0: n=94 54W ROI 9.67
+     test umbral 0.5: n=59 35W ROI 13.25
+     test umbral 1: n=31 19W ROI 17
+     test umbral 1.5: n=20 11W ROI 4.99
+     test umbral 2: n=15 7W ROI -10.91
+regla (away_rest − home_rest > 0,9) toda la muestra: n=141 over 72 · por mes: {"2025-12":[21,10],"2026-01":[33,15],"2026-02":[26,13],"2026-03":[42,25],"2026-04":[18,9],"2026-06":[1,0]}
+   descanso bruto del visitante en esas picks: media 3.12 días · local 1.67 · casos con away_rest_raw ≥ 6: 6
+   equipos visitantes: {"PHX":8,"POR":7,"DEN":4,"MIL":8,"SAC":4,"NO":6,"WSH":7,"ORL":2,"LAL":3,"PHI":7,"DAL":4,"SA":7,"BOS":3,"NY":9,"BKN":1,"GS":3,"MIA":7,"MIN":5,"UTAH":5,"DET":6,"CHA":4,"IND":7,"CHI":3,"ATL":3,"TOR":7,"LAC":2,"CLE":5,"OKC":3,"MEM":1}
+   excluyendo parones (≥6 días): n=135 over 69 ROI -2.43
+permutación (una sola feature, signo fijado en dev): P(ROI test ≥ 3.19%) = 0.364

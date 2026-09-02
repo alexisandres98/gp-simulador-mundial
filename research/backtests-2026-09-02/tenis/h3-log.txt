@@ -1,0 +1,22 @@
+
+═══ H3 ATP ═══ dev n=18384 holdout n=4906 · cal dev {"bo3":[-10.991,1.387],"bo5":[-16.9,1.326]} · selección dev {"s":1,"m_C3":0.5,"m_C5":0.5,"n_dev_seleccion":6128}
+C0_cruda                       MAE med 5.874 · CRPS 3.9149 · LS 3.1971 · Brier O/U 0.2578 · Δ vs C1: CRPS t -10.88, Brier t -19.2
+C1_desplazar_prod              MAE med 5.585 · CRPS 3.7756 · LS 3.2782 · Brier O/U 0.2475 · Δ vs C1: CRPS t 0, Brier t 0
+C2_reescalar_s1                MAE med 5.585 · CRPS 3.7756 · LS 3.2782 · Brier O/U 0.2475 · Δ vs C1: CRPS t 0, Brier t 0
+C3_mezcla_emp_m0.5             MAE med 5.487 · CRPS 3.7539 · LS 3.1839 · Brier O/U 0.2442 · Δ vs C1: CRPS t 2.17, Brier t 5.56
+C4_residuo_emp                 MAE med 5.489 · CRPS 3.7492 · LS 3.1772 · Brier O/U 0.2437 · Δ vs C1: CRPS t 12.83, Brier t 8.86
+C5_reescalar_s1_mezcla_m0.5    MAE med 5.487 · CRPS 3.7539 · LS 3.1839 · Brier O/U 0.2442 · Δ vs C1: CRPS t 2.17, Brier t 5.56
+C6_residuo_emp_tercil          MAE med 5.477 · CRPS 3.7438 · LS 3.1718 · Brier O/U 0.2431 · Δ vs C1: CRPS t 8.89, Brier t 6.25
+MAE ingenuo 5.682 · calibración C1: {"tag":"todo","n":4906,"media_pred":26.118,"media_real":26.201,"sd_pred_media":6.483,"sd_real_residuo":6.765,"p_real_mayor_que_mediana":0.4321,"cobertura_50":0.581,"cobertura_80":0.839,"cobertura_90":0.918,"pit_deciles":[0.064,0.096,0.14,0.111,0.14,0.088,0.085,0.062,0.083,0.132],"fiabilidad_p_over":[{"bin":"0.2-0.3","n":5,"p_media":0.294,"frec_real":0.2},{"bin":"0.3-0.4","n":2722,"p_media":0.385,"frec_real":0.335},{"bin":"0.4-0.5","n":11991,"p_media":0.451,"frec_real":0.407},{"bin":"0.5-0.6","n":11688,"p_media":0.543,"frec_real":0.51},{"bin":"0.6-0.7","n":2968,"p_media":0.629,"frec_real":0.627},{"bin":"0.7-0.8","n":58,"p_media":0.73,"frec_real":0.931},{"bin":"0.8-0.9","n":4,"p_media":0.812,"frec_real":1}]}
+cruda: {"n":4906,"media_pred":27.958,"media_real":26.201,"sd_pred_media":6.467,"sd_real_residuo":7.017} · sesgo por superficie: {"dura":{"n":2645,"media_pred":25.4,"media_real":25.29},"arcilla":{"n":1674,"media_pred":26.23,"media_real":26.2},"hierba":{"n":587,"media_pred":29,"media_real":30.33}}
+
+═══ H3 WTA ═══ dev n=16911 holdout n=4488 · cal dev {"bo3":[3.101,0.78],"bo5":[0,1]} · selección dev {"s":1,"m_C3":0.5,"m_C5":0.5,"n_dev_seleccion":5637}
+C0_cruda                       MAE med 5.105 · CRPS 3.4534 · LS 3.1309 · Brier O/U 0.266 · Δ vs C1: CRPS t -12.06, Brier t -18.57
+C1_desplazar_prod              MAE med 4.754 · CRPS 3.2678 · LS 3.1396 · Brier O/U 0.248 · Δ vs C1: CRPS t 0, Brier t 0
+C2_reescalar_s1                MAE med 4.754 · CRPS 3.2678 · LS 3.1396 · Brier O/U 0.248 · Δ vs C1: CRPS t 0, Brier t 0
+C3_mezcla_emp_m0.5             MAE med 4.752 · CRPS 3.2615 · LS 3.0765 · Brier O/U 0.2473 · Δ vs C1: CRPS t 2.5, Brier t 1.97
+C4_residuo_emp                 MAE med 4.752 · CRPS 3.2538 · LS 3.0703 · Brier O/U 0.2472 · Δ vs C1: CRPS t 5.19, Brier t 1.97
+C5_reescalar_s1_mezcla_m0.5    MAE med 4.752 · CRPS 3.2615 · LS 3.0765 · Brier O/U 0.2473 · Δ vs C1: CRPS t 2.5, Brier t 1.97
+C6_residuo_emp_tercil          MAE med 4.756 · CRPS 3.2488 · LS 3.0698 · Brier O/U 0.2469 · Δ vs C1: CRPS t 6.68, Brier t 2.55
+MAE ingenuo 4.909 · calibración C1: {"tag":"todo","n":4488,"media_pred":21.728,"media_real":21.948,"sd_pred_media":5.781,"sd_real_residuo":5.784,"p_real_mayor_que_mediana":0.443,"cobertura_50":0.619,"cobertura_80":0.859,"cobertura_90":0.924,"pit_deciles":[0.052,0.089,0.121,0.135,0.127,0.11,0.081,0.07,0.087,0.126],"fiabilidad_p_over":[{"bin":"0.2-0.3","n":12,"p_media":0.277,"frec_real":0.417},{"bin":"0.3-0.4","n":2803,"p_media":0.382,"frec_real":0.36},{"bin":"0.4-0.5","n":10649,"p_media":0.452,"frec_real":0.41},{"bin":"0.5-0.6","n":8340,"p_media":0.543,"frec_real":0.532},{"bin":"0.6-0.7","n":4870,"p_media":0.63,"frec_real":0.646},{"bin":"0.7-0.8","n":222,"p_media":0.733,"frec_real":0.824},{"bin":"0.8-0.9","n":32,"p_media":0.82,"frec_real":0.875}]}
+cruda: {"n":4488,"media_pred":23.89,"media_real":21.948,"sd_pred_media":5.767,"sd_real_residuo":6.095} · sesgo por superficie: {"dura":{"n":2417,"media_pred":21.75,"media_real":22.05},"arcilla":{"n":1391,"media_pred":21.7,"media_real":21.67},"hierba":{"n":624,"media_pred":21.71,"media_real":22.23}}

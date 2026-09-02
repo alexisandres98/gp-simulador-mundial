@@ -1,0 +1,174 @@
+{
+ "at": "2026-09-02T11:11:42.642Z",
+ "margen_asumido": {
+  "pinnacle": 0.05,
+  "bovada": 0.075
+ },
+ "n_fit": 182,
+ "n_eval": 122,
+ "c": {
+  "c": -0.2,
+  "ll": 0.6289
+ },
+ "c_por_familia": {
+  "RONDAS": {
+   "n": 46,
+   "c": -0.05,
+   "ll": 0.652
+  },
+  "RONDAS_HANDICAP": {
+   "n": 85,
+   "c": -0.4,
+   "ll": 0.5697
+  },
+  "RONDAS_EQUIPO": {
+   "n": 19,
+   "c": -0.45,
+   "ll": 0.6742
+  },
+  "HANDICAP": {
+   "n": 32,
+   "c": 0.95,
+   "ll": 0.6808
+  }
+ },
+ "regla_actual_eval": {
+  "n": 122,
+  "hit_pct": 35.25,
+  "roi_pct": -13.01,
+  "n_cierre": 120,
+  "roi_cierre_pct": -15.14,
+  "clv_pct_medio": 0.25
+ },
+ "eval": {
+  "mercado_sin_margen": {
+   "brier": 0.2176,
+   "logloss": 0.6237,
+   "n": 0,
+   "hit_pct": null,
+   "roi_pct": null,
+   "n_cierre": 0,
+   "roi_cierre_pct": null,
+   "con_3pp": {
+    "n": 0,
+    "hit_pct": null,
+    "roi_pct": null,
+    "n_cierre": 0,
+    "roi_cierre_pct": null
+   },
+   "boot": null
+  },
+  "gp_original": {
+   "brier": 0.2481,
+   "logloss": 0.6916,
+   "n": 122,
+   "hit_pct": 35.25,
+   "roi_pct": -13.01,
+   "n_cierre": 120,
+   "roi_cierre_pct": -15.14,
+   "con_3pp": {
+    "n": 122,
+    "hit_pct": 35.25,
+    "roi_pct": -13.01,
+    "n_cierre": 120,
+    "roi_cierre_pct": -15.14
+   },
+   "boot": {
+    "n": 122,
+    "roi_pct": -13.01,
+    "se_pct": 11.23,
+    "ci95": [
+     -35.79,
+     9.21
+    ]
+   }
+  },
+  "blend_c=-0.2": {
+   "brier": 0.2174,
+   "logloss": 0.6233,
+   "n": 0,
+   "hit_pct": null,
+   "roi_pct": null,
+   "n_cierre": 0,
+   "roi_cierre_pct": null,
+   "con_3pp": {
+    "n": 0,
+    "hit_pct": null,
+    "roi_pct": null,
+    "n_cierre": 0,
+    "roi_cierre_pct": null
+   },
+   "boot": null
+  },
+  "blend_por_familia": {
+   "brier": 0.2186,
+   "logloss": 0.6289,
+   "n": 16,
+   "hit_pct": 37.5,
+   "roi_pct": -12.54,
+   "n_cierre": 16,
+   "roi_cierre_pct": -12.99,
+   "con_3pp": {
+    "n": 16,
+    "hit_pct": 37.5,
+    "roi_pct": -12.54,
+    "n_cierre": 16,
+    "roi_cierre_pct": -12.99
+   },
+   "boot": {
+    "n": 16,
+    "roi_pct": -12.54,
+    "se_pct": 34.72,
+    "ci95": [
+     -74.75,
+     63.71
+    ]
+   }
+  }
+ },
+ "libro_completo": {
+  "n": 304,
+  "brier_mercado_sin_margen": 0.2192,
+  "brier_mercado_bruto": 0.221,
+  "brier_gp": 0.2482,
+  "hit_pct": 35.2,
+  "p_gp_medio": 0.5032,
+  "p_mkt_medio": 0.3654
+ },
+ "sensibilidad": {
+  "margen_0.03": {
+   "c": -0.25,
+   "brier_eval": 0.2184,
+   "brier_mercado": 0.2189,
+   "n": 0,
+   "hit_pct": null,
+   "roi_pct": null,
+   "n_cierre": 0,
+   "roi_cierre_pct": null
+  },
+  "margen_0.05": {
+   "c": -0.2,
+   "brier_eval": 0.2181,
+   "brier_mercado": 0.2184,
+   "n": 0,
+   "hit_pct": null,
+   "roi_pct": null,
+   "n_cierre": 0,
+   "roi_cierre_pct": null
+  },
+  "margen_0.08": {
+   "c": -0.1,
+   "brier_eval": 0.2177,
+   "brier_mercado": 0.2178,
+   "n": 0,
+   "hit_pct": null,
+   "roi_pct": null,
+   "n_cierre": 0,
+   "roi_cierre_pct": null
+  }
+ },
+ "lectura": {
+  "c_ajustado": -0.2,
+  "interpretacion": "la desviación de GP respecto al mercado es ANTI-informativa en el ajuste"
+ }
+}

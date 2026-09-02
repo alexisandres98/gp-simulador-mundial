@@ -1,0 +1,14 @@
+
+═══ H5 ATP ═══ holdout n=4908 base skill 10.12% LL 0.623
+fatiga               skill 10.74% LL 0.6187 Brier 0.2155 · ΔLL 0.00425 [0.00295, 0.0049] t 6.7 · 2025: 10.5→10.97 · 2026: 9.66→10.44 · cola ESPN: 7.14→7.75 · t_dev {"intercept":-4.73,"days_log":-7.12,"n7":0.97}
+fatiga_edad          skill 11.01% LL 0.6168 Brier 0.2147 · ΔLL 0.00618 [0.00384, 0.00732] t 4.91 · 2025: 10.5→11.15 · 2026: 9.66→10.84 · cola ESPN: 7.14→7.84 · t_dev {"intercept":2.3,"days_log":-7.24,"n7":0.77,"edad_dif_5a":-6.56,"edad_cuad_dif":-2.09}
+riesgo               skill 10.38% LL 0.6212 Brier 0.2166 · ΔLL 0.00175 [0.00145, 0.00241] t 5.35 · 2025: 10.5→10.69 · 2026: 9.66→9.99 · cola ESPN: 7.14→7.49 · t_dev {"intercept":-4.64,"riesgo_logit_dif":-2.5}
+fatiga_riesgo        skill 10.73% LL 0.6188 Brier 0.2155 · ΔLL 0.00421 [0.00292, 0.00479] t 6.75 · 2025: 10.5→10.96 · 2026: 9.66→10.45 · cola ESPN: 7.14→7.79 · t_dev {"intercept":-4.74,"days_log":-7.08,"n7":0.53,"riesgo_logit_dif":-0.43}
+fatiga_edad_riesgo   skill 11.01% LL 0.6168 Brier 0.2147 · ΔLL 0.00615 [0.00384, 0.00726] t 4.93 · 2025: 10.5→11.14 · 2026: 9.66→10.84 · cola ESPN: 7.14→7.86 · t_dev {"intercept":2.3,"days_log":-7.16,"n7":0.49,"edad_dif_5a":-6.56,"edad_cuad_dif":-2.08,"riesgo_logit_dif":-0.22}
+
+═══ H5 WTA ═══ holdout n=4488 base skill 11.91% LL 0.6106
+fatiga               skill 12.12% LL 0.6091 Brier 0.2111 · ΔLL 0.00148 [-0.00003, 0.00131] t 1.77 · 2025: 10.99→11.39 · 2026: 12.95→12.95 · cola ESPN: 12.22→12.32 · t_dev {"intercept":-2.87,"days_log":-6.86,"n7":1.5}
+fatiga_edad          skill 11.99% LL 0.61 Brier 0.2114 · ΔLL 0.00058 [-0.00118, 0.0008] t 0.67 · 2025: 10.99→11.33 · 2026: 12.95→12.75 · cola ESPN: 12.22→12.21 · t_dev {"intercept":1.93,"days_log":-6.92,"n7":1.41,"edad_dif_5a":-6.06,"edad_cuad_dif":-4.23}
+riesgo               skill 12.03% LL 0.6098 Brier 0.2116 · ΔLL 0.00084 [0.0003, 0.00171] t 1.93 · 2025: 10.99→11.12 · 2026: 12.95→13.07 · cola ESPN: 12.22→12.33 · t_dev {"intercept":-1.85,"riesgo_logit_dif":-3.39}
+fatiga_riesgo        skill 12.14% LL 0.609 Brier 0.211 · ΔLL 0.00162 [0.00017, 0.0017] t 2 · 2025: 10.99→11.4 · 2026: 12.95→12.99 · cola ESPN: 12.22→12.38 · t_dev {"intercept":-2.49,"days_log":-6.96,"n7":0.7,"riesgo_logit_dif":-1.2}
+fatiga_edad_riesgo   skill 11.99% LL 0.6101 Brier 0.2114 · ΔLL 0.00055 [-0.00122, 0.00075] t 0.62 · 2025: 10.99→11.33 · 2026: 12.95→12.74 · cola ESPN: 12.22→12.2 · t_dev {"intercept":1.92,"days_log":-6.82,"n7":1.34,"edad_dif_5a":-5.99,"edad_cuad_dif":-4.24,"riesgo_logit_dif":0.26}

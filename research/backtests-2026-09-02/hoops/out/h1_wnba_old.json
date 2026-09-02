@@ -1,0 +1,867 @@
+{
+ "league": "wnba",
+ "games_evaluated": 203,
+ "dataset_games": 263,
+ "refit": 10,
+ "sims": 8000,
+ "blend_w": 0.233,
+ "assumptions": [
+  "hándicap y total liquidados a −110 (1,909); el ganador a la cuota real del partido",
+  "una sola casa por partido: no hay line shopping",
+  "sin parte de bajas histórico: la capa de plantilla corre sin ausencias, en su versión más floja",
+  "las cuotas de ESPN son de cierre o muy cercanas: es el precio más difícil de batir"
+ ],
+ "strategies": {
+  "base": {
+   "candidates": 1212,
+   "families": {
+    "spread": {
+     "n": 134,
+     "settled": 134,
+     "wins": 71,
+     "win_pct": 52.99,
+     "units": 1.54,
+     "roi_pct": 1.15,
+     "roi_se_pp": 8.26,
+     "t": 0.14,
+     "avg_edge_pp": 9.84
+    },
+    "total": {
+     "n": 116,
+     "settled": 116,
+     "wins": 59,
+     "win_pct": 50.86,
+     "units": -3.37,
+     "roi_pct": -2.9,
+     "roi_se_pp": 8.9,
+     "t": -0.33,
+     "avg_edge_pp": 6.32
+    },
+    "moneyline": {
+     "n": 122,
+     "settled": 122,
+     "wins": 40,
+     "win_pct": 32.79,
+     "units": -16.72,
+     "roi_pct": -13.71,
+     "roi_se_pp": 14.21,
+     "t": -0.96,
+     "avg_edge_pp": 9.15
+    }
+   },
+   "overall": {
+    "n": 372,
+    "settled": 372,
+    "wins": 170,
+    "win_pct": 45.7,
+    "units": -18.55,
+    "roi_pct": -4.99,
+    "roi_se_pp": 6.18,
+    "t": -0.81,
+    "avg_edge_pp": 8.52
+   },
+   "by_edge": [
+    {
+     "min_edge_pp": 2,
+     "n": 385,
+     "settled": 385,
+     "wins": 174,
+     "win_pct": 45.19,
+     "units": -24.04,
+     "roi_pct": -6.24,
+     "roi_se_pp": 6.04,
+     "t": -1.03,
+     "avg_edge_pp": 8.3
+    },
+    {
+     "min_edge_pp": 3,
+     "n": 348,
+     "settled": 348,
+     "wins": 161,
+     "win_pct": 46.26,
+     "units": -11.13,
+     "roi_pct": -3.2,
+     "roi_se_pp": 6.47,
+     "t": -0.49,
+     "avg_edge_pp": 8.93
+    },
+    {
+     "min_edge_pp": 4,
+     "n": 300,
+     "settled": 300,
+     "wins": 138,
+     "win_pct": 46,
+     "units": -8.8,
+     "roi_pct": -2.93,
+     "roi_se_pp": 7.11,
+     "t": -0.41,
+     "avg_edge_pp": 9.8
+    },
+    {
+     "min_edge_pp": 5,
+     "n": 263,
+     "settled": 263,
+     "wins": 123,
+     "win_pct": 46.77,
+     "units": -2.21,
+     "roi_pct": -0.84,
+     "roi_se_pp": 7.72,
+     "t": -0.11,
+     "avg_edge_pp": 10.55
+    },
+    {
+     "min_edge_pp": 6,
+     "n": 221,
+     "settled": 221,
+     "wins": 101,
+     "win_pct": 45.7,
+     "units": -4.31,
+     "roi_pct": -1.95,
+     "roi_se_pp": 8.68,
+     "t": -0.22,
+     "avg_edge_pp": 11.53
+    },
+    {
+     "min_edge_pp": 8,
+     "n": 154,
+     "settled": 154,
+     "wins": 69,
+     "win_pct": 44.81,
+     "units": -0.54,
+     "roi_pct": -0.35,
+     "roi_se_pp": 11.2,
+     "t": -0.03,
+     "avg_edge_pp": 13.52
+    },
+    {
+     "min_edge_pp": 10,
+     "n": 121,
+     "settled": 121,
+     "wins": 50,
+     "win_pct": 41.32,
+     "units": -17.17,
+     "roi_pct": -14.19,
+     "roi_se_pp": 9.96,
+     "t": -1.42,
+     "avg_edge_pp": 14.75
+    }
+   ],
+   "by_edge_band": [
+    {
+     "band": "2-4 pp",
+     "n": 85,
+     "settled": 85,
+     "wins": 36,
+     "win_pct": 42.35,
+     "units": -15.24,
+     "roi_pct": -17.93,
+     "roi_se_pp": 10.9,
+     "t": -1.64,
+     "avg_edge_pp": 3.03
+    },
+    {
+     "band": "4-6 pp",
+     "n": 79,
+     "settled": 79,
+     "wins": 37,
+     "win_pct": 46.84,
+     "units": -4.49,
+     "roi_pct": -5.68,
+     "roi_se_pp": 11.86,
+     "t": -0.48,
+     "avg_edge_pp": 4.97
+    },
+    {
+     "band": "6-8 pp",
+     "n": 67,
+     "settled": 67,
+     "wins": 32,
+     "win_pct": 47.76,
+     "units": -3.77,
+     "roi_pct": -5.63,
+     "roi_se_pp": 12.65,
+     "t": -0.44,
+     "avg_edge_pp": 6.94
+    },
+    {
+     "band": "8-12 pp",
+     "n": 65,
+     "settled": 65,
+     "wins": 32,
+     "win_pct": 49.23,
+     "units": 15.7,
+     "roi_pct": 24.15,
+     "roi_se_pp": 21.9,
+     "t": 1.1,
+     "avg_edge_pp": 10.01
+    },
+    {
+     "band": "12-+ pp",
+     "n": 89,
+     "settled": 89,
+     "wins": 37,
+     "win_pct": 41.57,
+     "units": -16.24,
+     "roi_pct": -18.24,
+     "roi_se_pp": 10.67,
+     "t": -1.71,
+     "avg_edge_pp": 16.09
+    }
+   ],
+   "by_month": [
+    {
+     "month": "2026-05",
+     "n": 21,
+     "settled": 21,
+     "wins": 9,
+     "win_pct": 42.86,
+     "units": -0.34,
+     "roi_pct": -1.6,
+     "roi_se_pp": 29.29,
+     "t": -0.05,
+     "avg_edge_pp": 11.58
+    },
+    {
+     "month": "2026-06",
+     "n": 160,
+     "settled": 160,
+     "wins": 67,
+     "win_pct": 41.88,
+     "units": -21.89,
+     "roi_pct": -13.68,
+     "roi_se_pp": 8.86,
+     "t": -1.54,
+     "avg_edge_pp": 9.04
+    },
+    {
+     "month": "2026-07",
+     "n": 120,
+     "settled": 120,
+     "wins": 55,
+     "win_pct": 45.83,
+     "units": -10.78,
+     "roi_pct": -8.99,
+     "roi_se_pp": 9.45,
+     "t": -0.95,
+     "avg_edge_pp": 7.73
+    },
+    {
+     "month": "2026-08",
+     "n": 71,
+     "settled": 71,
+     "wins": 39,
+     "win_pct": 54.93,
+     "units": 14.46,
+     "roi_pct": 20.36,
+     "roi_se_pp": 17.8,
+     "t": 1.14,
+     "avg_edge_pp": 7.76
+    }
+   ],
+   "risk": {
+    "final_units": -18.55,
+    "peak_units": 2.84,
+    "max_drawdown_units": 41.4,
+    "max_drawdown_pct_of_turnover": 11.13,
+    "best_streak": 14,
+    "worst_streak": -9,
+    "curve": [
+     0.91,
+     -1.16,
+     -0.34,
+     -4.84,
+     -11.03,
+     -9.65,
+     -17.74,
+     -20.11,
+     -18.65,
+     -23.46,
+     -25.83,
+     -29.57,
+     -30.02,
+     -25.7,
+     -30.34,
+     -28.41,
+     -22.9,
+     -17.89,
+     -22.23,
+     -15.37,
+     -19.64,
+     -23.91,
+     -22.02,
+     -24.79,
+     -23.85,
+     -24.27,
+     -24.58,
+     -23.13,
+     -24.46,
+     -26.83,
+     -33.01,
+     -36.29,
+     -36.74,
+     -20.45,
+     -18.37,
+     -18.84,
+     -19.01,
+     -19.46
+    ]
+   },
+   "calibration": {
+    "n": 372,
+    "ece_pp": 9.69,
+    "brier": 0.24064,
+    "miscalibrated_bins": 3,
+    "bins": [
+     {
+      "range": "17-33%",
+      "n": 32,
+      "predicted": 27.18,
+      "actual": 18.75,
+      "lo": 8.89,
+      "hi": 35.31,
+      "ok": true
+     },
+     {
+      "range": "33-50%",
+      "n": 41,
+      "predicted": 41.21,
+      "actual": 19.51,
+      "lo": 10.23,
+      "hi": 34.01,
+      "ok": false
+     },
+     {
+      "range": "50-67%",
+      "n": 242,
+      "predicted": 58.93,
+      "actual": 52.48,
+      "lo": 46.2,
+      "hi": 58.68,
+      "ok": false
+     },
+     {
+      "range": "67-83%",
+      "n": 53,
+      "predicted": 70.66,
+      "actual": 54.72,
+      "lo": 41.45,
+      "hi": 67.34,
+      "ok": false
+     }
+    ],
+    "avg_p": 55.64,
+    "actual_pct": 45.7
+   }
+  },
+  "stack": {
+   "candidates": 1212,
+   "families": {
+    "spread": {
+     "n": 134,
+     "settled": 134,
+     "wins": 71,
+     "win_pct": 52.99,
+     "units": 1.54,
+     "roi_pct": 1.15,
+     "roi_se_pp": 8.26,
+     "t": 0.14,
+     "avg_edge_pp": 9.84
+    },
+    "total": {
+     "n": 116,
+     "settled": 116,
+     "wins": 59,
+     "win_pct": 50.86,
+     "units": -3.37,
+     "roi_pct": -2.9,
+     "roi_se_pp": 8.9,
+     "t": -0.33,
+     "avg_edge_pp": 6.32
+    },
+    "moneyline": {
+     "n": 122,
+     "settled": 122,
+     "wins": 40,
+     "win_pct": 32.79,
+     "units": -16.72,
+     "roi_pct": -13.71,
+     "roi_se_pp": 14.21,
+     "t": -0.96,
+     "avg_edge_pp": 9.15
+    }
+   },
+   "overall": {
+    "n": 372,
+    "settled": 372,
+    "wins": 170,
+    "win_pct": 45.7,
+    "units": -18.55,
+    "roi_pct": -4.99,
+    "roi_se_pp": 6.18,
+    "t": -0.81,
+    "avg_edge_pp": 8.52
+   },
+   "by_edge": [
+    {
+     "min_edge_pp": 2,
+     "n": 385,
+     "settled": 385,
+     "wins": 174,
+     "win_pct": 45.19,
+     "units": -24.04,
+     "roi_pct": -6.24,
+     "roi_se_pp": 6.04,
+     "t": -1.03,
+     "avg_edge_pp": 8.3
+    },
+    {
+     "min_edge_pp": 3,
+     "n": 348,
+     "settled": 348,
+     "wins": 161,
+     "win_pct": 46.26,
+     "units": -11.13,
+     "roi_pct": -3.2,
+     "roi_se_pp": 6.47,
+     "t": -0.49,
+     "avg_edge_pp": 8.93
+    },
+    {
+     "min_edge_pp": 4,
+     "n": 300,
+     "settled": 300,
+     "wins": 138,
+     "win_pct": 46,
+     "units": -8.8,
+     "roi_pct": -2.93,
+     "roi_se_pp": 7.11,
+     "t": -0.41,
+     "avg_edge_pp": 9.8
+    },
+    {
+     "min_edge_pp": 5,
+     "n": 263,
+     "settled": 263,
+     "wins": 123,
+     "win_pct": 46.77,
+     "units": -2.21,
+     "roi_pct": -0.84,
+     "roi_se_pp": 7.72,
+     "t": -0.11,
+     "avg_edge_pp": 10.55
+    },
+    {
+     "min_edge_pp": 6,
+     "n": 221,
+     "settled": 221,
+     "wins": 101,
+     "win_pct": 45.7,
+     "units": -4.31,
+     "roi_pct": -1.95,
+     "roi_se_pp": 8.68,
+     "t": -0.22,
+     "avg_edge_pp": 11.53
+    },
+    {
+     "min_edge_pp": 8,
+     "n": 154,
+     "settled": 154,
+     "wins": 69,
+     "win_pct": 44.81,
+     "units": -0.54,
+     "roi_pct": -0.35,
+     "roi_se_pp": 11.2,
+     "t": -0.03,
+     "avg_edge_pp": 13.52
+    },
+    {
+     "min_edge_pp": 10,
+     "n": 121,
+     "settled": 121,
+     "wins": 50,
+     "win_pct": 41.32,
+     "units": -17.17,
+     "roi_pct": -14.19,
+     "roi_se_pp": 9.96,
+     "t": -1.42,
+     "avg_edge_pp": 14.75
+    }
+   ],
+   "by_edge_band": [
+    {
+     "band": "2-4 pp",
+     "n": 85,
+     "settled": 85,
+     "wins": 36,
+     "win_pct": 42.35,
+     "units": -15.24,
+     "roi_pct": -17.93,
+     "roi_se_pp": 10.9,
+     "t": -1.64,
+     "avg_edge_pp": 3.03
+    },
+    {
+     "band": "4-6 pp",
+     "n": 79,
+     "settled": 79,
+     "wins": 37,
+     "win_pct": 46.84,
+     "units": -4.49,
+     "roi_pct": -5.68,
+     "roi_se_pp": 11.86,
+     "t": -0.48,
+     "avg_edge_pp": 4.97
+    },
+    {
+     "band": "6-8 pp",
+     "n": 67,
+     "settled": 67,
+     "wins": 32,
+     "win_pct": 47.76,
+     "units": -3.77,
+     "roi_pct": -5.63,
+     "roi_se_pp": 12.65,
+     "t": -0.44,
+     "avg_edge_pp": 6.94
+    },
+    {
+     "band": "8-12 pp",
+     "n": 65,
+     "settled": 65,
+     "wins": 32,
+     "win_pct": 49.23,
+     "units": 15.7,
+     "roi_pct": 24.15,
+     "roi_se_pp": 21.9,
+     "t": 1.1,
+     "avg_edge_pp": 10.01
+    },
+    {
+     "band": "12-+ pp",
+     "n": 89,
+     "settled": 89,
+     "wins": 37,
+     "win_pct": 41.57,
+     "units": -16.24,
+     "roi_pct": -18.24,
+     "roi_se_pp": 10.67,
+     "t": -1.71,
+     "avg_edge_pp": 16.09
+    }
+   ],
+   "by_month": [
+    {
+     "month": "2026-05",
+     "n": 21,
+     "settled": 21,
+     "wins": 9,
+     "win_pct": 42.86,
+     "units": -0.34,
+     "roi_pct": -1.6,
+     "roi_se_pp": 29.29,
+     "t": -0.05,
+     "avg_edge_pp": 11.58
+    },
+    {
+     "month": "2026-06",
+     "n": 160,
+     "settled": 160,
+     "wins": 67,
+     "win_pct": 41.88,
+     "units": -21.89,
+     "roi_pct": -13.68,
+     "roi_se_pp": 8.86,
+     "t": -1.54,
+     "avg_edge_pp": 9.04
+    },
+    {
+     "month": "2026-07",
+     "n": 120,
+     "settled": 120,
+     "wins": 55,
+     "win_pct": 45.83,
+     "units": -10.78,
+     "roi_pct": -8.99,
+     "roi_se_pp": 9.45,
+     "t": -0.95,
+     "avg_edge_pp": 7.73
+    },
+    {
+     "month": "2026-08",
+     "n": 71,
+     "settled": 71,
+     "wins": 39,
+     "win_pct": 54.93,
+     "units": 14.46,
+     "roi_pct": 20.36,
+     "roi_se_pp": 17.8,
+     "t": 1.14,
+     "avg_edge_pp": 7.76
+    }
+   ],
+   "risk": {
+    "final_units": -18.55,
+    "peak_units": 2.84,
+    "max_drawdown_units": 41.4,
+    "max_drawdown_pct_of_turnover": 11.13,
+    "best_streak": 14,
+    "worst_streak": -9,
+    "curve": [
+     0.91,
+     -1.16,
+     -0.34,
+     -4.84,
+     -11.03,
+     -9.65,
+     -17.74,
+     -20.11,
+     -18.65,
+     -23.46,
+     -25.83,
+     -29.57,
+     -30.02,
+     -25.7,
+     -30.34,
+     -28.41,
+     -22.9,
+     -17.89,
+     -22.23,
+     -15.37,
+     -19.64,
+     -23.91,
+     -22.02,
+     -24.79,
+     -23.85,
+     -24.27,
+     -24.58,
+     -23.13,
+     -24.46,
+     -26.83,
+     -33.01,
+     -36.29,
+     -36.74,
+     -20.45,
+     -18.37,
+     -18.84,
+     -19.01,
+     -19.46
+    ]
+   },
+   "calibration": {
+    "n": 372,
+    "ece_pp": 9.69,
+    "brier": 0.24064,
+    "miscalibrated_bins": 3,
+    "bins": [
+     {
+      "range": "17-33%",
+      "n": 32,
+      "predicted": 27.18,
+      "actual": 18.75,
+      "lo": 8.89,
+      "hi": 35.31,
+      "ok": true
+     },
+     {
+      "range": "33-50%",
+      "n": 41,
+      "predicted": 41.21,
+      "actual": 19.51,
+      "lo": 10.23,
+      "hi": 34.01,
+      "ok": false
+     },
+     {
+      "range": "50-67%",
+      "n": 242,
+      "predicted": 58.93,
+      "actual": 52.48,
+      "lo": 46.2,
+      "hi": 58.68,
+      "ok": false
+     },
+     {
+      "range": "67-83%",
+      "n": 53,
+      "predicted": 70.66,
+      "actual": 54.72,
+      "lo": 41.45,
+      "hi": 67.34,
+      "ok": false
+     }
+    ],
+    "avg_p": 55.64,
+    "actual_pct": 45.7
+   }
+  },
+  "blended": {
+   "candidates": 1212,
+   "families": {
+    "total": {
+     "n": 2,
+     "settled": 2,
+     "wins": 2,
+     "win_pct": 100,
+     "units": 1.82,
+     "roi_pct": 90.9,
+     "roi_se_pp": 0,
+     "t": null,
+     "avg_edge_pp": 3.39
+    },
+    "spread": {
+     "n": 19,
+     "settled": 19,
+     "wins": 9,
+     "win_pct": 47.37,
+     "units": -1.82,
+     "roi_pct": -9.57,
+     "roi_se_pp": 22.47,
+     "t": -0.43,
+     "avg_edge_pp": 3.2
+    },
+    "moneyline": {
+     "n": 11,
+     "settled": 11,
+     "wins": 3,
+     "win_pct": 27.27,
+     "units": -2.73,
+     "roi_pct": -24.83,
+     "roi_se_pp": 42.47,
+     "t": -0.58,
+     "avg_edge_pp": 3.43
+    }
+   },
+   "overall": {
+    "n": 32,
+    "settled": 32,
+    "wins": 14,
+    "win_pct": 43.75,
+    "units": -2.73,
+    "roi_pct": -8.54,
+    "roi_se_pp": 19.92,
+    "t": -0.43,
+    "avg_edge_pp": 3.29
+   },
+   "by_edge": [
+    {
+     "min_edge_pp": 2,
+     "n": 41,
+     "settled": 41,
+     "wins": 15,
+     "win_pct": 36.59,
+     "units": -9.63,
+     "roi_pct": -23.49,
+     "roi_se_pp": 16.85,
+     "t": -1.39,
+     "avg_edge_pp": 3.05
+    }
+   ],
+   "by_edge_band": [
+    {
+     "band": "2-4 pp",
+     "n": 35,
+     "settled": 35,
+     "wins": 12,
+     "win_pct": 34.29,
+     "units": -9.36,
+     "roi_pct": -26.74,
+     "roi_se_pp": 18.53,
+     "t": -1.44,
+     "avg_edge_pp": 2.64
+    }
+   ],
+   "by_month": [
+    {
+     "month": "2026-05",
+     "n": 5,
+     "settled": 5,
+     "wins": 2,
+     "win_pct": 40,
+     "units": -1.18,
+     "roi_pct": -23.64,
+     "roi_se_pp": 46.76,
+     "t": -0.51,
+     "avg_edge_pp": 3.04
+    },
+    {
+     "month": "2026-06",
+     "n": 16,
+     "settled": 16,
+     "wins": 6,
+     "win_pct": 37.5,
+     "units": -4.29,
+     "roi_pct": -26.84,
+     "roi_se_pp": 24.52,
+     "t": -1.09,
+     "avg_edge_pp": 3
+    },
+    {
+     "month": "2026-07",
+     "n": 8,
+     "settled": 8,
+     "wins": 5,
+     "win_pct": 62.5,
+     "units": 3.84,
+     "roi_pct": 47.95,
+     "roi_se_pp": 51.24,
+     "t": 0.94,
+     "avg_edge_pp": 3.19
+    },
+    {
+     "month": "2026-08",
+     "n": 3,
+     "settled": 3,
+     "wins": 1,
+     "win_pct": 33.33,
+     "units": -1.09,
+     "roi_pct": -36.37,
+     "roi_se_pp": 63.63,
+     "t": -0.57,
+     "avg_edge_pp": 5.56
+    }
+   ],
+   "risk": {
+    "final_units": -2.73,
+    "peak_units": 0.91,
+    "max_drawdown_units": 9.5,
+    "max_drawdown_pct_of_turnover": 29.7,
+    "best_streak": 7,
+    "worst_streak": -6,
+    "curve": [
+     0.91,
+     -0.09,
+     0.82,
+     -0.18,
+     -1.18,
+     -2.18,
+     -3.18,
+     -4.18,
+     -5.18,
+     -4.41,
+     -5.41,
+     -6.41,
+     -7.41,
+     -6.5,
+     -7.5,
+     -8.5,
+     -7.59,
+     -8.59,
+     -7.29,
+     -6.39,
+     -5.48,
+     -2.28,
+     -1.37,
+     -0.46,
+     0.45,
+     -0.55,
+     -1.55,
+     -2.55,
+     -1.64,
+     -0.73,
+     -1.73,
+     -2.73
+    ]
+   }
+  }
+ }
+}

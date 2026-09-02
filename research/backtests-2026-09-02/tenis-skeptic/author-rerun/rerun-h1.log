@@ -1,0 +1,34 @@
+
+═══ H1 ATP ═══ dev n=18384 holdout n=4908
+base holdout: LL 0.6230 Brier 0.2174 skill 10.12%
+todos            holdout LL 0.6188 Brier 0.2156 skill 10.73% · ΔLL 0.0042 (t 6.81) · t coef: {"intercept":-4.74,"days_log":-3.81,"layoff30":-1.52,"b2b":-1.42,"min_prev":-1.11,"n7":0.88,"prev_dist":1.14,"ret_prev":-0.9}
+solo_days_log    holdout LL 0.6189 Brier 0.2156 skill 10.71% · ΔLL 0.00407 (t 6.15) · t coef: {"intercept":-4.75,"days_log":-8.84}
+solo_layoff30    holdout LL 0.621 Brier 0.2166 skill 10.4% · ΔLL 0.00195 (t 4.26) · t coef: {"intercept":-4.66,"layoff30":-7.1}
+solo_b2b         holdout LL 0.6212 Brier 0.2166 skill 10.38% · ΔLL 0.00176 (t 7.23) · t coef: {"intercept":-4.62,"b2b":2.08}
+solo_min_prev    holdout LL 0.6215 Brier 0.2167 skill 10.34% · ΔLL 0.00152 (t 3.82) · t coef: {"intercept":-4.61,"min_prev":-1.05}
+solo_n7          holdout LL 0.6198 Brier 0.216 skill 10.58% · ΔLL 0.00318 (t 6.45) · t coef: {"intercept":-4.55,"n7":5.33}
+solo_prev_dist   holdout LL 0.6213 Brier 0.2167 skill 10.37% · ΔLL 0.00171 (t 6.08) · t coef: {"intercept":-4.63,"prev_dist":0.99}
+solo_ret_prev    holdout LL 0.6211 Brier 0.2166 skill 10.39% · ΔLL 0.00188 (t 6.34) · t coef: {"intercept":-4.62,"ret_prev":-1.67}
+nucleo_4         holdout LL 0.6192 Brier 0.2157 skill 10.67% · ΔLL 0.0038 (t 5.34) · t coef: {"intercept":-4.74,"days_log":-5.13,"layoff30":-1.92,"min_prev":-1.08,"prev_dist":1.19}
+minimo_days_n7   holdout LL 0.6187 Brier 0.2155 skill 10.74% · ΔLL 0.00425 (t 6.7) · t coef: {"intercept":-4.73,"days_log":-7.12,"n7":0.97}
+solo_edad        holdout LL 0.6195 Brier 0.2159 skill 10.62% · ΔLL 0.00343 (t 4.37) · t coef: {"intercept":2.3,"edad_dif_5a":-6.41,"edad_cuad_dif":-2.43}
+todos_mas_edad   holdout LL 0.6168 Brier 0.2147 skill 11.01% · ΔLL 0.00613 (t 4.86) · t coef: {"intercept":2.25,"days_log":-3.95,"layoff30":-1.34,"b2b":-1.3,"min_prev":-1.05,"n7":0.69,"prev_dist":1.17,"ret_prev":-0.79,"edad_dif_5a":-6.49,"edad_cuad_dif":-2.08}
+days_n7_mas_edad holdout LL 0.6168 Brier 0.2147 skill 11.01% · ΔLL 0.00618 (t 4.91) · t coef: {"intercept":2.3,"days_log":-7.24,"n7":0.77,"edad_dif_5a":-6.56,"edad_cuad_dif":-2.09}
+estabilidad dev: {"fit_hasta":20211231,"eval":"2022-2024","n":8766,"base_logloss":0.6168,"var_logloss":0.6159,"base_skill":11.02,"var_skill":11.15,"coef_t":{"intercept":-4.31,"days_log":-3.83,"layoff30":-0.66,"b2b":-2.34,"min_prev":-0.13,"n7":0.79,"prev_dist":-0.41,"ret_prev":-1.11}}
+
+═══ H1 WTA ═══ dev n=16911 holdout n=4488
+base holdout: LL 0.6106 Brier 0.2119 skill 11.91%
+todos            holdout LL 0.6091 Brier 0.2111 skill 12.12% · ΔLL 0.00149 (t 1.43) · t coef: {"intercept":-2.78,"days_log":-3.42,"layoff30":-1.6,"b2b":-0.9,"min_prev":-2.69,"n7":1.68,"prev_dist":1.43,"ret_prev":-0.91}
+solo_days_log    holdout LL 0.6094 Brier 0.2112 skill 12.09% · ΔLL 0.00125 (t 1.31) · t coef: {"intercept":-2.88,"days_log":-9.06}
+solo_layoff30    holdout LL 0.6101 Brier 0.2116 skill 11.98% · ΔLL 0.0005 (t 0.81) · t coef: {"intercept":-2.71,"layoff30":-7.17}
+solo_b2b         holdout LL 0.6103 Brier 0.2118 skill 11.95% · ΔLL 0.0003 (t 1.18) · t coef: {"intercept":-2.62,"b2b":2.76}
+solo_min_prev    holdout LL 0.6102 Brier 0.2117 skill 11.97% · ΔLL 0.00044 (t 1.39) · t coef: {"intercept":-2.52,"min_prev":-2.31}
+solo_n7          holdout LL 0.6092 Brier 0.2113 skill 12.11% · ΔLL 0.00143 (t 3.35) · t coef: {"intercept":-2.66,"n7":6.09}
+solo_prev_dist   holdout LL 0.6103 Brier 0.2118 skill 11.96% · ΔLL 0.00033 (t 1.12) · t coef: {"intercept":-2.59,"prev_dist":-0.35}
+solo_ret_prev    holdout LL 0.6103 Brier 0.2118 skill 11.96% · ΔLL 0.00035 (t 1.08) · t coef: {"intercept":-2.59,"ret_prev":-1.36}
+nucleo_4         holdout LL 0.6094 Brier 0.2112 skill 12.08% · ΔLL 0.00119 (t 1.02) · t coef: {"intercept":-2.79,"days_log":-5.53,"layoff30":-1.6,"min_prev":-2.63,"prev_dist":1.44}
+minimo_days_n7   holdout LL 0.6091 Brier 0.2111 skill 12.12% · ΔLL 0.00148 (t 1.77) · t coef: {"intercept":-2.87,"days_log":-6.86,"n7":1.5}
+solo_edad        holdout LL 0.6114 Brier 0.2122 skill 11.8% · ΔLL -0.00074 (t -1.64) · t coef: {"intercept":1.93,"edad_dif_5a":-5.85,"edad_cuad_dif":-4.59}
+todos_mas_edad   holdout LL 0.61 Brier 0.2114 skill 11.99% · ΔLL 0.00057 (t 0.55) · t coef: {"intercept":1.97,"days_log":-3.45,"layoff30":-1.56,"b2b":-0.81,"min_prev":-2.68,"n7":1.59,"prev_dist":1.33,"ret_prev":-0.94,"edad_dif_5a":-6.03,"edad_cuad_dif":-4.25}
+days_n7_mas_edad holdout LL 0.61 Brier 0.2114 skill 11.99% · ΔLL 0.00058 (t 0.67) · t coef: {"intercept":1.93,"days_log":-6.92,"n7":1.41,"edad_dif_5a":-6.06,"edad_cuad_dif":-4.23}
+estabilidad dev: {"fit_hasta":20211231,"eval":"2022-2024","n":7874,"base_logloss":0.6174,"var_logloss":0.6161,"base_skill":10.93,"var_skill":11.12,"coef_t":{"intercept":-2.77,"days_log":-2.18,"layoff30":-1.94,"b2b":-0.9,"min_prev":-2.54,"n7":2,"prev_dist":1.21,"ret_prev":-0.55}}

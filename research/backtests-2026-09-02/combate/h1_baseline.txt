@@ -1,0 +1,62 @@
+
+==========================================================================================
+ORG UFC — 8987 peleas (1997-02-07 → 2026-08-01) · fine join: 2199 peleas · warm 3145
+
+GANADOR (out-of-sample):
+  Elo puro         {"n":5842,"acc":0.568,"brier":0.2432,"skill":0.0068,"logloss":0.6793,"cal_err":0.0404}
+  ACTUAL           {"n":5842,"acc":0.6111,"brier":0.2332,"skill":0.0168,"logloss":0.6585,"cal_err":0.0504}
+  +absorb          {"n":5842,"acc":0.6109,"brier":0.2332,"skill":0.0168,"logloss":0.6584,"cal_err":0.0505}
+  +abs+grap        {"n":5842,"acc":0.6114,"brier":0.2332,"skill":0.0168,"logloss":0.6585,"cal_err":0.0507}
+  +abs+grap+subth  {"n":5842,"acc":0.6114,"brier":0.2332,"skill":0.0168,"logloss":0.6585,"cal_err":0.0507}
+  FULL             {"n":5842,"acc":0.6113,"brier":0.2332,"skill":0.0168,"logloss":0.6586,"cal_err":0.051}
+  bootstrap: P(+absorb mejor que ACTUAL) = 0.784
+  bootstrap: P(+abs+grap mejor que ACTUAL) = 0.600
+  bootstrap: P(+abs+grap+subth mejor que ACTUAL) = 0.589
+  bootstrap: P(FULL mejor que ACTUAL) = 0.360
+
+SEGMENTOS (ACTUAL → V2):
+  era:2013-19          n= 2252  acc 0.595→0.5946  brier 0.2364→0.2364  skill 0.0136→0.0136
+  era:2020-26          n= 3590  acc 0.6212→0.6217  brier 0.2312→0.2312  skill 0.0188→0.0188
+  fino:no              n= 5006  acc 0.6081→0.6079  brier 0.2342→0.2342  skill 0.0158→0.0158
+  fino:sí              n=  836  acc 0.6292→0.6316  brier 0.2275→0.2275  skill 0.0225→0.0225
+  interaccion:activa   n=  598  acc 0.6137→0.6137  brier 0.2299→0.23  skill 0.0201→0.02
+  sched:3R             n= 5315  acc 0.612→0.6124  brier 0.2328→0.2327  skill 0.0172→0.0173
+  sched:5R             n=  527  acc 0.6015→0.5996  brier 0.2378→0.2383  skill 0.0122→0.0117
+
+PESOS FULL: {"elo":0.8008,"reach":0.2113,"exp":-0.023,"years":-0.3098,"age":-0.63,"chin":-0.1729,"streak":0.139,"mileage":0.3616,"misswt":0,"slpm":-0.1041,"td15":0.0824,"tddef":0.0497,"ctrl":0.0275,"kdr":-0.0049,"grap":0.0378,"power":-0.0173,"absorb":0.1051,"age5":0.0057,"subth":0}
+
+==========================================================================================
+ORG MMA — 4233 peleas (2009-04-03 → 2026-08-08) · fine join: 0 peleas · warm 1481
+
+GANADOR (out-of-sample):
+  Elo puro         {"n":2752,"acc":0.6265,"brier":0.2316,"skill":0.0184,"logloss":0.6551,"cal_err":0.0861}
+  ACTUAL           {"n":2752,"acc":0.6483,"brier":0.2211,"skill":0.0289,"logloss":0.6324,"cal_err":0.0654}
+  +absorb          {"n":2752,"acc":0.6483,"brier":0.2211,"skill":0.0289,"logloss":0.6324,"cal_err":0.0654}
+  +abs+grap        {"n":2752,"acc":0.6483,"brier":0.2211,"skill":0.0289,"logloss":0.6324,"cal_err":0.0654}
+  +abs+grap+subth  {"n":2752,"acc":0.6483,"brier":0.2211,"skill":0.0289,"logloss":0.6324,"cal_err":0.0654}
+  FULL             {"n":2752,"acc":0.6486,"brier":0.2211,"skill":0.0289,"logloss":0.6324,"cal_err":0.0655}
+  bootstrap: P(+absorb mejor que ACTUAL) = 0.000
+  bootstrap: P(+abs+grap mejor que ACTUAL) = 0.000
+  bootstrap: P(+abs+grap+subth mejor que ACTUAL) = 0.000
+  bootstrap: P(FULL mejor que ACTUAL) = 0.448
+
+SEGMENTOS (ACTUAL → V2):
+  era:2013-19          n= 1259  acc 0.6386→0.6386  brier 0.2225→0.2225  skill 0.0275→0.0275
+  era:2020-26          n= 1493  acc 0.6564→0.6571  brier 0.2199→0.2199  skill 0.0301→0.0301
+  fino:no              n= 2752  acc 0.6483→0.6486  brier 0.2211→0.2211  skill 0.0289→0.0289
+  sched:3R             n= 2546  acc 0.6441→0.6441  brier 0.2218→0.2218  skill 0.0282→0.0282
+  sched:5R             n=  206  acc 0.699→0.7039  brier 0.2123→0.2122  skill 0.0377→0.0378
+
+PESOS FULL: {"elo":0.9773,"reach":0.1045,"exp":0.0596,"years":-0.3078,"age":-0.5444,"chin":-0.1887,"streak":0.0968,"mileage":0.2002,"misswt":0,"slpm":0,"td15":0,"tddef":0,"ctrl":0,"kdr":0,"grap":0,"power":0,"absorb":0,"age5":-0.057,"subth":0}
+
+==========================================================================================
+UFC ACTUAL           brier 0.2332 acc 0.6111 skill 0.0168
+UFC +absorb          brier 0.2332 acc 0.6109 skill 0.0168
+UFC +abs+grap        brier 0.2332 acc 0.6114 skill 0.0168
+UFC +abs+grap+subth  brier 0.2332 acc 0.6114 skill 0.0168
+UFC FULL             brier 0.2332 acc 0.6113 skill 0.0168
+MMA ACTUAL           brier 0.2211 acc 0.6483 skill 0.0289
+MMA +absorb          brier 0.2211 acc 0.6483 skill 0.0289
+MMA +abs+grap        brier 0.2211 acc 0.6483 skill 0.0289
+MMA +abs+grap+subth  brier 0.2211 acc 0.6483 skill 0.0289
+MMA FULL             brier 0.2211 acc 0.6486 skill 0.0289

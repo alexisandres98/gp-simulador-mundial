@@ -1,19 +1,29 @@
 # TODO_NEXT.md — GP Simulador
 
-## ⚡ DECISIONES TRAS LA AUTOPSIA DE MODELOS (2-sep) — ver `docs/AUTOPSIA_MODELOS_2026-09-02.md`
-Ninguna se aplicó: cambian decisiones vivas y las toma Alexis.
-- **Fútbol**: apagar `lead` en SOLID (432 picks, −12,6 %, el mercado tenía razón) y `anchor` en GOALS (CLV
-  −1,3 t −4,1); convertir el 1X2 en familia de PRECIO. Corners: el total es la media de la liga
-  (`TOTALS_DAMP=0`) y el árbitro no llega a `project` (server.js 7239) — enchufarlo antes de esperar edge.
-- **Blend por familia**: estimar `c` fuera de muestra y publicar `p* = σ(logit(p_mkt) + c·Δlogit)`;
-  esports y tenis publican `p_gp` tal cual hoy, y su `p_market` lleva margen (`1/cuota`).
-- **Valorant**: cerrar picks hasta anclar la probabilidad de mapa al mercado (como CS2) y arreglar el signo
-  del ban (`valorant.js:73`) y el empate de prórroga.
-- **WNBA**: reabrir el monitor de TOTALES con el histograma corregido; 60 picks preregistradas.
-- **Combate FIGHT**: peso del mercado ≥0,8 y veto si la línea se movió en contra desde la apertura.
-- **Tenis**: TOTAL a preregistro (150 picks, CLV contra Pinnacle); ML/SPREAD siguen como benchmark.
+## ⚡ MEJORAS DE MODELO CON BACKTEST (2-sep noche) — ver `docs/BACKTESTS_FAMILIAS_2026-09-02.md`
+Sustituye a la lista "decisiones tras la autopsia": la consigna de Alexis es **mejorar las familias que
+pierden, no cerrarlas**, y nada se recomienda sin backtest + escéptico. Nada aplicado aún. Intocables:
+`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`.
+- **A. Medición primero (barato):** CLV de baloncesto en `settleHoopsPicks` (justa vs justa; hoy −3,2 pp son
+  vig); una pick por tesis en el monitor; `books`/cuota de creación en los informes de fútbol y liquidar las
+  SUPERSEDED (276 SOLID/353 GOALS/479 CORNERS); `best_of` de la cola ESPN de tenis (todo ATP sale bo5);
+  contar eventos (no picks) en tenis TOTAL; persistir señales de prensa y orden ESPN en la pick de combate.
+- **B. Mejoras respaldadas:** tenis ATP edad lineal en el ensamble (t 5,8) → C6 en `distProbs` solo ATP bo3
+  (t 9,9) → Valorant bisección en `valorant.js` (319/339/368) + ancla de p_mapa al mercado (mapShift como
+  `cs2.js:373-386`) + Elo de serie con temperatura 0,85 y `maxModel ≤ 0,25` → fútbol de-vig Shin/potencia
+  (medir con el vector 1X2 del `odds-archive`) y prior por división al fusionar pools en `clubsEnsureCups`.
+- **C. Preregistros (regla fija, vara CLV, n antes de leer):** WNBA totales — `docs/PREREGISTRO_WNBA_TOTALES.md`
+  (60, desde el 17-sep; ojo: el régimen V2 solo deja unders); córners ≥2 casas en ventana ≤2 h con Liga MX
+  aparte (~225 picks); combate FIGHT solo si el lado es favorito del mercado k≥0,45 (40 picks, CLV>0);
+  tenis TOTAL umbral ≥8 pp por evento; WNBA "over si el visitante llega con >0,9 d más de descanso" (60).
+- **D. Datos que desbloquean:** cuotas históricas UFC (Kaggle/BestFightOdds), cierres 1X2/O-U
+  (football-data.co.uk), `/data/val-raw` con nombres de mapa, fechas reales de partido de tenis, parte de
+  bajas histórico de baloncesto, `data/history` de fútbol en el checkout.
+- **Rechazado por backtest (no insistir):** blend `c` en fútbol/Valorant (≤0); excluir copas como mejora;
+  reescalar λ×k en GOALS; saque/resto por superficie en tenis; edad por tramos, inactividad no lineal, SPREAD
+  por división en combate; peso de mercado 0,8 y veto por deriva en FIGHT; umbral×peso en baloncesto.
 - **CS2**: medir cada lunes el edge AL CIERRE por familia y casa (`roi al precio de cierre`): la estrategia es
-  de precio (Pinnacle solo, línea joven, perro), no de modelo.
+  de precio (Pinnacle solo, línea joven, perro), no de modelo. **No se toca.**
 - Vigilar que las 37 picks de tenis y las 157 de LoL sin casar se liquiden en las pasadas automáticas
   (nombres: "RED Canids" vs `gp:red-canids`).
 

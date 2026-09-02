@@ -1,0 +1,178 @@
+{
+ "n": 77,
+ "first": "2026-08-18T18:00:59.063Z",
+ "last": "2026-09-01T11:47:37.976Z",
+ "full_sample_flat": {
+  "n": 77,
+  "hit_pct": 61,
+  "roi_pct": 17.9,
+  "se_pct": 10.8,
+  "t": 1.66,
+  "units": 13.82
+ },
+ "full_sample_clv": {
+  "n": 9,
+  "mean": 2.5066666666666664,
+  "se": 2.008681159368007,
+  "sd": 6.026043478104021,
+  "t": 1.2479166516677744
+ },
+ "fit_full_insample": {
+  "n": 77,
+  "a": -0.987,
+  "b_mkt": 1.358,
+  "c_model": 4.46,
+  "se_c": 1.954,
+  "t_c": 2.28
+ },
+ "split": {
+  "dev_n": 46,
+  "dev_until": "2026-08-28T22:09:01.248Z",
+  "eval_n": 31,
+  "eval_from": "2026-08-28T22:39:03.925Z"
+ },
+ "fit_dev": {
+  "n": 46,
+  "a": -0.468,
+  "b_mkt": 0.268,
+  "c_model": 3.963,
+  "se_c": 2.644,
+  "t_c": 1.5
+ },
+ "eval": {
+  "regla_produccion_todas": {
+   "n": 31,
+   "hit_pct": 51.6,
+   "roi_pct": -0.5,
+   "se_pct": 17.6,
+   "t": -0.03,
+   "units": -0.17
+  },
+  "regla_produccion_dev": {
+   "n": 46,
+   "hit_pct": 67.4,
+   "roi_pct": 30.4,
+   "se_pct": 13.6,
+   "t": 2.24,
+   "units": 13.99
+  },
+  "pstar_dev_fit_bet_if_pstar_x_odds_gt_1": {
+   "n": 31,
+   "hit_pct": 51.6,
+   "roi_pct": -0.5,
+   "se_pct": 17.6,
+   "t": -0.03,
+   "units": -0.17
+  },
+  "pstar_dev_fit_kelly_quarter": {
+   "n": 31,
+   "hit_pct": 51.6,
+   "roi_pct": 11.9,
+   "se_pct": 17.6,
+   "t": -0.03,
+   "units": 0.07
+  },
+  "c6_fixed_bet_if_pstar_x_odds_gt_1": {
+   "n": 31,
+   "hit_pct": 51.6,
+   "roi_pct": -0.5,
+   "se_pct": 17.6,
+   "t": -0.03,
+   "units": -0.17
+  },
+  "c1_raw_model_bet_if_pmodel_x_odds_gt_1": {
+   "n": 31,
+   "hit_pct": 51.6,
+   "roi_pct": -0.5,
+   "se_pct": 17.6,
+   "t": -0.03,
+   "units": -0.17
+  }
+ },
+ "eval_brier": {
+  "n": 31,
+  "p_model": 0.2378,
+  "p_implied": 0.2472,
+  "p_star_dev_fit": 0.2338
+ },
+ "corte_lado": {
+  "under": {
+   "n": 31,
+   "hit_pct": 61.3,
+   "roi_pct": 19.7,
+   "se_pct": 17.4,
+   "t": 1.14,
+   "units": 6.12
+  },
+  "over": {
+   "n": 46,
+   "hit_pct": 60.9,
+   "roi_pct": 16.7,
+   "se_pct": 14,
+   "t": 1.2,
+   "units": 7.7
+  }
+ },
+ "corte_circuito": {
+  "WTA": {
+   "n": 26,
+   "hit_pct": 50,
+   "roi_pct": -4.9,
+   "se_pct": 19.1,
+   "t": -0.26,
+   "units": -1.27
+  },
+  "ATP": {
+   "n": 51,
+   "hit_pct": 66.7,
+   "roi_pct": 29.6,
+   "se_pct": 13,
+   "t": 2.28,
+   "units": 15.09
+  }
+ },
+ "corte_formato": {
+  "bo3": {
+   "n": 31,
+   "hit_pct": 54.8,
+   "roi_pct": 5.3,
+   "se_pct": 17.5,
+   "t": 0.3,
+   "units": 1.64
+  },
+  "bo5": {
+   "n": 46,
+   "hit_pct": 65.2,
+   "roi_pct": 26.5,
+   "se_pct": 13.8,
+   "t": 1.92,
+   "units": 12.18
+  }
+ },
+ "corte_ventaja": {
+  "5-8pp": {
+   "n": 21,
+   "hit_pct": 57.1,
+   "roi_pct": 8.8,
+   "se_pct": 21.1,
+   "t": 0.42,
+   "units": 1.85
+  },
+  "3-5pp": {
+   "n": 24,
+   "hit_pct": 41.7,
+   "roi_pct": -18.5,
+   "se_pct": 20.1,
+   "t": -0.92,
+   "units": -4.44
+  },
+  ">=8pp": {
+   "n": 32,
+   "hit_pct": 78.1,
+   "roi_pct": 51.3,
+   "se_pct": 14.4,
+   "t": 3.56,
+   "units": 16.41
+  }
+ }
+}

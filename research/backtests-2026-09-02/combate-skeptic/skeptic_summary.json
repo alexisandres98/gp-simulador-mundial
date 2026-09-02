@@ -1,0 +1,812 @@
+{
+ "rerun_h2_features": "byte-identical to ../combate/h2_out.txt, 4.7s",
+ "h1": {
+  "ufc": {
+   "warm0.35_lr0.01 (ACTUAL del agente)": {
+    "n": 5842,
+    "brier_elo": 0.24324,
+    "brier_actual": 0.23313,
+    "acc_elo": 0.568,
+    "acc_actual": 0.6111,
+    "paired": {
+     "n": 5842,
+     "dBrier": -0.010108,
+     "se": 0.001228,
+     "t": -8.233,
+     "pBoot": 1
+    }
+   },
+   "  solo 2022+": {
+    "n": 2549,
+    "brier_elo": 0.24012,
+    "brier_actual": 0.22792,
+    "acc_elo": 0.5755,
+    "acc_actual": 0.6293,
+    "paired": {
+     "n": 2549,
+     "dBrier": -0.012205,
+     "se": 0.002,
+     "t": -6.102,
+     "pBoot": 1
+    }
+   },
+   "  solo 2024+": {
+    "n": 1435,
+    "brier_elo": 0.23872,
+    "brier_actual": 0.22454,
+    "acc_elo": 0.5756,
+    "acc_actual": 0.6495,
+    "paired": {
+     "n": 1435,
+     "dBrier": -0.014177,
+     "se": 0.002904,
+     "t": -4.882,
+     "pBoot": 1
+    }
+   },
+   "warm0.35_lr0.003": {
+    "n": 5842,
+    "brier_elo": 0.24324,
+    "brier_actual": 0.23393,
+    "acc_elo": 0.568,
+    "acc_actual": 0.6029,
+    "paired": {
+     "n": 5842,
+     "dBrier": -0.009305,
+     "se": 0.000889,
+     "t": -10.47,
+     "pBoot": 1
+    }
+   },
+   "warm0.35_lr0.03": {
+    "n": 5842,
+    "brier_elo": 0.24324,
+    "brier_actual": 0.2347,
+    "acc_elo": 0.568,
+    "acc_actual": 0.6056,
+    "paired": {
+     "n": 5842,
+     "dBrier": -0.008534,
+     "se": 0.001422,
+     "t": -6,
+     "pBoot": 1
+    }
+   },
+   "warm0.5_lr0.01": {
+    "n": 4494,
+    "brier_elo": 0.24362,
+    "brier_actual": 0.23304,
+    "acc_elo": 0.5643,
+    "acc_actual": 0.6128,
+    "paired": {
+     "n": 4494,
+     "dBrier": -0.010577,
+     "se": 0.001443,
+     "t": -7.332,
+     "pBoot": 1
+    }
+   },
+   "warm0.65_lr0.01": {
+    "n": 3146,
+    "brier_elo": 0.242,
+    "brier_actual": 0.23095,
+    "acc_elo": 0.5661,
+    "acc_actual": 0.6189,
+    "paired": {
+     "n": 3146,
+     "dBrier": -0.011045,
+     "se": 0.001761,
+     "t": -6.273,
+     "pBoot": 1
+    }
+   },
+   "t por bloques trimestrales (ΔBrier medio por trimestre)": {
+    "n_trimestres": 45,
+    "mean": -0.010498,
+    "se": 0.001279,
+    "t": -8.21,
+    "trimestres_con_mejora": 39
+   }
+  },
+  "mma": {
+   "warm0.35_lr0.01 (ACTUAL del agente)": {
+    "n": 2752,
+    "brier_elo": 0.23163,
+    "brier_actual": 0.22111,
+    "acc_elo": 0.6265,
+    "acc_actual": 0.6483,
+    "paired": {
+     "n": 2752,
+     "dBrier": -0.010525,
+     "se": 0.001657,
+     "t": -6.353,
+     "pBoot": 1
+    }
+   },
+   "  solo 2022+": {
+    "n": 1014,
+    "brier_elo": 0.22969,
+    "brier_actual": 0.22031,
+    "acc_elo": 0.6479,
+    "acc_actual": 0.6598,
+    "paired": {
+     "n": 1014,
+     "dBrier": -0.009382,
+     "se": 0.002918,
+     "t": -3.216,
+     "pBoot": 1
+    }
+   },
+   "  solo 2024+": {
+    "n": 427,
+    "brier_elo": 0.23012,
+    "brier_actual": 0.22113,
+    "acc_elo": 0.6347,
+    "acc_actual": 0.6628,
+    "paired": {
+     "n": 427,
+     "dBrier": -0.008986,
+     "se": 0.004457,
+     "t": -2.016,
+     "pBoot": 0.979
+    }
+   },
+   "warm0.35_lr0.003": {
+    "n": 2752,
+    "brier_elo": 0.23163,
+    "brier_actual": 0.22347,
+    "acc_elo": 0.6265,
+    "acc_actual": 0.6435,
+    "paired": {
+     "n": 2752,
+     "dBrier": -0.008162,
+     "se": 0.001189,
+     "t": -6.863,
+     "pBoot": 1
+    }
+   },
+   "warm0.35_lr0.03": {
+    "n": 2752,
+    "brier_elo": 0.23163,
+    "brier_actual": 0.22219,
+    "acc_elo": 0.6265,
+    "acc_actual": 0.6424,
+    "paired": {
+     "n": 2752,
+     "dBrier": -0.009446,
+     "se": 0.001983,
+     "t": -4.764,
+     "pBoot": 1
+    }
+   },
+   "warm0.5_lr0.01": {
+    "n": 2117,
+    "brier_elo": 0.23069,
+    "brier_actual": 0.22008,
+    "acc_elo": 0.6297,
+    "acc_actual": 0.65,
+    "paired": {
+     "n": 2117,
+     "dBrier": -0.01061,
+     "se": 0.00193,
+     "t": -5.499,
+     "pBoot": 1
+    }
+   },
+   "warm0.65_lr0.01": {
+    "n": 1482,
+    "brier_elo": 0.2306,
+    "brier_actual": 0.22026,
+    "acc_elo": 0.6336,
+    "acc_actual": 0.6559,
+    "paired": {
+     "n": 1482,
+     "dBrier": -0.01034,
+     "se": 0.002349,
+     "t": -4.402,
+     "pBoot": 1
+    }
+   },
+   "t por bloques trimestrales (ΔBrier medio por trimestre)": {
+    "n_trimestres": 39,
+    "mean": -0.01033,
+    "se": 0.00144,
+    "t": -7.17,
+    "trimestres_con_mejora": 35
+   }
+  }
+ },
+ "book": {
+  "n": {
+   "fight_WL": 48,
+   "pre_techo": 23,
+   "post_techo": 25,
+   "void": 17,
+   "superseded": 2,
+   "pending": 22
+  },
+  "todo": {
+   "all": {
+    "label": "todas",
+    "n": 48,
+    "wins": 19,
+    "hit_pct": 39.6,
+    "roi_pct": -18.4,
+    "roi_se": 15.7,
+    "roi_close_pct": -17.2,
+    "roi_stakeweighted_pct": -21.7,
+    "clv_mean": -5.16,
+    "clv_se": 1.98,
+    "clv_t": -2.61,
+    "ev_pub_if_market_right_pct": -2.5,
+    "ev_close_pct": -6.1,
+    "avg_odds": 2.89,
+    "model": 0.57,
+    "mkt": 0.43
+   },
+   "dog": {
+    "label": "perro",
+    "n": 34,
+    "wins": 10,
+    "hit_pct": 29.4,
+    "roi_pct": -26.6,
+    "roi_se": 20.3,
+    "roi_close_pct": -23.5,
+    "roi_stakeweighted_pct": -34.5,
+    "clv_mean": -8.64,
+    "clv_se": 2.47,
+    "clv_t": -3.49,
+    "ev_pub_if_market_right_pct": -2.1,
+    "ev_close_pct": -9.2,
+    "avg_odds": 3.46,
+    "model": 0.496,
+    "mkt": 0.34
+   },
+   "fav": {
+    "label": "favorito",
+    "n": 14,
+    "wins": 9,
+    "hit_pct": 64.3,
+    "roi_pct": 1.6,
+    "roi_se": 21.3,
+    "roi_close_pct": -1.8,
+    "roi_stakeweighted_pct": 12.5,
+    "clv_mean": 3.31,
+    "clv_se": 1.73,
+    "clv_t": 1.91,
+    "ev_pub_if_market_right_pct": -3.5,
+    "ev_close_pct": 1.6,
+    "avg_odds": 1.52,
+    "model": 0.75,
+    "mkt": 0.648
+   }
+  },
+  "pre_techo": {
+   "all": {
+    "label": "pre",
+    "n": 23,
+    "wins": 8,
+    "hit_pct": 34.8,
+    "roi_pct": -28,
+    "roi_se": 23.2,
+    "roi_close_pct": -26.9,
+    "roi_stakeweighted_pct": -44,
+    "clv_mean": -7.56,
+    "clv_se": 2.5,
+    "clv_t": -3.03,
+    "ev_pub_if_market_right_pct": -2,
+    "ev_close_pct": -7.9,
+    "avg_odds": 3.81,
+    "model": 0.516,
+    "mkt": 0.349
+   },
+   "dog": {
+    "label": "perro",
+    "n": 18,
+    "wins": 3,
+    "hit_pct": 16.7,
+    "roi_pct": -50.6,
+    "roi_se": 27.4,
+    "roi_close_pct": -48.6,
+    "roi_stakeweighted_pct": -69.6,
+    "clv_mean": -10.06,
+    "clv_se": 2.89,
+    "clv_t": -3.48,
+    "ev_pub_if_market_right_pct": -1.6,
+    "ev_close_pct": -10.1,
+    "avg_odds": 4.45,
+    "model": 0.443,
+    "mkt": 0.269
+   },
+   "fav": {
+    "label": "favorito",
+    "n": 5,
+    "wins": 5,
+    "hit_pct": 100,
+    "roi_pct": 53.2,
+    "roi_se": 7.3,
+    "roi_close_pct": 51.4,
+    "roi_stakeweighted_pct": 54.4,
+    "clv_mean": 1.42,
+    "clv_se": 2.06,
+    "clv_t": 0.69,
+    "ev_pub_if_market_right_pct": -3.3,
+    "ev_close_pct": 0,
+    "avg_odds": 1.53,
+    "model": 0.779,
+    "mkt": 0.637
+   }
+  },
+  "post_techo_OOS": {
+   "all": {
+    "label": "post",
+    "n": 25,
+    "wins": 11,
+    "hit_pct": 44,
+    "roi_pct": -9.5,
+    "roi_se": 21.4,
+    "roi_close_pct": -8.2,
+    "roi_stakeweighted_pct": 8.8,
+    "clv_mean": -2.95,
+    "clv_se": 3,
+    "clv_t": -0.98,
+    "ev_pub_if_market_right_pct": -3,
+    "ev_close_pct": -4.4,
+    "avg_odds": 2.05,
+    "model": 0.619,
+    "mkt": 0.504
+   },
+   "dog": {
+    "label": "perro",
+    "n": 16,
+    "wins": 7,
+    "hit_pct": 43.8,
+    "roi_pct": 0.4,
+    "roi_se": 29.6,
+    "roi_close_pct": 4.8,
+    "roi_stakeweighted_pct": 25.2,
+    "clv_mean": -7.06,
+    "clv_se": 4.2,
+    "clv_t": -1.68,
+    "ev_pub_if_market_right_pct": -2.6,
+    "ev_close_pct": -8.2,
+    "avg_odds": 2.35,
+    "model": 0.555,
+    "mkt": 0.419
+   },
+   "fav": {
+    "label": "favorito",
+    "n": 9,
+    "wins": 4,
+    "hit_pct": 44.4,
+    "roi_pct": -27,
+    "roi_se": 29.1,
+    "roi_close_pct": -31.3,
+    "roi_stakeweighted_pct": -20.4,
+    "clv_mean": 4.36,
+    "clv_se": 2.45,
+    "clv_t": 1.78,
+    "ev_pub_if_market_right_pct": -3.6,
+    "ev_close_pct": 2.4,
+    "avg_odds": 1.51,
+    "model": 0.734,
+    "mkt": 0.654
+   }
+  },
+  "diff_fav_minus_dog": {
+   "todo_roi": {
+    "label": "ROI fav − perro (todo)",
+    "na": 14,
+    "nb": 34,
+    "diff": 28.23,
+    "se": 29.45,
+    "t": 0.96,
+    "p_boot_diff_le_0": 0.163
+   },
+   "todo_clv": {
+    "label": "CLV fav − perro (todo)",
+    "na": 14,
+    "nb": 34,
+    "diff": 11.95,
+    "se": 3.02,
+    "t": 3.96,
+    "p_boot_diff_le_0": 0
+   },
+   "post_roi": {
+    "label": "ROI fav − perro (post-techo OOS)",
+    "na": 9,
+    "nb": 16,
+    "diff": -27.38,
+    "se": 41.53,
+    "t": -0.66,
+    "p_boot_diff_le_0": 0.765
+   },
+   "post_clv": {
+    "label": "CLV fav − perro (post-techo OOS)",
+    "na": 9,
+    "nb": 16,
+    "diff": 11.41,
+    "se": 4.86,
+    "t": 2.35,
+    "p_boot_diff_le_0": 0.004
+   },
+   "pre_clv": {
+    "label": "CLV fav − perro (pre-techo)",
+    "na": 5,
+    "nb": 18,
+    "diff": 11.48,
+    "se": 3.55,
+    "t": 3.23,
+    "p_boot_diff_le_0": 0
+   }
+  },
+  "techo3": {
+   "n_ge3": 13,
+   "creadas_pre_techo": 13,
+   "creadas_post_techo": 0,
+   "fechas": [
+    "2026-07-27 4.17 LOSS",
+    "2026-07-27 3.9 LOSS",
+    "2026-07-27 3.9 LOSS",
+    "2026-07-27 4.3 LOSS",
+    "2026-07-27 3.1 LOSS",
+    "2026-07-27 3.91 LOSS",
+    "2026-07-28 3.75 WIN",
+    "2026-07-28 12.2 LOSS",
+    "2026-07-28 4.22 LOSS",
+    "2026-07-29 4.77 LOSS",
+    "2026-07-29 11.06 LOSS",
+    "2026-07-29 4.9 LOSS",
+    "2026-07-31 3.1 LOSS"
+   ]
+  },
+  "lado_por_liga": {
+   "ufc": {
+    "dog": {
+     "label": "ufc perro",
+     "n": 19,
+     "wins": 6,
+     "hit_pct": 31.6,
+     "roi_pct": -18,
+     "roi_se": 29.4,
+     "roi_close_pct": -13.9,
+     "roi_stakeweighted_pct": -43.4,
+     "clv_mean": -5.5,
+     "clv_se": 2.4,
+     "clv_t": -2.29,
+     "ev_pub_if_market_right_pct": -0.9,
+     "ev_close_pct": -4.7,
+     "avg_odds": 2.95,
+     "model": 0.512,
+     "mkt": 0.356
+    },
+    "fav": {
+     "label": "ufc favorito",
+     "n": 8,
+     "wins": 6,
+     "hit_pct": 75,
+     "roi_pct": 14.5,
+     "roi_se": 25.4,
+     "roi_close_pct": 11.5,
+     "roi_stakeweighted_pct": 37.7,
+     "clv_mean": 1.99,
+     "clv_se": 2.19,
+     "clv_t": 0.91,
+     "ev_pub_if_market_right_pct": -3.5,
+     "ev_close_pct": 0.8,
+     "avg_odds": 1.56,
+     "model": 0.749,
+     "mkt": 0.627
+    }
+   },
+   "mma": {
+    "dog": {
+     "label": "mma perro",
+     "n": 15,
+     "wins": 4,
+     "hit_pct": 26.7,
+     "roi_pct": -37.5,
+     "roi_se": 27.8,
+     "roi_close_pct": -35.6,
+     "roi_stakeweighted_pct": -22,
+     "clv_mean": -12.62,
+     "clv_se": 4.61,
+     "clv_t": -2.74,
+     "ev_pub_if_market_right_pct": -3.6,
+     "ev_close_pct": -14.9,
+     "avg_odds": 4.11,
+     "model": 0.475,
+     "mkt": 0.319
+    },
+    "fav": {
+     "label": "mma favorito",
+     "n": 3,
+     "wins": 2,
+     "hit_pct": 66.7,
+     "roi_pct": 21,
+     "roi_se": 60.5,
+     "roi_close_pct": 13,
+     "roi_stakeweighted_pct": -44.3,
+     "clv_mean": 10.4,
+     "clv_se": 3.46,
+     "clv_t": 3,
+     "ev_pub_if_market_right_pct": -4.2,
+     "ev_close_pct": 6.9,
+     "avg_odds": 1.67,
+     "model": 0.654,
+     "mkt": 0.583
+    }
+   },
+   "boxing": {
+    "dog": {
+     "label": "boxing perro",
+     "n": 0
+    },
+    "fav": {
+     "label": "boxing favorito",
+     "n": 3,
+     "wins": 1,
+     "hit_pct": 33.3,
+     "roi_pct": -52,
+     "roi_se": 48,
+     "roi_close_pct": -52,
+     "roi_stakeweighted_pct": -25.5,
+     "clv_mean": -0.28,
+     "clv_se": 0.28,
+     "clv_t": -1,
+     "ev_pub_if_market_right_pct": -2.7,
+     "ev_close_pct": -1.7,
+     "avg_odds": 1.27,
+     "model": 0.85,
+     "mkt": 0.77
+    }
+   }
+  },
+  "diff_fav_minus_dog_ufc_clv": {
+   "label": "CLV fav − perro (solo UFC)",
+   "na": 8,
+   "nb": 19,
+   "diff": 7.49,
+   "se": 3.25,
+   "t": 2.31,
+   "p_boot_diff_le_0": 0.007
+  },
+  "por_cuota": {
+   "1-1.5": {
+    "label": "1-1.5",
+    "n": 8,
+    "wins": 4,
+    "hit_pct": 50,
+    "roi_pct": -28.6,
+    "roi_se": 27,
+    "roi_close_pct": -30.1,
+    "roi_stakeweighted_pct": -7.8,
+    "clv_mean": 3.74,
+    "clv_se": 2.27,
+    "clv_t": 1.65,
+    "ev_pub_if_market_right_pct": -3.2,
+    "ev_close_pct": 2.3,
+    "avg_odds": 1.36,
+    "model": 0.819,
+    "mkt": 0.715
+   },
+   "1.5-2": {
+    "label": "1.5-2",
+    "n": 7,
+    "wins": 5,
+    "hit_pct": 71.4,
+    "roi_pct": 21.7,
+    "roi_se": 31.7,
+    "roi_close_pct": 16.6,
+    "roi_stakeweighted_pct": 22.8,
+    "clv_mean": -1.29,
+    "clv_se": 4.71,
+    "clv_t": -0.27,
+    "ev_pub_if_market_right_pct": -4.1,
+    "ev_close_pct": -3.3,
+    "avg_odds": 1.76,
+    "model": 0.653,
+    "mkt": 0.549
+   },
+   "2-2.5": {
+    "label": "2-2.5",
+    "n": 13,
+    "wins": 6,
+    "hit_pct": 46.2,
+    "roi_pct": 3,
+    "roi_se": 32.3,
+    "roi_close_pct": 6.7,
+    "roi_stakeweighted_pct": 28.4,
+    "clv_mean": -4.57,
+    "clv_se": 4.17,
+    "clv_t": -1.1,
+    "ev_pub_if_market_right_pct": -3.3,
+    "ev_close_pct": -5.7,
+    "avg_odds": 2.29,
+    "model": 0.534,
+    "mkt": 0.425
+   },
+   "2.5-3": {
+    "label": "2.5-3",
+    "n": 7,
+    "wins": 3,
+    "hit_pct": 42.9,
+    "roi_pct": 11.7,
+    "roi_se": 52.7,
+    "roi_close_pct": 16.3,
+    "roi_stakeweighted_pct": 17.5,
+    "clv_mean": -8.74,
+    "clv_se": 6.21,
+    "clv_t": -1.41,
+    "ev_pub_if_market_right_pct": -1.8,
+    "ev_close_pct": -10,
+    "avg_odds": 2.68,
+    "model": 0.528,
+    "mkt": 0.367
+   },
+   "3-99": {
+    "label": "3-99",
+    "n": 13,
+    "wins": 1,
+    "hit_pct": 7.7,
+    "roi_pct": -71.2,
+    "roi_se": 28.8,
+    "roi_close_pct": -69.2,
+    "roi_stakeweighted_pct": -83.3,
+    "clv_mean": -11.37,
+    "clv_se": 3.52,
+    "clv_t": -3.23,
+    "ev_pub_if_market_right_pct": -0.8,
+    "ev_close_pct": -10.9,
+    "avg_odds": 5.18,
+    "model": 0.43,
+    "mkt": 0.227
+   }
+  },
+  "h4": {
+   "n": 48,
+   "r_drift_win": -0.311,
+   "t": -2.22,
+   "alargan": {
+    "label": "se alargó >2%",
+    "n": 27,
+    "wins": 7,
+    "hit_pct": 25.9,
+    "roi_pct": -40.8,
+    "roi_se": 20.9,
+    "roi_close_pct": -35.9,
+    "roi_stakeweighted_pct": -43.4,
+    "clv_mean": -13.71,
+    "clv_se": 2.26,
+    "clv_t": -6.05,
+    "ev_pub_if_market_right_pct": -2.4,
+    "ev_close_pct": -14,
+    "avg_odds": 3.62,
+    "model": 0.514,
+    "mkt": 0.346
+   },
+   "acortan": {
+    "label": "se acortó >2%",
+    "n": 14,
+    "wins": 7,
+    "hit_pct": 50,
+    "roi_pct": -9.9,
+    "roi_se": 26,
+    "roi_close_pct": -15.7,
+    "roi_stakeweighted_pct": 9.3,
+    "clv_mean": 8.97,
+    "clv_se": 1.28,
+    "clv_t": 7.02,
+    "ev_pub_if_market_right_pct": -2.6,
+    "ev_close_pct": 7.1,
+    "avg_odds": 2.02,
+    "model": 0.639,
+    "mkt": 0.515
+   },
+   "planas": {
+    "label": "plana",
+    "n": 7,
+    "wins": 5,
+    "hit_pct": 71.4,
+    "roi_pct": 51.1,
+    "roi_se": 42.5,
+    "roi_close_pct": 52.1,
+    "roi_stakeweighted_pct": 30.1,
+    "clv_mean": -0.44,
+    "clv_se": 0.4,
+    "clv_t": -1.09,
+    "ev_pub_if_market_right_pct": -2.6,
+    "ev_close_pct": -1.7,
+    "avg_odds": 1.85,
+    "model": 0.649,
+    "mkt": 0.583
+   }
+  },
+  "veto_deriva": {
+   "con": {
+    "label": "con deriva en contra",
+    "n": 11,
+    "wins": 6,
+    "hit_pct": 54.5,
+    "roi_pct": 33.2,
+    "roi_se": 41.3,
+    "roi_close_pct": 37.4,
+    "roi_stakeweighted_pct": 81.2,
+    "clv_mean": -2.03,
+    "clv_se": 3.5,
+    "clv_t": -0.58,
+    "ev_pub_if_market_right_pct": -2.8,
+    "ev_close_pct": -3.3,
+    "avg_odds": 2.5,
+    "model": 0.458,
+    "mkt": 0.406
+   },
+   "sin": {
+    "label": "sin",
+    "n": 37,
+    "wins": 13,
+    "hit_pct": 35.1,
+    "roi_pct": -33.7,
+    "roi_se": 15.7,
+    "roi_close_pct": -33.4,
+    "roi_stakeweighted_pct": -30.9,
+    "clv_mean": -6.09,
+    "clv_se": 2.35,
+    "clv_t": -2.59,
+    "ev_pub_if_market_right_pct": -2.4,
+    "ev_close_pct": -6.9,
+    "avg_odds": 3.01,
+    "model": 0.603,
+    "mkt": 0.437
+   },
+   "diff_roi": {
+    "label": "ROI con − sin deriva",
+    "na": 11,
+    "nb": 37,
+    "diff": 66.86,
+    "se": 44.19,
+    "t": 1.51,
+    "p_boot_diff_le_0": 0.056
+   }
+  },
+  "consistencia": {
+   "edge_ok": 48,
+   "clv_ok": 48,
+   "blend_ok": 48,
+   "n": 48,
+   "best_shorter_than_fair": 42
+  }
+ },
+ "order": {
+  "peleas_casadas": 31,
+  "invertidas": 14,
+  "iguales": 17,
+  "f1_actual_gana": {
+   "invertidas": "10/14",
+   "iguales": "6/17",
+   "total": "16/31"
+  },
+  "home_al_publicar_gana": "10/31",
+  "por_org": {
+   "ufc": {
+    "n": 11,
+    "inv": 6,
+    "f1_actual_gana": 5,
+    "home_pub_gana": 1
+   },
+   "mma": {
+    "n": 20,
+    "inv": 8,
+    "f1_actual_gana": 11,
+    "home_pub_gana": 9
+   },
+   "boxing": {
+    "n": 0,
+    "inv": 0,
+    "f1_actual_gana": 0,
+    "home_pub_gana": 0
+   }
+  }
+ },
+ "fisher_order_p_one_sided": 0.049
+}

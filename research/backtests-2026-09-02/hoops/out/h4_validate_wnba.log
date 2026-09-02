@@ -1,0 +1,24 @@
+[wnba] 275 partidos · 3 bloques · 2000 simulaciones por partido
+cobertura de tramos: 100.0%
+  bloque 1: entrena 110 · evalúa 55 · RAPM 320 jugadores λ=2000 · peso de mezcla w=n/d
+  bloque 2: entrena 165 · evalúa 55 · RAPM 320 jugadores λ=8000 · peso de mezcla w=0.45
+  bloque 3: entrena 220 · evalúa 55 · RAPM 323 jugadores λ=1000 · peso de mezcla w=0.25
+
+═══ RESULTADO FUERA DE MUESTRA ═══
+partidos evaluados: 164 · con cierre de mercado: 164
+Brier del CIERRE:            0.19530
+1. BASE (rating de equipo)       n= 164 · Brier 0.20330 (mercado 0.19530) · skill -0.00800 · acierto 67.7%
+2. + contexto de calendario      n= 164 · Brier 0.20640 (mercado 0.19530) · skill -0.01110 · acierto 68.9%
+3. + plantilla (RAPM×minutos)    n= 164 · Brier 0.20381 (mercado 0.19530) · skill -0.00851 · acierto 70.7%
+4. + mezcla con el mercado       n= 109 · Brier 0.19034 (mercado 0.18651) · skill -0.00383 · acierto 69.7%
+MAE de margen: base 9.81 → con plantilla 9.80
+
+veredicto guardado en data/basketball/validation-wnba.json
+capas encendidas: roster, blend
+
+SKILL FINAL vs cierre: -0.00383 ± 0.00274 (t = -1.40, n = 109)
+→ todavía por detrás del cierre.
+
+real	0m3.246s
+user	0m3.719s
+sys	0m0.140s

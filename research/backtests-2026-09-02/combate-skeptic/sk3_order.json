@@ -1,0 +1,31 @@
+{
+ "peleas_casadas": 31,
+ "invertidas": 14,
+ "iguales": 17,
+ "f1_actual_gana": {
+  "invertidas": "10/14",
+  "iguales": "6/17",
+  "total": "16/31"
+ },
+ "home_al_publicar_gana": "10/31",
+ "por_org": {
+  "ufc": {
+   "n": 11,
+   "inv": 6,
+   "f1_actual_gana": 5,
+   "home_pub_gana": 1
+  },
+  "mma": {
+   "n": 20,
+   "inv": 8,
+   "f1_actual_gana": 11,
+   "home_pub_gana": 9
+  },
+  "boxing": {
+   "n": 0,
+   "inv": 0,
+   "f1_actual_gana": 0,
+   "home_pub_gana": 0
+  }
+ }
+}

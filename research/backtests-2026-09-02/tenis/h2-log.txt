@@ -1,0 +1,18 @@
+
+═══ H2 ATP ═══ dev n=18384 holdout n=4908 (u prod 0.45)
+V0_prod          comp LL 0.6342 skill 8.5% · ens(u prod) LL 0.623 skill 10.12% · ens(u=0.45) skill 10.12% · MAE 5.62 · Δ vs V0: comp t 0, ens t 0, mae t 0
+V1_tourSpwSurf   comp LL 0.6344 skill 8.47% · ens(u prod) LL 0.6231 skill 10.11% · ens(u=0.45) skill 10.11% · MAE 5.612 · Δ vs V0: comp t -1.79, ens t -1.96, mae t 1.32
+V2_devSurf_K5    comp LL 0.6498 skill 6.26% · ens(u prod) LL 0.6282 skill 9.37% · ens(u=0.3) skill 9.77% · MAE 5.632 · Δ vs V0: comp t -5.52, ens t -3.62, mae t -1.85
+V3_devSurf_K15   comp LL 0.6389 skill 7.83% · ens(u prod) LL 0.6253 skill 9.78% · ens(u=0.45) skill 9.78% · MAE 5.623 · Δ vs V0: comp t -1.78, ens t -1.8, mae t -0.51
+V4_devSurf_K40   comp LL 0.6338 skill 8.57% · ens(u prod) LL 0.6238 skill 10% · ens(u=0.45) skill 10% · MAE 5.617 · Δ vs V0: comp t 0.22, ens t -0.85, mae t 0.91
+V5_both_K15      comp LL 0.6389 skill 7.82% · ens(u prod) LL 0.6253 skill 9.78% · ens(u=0.45) skill 9.78% · MAE 5.615 · Δ vs V0: comp t -1.8, ens t -1.81, mae t 0.73
+por superficie: {"dura":{"n":2647,"comp_V0_logloss":0.6276,"comp_best_logloss":0.6309,"ens_V0_logloss":0.6209,"ens_best_logloss":0.6235},"arcilla":{"n":1674,"comp_V0_logloss":0.6489,"comp_best_logloss":0.6453,"ens_V0_logloss":0.6283,"ens_best_logloss":0.628},"hierba":{"n":587,"comp_V0_logloss":0.6223,"comp_best_logloss":0.6139,"ens_V0_logloss":0.617,"ens_best_logloss":0.6135}}
+
+═══ H2 WTA ═══ dev n=16911 holdout n=4488 (u prod 0.15)
+V0_prod          comp LL 0.6235 skill 10.05% · ens(u prod) LL 0.6106 skill 11.91% · ens(u=0.15) skill 11.91% · MAE 4.841 · Δ vs V0: comp t 0, ens t 0, mae t 0
+V1_tourSpwSurf   comp LL 0.6233 skill 10.07% · ens(u prod) LL 0.6106 skill 11.91% · ens(u=0.15) skill 11.91% · MAE 4.835 · Δ vs V0: comp t 0.97, ens t 0.66, mae t 2.99
+V2_devSurf_K5    comp LL 0.6497 skill 6.27% · ens(u prod) LL 0.6107 skill 11.89% · ens(u=0.15) skill 11.89% · MAE 4.854 · Δ vs V0: comp t -6.02, ens t -0.18, mae t -3.26
+V3_devSurf_K15   comp LL 0.6339 skill 8.54% · ens(u prod) LL 0.6106 skill 11.91% · ens(u=0.15) skill 11.91% · MAE 4.847 · Δ vs V0: comp t -3.9, ens t 0.06, mae t -2.23
+V4_devSurf_K40   comp LL 0.6258 skill 9.72% · ens(u prod) LL 0.6105 skill 11.92% · ens(u=0.15) skill 11.92% · MAE 4.842 · Δ vs V0: comp t -1.43, ens t 0.3, mae t -0.8
+V5_both_K15      comp LL 0.6339 skill 8.54% · ens(u prod) LL 0.6106 skill 11.91% · ens(u=0.15) skill 11.91% · MAE 4.843 · Δ vs V0: comp t -3.9, ens t 0.05, mae t -0.75
+por superficie: {"dura":{"n":2417,"comp_V0_logloss":0.6181,"comp_best_logloss":0.6184,"ens_V0_logloss":0.6093,"ens_best_logloss":0.6094},"arcilla":{"n":1391,"comp_V0_logloss":0.6236,"comp_best_logloss":0.623,"ens_V0_logloss":0.6044,"ens_best_logloss":0.6043},"hierba":{"n":624,"comp_V0_logloss":0.6428,"comp_best_logloss":0.6421,"ens_V0_logloss":0.6309,"ens_best_logloss":0.6309}}

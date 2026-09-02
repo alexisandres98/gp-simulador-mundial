@@ -1,0 +1,10 @@
+SPREAD: n=57 CLV medio -4.62 (t -6.07) · BASELINE mecánico (best_odds·market_prob−1) -3.16 · movimiento real -1.46 ± 0.73 (t -2) · Δp justa -0.79 pp ± 0.38 (t -2.08) · Δp<0 en 36/57
+   por tesis (n=15): Δp justa -0.52 pp ± 0.39 (t -1.33) · movimiento real en cuota -0.96 % (t -1.26) · negativas 10
+   |línea| 0-8: n=28 Δp justa -0.43 pp (t -0.91) · CLV bruto -3.71
+   |línea| 8-12: n=8 Δp justa 0.53 pp (t 0.38) · CLV bruto -1.68
+   |línea| 12-30: n=21 Δp justa -1.75 pp (t -3.06) · CLV bruto -6.94
+TOTAL: n=20 CLV medio 1.54 (t 0.42) · BASELINE mecánico (best_odds·market_prob−1) -3.08 · movimiento real 4.62 ± 3.42 (t 1.35) · Δp justa 2.24 pp ± 1.65 (t 1.36) · Δp<0 en 8/20
+   por tesis (n=9): Δp justa 4.8 pp ± 3.51 (t 1.37) · movimiento real en cuota 9.89 % (t 1.36) · negativas 3
+MONEYLINE: n=9 CLV medio -2.82 (t -0.61) · BASELINE mecánico (best_odds·market_prob−1) -0.63 · movimiento real -2.2 ± 4.72 (t -0.47) · Δp justa -0.3 pp ± 1.59 (t -0.19) · Δp<0 en 4/9
+   por tesis (n=9): Δp justa -0.3 pp ± 1.59 (t -0.19) · movimiento real en cuota -2.2 % (t -0.47) · negativas 4
+Fisher (tesis TOTAL): P(resto 2/2 ganadas | 4 ganadas de 11) = 0.109

@@ -1,0 +1,135 @@
+
+====================================================================================================
+ORG UFC — 8987 peleas (1997-02-07 → 2026-08-01) · fine join 2199 · pesajes casados en 176 peleas · warm 3145
+
+GANADOR (out-of-sample):
+  Elo puro           {"n":5842,"acc":0.568,"brier":0.24324,"skill":0.00676,"logloss":0.67934,"cal_err":0.0404}
+  ACTUAL             {"n":5842,"acc":0.6111,"brier":0.23313,"skill":0.01687,"logloss":0.65832,"cal_err":0.0504}
+  d_nowi             {"n":5842,"acc":0.6111,"brier":0.23321,"skill":0.01679,"logloss":0.65848,"cal_err":0.0504}
+  d_fixed2           {"n":5842,"acc":0.6114,"brier":0.23318,"skill":0.01682,"logloss":0.65844,"cal_err":0.0504}
+  d_real+big         {"n":5842,"acc":0.6109,"brier":0.23312,"skill":0.01688,"logloss":0.6583,"cal_err":0.0504}
+  a_agebins          {"n":5842,"acc":0.6087,"brier":0.23366,"skill":0.01634,"logloss":0.65954,"cal_err":0.051}
+  a_agediv           {"n":5842,"acc":0.607,"brier":0.2337,"skill":0.0163,"logloss":0.65964,"cal_err":0.051}
+  b_layoff           {"n":5842,"acc":0.6096,"brier":0.23322,"skill":0.01678,"logloss":0.65847,"cal_err":0.0503}
+  c_qstreak          {"n":5842,"acc":0.6114,"brier":0.23299,"skill":0.01701,"logloss":0.65802,"cal_err":0.0501}
+  e_spreaddiv        {"n":5842,"acc":0.6116,"brier":0.23313,"skill":0.01687,"logloss":0.65834,"cal_err":0.0508}
+  ALL                {"n":5842,"acc":0.6078,"brier":0.23368,"skill":0.01632,"logloss":0.65951,"cal_err":0.0513}
+
+PAREADO vs ACTUAL (ΔBrier variante − actual; negativo = mejor; pBoot = P(variante mejor)):
+  d_nowi         todo {"n":5842,"dBrier":0.000077,"se":0.000054,"t":1.433,"pBoot":0.074}
+                 2020-26 {"n":3590,"dBrier":0.000122,"se":0.000086,"t":1.417,"pBoot":0.077}
+                 ambos≥3 {"n":2995,"dBrier":0.000056,"se":0.00008,"t":0.704,"pBoot":0.233}
+                 donde actúa {"n":141,"dBrier":0.003198,"se":0.002212,"t":1.446,"pBoot":0.081}
+  d_fixed2       todo {"n":5842,"dBrier":0.000055,"se":0.000035,"t":1.575,"pBoot":0.063}
+                 2020-26 {"n":3590,"dBrier":0.000092,"se":0.000057,"t":1.617,"pBoot":0.05}
+                 ambos≥3 {"n":2995,"dBrier":0.000035,"se":0.000053,"t":0.66,"pBoot":0.26}
+                 donde actúa {"n":141,"dBrier":0.002319,"se":0.001448,"t":1.602,"pBoot":0.056}
+  d_real+big     todo {"n":5842,"dBrier":-0.000013,"se":0.000014,"t":-0.898,"pBoot":0.825}
+                 2020-26 {"n":3590,"dBrier":-0.000019,"se":0.000023,"t":-0.819,"pBoot":0.8}
+                 ambos≥3 {"n":2995,"dBrier":0.000007,"se":0.000021,"t":0.317,"pBoot":0.378}
+                 donde actúa {"n":141,"dBrier":-0.000527,"se":0.000584,"t":-0.901,"pBoot":0.821}
+  a_agebins      todo {"n":5842,"dBrier":0.000533,"se":0.000205,"t":2.597,"pBoot":0.004}
+                 2020-26 {"n":3590,"dBrier":0.000733,"se":0.000265,"t":2.769,"pBoot":0.003}
+                 ambos≥3 {"n":2995,"dBrier":0.000406,"se":0.00027,"t":1.504,"pBoot":0.059}
+                 donde actúa {"n":3988,"dBrier":0.000655,"se":0.000291,"t":2.252,"pBoot":0.011}
+  a_agediv       todo {"n":5842,"dBrier":0.000573,"se":0.000229,"t":2.5,"pBoot":0.007}
+                 2020-26 {"n":3590,"dBrier":0.000859,"se":0.000289,"t":2.969,"pBoot":0.001}
+                 ambos≥3 {"n":2995,"dBrier":0.000654,"se":0.000308,"t":2.122,"pBoot":0.019}
+                 donde actúa {"n":3988,"dBrier":0.0007,"se":0.000327,"t":2.141,"pBoot":0.018}
+  b_layoff       todo {"n":5842,"dBrier":0.000093,"se":0.00012,"t":0.779,"pBoot":0.207}
+                 2020-26 {"n":3590,"dBrier":0.000154,"se":0.000164,"t":0.938,"pBoot":0.175}
+                 ambos≥3 {"n":2995,"dBrier":0.000052,"se":0.000168,"t":0.309,"pBoot":0.373}
+                 donde actúa {"n":1468,"dBrier":0.000352,"se":0.000462,"t":0.763,"pBoot":0.214}
+  c_qstreak      todo {"n":5842,"dBrier":-0.000134,"se":0.000089,"t":-1.503,"pBoot":0.928}
+                 2020-26 {"n":3590,"dBrier":-0.000231,"se":0.000141,"t":-1.642,"pBoot":0.963}
+                 ambos≥3 {"n":2995,"dBrier":-0.000136,"se":0.000134,"t":-1.015,"pBoot":0.843}
+  e_spreaddiv    todo {"n":5842,"dBrier":0.000004,"se":0.000033,"t":0.113,"pBoot":0.452}
+                 2020-26 {"n":3590,"dBrier":0.000013,"se":0.000045,"t":0.282,"pBoot":0.392}
+                 ambos≥3 {"n":2995,"dBrier":0.000045,"se":0.000048,"t":0.944,"pBoot":0.182}
+  ALL            todo {"n":5842,"dBrier":0.00055,"se":0.000277,"t":1.982,"pBoot":0.021}
+                 2020-26 {"n":3590,"dBrier":0.000814,"se":0.000369,"t":2.204,"pBoot":0.013}
+                 ambos≥3 {"n":2995,"dBrier":0.000628,"se":0.000381,"t":1.649,"pBoot":0.051}
+
+SEGMENTOS (ACTUAL → ALL):
+  div:fw_bw_flw    n= 1691  acc 0.6227→0.6121  brier 0.2306→0.23085  (e_spreaddiv 0.23067, a_agediv 0.23097)
+  div:hw           n=  440  acc 0.6205→0.6114  brier 0.22968→0.23044  (e_spreaddiv 0.22971, a_agediv 0.23005)
+  div:lhw_mw       n= 1130  acc 0.5956→0.5947  brier 0.23755→0.23836  (e_spreaddiv 0.23744, a_agediv 0.23881)
+  div:other        n=   74  acc 0.5676→0.5811  brier 0.24299→0.24103  (e_spreaddiv 0.24291, a_agediv 0.24148)
+  div:women        n=  897  acc 0.5875→0.5741  brier 0.23773→0.23925  (e_spreaddiv 0.23781, a_agediv 0.23834)
+  div:ww_lw        n= 1610  acc 0.6224→0.6317  brier 0.2306→0.2308  (e_spreaddiv 0.23057, a_agediv 0.23104)
+  era:2013-19      n= 2252  acc 0.595→0.5941  brier 0.23641→0.23654  (e_spreaddiv 0.2364, a_agediv 0.23653)
+  era:2020-26      n= 3590  acc 0.6212→0.6164  brier 0.23107→0.23188  (e_spreaddiv 0.23108, a_agediv 0.23193)
+  n3:false         n= 2847  acc 0.6122→0.6098  brier 0.23246→0.23293  (e_spreaddiv 0.23242, a_agediv 0.23295)
+  n3:true          n= 2995  acc 0.61→0.606  brier 0.23376→0.23439  (e_spreaddiv 0.2338, a_agediv 0.23441)
+
+PESOS finales ALL: {"elo":0.8257,"reach":0.2147,"exp":-0.0131,"years":-0.3041,"age":-0.4728,"chin":-0.1398,"streak":0.0379,"mileage":0.3525,"misswt":-0.1474,"slpm":-0.1399,"td15":0.1164,"tddef":0.055,"ctrl":0.0388,"kdr":-0.013,"ageb0":0.0772,"ageb1":0.0857,"ageb2":0.0494,"ageb3":-0.0736,"ageb4":-0.1387,"age_hw":-0.0644,"age_w":-0.0007,"age_light":-0.1199,"lay18":0.113,"retko":-0.0658,"retko_quick":0.0179,"qres":0.2341,"qsos":0.0506,"elo_w":-0.0279,"elo_hw":-0.0104,"elo_light":-0.0208,"elo_lhwmw":-0.0873}
+PESOS finales ACTUAL: {"elo":0.8041,"reach":0.2145,"exp":-0.0195,"years":-0.3132,"age":-0.6302,"chin":-0.1717,"streak":0.1438,"mileage":0.3617,"misswt":-0.146,"slpm":-0.1393,"td15":0.1212,"tddef":0.0558,"ctrl":0.0414,"kdr":-0.002}
+
+====================================================================================================
+ORG MMA — 4233 peleas (2009-04-03 → 2026-08-08) · fine join 0 · pesajes casados en 21 peleas · warm 1481
+
+GANADOR (out-of-sample):
+  Elo puro           {"n":2752,"acc":0.6265,"brier":0.23163,"skill":0.01837,"logloss":0.65507,"cal_err":0.0861}
+  ACTUAL             {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.63244,"cal_err":0.0654}
+  d_nowi             {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.63243,"cal_err":0.0654}
+  d_fixed2           {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.63244,"cal_err":0.0654}
+  d_real+big         {"n":2752,"acc":0.6483,"brier":0.22111,"skill":0.02889,"logloss":0.63244,"cal_err":0.0654}
+  a_agebins          {"n":2752,"acc":0.6475,"brier":0.22133,"skill":0.02867,"logloss":0.63292,"cal_err":0.0653}
+  a_agediv           {"n":2752,"acc":0.6479,"brier":0.22124,"skill":0.02876,"logloss":0.63278,"cal_err":0.0658}
+  b_layoff           {"n":2752,"acc":0.6472,"brier":0.22115,"skill":0.02885,"logloss":0.63254,"cal_err":0.0662}
+  c_qstreak          {"n":2752,"acc":0.6483,"brier":0.22115,"skill":0.02885,"logloss":0.63249,"cal_err":0.066}
+  e_spreaddiv        {"n":2752,"acc":0.6486,"brier":0.2211,"skill":0.0289,"logloss":0.63241,"cal_err":0.0653}
+  ALL                {"n":2752,"acc":0.6453,"brier":0.22133,"skill":0.02867,"logloss":0.63294,"cal_err":0.0669}
+
+PAREADO vs ACTUAL (ΔBrier variante − actual; negativo = mejor; pBoot = P(variante mejor)):
+  d_nowi         todo {"n":2752,"dBrier":-0.000001,"se":0.000002,"t":-0.837,"pBoot":0.791}
+                 2020-26 {"n":1493,"dBrier":-0.000003,"se":0.000003,"t":-0.837,"pBoot":0.787}
+                 ambos≥3 {"n":701,"dBrier":0.000002,"se":0.000002,"t":1.016,"pBoot":0.132}
+                 donde actúa {"n":4,"dBrier":-0.000981,"se":0.00121,"t":-0.811,"pBoot":0.78}
+  d_fixed2       todo {"n":2752,"dBrier":0,"se":0.000001,"t":-0.178,"pBoot":0.515}
+                 2020-26 {"n":1493,"dBrier":0,"se":0.000002,"t":-0.178,"pBoot":0.498}
+                 ambos≥3 {"n":701,"dBrier":0.000001,"se":0.000001,"t":0.952,"pBoot":0.263}
+                 donde actúa {"n":4,"dBrier":-0.000164,"se":0.000781,"t":-0.21,"pBoot":0.573}
+  d_real+big     todo {"n":2752,"dBrier":0,"se":0,"t":0.97,"pBoot":0.271}
+                 2020-26 {"n":1493,"dBrier":0.000001,"se":0.000001,"t":0.97,"pBoot":0.257}
+                 ambos≥3 {"n":701,"dBrier":0,"se":0,"t":0.327,"pBoot":0.36}
+                 donde actúa {"n":4,"dBrier":0.000279,"se":0.000279,"t":1,"pBoot":0}
+  a_agebins      todo {"n":2752,"dBrier":0.000222,"se":0.000259,"t":0.858,"pBoot":0.206}
+                 2020-26 {"n":1493,"dBrier":0.000156,"se":0.000419,"t":0.373,"pBoot":0.344}
+                 ambos≥3 {"n":701,"dBrier":0.000089,"se":0.000526,"t":0.169,"pBoot":0.445}
+                 donde actúa {"n":1620,"dBrier":0.000433,"se":0.000434,"t":0.999,"pBoot":0.158}
+  a_agediv       todo {"n":2752,"dBrier":0.000135,"se":0.000278,"t":0.484,"pBoot":0.308}
+                 2020-26 {"n":1493,"dBrier":0.000042,"se":0.000454,"t":0.092,"pBoot":0.464}
+                 ambos≥3 {"n":701,"dBrier":0.000092,"se":0.000604,"t":0.152,"pBoot":0.436}
+                 donde actúa {"n":1620,"dBrier":0.000278,"se":0.000466,"t":0.595,"pBoot":0.284}
+  b_layoff       todo {"n":2752,"dBrier":0.000044,"se":0.000079,"t":0.554,"pBoot":0.288}
+                 2020-26 {"n":1493,"dBrier":0.000059,"se":0.000119,"t":0.496,"pBoot":0.316}
+                 ambos≥3 {"n":701,"dBrier":-0.00022,"se":0.000176,"t":-1.255,"pBoot":0.898}
+                 donde actúa {"n":663,"dBrier":0.000254,"se":0.000322,"t":0.79,"pBoot":0.214}
+  c_qstreak      todo {"n":2752,"dBrier":0.000042,"se":0.000081,"t":0.524,"pBoot":0.304}
+                 2020-26 {"n":1493,"dBrier":0.000129,"se":0.000121,"t":1.062,"pBoot":0.145}
+                 ambos≥3 {"n":701,"dBrier":0.000064,"se":0.000165,"t":0.385,"pBoot":0.342}
+  e_spreaddiv    todo {"n":2752,"dBrier":-0.00001,"se":0.00002,"t":-0.522,"pBoot":0.723}
+                 2020-26 {"n":1493,"dBrier":-0.00005,"se":0.000035,"t":-1.429,"pBoot":0.924}
+                 ambos≥3 {"n":701,"dBrier":-0.00001,"se":0.000043,"t":-0.236,"pBoot":0.597}
+  ALL            todo {"n":2752,"dBrier":0.00022,"se":0.0003,"t":0.734,"pBoot":0.228}
+                 2020-26 {"n":1493,"dBrier":0.000206,"se":0.000487,"t":0.423,"pBoot":0.34}
+                 ambos≥3 {"n":701,"dBrier":-0.000085,"se":0.00066,"t":-0.128,"pBoot":0.558}
+
+SEGMENTOS (ACTUAL → ALL):
+  div:fw_bw_flw    n=  390  acc 0.6846→0.6795  brier 0.21664→0.21584  (e_spreaddiv 0.21667, a_agediv 0.21546)
+  div:hw           n=  188  acc 0.6223→0.6117  brier 0.22839→0.22948  (e_spreaddiv 0.22848, a_agediv 0.23043)
+  div:lhw_mw       n=  291  acc 0.6186→0.6151  brier 0.23693→0.2379  (e_spreaddiv 0.23702, a_agediv 0.2377)
+  div:other        n= 1156  acc 0.6592→0.6635  brier 0.21768→0.21779  (e_spreaddiv 0.21768, a_agediv 0.21786)
+  div:women        n=  208  acc 0.6442→0.6394  brier 0.22225→0.22294  (e_spreaddiv 0.22185, a_agediv 0.2223)
+  div:ww_lw        n=  519  acc 0.6243→0.6108  brier 0.22012→0.22044  (e_spreaddiv 0.22013, a_agediv 0.22014)
+  era:2013-19      n= 1259  acc 0.6386→0.637  brier 0.22252→0.22276  (e_spreaddiv 0.22256, a_agediv 0.22277)
+  era:2020-26      n= 1493  acc 0.6564→0.6524  brier 0.21992→0.22012  (e_spreaddiv 0.21987, a_agediv 0.21996)
+  n3:false         n= 2051  acc 0.6451→0.6416  brier 0.22048→0.2208  (e_spreaddiv 0.22047, a_agediv 0.22063)
+  n3:true          n=  701  acc 0.6576→0.6562  brier 0.22296→0.22287  (e_spreaddiv 0.22295, a_agediv 0.22305)
+
+PESOS finales ALL: {"elo":0.9639,"reach":0.1054,"exp":0.0596,"years":-0.3053,"age":-0.4217,"chin":-0.1879,"streak":0.0471,"mileage":0.1969,"misswt":0.0033,"slpm":0,"td15":0,"tddef":0,"ctrl":0,"kdr":0,"ageb0":0.1625,"ageb1":0.0953,"ageb2":-0.1016,"ageb3":-0.0899,"ageb4":-0.0663,"age_hw":0.0073,"age_w":0.0735,"age_light":-0.1304,"lay18":0.0684,"retko":-0.0523,"retko_quick":0.0499,"qres":0.0807,"qsos":-0.0176,"elo_w":0.0644,"elo_hw":0.0019,"elo_light":-0.045,"elo_lhwmw":-0.0244}
+PESOS finales ACTUAL: {"elo":0.9775,"reach":0.1049,"exp":0.0597,"years":-0.3089,"age":-0.5478,"chin":-0.1892,"streak":0.0968,"mileage":0.2003,"misswt":0.0034,"slpm":0,"td15":0,"tddef":0,"ctrl":0,"kdr":0}
+
+escrito /tmp/claude-0/-home-user-gp-simulador-mundial/be6747bd-41b1-5761-8bf4-37a3efc202e9/scratchpad/backtests/combate/h2_results_ufc_mma.json
+H2DONE

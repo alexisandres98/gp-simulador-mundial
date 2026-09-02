@@ -1,0 +1,6140 @@
+{
+ "at": "2026-09-02T11:13:36.583Z",
+ "eco_circuito": 0.068,
+ "diag": {
+  "RONDAS_HANDICAP": {
+   "n": 142,
+   "n_con_mapa": 142,
+   "abs_dev_p_map_prod_medio": 0.0797,
+   "abs_dev_p_map_h1_medio": 0.0982,
+   "p_map_prod_extrema_pct": 7.75,
+   "fav_prod_gano_mapa_pct": 39.44,
+   "fav_h1_gano_mapa_pct": 48.59,
+   "prod_y_h1_coinciden_pct": 51.41,
+   "equipo_elegido_gano_mapa_pct": 38.03,
+   "brier_mapa_prod": 0.277,
+   "brier_mapa_h1": 0.255,
+   "brier_mapa_moneda": 0.25
+  },
+  "RONDAS_EQUIPO": {
+   "n": 31,
+   "n_con_mapa": 31,
+   "abs_dev_p_map_prod_medio": 0.0652,
+   "abs_dev_p_map_h1_medio": 0.0943,
+   "p_map_prod_extrema_pct": 3.23,
+   "fav_prod_gano_mapa_pct": 41.94,
+   "fav_h1_gano_mapa_pct": 51.61,
+   "prod_y_h1_coinciden_pct": 32.26,
+   "equipo_elegido_gano_mapa_pct": null,
+   "brier_mapa_prod": 0.2835,
+   "brier_mapa_h1": 0.2686,
+   "brier_mapa_moneda": 0.25
+  },
+  "RONDAS": {
+   "n": 81,
+   "abs_dev_p_map_prod_medio": 0.1788,
+   "abs_dev_p_map_h1_medio": 0.0803,
+   "nota": "para totales solo se recupera |p−0,5| (simétrico)"
+  }
+ },
+ "requote": {
+  "RONDAS_HANDICAP": {
+   "n": 142,
+   "original": {
+    "nacen": 142,
+    "win": 45,
+    "roi_pct": -21.21,
+    "brier": 0.2496
+   },
+   "actual_con_p_h1": {
+    "nacen": 36,
+    "win": 8,
+    "roi_pct": -45.16,
+    "brier": 0.2309,
+    "edge_medio": -1.85
+   },
+   "corregido_con_p_h1": {
+    "nacen": 22,
+    "win": 5,
+    "roi_pct": -47.97,
+    "brier": 0.2151,
+    "edge_medio": -0.97
+   },
+   "brier_mercado_bruto": 0.2132
+  },
+  "RONDAS_EQUIPO": {
+   "n": 31,
+   "original": {
+    "nacen": 31,
+    "win": 13,
+    "roi_pct": 6.94,
+    "brier": 0.3097
+   },
+   "actual_con_p_h1": {
+    "nacen": 8,
+    "win": 4,
+    "roi_pct": 22.38,
+    "brier": 0.2871,
+    "edge_medio": -5.96
+   },
+   "corregido_con_p_h1": {
+    "nacen": 5,
+    "win": 3,
+    "roi_pct": 53,
+    "brier": 0.2644,
+    "edge_medio": -1.1
+   },
+   "brier_mercado_bruto": 0.2558
+  }
+ },
+ "picks": [
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_HANDICAP_away_5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 3.48,
+   "y": 0,
+   "p_gp": 0.4174,
+   "p_market": 0.2874,
+   "pRound_prod": 0.4327,
+   "p_map_prod": 0.347,
+   "abs_dev_prod": 0.153,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3205,
+    "edge_pp": 3.31,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4266,
+    "edge_pp": 13.92,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.05,
+   "y": 0,
+   "p_gp": 0.4476,
+   "p_market": 0.3279,
+   "pRound_prod": 0.5925,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2103,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 3.85,
+   "y": 0,
+   "p_gp": 0.3521,
+   "p_market": 0.2597,
+   "pRound_prod": 0.51,
+   "p_map_prod": 0.5228,
+   "abs_dev_prod": 0.0228,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.1928,
+    "edge_pp": -6.69,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1242,
+    "edge_pp": -13.55,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.05,
+   "y": 0,
+   "p_gp": 0.3907,
+   "p_market": 0.3279,
+   "pRound_prod": 0.5706,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1604,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_HANDICAP_away_6.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 6.5,
+   "odds": 4.28,
+   "y": 0,
+   "p_gp": 0.3556,
+   "p_market": 0.2336,
+   "pRound_prod": 0.4279,
+   "p_map_prod": 0.336,
+   "abs_dev_prod": 0.164,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.2577,
+    "edge_pp": 2.41,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3491,
+    "edge_pp": 11.55,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.31,
+   "y": 1,
+   "p_gp": 0.4077,
+   "p_market": 0.3021,
+   "pRound_prod": 0.5083,
+   "p_map_prod": 0.5188,
+   "abs_dev_prod": 0.0188,
+   "p_map_h1": 0.3406,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.2411,
+    "edge_pp": -6.1,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1596,
+    "edge_pp": -14.25,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.96,
+   "y": 1,
+   "p_gp": 0.6052,
+   "p_market": 0.3378,
+   "pRound_prod": 0.4419,
+   "p_map_prod": 0.368,
+   "abs_dev_prod": 0.132,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.2585,
+    "edge_pp": -7.93,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1787,
+    "edge_pp": -15.91,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_home_-5.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -5.5,
+   "odds": 3.94,
+   "y": 0,
+   "p_gp": 0.4321,
+   "p_market": 0.2538,
+   "pRound_prod": 0.5723,
+   "p_map_prod": 0.6643,
+   "abs_dev_prod": 0.1643,
+   "p_map_h1": 0.6404,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.2892,
+    "edge_pp": 3.54,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3939,
+    "edge_pp": 14.01,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4464,
+   "p_market": 0.3165,
+   "pRound_prod": 0.5925,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2103,
+   "p_map_h1": 0.6404,
+   "home_won_map": 1,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4402,
+   "p_market": 0.3165,
+   "pRound_prod": 0.5904,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2055,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_away_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.645161,
+   "y": 1,
+   "p_gp": 0.6906,
+   "p_market": 0.6078,
+   "pRound_prod": 0.4812,
+   "p_map_prod": 0.4572,
+   "abs_dev_prod": 0.0428,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4954,
+    "edge_pp": -11.24,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3812,
+    "edge_pp": -22.66,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.56,
+   "y": 1,
+   "p_gp": 0.6949,
+   "p_market": 0.3906,
+   "pRound_prod": 0.4456,
+   "p_map_prod": 0.3763,
+   "abs_dev_prod": 0.1237,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3409,
+    "edge_pp": -4.97,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2408,
+    "edge_pp": -14.98,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.741,
+   "y": 1,
+   "p_gp": 0.7819,
+   "p_market": 0.5744,
+   "pRound_prod": 0.4538,
+   "p_map_prod": 0.395,
+   "abs_dev_prod": 0.105,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.4954,
+    "edge_pp": -7.9,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3812,
+    "edge_pp": -19.32,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.05,
+   "y": 1,
+   "p_gp": 0.6007,
+   "p_market": 0.4878,
+   "pRound_prod": 0.5572,
+   "p_map_prod": 0.63,
+   "abs_dev_prod": 0.13,
+   "p_map_h1": 0.6404,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.5046,
+    "edge_pp": 1.68,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6188,
+    "edge_pp": 13.1,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6337,
+   "p_market": 0.5455,
+   "pRound_prod": 0.5851,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1933,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6257,
+   "p_market": 0.5455,
+   "pRound_prod": 0.5805,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1829,
+   "p_map_h1": 0.6404,
+   "home_won_map": 1,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_EQUIPO_over_11.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "over",
+   "team": "away",
+   "line": 11.5,
+   "odds": 2.18,
+   "y": 1,
+   "p_gp": 0.7458,
+   "p_market": 0.4587,
+   "pRound_prod": 0.4494,
+   "p_map_prod": 0.385,
+   "abs_dev_prod": 0.115,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.426,
+    "edge_pp": -3.27,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3166,
+    "edge_pp": -14.21,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_HANDICAP_away_2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.11,
+   "y": 1,
+   "p_gp": 0.4978,
+   "p_market": 0.3215,
+   "pRound_prod": 0.4683,
+   "p_map_prod": 0.4279,
+   "abs_dev_prod": 0.0721,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.2585,
+    "edge_pp": -6.3,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1787,
+    "edge_pp": -14.28,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.419,
+   "p_market": 0.3155,
+   "pRound_prod": 0.5821,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1867,
+   "p_map_h1": 0.6404,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.43,
+   "y": 1,
+   "p_gp": 0.5344,
+   "p_market": 0.4115,
+   "pRound_prod": 0.5406,
+   "p_map_prod": 0.5924,
+   "abs_dev_prod": 0.0924,
+   "p_map_h1": 0.4674,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3433,
+    "edge_pp": -6.82,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3271,
+    "edge_pp": -8.44,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_21.5_4",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 0,
+   "p_gp": 0.6138,
+   "p_market": 0.5238,
+   "pRound_prod": 0.5761,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1729,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_HANDICAP_away_-2.5_4",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.526316,
+   "y": 1,
+   "p_gp": 0.7395,
+   "p_market": 0.6552,
+   "pRound_prod": 0.4652,
+   "p_map_prod": 0.4209,
+   "abs_dev_prod": 0.0791,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.6567,
+    "edge_pp": 0.15,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6729,
+    "edge_pp": 1.77,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.39,
+   "y": 1,
+   "p_gp": 0.4906,
+   "p_market": 0.4184,
+   "pRound_prod": 0.5671,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1526,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 1,
+   "p_gp": 0.3763,
+   "p_market": 0.3155,
+   "pRound_prod": 0.5632,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1437,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.15,
+   "y": 0,
+   "p_gp": 0.3882,
+   "p_market": 0.3175,
+   "pRound_prod": 0.57,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1591,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_EQUIPO_under_12.5_3",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.01,
+   "y": 1,
+   "p_gp": 0.6368,
+   "p_market": 0.4975,
+   "pRound_prod": 0.539,
+   "p_map_prod": 0.5887,
+   "abs_dev_prod": 0.0887,
+   "p_map_h1": 0.4674,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4448,
+    "edge_pp": -5.27,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4199,
+    "edge_pp": -7.76,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.14,
+   "y": 1,
+   "p_gp": 0.5274,
+   "p_market": 0.4673,
+   "pRound_prod": 0.4873,
+   "p_map_prod": 0.4712,
+   "abs_dev_prod": 0.0288,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.5075,
+    "edge_pp": 4.02,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.534,
+    "edge_pp": 6.67,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.07,
+   "y": 0,
+   "p_gp": 0.7368,
+   "p_market": 0.4831,
+   "pRound_prod": 0.5656,
+   "p_map_prod": 0.649,
+   "abs_dev_prod": 0.149,
+   "p_map_h1": 0.4674,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.4448,
+    "edge_pp": -3.83,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4199,
+    "edge_pp": -6.32,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_under_18.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 18.5,
+   "odds": 3.76,
+   "y": 0,
+   "p_gp": 0.4037,
+   "p_market": 0.266,
+   "pRound_prod": 0.6109,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2521,
+   "p_map_h1": 0.655,
+   "home_won_map": 1,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 4.64,
+   "y": 0,
+   "p_gp": 0.5339,
+   "p_market": 0.2155,
+   "pRound_prod": 0.4425,
+   "p_map_prod": 0.3693,
+   "abs_dev_prod": 0.1307,
+   "p_map_h1": 0.655,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.2012,
+    "edge_pp": -1.43,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1293,
+    "edge_pp": -8.62,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_HANDICAP_away_2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 4.1,
+   "y": 0,
+   "p_gp": 0.3674,
+   "p_market": 0.2439,
+   "pRound_prod": 0.5012,
+   "p_map_prod": 0.5028,
+   "abs_dev_prod": 0.0028,
+   "p_map_h1": 0.655,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2462,
+    "edge_pp": 0.23,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1626,
+    "edge_pp": -8.13,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.98,
+   "y": 0,
+   "p_gp": 0.5805,
+   "p_market": 0.2513,
+   "pRound_prod": 0.4485,
+   "p_map_prod": 0.383,
+   "abs_dev_prod": 0.117,
+   "p_map_h1": 0.655,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.2462,
+    "edge_pp": -0.51,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1626,
+    "edge_pp": -8.87,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:furia~g2_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 3.08,
+   "y": 1,
+   "p_gp": 0.4863,
+   "p_market": 0.3247,
+   "pRound_prod": 0.5015,
+   "p_map_prod": 0.5035,
+   "abs_dev_prod": 0.0035,
+   "p_map_h1": 0.3455,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.3246,
+    "edge_pp": -0.01,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2231,
+    "edge_pp": -10.16,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:furia~g2_RONDAS_HANDICAP_away_5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 2.96,
+   "y": 0,
+   "p_gp": 0.4029,
+   "p_market": 0.3378,
+   "pRound_prod": 0.4356,
+   "p_map_prod": 0.3537,
+   "abs_dev_prod": 0.1463,
+   "p_map_h1": 0.3455,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3166,
+    "edge_pp": -2.12,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4193,
+    "edge_pp": 8.15,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.666667,
+   "y": 0,
+   "p_gp": 0.8055,
+   "p_market": 0.6,
+   "pRound_prod": 0.5566,
+   "p_map_prod": 0.6287,
+   "abs_dev_prod": 0.1287,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.6552,
+    "edge_pp": 5.52,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.6812,
+    "edge_pp": 8.12,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 2,
+   "y": 1,
+   "p_gp": 0.582,
+   "p_market": 0.5,
+   "pRound_prod": 0.5605,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1376,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.72,
+   "y": 0,
+   "p_gp": 0.5883,
+   "p_market": 0.3676,
+   "pRound_prod": 0.555,
+   "p_map_prod": 0.625,
+   "abs_dev_prod": 0.125,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.4055,
+    "edge_pp": 3.79,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4382,
+    "edge_pp": 7.06,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.71,
+   "y": 0,
+   "p_gp": 0.5041,
+   "p_market": 0.369,
+   "pRound_prod": 0.5323,
+   "p_map_prod": 0.5734,
+   "abs_dev_prod": 0.0734,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4055,
+    "edge_pp": 3.65,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4382,
+    "edge_pp": 6.92,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.38,
+   "y": 1,
+   "p_gp": 0.5141,
+   "p_market": 0.4202,
+   "pRound_prod": 0.464,
+   "p_map_prod": 0.4183,
+   "abs_dev_prod": 0.0817,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3448,
+    "edge_pp": -7.54,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3188,
+    "edge_pp": -10.14,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_20.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 0,
+   "p_gp": 0.4876,
+   "p_market": 0.4149,
+   "pRound_prod": 0.5665,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1512,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.4325,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5879,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1997,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.3868,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5696,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1582,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.14,
+   "y": 0,
+   "p_gp": 0.6827,
+   "p_market": 0.4673,
+   "pRound_prod": 0.5506,
+   "p_map_prod": 0.615,
+   "abs_dev_prod": 0.115,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.5122,
+    "edge_pp": 4.49,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5448,
+    "edge_pp": 7.75,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_EQUIPO_under_12.5_3",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.15,
+   "y": 0,
+   "p_gp": 0.5994,
+   "p_market": 0.4651,
+   "pRound_prod": 0.5295,
+   "p_map_prod": 0.5671,
+   "abs_dev_prod": 0.0671,
+   "p_map_h1": 0.5365,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.5122,
+    "edge_pp": 4.71,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5448,
+    "edge_pp": 7.97,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.84,
+   "y": 0,
+   "p_gp": 0.5494,
+   "p_market": 0.3521,
+   "pRound_prod": 0.439,
+   "p_map_prod": 0.3613,
+   "abs_dev_prod": 0.1387,
+   "p_map_h1": 0.5,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3171,
+    "edge_pp": -3.5,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.313,
+    "edge_pp": -3.91,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.71,
+   "y": 0,
+   "p_gp": 0.5448,
+   "p_market": 0.369,
+   "pRound_prod": 0.5433,
+   "p_map_prod": 0.5984,
+   "abs_dev_prod": 0.0984,
+   "p_map_h1": 0.5,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3701,
+    "edge_pp": 0.11,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3746,
+    "edge_pp": 0.56,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.4851,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5659,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1497,
+   "p_map_h1": 0.5,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.25,
+   "y": 0,
+   "p_gp": 0.6137,
+   "p_market": 0.4444,
+   "pRound_prod": 0.4399,
+   "p_map_prod": 0.3633,
+   "abs_dev_prod": 0.1367,
+   "p_map_h1": 0.5,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3785,
+    "edge_pp": -6.59,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3767,
+    "edge_pp": -6.77,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.606061,
+   "y": 0,
+   "p_gp": 0.7676,
+   "p_market": 0.6226,
+   "pRound_prod": 0.5409,
+   "p_map_prod": 0.5931,
+   "abs_dev_prod": 0.0931,
+   "p_map_h1": 0.5,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.6215,
+    "edge_pp": -0.11,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6233,
+    "edge_pp": 0.07,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.15,
+   "y": 1,
+   "p_gp": 0.6556,
+   "p_market": 0.4651,
+   "pRound_prod": 0.5078,
+   "p_map_prod": 0.5178,
+   "abs_dev_prod": 0.0178,
+   "p_map_h1": 0.2703,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3971,
+    "edge_pp": -6.8,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2403,
+    "edge_pp": -22.48,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.86,
+   "y": 1,
+   "p_gp": 0.4501,
+   "p_market": 0.2591,
+   "pRound_prod": 0.5188,
+   "p_map_prod": 0.5428,
+   "abs_dev_prod": 0.0428,
+   "p_map_h1": 0.2703,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.1877,
+    "edge_pp": -7.14,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0925,
+    "edge_pp": -16.66,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_under_20.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.28,
+   "y": 0,
+   "p_gp": 0.5289,
+   "p_market": 0.4386,
+   "pRound_prod": 0.5862,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1958,
+   "p_map_h1": 0.2703,
+   "home_won_map": 1,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_HANDICAP_away_3.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.15,
+   "y": 0,
+   "p_gp": 0.5242,
+   "p_market": 0.4651,
+   "pRound_prod": 0.4448,
+   "p_map_prod": 0.3747,
+   "abs_dev_prod": 0.1253,
+   "p_map_h1": 0.2703,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.5332,
+    "edge_pp": 6.81,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.6982,
+    "edge_pp": 23.31,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.12,
+   "y": 0,
+   "p_gp": 0.5094,
+   "p_market": 0.4717,
+   "pRound_prod": 0.4491,
+   "p_map_prod": 0.3843,
+   "abs_dev_prod": 0.1157,
+   "p_map_h1": 0.2703,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.5332,
+    "edge_pp": 6.15,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.6982,
+    "edge_pp": 22.65,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5398,
+   "p_market": 0.4132,
+   "pRound_prod": 0.4843,
+   "p_map_prod": 0.4642,
+   "abs_dev_prod": 0.0358,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4433,
+    "edge_pp": 3.01,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4114,
+    "edge_pp": -0.18,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.44,
+   "y": 0,
+   "p_gp": 0.5204,
+   "p_market": 0.4098,
+   "pRound_prod": 0.555,
+   "p_map_prod": 0.625,
+   "abs_dev_prod": 0.125,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3396,
+    "edge_pp": -7.02,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3684,
+    "edge_pp": -4.14,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.12,
+   "y": 0,
+   "p_gp": 0.3788,
+   "p_market": 0.3205,
+   "pRound_prod": 0.5643,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1462,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.8696,
+   "y": 1,
+   "p_gp": 0.5815,
+   "p_market": 0.5349,
+   "pRound_prod": 0.5605,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1376,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_HANDICAP_home_-4.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -4.5,
+   "odds": 2.94,
+   "y": 0,
+   "p_gp": 0.4506,
+   "p_market": 0.3401,
+   "pRound_prod": 0.5556,
+   "p_map_prod": 0.6263,
+   "abs_dev_prod": 0.1263,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.2757,
+    "edge_pp": -6.44,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3003,
+    "edge_pp": -3.98,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.833333,
+   "y": 1,
+   "p_gp": 0.6503,
+   "p_market": 0.5455,
+   "pRound_prod": 0.4929,
+   "p_map_prod": 0.4839,
+   "abs_dev_prod": 0.0161,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.5961,
+    "edge_pp": 5.06,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5654,
+    "edge_pp": 1.99,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.909091,
+   "y": 0,
+   "p_gp": 0.5859,
+   "p_market": 0.5238,
+   "pRound_prod": 0.5538,
+   "p_map_prod": 0.6223,
+   "abs_dev_prod": 0.1223,
+   "p_map_h1": 0.534,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4039,
+    "edge_pp": -11.99,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4346,
+    "edge_pp": -8.92,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.75,
+   "y": 0,
+   "p_gp": 0.5872,
+   "p_market": 0.2667,
+   "pRound_prod": 0.5547,
+   "p_map_prod": 0.6243,
+   "abs_dev_prod": 0.1243,
+   "p_map_h1": 0.2656,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.1829,
+    "edge_pp": -8.38,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0865,
+    "edge_pp": -18.02,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 3.51,
+   "y": 0,
+   "p_gp": 0.6789,
+   "p_market": 0.2849,
+   "pRound_prod": 0.5497,
+   "p_map_prod": 0.613,
+   "abs_dev_prod": 0.113,
+   "p_map_h1": 0.2656,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.2491,
+    "edge_pp": -3.58,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1254,
+    "edge_pp": -15.95,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_18.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 18.5,
+   "odds": 3.65,
+   "y": 0,
+   "p_gp": 0.3808,
+   "p_market": 0.274,
+   "pRound_prod": 0.6043,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2371,
+   "p_map_h1": 0.2656,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_HANDICAP_away_6.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 6.5,
+   "odds": 3.49,
+   "y": 0,
+   "p_gp": 0.3676,
+   "p_market": 0.2865,
+   "pRound_prod": 0.4248,
+   "p_map_prod": 0.329,
+   "abs_dev_prod": 0.171,
+   "p_map_h1": 0.2656,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3158,
+    "edge_pp": 2.93,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4655,
+    "edge_pp": 17.9,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 2.82,
+   "y": 0,
+   "p_gp": 0.4154,
+   "p_market": 0.3546,
+   "pRound_prod": 0.5811,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1844,
+   "p_map_h1": 0.2656,
+   "home_won_map": 1,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_HANDICAP_away_5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 2.84,
+   "y": 0,
+   "p_gp": 0.4411,
+   "p_market": 0.3521,
+   "pRound_prod": 0.4262,
+   "p_map_prod": 0.3324,
+   "abs_dev_prod": 0.1676,
+   "p_map_h1": 0.2656,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3852,
+    "edge_pp": 3.31,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5557,
+    "edge_pp": 20.36,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 3.31,
+   "y": 0,
+   "p_gp": 0.4492,
+   "p_market": 0.3021,
+   "pRound_prod": 0.464,
+   "p_map_prod": 0.4183,
+   "abs_dev_prod": 0.0817,
+   "p_map_h1": 0.7549,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.1373,
+    "edge_pp": -16.48,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0615,
+    "edge_pp": -24.06,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.32,
+   "y": 1,
+   "p_gp": 0.5539,
+   "p_market": 0.431,
+   "pRound_prod": 0.5455,
+   "p_map_prod": 0.6034,
+   "abs_dev_prod": 0.1034,
+   "p_map_h1": 0.7549,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.6263,
+    "edge_pp": 19.53,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.795,
+    "edge_pp": 36.4,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4068,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5769,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1747,
+   "p_map_h1": 0.7549,
+   "home_won_map": 1,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.588235,
+   "y": 0,
+   "p_gp": 0.7005,
+   "p_market": 0.6296,
+   "pRound_prod": 0.4791,
+   "p_map_prod": 0.4526,
+   "abs_dev_prod": 0.0474,
+   "p_map_h1": 0.7549,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3737,
+    "edge_pp": -25.59,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.205,
+    "edge_pp": -42.46,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.5991,
+   "p_market": 0.5348,
+   "pRound_prod": 0.5706,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1606,
+   "p_map_h1": 0.7549,
+   "home_won_map": 1,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:kiwoomdrx~t1_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.725,
+   "p_market": 0.5455,
+   "pRound_prod": 0.5291,
+   "p_map_prod": 0.5661,
+   "abs_dev_prod": 0.0661,
+   "p_map_h1": 0.3688,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4973,
+    "edge_pp": -4.82,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3961,
+    "edge_pp": -14.94,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.02,
+   "y": 0,
+   "p_gp": 0.6897,
+   "p_market": 0.495,
+   "pRound_prod": 0.5525,
+   "p_map_prod": 0.6194,
+   "abs_dev_prod": 0.1194,
+   "p_map_h1": 0.5039,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4798,
+    "edge_pp": -1.52,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4869,
+    "edge_pp": -0.81,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4048,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5759,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1725,
+   "p_map_h1": 0.5039,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.885,
+   "y": 1,
+   "p_gp": 0.5771,
+   "p_market": 0.5305,
+   "pRound_prod": 0.5597,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1357,
+   "p_map_h1": 0.5039,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.588235,
+   "y": 0,
+   "p_gp": 0.7061,
+   "p_market": 0.6296,
+   "pRound_prod": 0.5232,
+   "p_map_prod": 0.5528,
+   "abs_dev_prod": 0.0528,
+   "p_map_h1": 0.5039,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.6233,
+    "edge_pp": -0.63,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6341,
+    "edge_pp": 0.45,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.5979,
+   "p_market": 0.5348,
+   "pRound_prod": 0.5704,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1601,
+   "p_map_h1": 0.5039,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.73,
+   "y": 0,
+   "p_gp": 0.4929,
+   "p_market": 0.2681,
+   "pRound_prod": 0.4698,
+   "p_map_prod": 0.4313,
+   "abs_dev_prod": 0.0687,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.1738,
+    "edge_pp": -9.43,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0816,
+    "edge_pp": -18.65,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.28,
+   "y": 1,
+   "p_gp": 0.5421,
+   "p_market": 0.4386,
+   "pRound_prod": 0.5911,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2072,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_HANDICAP_away_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.82,
+   "y": 0,
+   "p_gp": 0.3481,
+   "p_market": 0.2618,
+   "pRound_prod": 0.5068,
+   "p_map_prod": 0.5155,
+   "abs_dev_prod": 0.0155,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.1738,
+    "edge_pp": -8.8,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0816,
+    "edge_pp": -18.02,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.24,
+   "y": 0,
+   "p_gp": 0.5059,
+   "p_market": 0.4464,
+   "pRound_prod": 0.5741,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1684,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_HANDICAP_away_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.08,
+   "y": 1,
+   "p_gp": 0.5454,
+   "p_market": 0.4808,
+   "pRound_prod": 0.5198,
+   "p_map_prod": 0.5451,
+   "abs_dev_prod": 0.0451,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3794,
+    "edge_pp": -10.14,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2123,
+    "edge_pp": -26.85,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_HANDICAP_away_-3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -3.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.7271,
+   "p_market": 0.5455,
+   "pRound_prod": 0.4866,
+   "p_map_prod": 0.4695,
+   "abs_dev_prod": 0.0305,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.449,
+    "edge_pp": -9.65,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2712,
+    "edge_pp": -27.43,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.07,
+   "y": 0,
+   "p_gp": 0.6776,
+   "p_market": 0.4831,
+   "pRound_prod": 0.4843,
+   "p_map_prod": 0.4642,
+   "abs_dev_prod": 0.0358,
+   "p_map_h1": 0.75,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3794,
+    "edge_pp": -10.37,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2123,
+    "edge_pp": -27.08,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_HANDICAP_home_-4.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -4.5,
+   "odds": 3.74,
+   "y": 1,
+   "p_gp": 0.4861,
+   "p_market": 0.2674,
+   "pRound_prod": 0.5658,
+   "p_map_prod": 0.6496,
+   "abs_dev_prod": 0.1496,
+   "p_map_h1": 0.5376,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2762,
+    "edge_pp": 0.88,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3037,
+    "edge_pp": 3.63,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.37,
+   "y": 1,
+   "p_gp": 0.495,
+   "p_market": 0.4219,
+   "pRound_prod": 0.5487,
+   "p_map_prod": 0.6107,
+   "abs_dev_prod": 0.1107,
+   "p_map_h1": 0.5998,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.4048,
+    "edge_pp": -1.71,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4744,
+    "edge_pp": 5.25,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:leviatan~mibr_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.7299,
+   "y": 0,
+   "p_gp": 0.6169,
+   "p_market": 0.5781,
+   "pRound_prod": 0.5026,
+   "p_map_prod": 0.5058,
+   "abs_dev_prod": 0.0058,
+   "p_map_h1": 0.5998,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.5283,
+    "edge_pp": -4.98,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4524,
+    "edge_pp": -12.57,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_HANDICAP_home_-5.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -5.5,
+   "odds": 4.38,
+   "y": 1,
+   "p_gp": 0.4321,
+   "p_market": 0.2283,
+   "pRound_prod": 0.5723,
+   "p_map_prod": 0.6643,
+   "abs_dev_prod": 0.1643,
+   "p_map_h1": 0.5376,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.218,
+    "edge_pp": -1.03,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2407,
+    "edge_pp": 1.24,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.6,
+   "y": 0,
+   "p_gp": 0.5432,
+   "p_market": 0.3846,
+   "pRound_prod": 0.4569,
+   "p_map_prod": 0.402,
+   "abs_dev_prod": 0.098,
+   "p_map_h1": 0.5376,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3435,
+    "edge_pp": -4.11,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3167,
+    "edge_pp": -6.79,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 1,
+   "p_gp": 0.4613,
+   "p_market": 0.3165,
+   "pRound_prod": 0.5974,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2213,
+   "p_map_h1": 0.5376,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.07,
+   "y": 0,
+   "p_gp": 0.6453,
+   "p_market": 0.4831,
+   "pRound_prod": 0.4579,
+   "p_map_prod": 0.4043,
+   "abs_dev_prod": 0.0957,
+   "p_map_h1": 0.5376,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4397,
+    "edge_pp": -4.34,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.405,
+    "edge_pp": -7.81,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.28,
+   "y": 0,
+   "p_gp": 0.3816,
+   "p_market": 0.3049,
+   "pRound_prod": 0.4979,
+   "p_map_prod": 0.4952,
+   "abs_dev_prod": 0.0048,
+   "p_map_h1": 0.5998,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2934,
+    "edge_pp": -1.15,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2247,
+    "edge_pp": -8.02,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_HANDICAP_home_-4.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -4.5,
+   "odds": 2.83,
+   "y": 1,
+   "p_gp": 0.4247,
+   "p_market": 0.3534,
+   "pRound_prod": 0.5496,
+   "p_map_prod": 0.6127,
+   "abs_dev_prod": 0.1127,
+   "p_map_h1": 0.5998,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3297,
+    "edge_pp": -2.37,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3976,
+    "edge_pp": 4.42,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 1,
+   "p_gp": 0.566,
+   "p_market": 0.5238,
+   "pRound_prod": 0.5526,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1196,
+   "p_map_h1": 0.5998,
+   "home_won_map": 1,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.4917,
+   "p_market": 0.4167,
+   "pRound_prod": 0.5679,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1544,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.64,
+   "y": 0,
+   "p_gp": 0.4398,
+   "p_market": 0.3788,
+   "pRound_prod": 0.4659,
+   "p_map_prod": 0.4226,
+   "abs_dev_prod": 0.0774,
+   "p_map_h1": 0.4736,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.339,
+    "edge_pp": -3.98,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3594,
+    "edge_pp": -1.94,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.92,
+   "y": 0,
+   "p_gp": 0.3978,
+   "p_market": 0.3425,
+   "pRound_prod": 0.5056,
+   "p_map_prod": 0.5128,
+   "abs_dev_prod": 0.0128,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3475,
+    "edge_pp": 0.5,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3369,
+    "edge_pp": -0.56,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.39,
+   "y": 0,
+   "p_gp": 0.5312,
+   "p_market": 0.4184,
+   "pRound_prod": 0.5868,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1972,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.741,
+   "y": 0,
+   "p_gp": 0.6634,
+   "p_market": 0.5744,
+   "pRound_prod": 0.51,
+   "p_map_prod": 0.5228,
+   "abs_dev_prod": 0.0228,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.5992,
+    "edge_pp": 2.48,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5795,
+    "edge_pp": 0.51,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 2,
+   "y": 1,
+   "p_gp": 0.624,
+   "p_market": 0.5,
+   "pRound_prod": 0.5788,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.179,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.8,
+   "y": 0,
+   "p_gp": 0.619,
+   "p_market": 0.5556,
+   "pRound_prod": 0.5775,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1762,
+   "p_map_h1": 0.4736,
+   "home_won_map": 1,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.25,
+   "y": 0,
+   "p_gp": 0.5526,
+   "p_market": 0.4444,
+   "pRound_prod": 0.4551,
+   "p_map_prod": 0.398,
+   "abs_dev_prod": 0.102,
+   "p_map_h1": 0.4736,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4008,
+    "edge_pp": -4.36,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4205,
+    "edge_pp": -2.39,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:global~varrel_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5132,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5774,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1759,
+   "p_map_h1": 0.3618,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:global~varrel_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.67,
+   "y": 0,
+   "p_gp": 0.4751,
+   "p_market": 0.3745,
+   "pRound_prod": 0.5244,
+   "p_map_prod": 0.5554,
+   "abs_dev_prod": 0.0554,
+   "p_map_h1": 0.3618,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.2629,
+    "edge_pp": -11.16,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1793,
+    "edge_pp": -19.52,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:global~varrel_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.88,
+   "y": 1,
+   "p_gp": 0.4706,
+   "p_market": 0.3472,
+   "pRound_prod": 0.4591,
+   "p_map_prod": 0.4069,
+   "abs_dev_prod": 0.0931,
+   "p_map_h1": 0.3618,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4391,
+    "edge_pp": 9.19,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.5478,
+    "edge_pp": 20.06,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.606061,
+   "y": 1,
+   "p_gp": 0.7714,
+   "p_market": 0.6226,
+   "pRound_prod": 0.4561,
+   "p_map_prod": 0.4003,
+   "abs_dev_prod": 0.0997,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.5948,
+    "edge_pp": -2.78,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5623,
+    "edge_pp": -6.03,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.9174,
+   "y": 0,
+   "p_gp": 0.5623,
+   "p_market": 0.5215,
+   "pRound_prod": 0.5512,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1164,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.6153,
+   "p_market": 0.5348,
+   "pRound_prod": 0.5767,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1744,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.25,
+   "y": 0,
+   "p_gp": 0.4996,
+   "p_market": 0.4444,
+   "pRound_prod": 0.5317,
+   "p_map_prod": 0.5721,
+   "abs_dev_prod": 0.0721,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.4052,
+    "edge_pp": -3.92,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4377,
+    "edge_pp": -0.67,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:global~kiwoomdrx_RONDAS_HANDICAP_away_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.606061,
+   "y": 0,
+   "p_gp": 0.6801,
+   "p_market": 0.6226,
+   "pRound_prod": 0.4838,
+   "p_map_prod": 0.4632,
+   "abs_dev_prod": 0.0368,
+   "p_map_h1": 0.5894,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.5419,
+    "edge_pp": -8.07,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4748,
+    "edge_pp": -14.78,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 1,
+   "p_gp": 0.4968,
+   "p_market": 0.4149,
+   "pRound_prod": 0.5714,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1624,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.65,
+   "y": 0,
+   "p_gp": 0.4437,
+   "p_market": 0.3774,
+   "pRound_prod": 0.5371,
+   "p_map_prod": 0.5844,
+   "abs_dev_prod": 0.0844,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.3402,
+    "edge_pp": -3.72,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3717,
+    "edge_pp": -0.57,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.69,
+   "y": 1,
+   "p_gp": 0.5534,
+   "p_market": 0.3717,
+   "pRound_prod": 0.4548,
+   "p_map_prod": 0.3973,
+   "abs_dev_prod": 0.1027,
+   "p_map_h1": 0.536,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3453,
+    "edge_pp": -2.64,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3197,
+    "edge_pp": -5.2,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.952381,
+   "y": 0,
+   "p_gp": 0.5939,
+   "p_market": 0.5122,
+   "pRound_prod": 0.5671,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1526,
+   "p_map_h1": 0.5648,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.909091,
+   "y": 1,
+   "p_gp": 0.5985,
+   "p_market": 0.5238,
+   "pRound_prod": 0.5706,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1604,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_away_4.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 4.5,
+   "odds": 3.29,
+   "y": 0,
+   "p_gp": 0.3781,
+   "p_market": 0.304,
+   "pRound_prod": 0.4636,
+   "p_map_prod": 0.4173,
+   "abs_dev_prod": 0.0827,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.2189,
+    "edge_pp": -8.51,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1836,
+    "edge_pp": -12.04,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_away_6.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 6.5,
+   "odds": 5.31,
+   "y": 0,
+   "p_gp": 0.2538,
+   "p_market": 0.1883,
+   "pRound_prod": 0.4615,
+   "p_map_prod": 0.4126,
+   "abs_dev_prod": 0.0874,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.1298,
+    "edge_pp": -5.85,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1041,
+    "edge_pp": -8.42,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.9,
+   "y": 0,
+   "p_gp": 0.4462,
+   "p_market": 0.3448,
+   "pRound_prod": 0.5184,
+   "p_map_prod": 0.5418,
+   "abs_dev_prod": 0.0418,
+   "p_map_h1": 0.5648,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4331,
+    "edge_pp": 8.83,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4883,
+    "edge_pp": 14.35,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.39,
+   "y": 0,
+   "p_gp": 0.5096,
+   "p_market": 0.4184,
+   "pRound_prod": 0.4648,
+   "p_map_prod": 0.4199,
+   "abs_dev_prod": 0.0801,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3233,
+    "edge_pp": -9.51,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2775,
+    "edge_pp": -14.09,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 0,
+   "p_gp": 0.4053,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5761,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.173,
+   "p_map_h1": 0.5648,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.4012,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5739,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1679,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 3.22,
+   "y": 0,
+   "p_gp": 0.39,
+   "p_market": 0.3106,
+   "pRound_prod": 0.5203,
+   "p_map_prod": 0.5461,
+   "abs_dev_prod": 0.0461,
+   "p_map_h1": 0.5648,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3687,
+    "edge_pp": 5.81,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.419,
+    "edge_pp": 10.84,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_HANDICAP_away_5.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 4.29,
+   "y": 0,
+   "p_gp": 0.3066,
+   "p_market": 0.2331,
+   "pRound_prod": 0.464,
+   "p_map_prod": 0.4183,
+   "abs_dev_prod": 0.0817,
+   "p_map_h1": 0.5648,
+   "home_won_map": 1,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.1715,
+    "edge_pp": -6.16,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1402,
+    "edge_pp": -9.29,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_EQUIPO_under_12.5_3",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.88,
+   "y": 0,
+   "p_gp": 0.4771,
+   "p_market": 0.3472,
+   "pRound_prod": 0.4988,
+   "p_map_prod": 0.4972,
+   "abs_dev_prod": 0.0028,
+   "p_map_h1": 0.3864,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.3643,
+    "edge_pp": 1.71,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2843,
+    "edge_pp": -6.29,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 2.94,
+   "y": 0,
+   "p_gp": 0.4325,
+   "p_market": 0.3401,
+   "pRound_prod": 0.5879,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1997,
+   "p_map_h1": 0.3864,
+   "home_won_map": 1,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_HANDICAP_away_6.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 6.5,
+   "odds": 3.85,
+   "y": 0,
+   "p_gp": 0.3268,
+   "p_market": 0.2597,
+   "pRound_prod": 0.4364,
+   "p_map_prod": 0.3553,
+   "abs_dev_prod": 0.1447,
+   "p_map_h1": 0.3864,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.2216,
+    "edge_pp": -3.81,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2844,
+    "edge_pp": 2.47,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.952381,
+   "y": 0,
+   "p_gp": 0.6382,
+   "p_market": 0.5122,
+   "pRound_prod": 0.5026,
+   "p_map_prod": 0.5058,
+   "abs_dev_prod": 0.0058,
+   "p_map_h1": 0.3864,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.5164,
+    "edge_pp": 0.42,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4259,
+    "edge_pp": -8.63,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_21.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.6263,
+   "p_market": 0.5455,
+   "pRound_prod": 0.5807,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1834,
+   "p_map_h1": 0.3864,
+   "home_won_map": 1,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_HANDICAP_home_3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 3.5,
+   "odds": 1.76923,
+   "y": 0,
+   "p_gp": 0.6888,
+   "p_market": 0.5652,
+   "pRound_prod": 0.5004,
+   "p_map_prod": 0.5008,
+   "abs_dev_prod": 0.0008,
+   "p_map_h1": 0.3864,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.5857,
+    "edge_pp": 2.05,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4935,
+    "edge_pp": -7.17,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.78,
+   "y": 0,
+   "p_gp": 0.4571,
+   "p_market": 0.3597,
+   "pRound_prod": 0.4939,
+   "p_map_prod": 0.4862,
+   "abs_dev_prod": 0.0138,
+   "p_map_h1": 0.3864,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3643,
+    "edge_pp": 0.46,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2843,
+    "edge_pp": -7.54,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_HANDICAP_away_5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 3.14,
+   "y": 0,
+   "p_gp": 0.3747,
+   "p_market": 0.3185,
+   "pRound_prod": 0.4444,
+   "p_map_prod": 0.3737,
+   "abs_dev_prod": 0.1263,
+   "p_map_h1": 0.3864,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.2812,
+    "edge_pp": -3.73,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3568,
+    "edge_pp": 3.83,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.29,
+   "y": 1,
+   "p_gp": 0.5999,
+   "p_market": 0.4367,
+   "pRound_prod": 0.4693,
+   "p_map_prod": 0.4303,
+   "abs_dev_prod": 0.0697,
+   "p_map_h1": 0.7846,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.2027,
+    "edge_pp": -23.4,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0813,
+    "edge_pp": -35.54,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.14,
+   "y": 0,
+   "p_gp": 0.4445,
+   "p_market": 0.3185,
+   "pRound_prod": 0.5923,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2098,
+   "p_map_h1": 0.7846,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_HANDICAP_home_-4.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -4.5,
+   "odds": 3.13,
+   "y": 0,
+   "p_gp": 0.4054,
+   "p_market": 0.3195,
+   "pRound_prod": 0.5459,
+   "p_map_prod": 0.6044,
+   "abs_dev_prod": 0.1044,
+   "p_map_h1": 0.7846,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.5131,
+    "edge_pp": 19.36,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.7067,
+    "edge_pp": 38.72,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_HANDICAP_home_-5.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -5.5,
+   "odds": 3.82,
+   "y": 0,
+   "p_gp": 0.3419,
+   "p_market": 0.2618,
+   "pRound_prod": 0.5484,
+   "p_map_prod": 0.61,
+   "abs_dev_prod": 0.11,
+   "p_map_h1": 0.7846,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.4337,
+    "edge_pp": 17.19,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.6294,
+    "edge_pp": 36.76,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.3,
+   "y": 0,
+   "p_gp": 0.5292,
+   "p_market": 0.4348,
+   "pRound_prod": 0.5401,
+   "p_map_prod": 0.5911,
+   "abs_dev_prod": 0.0911,
+   "p_map_h1": 0.7846,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.6562,
+    "edge_pp": 22.14,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.8348,
+    "edge_pp": 40,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 3.28,
+   "y": 0,
+   "p_gp": 0.5371,
+   "p_market": 0.3049,
+   "pRound_prod": 0.5594,
+   "p_map_prod": 0.635,
+   "abs_dev_prod": 0.135,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3776,
+    "edge_pp": 7.27,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4359,
+    "edge_pp": 13.1,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.952381,
+   "y": 1,
+   "p_gp": 0.6372,
+   "p_market": 0.5122,
+   "pRound_prod": 0.5865,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1965,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 1,
+   "p_gp": 0.4405,
+   "p_market": 0.3155,
+   "pRound_prod": 0.5904,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2055,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.645161,
+   "y": 0,
+   "p_gp": 0.769,
+   "p_market": 0.6078,
+   "pRound_prod": 0.5415,
+   "p_map_prod": 0.5944,
+   "abs_dev_prod": 0.0944,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.6883,
+    "edge_pp": 8.05,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.7473,
+    "edge_pp": 13.95,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.4033,
+   "p_market": 0.3155,
+   "pRound_prod": 0.575,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1705,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.8,
+   "y": 0,
+   "p_gp": 0.5765,
+   "p_market": 0.3571,
+   "pRound_prod": 0.551,
+   "p_map_prod": 0.616,
+   "abs_dev_prod": 0.116,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4426,
+    "edge_pp": 8.55,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.5086,
+    "edge_pp": 15.15,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_HANDICAP_home_-5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -5.5,
+   "odds": 5.33,
+   "y": 0,
+   "p_gp": 0.2514,
+   "p_market": 0.1876,
+   "pRound_prod": 0.5203,
+   "p_map_prod": 0.5461,
+   "abs_dev_prod": 0.0461,
+   "p_map_h1": 0.5783,
+   "home_won_map": 0,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.2431,
+    "edge_pp": 5.55,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.2949,
+    "edge_pp": 10.73,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.71,
+   "y": 1,
+   "p_gp": 0.5465,
+   "p_market": 0.369,
+   "pRound_prod": 0.5434,
+   "p_map_prod": 0.5987,
+   "abs_dev_prod": 0.0987,
+   "p_map_h1": 0.408,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.2947,
+    "edge_pp": -7.43,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2412,
+    "edge_pp": -12.78,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5827,
+   "p_market": 0.4132,
+   "pRound_prod": 0.6016,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2308,
+   "p_map_h1": 0.408,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5365,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5876,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.199,
+   "p_map_h1": 0.408,
+   "home_won_map": 1,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5261,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5843,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1915,
+   "p_map_h1": 0.408,
+   "home_won_map": 0,
+   "real_map": "Breeze"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_HANDICAP_away_3.5_4",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.83,
+   "y": 1,
+   "p_gp": 0.4301,
+   "p_market": 0.3534,
+   "pRound_prod": 0.4687,
+   "p_map_prod": 0.4289,
+   "abs_dev_prod": 0.0711,
+   "p_map_h1": 0.408,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3958,
+    "edge_pp": 4.24,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4683,
+    "edge_pp": 11.49,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:detonationfocusme~t1_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.39,
+   "y": 0,
+   "p_gp": 0.4449,
+   "p_market": 0.295,
+   "pRound_prod": 0.4825,
+   "p_map_prod": 0.4602,
+   "abs_dev_prod": 0.0398,
+   "p_map_h1": 0.6474,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2522,
+    "edge_pp": -4.28,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1699,
+    "edge_pp": -12.51,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:detonationfocusme~t1_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6834,
+   "p_market": 0.5348,
+   "pRound_prod": 0.4826,
+   "p_map_prod": 0.4605,
+   "abs_dev_prod": 0.0395,
+   "p_map_h1": 0.6474,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.4885,
+    "edge_pp": -4.63,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3718,
+    "edge_pp": -16.3,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.83,
+   "y": 1,
+   "p_gp": 0.6408,
+   "p_market": 0.3534,
+   "pRound_prod": 0.4157,
+   "p_map_prod": 0.3084,
+   "abs_dev_prod": 0.1916,
+   "p_map_h1": 0.408,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3958,
+    "edge_pp": 4.24,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4683,
+    "edge_pp": 11.49,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.71,
+   "y": 0,
+   "p_gp": 0.5751,
+   "p_market": 0.369,
+   "pRound_prod": 0.551,
+   "p_map_prod": 0.616,
+   "abs_dev_prod": 0.116,
+   "p_map_h1": 0.408,
+   "home_won_map": 0,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.2947,
+    "edge_pp": -7.43,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2412,
+    "edge_pp": -12.78,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:onside~sharper_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.58,
+   "y": 1,
+   "p_gp": 0.518,
+   "p_market": 0.3876,
+   "pRound_prod": 0.5371,
+   "p_map_prod": 0.5844,
+   "abs_dev_prod": 0.0844,
+   "p_map_h1": 0.6931,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.5584,
+    "edge_pp": 17.08,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.7042,
+    "edge_pp": 31.66,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:onside~sharper_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.47,
+   "y": 1,
+   "p_gp": 0.4819,
+   "p_market": 0.4049,
+   "pRound_prod": 0.4728,
+   "p_map_prod": 0.4382,
+   "abs_dev_prod": 0.0618,
+   "p_map_h1": 0.6931,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2152,
+    "edge_pp": -18.97,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1277,
+    "edge_pp": -27.72,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:envy~mibr_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 3.12,
+   "y": 0,
+   "p_gp": 0.5814,
+   "p_market": 0.3205,
+   "pRound_prod": 0.4737,
+   "p_map_prod": 0.4402,
+   "abs_dev_prod": 0.0598,
+   "p_map_h1": 0.6535,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3275,
+    "edge_pp": 0.7,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2213,
+    "edge_pp": -9.92,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:envy~mibr_RONDAS_HANDICAP_away_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.17,
+   "y": 1,
+   "p_gp": 0.535,
+   "p_market": 0.4608,
+   "pRound_prod": 0.5222,
+   "p_map_prod": 0.5504,
+   "abs_dev_prod": 0.0504,
+   "p_map_h1": 0.6535,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.4839,
+    "edge_pp": 2.31,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3594,
+    "edge_pp": -10.14,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.62,
+   "y": 0,
+   "p_gp": 0.5177,
+   "p_market": 0.3817,
+   "pRound_prod": 0.5371,
+   "p_map_prod": 0.5844,
+   "abs_dev_prod": 0.0844,
+   "p_map_h1": 0.5057,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3768,
+    "edge_pp": -0.49,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3828,
+    "edge_pp": 0.11,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_HANDICAP_away_4.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 4.5,
+   "odds": 3.71,
+   "y": 0,
+   "p_gp": 0.4008,
+   "p_market": 0.2695,
+   "pRound_prod": 0.4586,
+   "p_map_prod": 0.406,
+   "abs_dev_prod": 0.094,
+   "p_map_h1": 0.4575,
+   "home_won_map": 1,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.2943,
+    "edge_pp": 2.48,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3181,
+    "edge_pp": 4.86,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4086,
+   "p_market": 0.3165,
+   "pRound_prod": 0.577,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.175,
+   "p_map_h1": 0.4575,
+   "home_won_map": 1,
+   "real_map": "Breeze"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 1.9434,
+   "y": 0,
+   "p_gp": 0.5785,
+   "p_market": 0.5146,
+   "pRound_prod": 0.5237,
+   "p_map_prod": 0.5538,
+   "abs_dev_prod": 0.0538,
+   "p_map_h1": 0.4575,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.4361,
+    "edge_pp": -7.85,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4026,
+    "edge_pp": -11.2,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:envy~mibr_RONDAS_HANDICAP_away_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -3.5,
+   "odds": 1.9259,
+   "y": 1,
+   "p_gp": 0.6022,
+   "p_market": 0.5192,
+   "pRound_prod": 0.5218,
+   "p_map_prod": 0.5494,
+   "abs_dev_prod": 0.0494,
+   "p_map_h1": 0.6535,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.5598,
+    "edge_pp": 4.06,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4284,
+    "edge_pp": -9.08,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_HANDICAP_away_4.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 4.5,
+   "odds": 3.58,
+   "y": 0,
+   "p_gp": 0.3397,
+   "p_market": 0.2793,
+   "pRound_prod": 0.4746,
+   "p_map_prod": 0.4422,
+   "abs_dev_prod": 0.0578,
+   "p_map_h1": 0.5461,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.2315,
+    "edge_pp": -4.78,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2034,
+    "edge_pp": -7.59,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.77,
+   "y": 1,
+   "p_gp": 0.4399,
+   "p_market": 0.361,
+   "pRound_prod": 0.5171,
+   "p_map_prod": 0.5388,
+   "abs_dev_prod": 0.0388,
+   "p_map_h1": 0.4946,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3654,
+    "edge_pp": 0.44,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3661,
+    "edge_pp": 0.51,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fullsense~onside_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.26,
+   "y": 1,
+   "p_gp": 0.5451,
+   "p_market": 0.3067,
+   "pRound_prod": 0.5434,
+   "p_map_prod": 0.5987,
+   "abs_dev_prod": 0.0987,
+   "p_map_h1": 0.4376,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.324,
+    "edge_pp": 1.73,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2821,
+    "edge_pp": -2.46,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fullsense~onside_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.37,
+   "y": 0,
+   "p_gp": 0.5781,
+   "p_market": 0.4219,
+   "pRound_prod": 0.6008,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2291,
+   "p_map_h1": 0.4376,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fullsense~onside_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.41,
+   "y": 0,
+   "p_gp": 0.5428,
+   "p_market": 0.4149,
+   "pRound_prod": 0.4407,
+   "p_map_prod": 0.3653,
+   "abs_dev_prod": 0.1347,
+   "p_map_h1": 0.4376,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.3724,
+    "edge_pp": -4.25,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4137,
+    "edge_pp": -0.12,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.69,
+   "y": 1,
+   "p_gp": 0.6662,
+   "p_market": 0.5917,
+   "pRound_prod": 0.5105,
+   "p_map_prod": 0.5238,
+   "abs_dev_prod": 0.0238,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.6042,
+    "edge_pp": 1.25,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5912,
+    "edge_pp": -0.05,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.3,
+   "y": 1,
+   "p_gp": 0.5304,
+   "p_market": 0.4348,
+   "pRound_prod": 0.4599,
+   "p_map_prod": 0.4089,
+   "abs_dev_prod": 0.0911,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3958,
+    "edge_pp": -3.9,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4088,
+    "edge_pp": -2.6,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:envy~mibr_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 3.55,
+   "y": 1,
+   "p_gp": 0.388,
+   "p_market": 0.2817,
+   "pRound_prod": 0.521,
+   "p_map_prod": 0.5478,
+   "abs_dev_prod": 0.0478,
+   "p_map_h1": 0.6535,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3275,
+    "edge_pp": 4.58,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2213,
+    "edge_pp": -6.04,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 2,
+   "y": 0,
+   "p_gp": 0.6155,
+   "p_market": 0.5,
+   "pRound_prod": 0.5769,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1747,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:envy~mibr_RONDAS_HANDICAP_away_2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 4.39,
+   "y": 0,
+   "p_gp": 0.3691,
+   "p_market": 0.2278,
+   "pRound_prod": 0.501,
+   "p_map_prod": 0.5022,
+   "abs_dev_prod": 0.0022,
+   "p_map_h1": 0.6535,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.2478,
+    "edge_pp": 2,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1657,
+    "edge_pp": -6.21,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.7,
+   "y": 0,
+   "p_gp": 0.5036,
+   "p_market": 0.3704,
+   "pRound_prod": 0.5323,
+   "p_map_prod": 0.5734,
+   "abs_dev_prod": 0.0734,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3505,
+    "edge_pp": -1.99,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3415,
+    "edge_pp": -2.89,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.86,
+   "y": 1,
+   "p_gp": 0.4752,
+   "p_market": 0.3497,
+   "pRound_prod": 0.4582,
+   "p_map_prod": 0.405,
+   "abs_dev_prod": 0.095,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3338,
+    "edge_pp": -1.59,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3472,
+    "edge_pp": -0.25,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5324,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5868,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1973,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5198,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5813,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1849,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 1,
+   "p_gp": 0.5022,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5728,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1655,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.7,
+   "y": 0,
+   "p_gp": 0.4492,
+   "p_market": 0.3704,
+   "pRound_prod": 0.5188,
+   "p_map_prod": 0.5428,
+   "abs_dev_prod": 0.0428,
+   "p_map_h1": 0.4784,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3505,
+    "edge_pp": -1.99,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3415,
+    "edge_pp": -2.89,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.39,
+   "y": 0,
+   "p_gp": 0.4689,
+   "p_market": 0.4184,
+   "pRound_prod": 0.5231,
+   "p_map_prod": 0.5524,
+   "abs_dev_prod": 0.0524,
+   "p_map_h1": 0.4575,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3387,
+    "edge_pp": -7.97,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3097,
+    "edge_pp": -10.87,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:detonationfocusme~zetadivision_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.51,
+   "y": 1,
+   "p_gp": 0.5673,
+   "p_market": 0.3984,
+   "pRound_prod": 0.5667,
+   "p_map_prod": 0.6516,
+   "abs_dev_prod": 0.1516,
+   "p_map_h1": 0.6066,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.4112,
+    "edge_pp": 1.28,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4873,
+    "edge_pp": 8.89,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:detonationfocusme~zetadivision_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.01,
+   "y": 0,
+   "p_gp": 0.4147,
+   "p_market": 0.3322,
+   "pRound_prod": 0.4895,
+   "p_map_prod": 0.4762,
+   "abs_dev_prod": 0.0238,
+   "p_map_h1": 0.6066,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.2905,
+    "edge_pp": -4.17,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2153,
+    "edge_pp": -11.69,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:detonationfocusme~zetadivision_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.37,
+   "y": 1,
+   "p_gp": 0.4999,
+   "p_market": 0.4219,
+   "pRound_prod": 0.5723,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1642,
+   "p_map_h1": 0.6066,
+   "home_won_map": 1,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_HANDICAP_away_4.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 4.5,
+   "odds": 3.74,
+   "y": 0,
+   "p_gp": 0.4008,
+   "p_market": 0.2674,
+   "pRound_prod": 0.4586,
+   "p_map_prod": 0.406,
+   "abs_dev_prod": 0.094,
+   "p_map_h1": 0.4575,
+   "home_won_map": 1,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.2943,
+    "edge_pp": 2.69,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3181,
+    "edge_pp": 5.07,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.15,
+   "y": 0,
+   "p_gp": 0.4086,
+   "p_market": 0.3175,
+   "pRound_prod": 0.577,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.175,
+   "p_map_h1": 0.4575,
+   "home_won_map": 1,
+   "real_map": "Breeze"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.39,
+   "y": 0,
+   "p_gp": 0.4689,
+   "p_market": 0.4184,
+   "pRound_prod": 0.5231,
+   "p_map_prod": 0.5524,
+   "abs_dev_prod": 0.0524,
+   "p_map_h1": 0.4575,
+   "home_won_map": 0,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.3387,
+    "edge_pp": -7.97,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3097,
+    "edge_pp": -10.87,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 3.07,
+   "y": 0,
+   "p_gp": 0.4566,
+   "p_market": 0.3257,
+   "pRound_prod": 0.4618,
+   "p_map_prod": 0.4133,
+   "abs_dev_prod": 0.0867,
+   "p_map_h1": 0.4575,
+   "home_won_map": 1,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.3552,
+    "edge_pp": 2.95,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3831,
+    "edge_pp": 5.74,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:eintrachtfrankfurt~liquid_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 3.1,
+   "y": 0,
+   "p_gp": 0.5683,
+   "p_market": 0.3226,
+   "pRound_prod": 0.4513,
+   "p_map_prod": 0.3893,
+   "abs_dev_prod": 0.1107,
+   "p_map_h1": 0.5316,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.348,
+    "edge_pp": 2.54,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3265,
+    "edge_pp": 0.39,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:eintrachtfrankfurt~liquid_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.12,
+   "y": 1,
+   "p_gp": 0.434,
+   "p_market": 0.3205,
+   "pRound_prod": 0.5895,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2035,
+   "p_map_h1": 0.5316,
+   "home_won_map": 1,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fireflux~vitality_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.89,
+   "y": 1,
+   "p_gp": 0.5111,
+   "p_market": 0.346,
+   "pRound_prod": 0.4906,
+   "p_map_prod": 0.4785,
+   "abs_dev_prod": 0.0215,
+   "p_map_h1": 0.8198,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.1715,
+    "edge_pp": -17.45,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.0601,
+    "edge_pp": -28.59,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bestia~g2_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 3.08,
+   "y": 0,
+   "p_gp": 0.5335,
+   "p_market": 0.3247,
+   "pRound_prod": 0.486,
+   "p_map_prod": 0.4682,
+   "abs_dev_prod": 0.0318,
+   "p_map_h1": 0.6926,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.2887,
+    "edge_pp": -3.6,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1738,
+    "edge_pp": -15.09,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bestia~g2_RONDAS_HANDICAP_away_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -3.5,
+   "odds": 1.8475,
+   "y": 0,
+   "p_gp": 0.6483,
+   "p_market": 0.5413,
+   "pRound_prod": 0.51,
+   "p_map_prod": 0.5228,
+   "abs_dev_prod": 0.0228,
+   "p_map_h1": 0.6926,
+   "home_won_map": 1,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.5132,
+    "edge_pp": -2.81,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3642,
+    "edge_pp": -17.71,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:kru~sentinels_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.38,
+   "y": 1,
+   "p_gp": 0.5544,
+   "p_market": 0.4202,
+   "pRound_prod": 0.5182,
+   "p_map_prod": 0.5414,
+   "abs_dev_prod": 0.0414,
+   "p_map_h1": 0.4152,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3913,
+    "edge_pp": -2.89,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3286,
+    "edge_pp": -9.16,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bestia~g2_RONDAS_HANDICAP_away_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.25,
+   "y": 0,
+   "p_gp": 0.5798,
+   "p_market": 0.4444,
+   "pRound_prod": 0.5109,
+   "p_map_prod": 0.5248,
+   "abs_dev_prod": 0.0248,
+   "p_map_h1": 0.6926,
+   "home_won_map": 1,
+   "real_map": "Breeze",
+   "corr": {
+    "p": 0.4416,
+    "edge_pp": -0.28,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2958,
+    "edge_pp": -14.86,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bestia~g2_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.19,
+   "y": 0,
+   "p_gp": 0.6698,
+   "p_market": 0.4566,
+   "pRound_prod": 0.4867,
+   "p_map_prod": 0.4699,
+   "abs_dev_prod": 0.0301,
+   "p_map_h1": 0.6926,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.4416,
+    "edge_pp": -1.5,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2958,
+    "edge_pp": -16.08,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bestia~g2_RONDAS_over_20.5_2",
+   "family": "RONDAS",
+   "side": "over",
+   "team": null,
+   "line": 20.5,
+   "odds": 1.833333,
+   "y": 0,
+   "p_gp": 0.5855,
+   "p_market": 0.5455,
+   "pRound_prod": 0.5244,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.0553,
+   "p_map_h1": 0.6926,
+   "home_won_map": 1,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:kru~sentinels_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.741,
+   "y": 1,
+   "p_gp": 0.6801,
+   "p_market": 0.5744,
+   "pRound_prod": 0.5152,
+   "p_map_prod": 0.5345,
+   "abs_dev_prod": 0.0345,
+   "p_map_h1": 0.4152,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.5472,
+    "edge_pp": -2.72,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4788,
+    "edge_pp": -9.56,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:kru~sentinels_RONDAS_HANDICAP_home_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.7813,
+   "y": 1,
+   "p_gp": 0.6001,
+   "p_market": 0.5614,
+   "pRound_prod": 0.4929,
+   "p_map_prod": 0.4839,
+   "abs_dev_prod": 0.0161,
+   "p_map_h1": 0.4152,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.5472,
+    "edge_pp": -1.42,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4788,
+    "edge_pp": -8.26,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:kru~sentinels_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.741,
+   "y": 1,
+   "p_gp": 0.6801,
+   "p_market": 0.5744,
+   "pRound_prod": 0.5152,
+   "p_map_prod": 0.5345,
+   "abs_dev_prod": 0.0345,
+   "p_map_h1": 0.4152,
+   "home_won_map": 1,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.5472,
+    "edge_pp": -2.72,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4788,
+    "edge_pp": -9.56,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:kru~sentinels_RONDAS_HANDICAP_home_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.7813,
+   "y": 1,
+   "p_gp": 0.6001,
+   "p_market": 0.5614,
+   "pRound_prod": 0.4929,
+   "p_map_prod": 0.4839,
+   "abs_dev_prod": 0.0161,
+   "p_map_h1": 0.4152,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.5472,
+    "edge_pp": -1.42,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4788,
+    "edge_pp": -8.26,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.97,
+   "y": 1,
+   "p_gp": 0.4329,
+   "p_market": 0.3367,
+   "pRound_prod": 0.5144,
+   "p_map_prod": 0.5328,
+   "abs_dev_prod": 0.0328,
+   "p_map_h1": 0.429,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3148,
+    "edge_pp": -2.19,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2674,
+    "edge_pp": -6.93,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 2.51,
+   "y": 0,
+   "p_gp": 0.4864,
+   "p_market": 0.3984,
+   "pRound_prod": 0.4555,
+   "p_map_prod": 0.399,
+   "abs_dev_prod": 0.101,
+   "p_map_h1": 0.429,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3808,
+    "edge_pp": -1.76,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4293,
+    "edge_pp": 3.09,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.36,
+   "y": 0,
+   "p_gp": 0.5042,
+   "p_market": 0.4237,
+   "pRound_prod": 0.5733,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1665,
+   "p_map_h1": 0.429,
+   "home_won_map": 1,
+   "real_map": "Split"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_HANDICAP_away_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.741,
+   "y": 0,
+   "p_gp": 0.7251,
+   "p_market": 0.5744,
+   "pRound_prod": 0.4705,
+   "p_map_prod": 0.4329,
+   "abs_dev_prod": 0.0671,
+   "p_map_h1": 0.3767,
+   "home_won_map": 1,
+   "real_map": "Sunset",
+   "corr": {
+    "p": 0.7293,
+    "edge_pp": 15.49,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.8036,
+    "edge_pp": 22.92,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_HANDICAP_away_-2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.741,
+   "y": 1,
+   "p_gp": 0.7183,
+   "p_market": 0.5744,
+   "pRound_prod": 0.4724,
+   "p_map_prod": 0.4372,
+   "abs_dev_prod": 0.0628,
+   "p_map_h1": 0.3767,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.7293,
+    "edge_pp": 15.49,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.8036,
+    "edge_pp": 22.92,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6121,
+   "p_market": 0.5348,
+   "pRound_prod": 0.5758,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1722,
+   "p_map_h1": 0.3767,
+   "home_won_map": 1,
+   "real_map": "Sunset"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 1,
+   "p_gp": 0.6271,
+   "p_market": 0.5348,
+   "pRound_prod": 0.581,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.184,
+   "p_map_h1": 0.3767,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.7,
+   "y": 1,
+   "p_gp": 0.6202,
+   "p_market": 0.3704,
+   "pRound_prod": 0.438,
+   "p_map_prod": 0.359,
+   "abs_dev_prod": 0.141,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.4008,
+    "edge_pp": 3.04,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4205,
+    "edge_pp": 5.01,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.75,
+   "y": 0,
+   "p_gp": 0.4563,
+   "p_market": 0.3636,
+   "pRound_prod": 0.5398,
+   "p_map_prod": 0.5904,
+   "abs_dev_prod": 0.0904,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.2868,
+    "edge_pp": -7.68,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2781,
+    "edge_pp": -8.55,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 1,
+   "p_gp": 0.5033,
+   "p_market": 0.4167,
+   "pRound_prod": 0.5731,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1662,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 0,
+   "p_gp": 0.4858,
+   "p_market": 0.4149,
+   "pRound_prod": 0.566,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1499,
+   "p_map_h1": 0.4736,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.76,
+   "y": 0,
+   "p_gp": 0.6448,
+   "p_market": 0.3623,
+   "pRound_prod": 0.5692,
+   "p_map_prod": 0.6573,
+   "abs_dev_prod": 0.1573,
+   "p_map_h1": 0.5461,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.4153,
+    "edge_pp": 5.3,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.457,
+    "edge_pp": 9.47,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.4997,
+   "p_market": 0.4167,
+   "pRound_prod": 0.5723,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1642,
+   "p_map_h1": 0.5461,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.17,
+   "y": 0,
+   "p_gp": 0.3765,
+   "p_market": 0.3155,
+   "pRound_prod": 0.5635,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1442,
+   "p_map_h1": 0.5461,
+   "home_won_map": 1,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.71,
+   "y": 1,
+   "p_gp": 0.5373,
+   "p_market": 0.369,
+   "pRound_prod": 0.4586,
+   "p_map_prod": 0.406,
+   "abs_dev_prod": 0.094,
+   "p_map_h1": 0.5057,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3722,
+    "edge_pp": 0.32,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3628,
+    "edge_pp": -0.62,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.83,
+   "y": 0,
+   "p_gp": 0.4662,
+   "p_market": 0.3534,
+   "pRound_prod": 0.5417,
+   "p_map_prod": 0.5947,
+   "abs_dev_prod": 0.0947,
+   "p_map_h1": 0.5057,
+   "home_won_map": 0,
+   "real_map": "Ascent",
+   "corr": {
+    "p": 0.3138,
+    "edge_pp": -3.96,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3178,
+    "edge_pp": -3.56,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.41,
+   "y": 1,
+   "p_gp": 0.5176,
+   "p_market": 0.4149,
+   "pRound_prod": 0.5783,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1779,
+   "p_map_h1": 0.5057,
+   "home_won_map": 0,
+   "real_map": "Ascent"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.42,
+   "y": 0,
+   "p_gp": 0.5049,
+   "p_market": 0.4132,
+   "pRound_prod": 0.5734,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1667,
+   "p_map_h1": 0.5057,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.09,
+   "y": 0,
+   "p_gp": 0.647,
+   "p_market": 0.4785,
+   "pRound_prod": 0.5409,
+   "p_map_prod": 0.5931,
+   "abs_dev_prod": 0.0931,
+   "p_map_h1": 0.4946,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4716,
+    "edge_pp": -0.69,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4723,
+    "edge_pp": -0.62,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_HANDICAP_away_5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 4.32,
+   "y": 0,
+   "p_gp": 0.303,
+   "p_market": 0.2315,
+   "pRound_prod": 0.4649,
+   "p_map_prod": 0.4203,
+   "abs_dev_prod": 0.0797,
+   "p_map_h1": 0.4946,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.2117,
+    "edge_pp": -1.98,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2111,
+    "edge_pp": -2.04,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.18,
+   "y": 1,
+   "p_gp": 0.3835,
+   "p_market": 0.3145,
+   "pRound_prod": 0.5662,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1504,
+   "p_map_h1": 0.4946,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.23,
+   "y": 0,
+   "p_gp": 0.7458,
+   "p_market": 0.4484,
+   "pRound_prod": 0.5676,
+   "p_map_prod": 0.6536,
+   "abs_dev_prod": 0.1536,
+   "p_map_h1": 0.5461,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.5207,
+    "edge_pp": 7.23,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.5648,
+    "edge_pp": 11.64,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.645161,
+   "y": 0,
+   "p_gp": 0.8341,
+   "p_market": 0.6078,
+   "pRound_prod": 0.5676,
+   "p_map_prod": 0.6536,
+   "abs_dev_prod": 0.1536,
+   "p_map_h1": 0.5461,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.6622,
+    "edge_pp": 5.44,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6969,
+    "edge_pp": 8.91,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_21.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 21.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6069,
+   "p_market": 0.5348,
+   "pRound_prod": 0.573,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1659,
+   "p_map_h1": 0.5461,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.588235,
+   "y": 0,
+   "p_gp": 0.7637,
+   "p_market": 0.6296,
+   "pRound_prod": 0.5393,
+   "p_map_prod": 0.5894,
+   "abs_dev_prod": 0.0894,
+   "p_map_h1": 0.4946,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.6179,
+    "edge_pp": -1.17,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.6183,
+    "edge_pp": -1.13,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_HANDICAP_home_2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": 2.5,
+   "odds": 1.7463,
+   "y": 1,
+   "p_gp": 0.6693,
+   "p_market": 0.5726,
+   "pRound_prod": 0.5118,
+   "p_map_prod": 0.5268,
+   "abs_dev_prod": 0.0268,
+   "p_map_h1": 0.429,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.5545,
+    "edge_pp": -1.81,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.5017,
+    "edge_pp": -7.09,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:fluxo~kru_RONDAS_HANDICAP_away_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": -2.5,
+   "odds": 1.87,
+   "y": 0,
+   "p_gp": 0.6689,
+   "p_market": 0.5348,
+   "pRound_prod": 0.4869,
+   "p_map_prod": 0.4702,
+   "abs_dev_prod": 0.0298,
+   "p_map_h1": 0.706,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4268,
+    "edge_pp": -10.8,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2738,
+    "edge_pp": -26.1,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_EQUIPO_under_12.5_3",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.7,
+   "y": 1,
+   "p_gp": 0.4971,
+   "p_market": 0.3704,
+   "pRound_prod": 0.5045,
+   "p_map_prod": 0.5102,
+   "abs_dev_prod": 0.0102,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.4577,
+    "edge_pp": 8.73,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4474,
+    "edge_pp": 7.7,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_HANDICAP_home_-4.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -4.5,
+   "odds": 5.68,
+   "y": 0,
+   "p_gp": 0.2696,
+   "p_market": 0.1761,
+   "pRound_prod": 0.5061,
+   "p_map_prod": 0.5138,
+   "abs_dev_prod": 0.0138,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.2327,
+    "edge_pp": 5.66,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.2263,
+    "edge_pp": 5.02,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 1.8547,
+   "y": 0,
+   "p_gp": 0.6187,
+   "p_market": 0.5392,
+   "pRound_prod": 0.5329,
+   "p_map_prod": 0.5747,
+   "abs_dev_prod": 0.0747,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.4408,
+    "edge_pp": -9.84,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4153,
+    "edge_pp": -12.39,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_HANDICAP_home_-3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 4.93,
+   "y": 0,
+   "p_gp": 0.31,
+   "p_market": 0.2028,
+   "pRound_prod": 0.4992,
+   "p_map_prod": 0.4982,
+   "abs_dev_prod": 0.0018,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.2901,
+    "edge_pp": 8.73,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.2833,
+    "edge_pp": 8.05,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_HANDICAP_away_4.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 4.5,
+   "odds": 5.42,
+   "y": 0,
+   "p_gp": 0.2928,
+   "p_market": 0.1845,
+   "pRound_prod": 0.4892,
+   "p_map_prod": 0.4755,
+   "abs_dev_prod": 0.0245,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.209,
+    "edge_pp": 2.45,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1658,
+    "edge_pp": -1.87,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_19.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 2.98,
+   "y": 0,
+   "p_gp": 0.4363,
+   "p_market": 0.3356,
+   "pRound_prod": 0.5901,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2047,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_18.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 18.5,
+   "odds": 4.07,
+   "y": 0,
+   "p_gp": 0.3521,
+   "p_market": 0.2457,
+   "pRound_prod": 0.5955,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.217,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_HANDICAP_away_5.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 5.5,
+   "odds": 6.54,
+   "y": 0,
+   "p_gp": 0.2554,
+   "p_market": 0.1529,
+   "pRound_prod": 0.4809,
+   "p_map_prod": 0.4566,
+   "abs_dev_prod": 0.0434,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.1617,
+    "edge_pp": 0.88,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1276,
+    "edge_pp": -2.53,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:fluxow7m~kru_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.69,
+   "y": 0,
+   "p_gp": 0.5289,
+   "p_market": 0.3717,
+   "pRound_prod": 0.487,
+   "p_map_prod": 0.4705,
+   "abs_dev_prod": 0.0295,
+   "p_map_h1": 0.706,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.2767,
+    "edge_pp": -9.5,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1588,
+    "edge_pp": -21.29,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:xipto~zetadivision_RONDAS_under_20.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 20.5,
+   "odds": 2.4,
+   "y": 0,
+   "p_gp": 0.5705,
+   "p_market": 0.4167,
+   "pRound_prod": 0.5989,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2248,
+   "p_map_h1": 0.6078,
+   "home_won_map": 1,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:xipto~zetadivision_RONDAS_HANDICAP_away_2.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 2.5,
+   "odds": 2.81,
+   "y": 1,
+   "p_gp": 0.4474,
+   "p_market": 0.3559,
+   "pRound_prod": 0.4815,
+   "p_map_prod": 0.4579,
+   "abs_dev_prod": 0.0421,
+   "p_map_h1": 0.6078,
+   "home_won_map": 0,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.2892,
+    "edge_pp": -6.67,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.2139,
+    "edge_pp": -14.2,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:xipto~zetadivision_RONDAS_HANDICAP_home_-3.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -3.5,
+   "odds": 2.63,
+   "y": 0,
+   "p_gp": 0.4557,
+   "p_market": 0.3802,
+   "pRound_prod": 0.5398,
+   "p_map_prod": 0.5904,
+   "abs_dev_prod": 0.0904,
+   "p_map_h1": 0.6078,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.4113,
+    "edge_pp": 3.11,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.4892,
+    "edge_pp": 10.9,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.65,
+   "y": 0,
+   "p_gp": 0.5501,
+   "p_market": 0.274,
+   "pRound_prod": 0.5446,
+   "p_map_prod": 0.6014,
+   "abs_dev_prod": 0.1014,
+   "p_map_h1": 0.4814,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3513,
+    "edge_pp": 7.73,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.3448,
+    "edge_pp": 7.08,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_18.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 18.5,
+   "odds": 4.02,
+   "y": 0,
+   "p_gp": 0.4027,
+   "p_market": 0.2488,
+   "pRound_prod": 0.6109,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2519,
+   "p_map_h1": 0.4814,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.71,
+   "y": 1,
+   "p_gp": 0.425,
+   "p_market": 0.369,
+   "pRound_prod": 0.4867,
+   "p_map_prod": 0.4699,
+   "abs_dev_prod": 0.0301,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.4577,
+    "edge_pp": 8.87,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4474,
+    "edge_pp": 7.84,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_18.5_1",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 18.5,
+   "odds": 4.32,
+   "y": 0,
+   "p_gp": 0.4492,
+   "p_market": 0.2315,
+   "pRound_prod": 0.6251,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2842,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Haven"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_HANDICAP_home_-6.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -6.5,
+   "odds": 5.12,
+   "y": 0,
+   "p_gp": 0.3774,
+   "p_market": 0.1953,
+   "pRound_prod": 0.5821,
+   "p_map_prod": 0.6866,
+   "abs_dev_prod": 0.1866,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.1283,
+    "edge_pp": -6.7,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1173,
+    "edge_pp": -7.8,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.24,
+   "y": 1,
+   "p_gp": 0.5336,
+   "p_market": 0.4464,
+   "pRound_prod": 0.486,
+   "p_map_prod": 0.4682,
+   "abs_dev_prod": 0.0318,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.5123,
+    "edge_pp": 6.59,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.5412,
+    "edge_pp": 9.48,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_EQUIPO_under_12.5_2",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.6,
+   "y": 0,
+   "p_gp": 0.658,
+   "p_market": 0.3846,
+   "pRound_prod": 0.4555,
+   "p_map_prod": 0.399,
+   "abs_dev_prod": 0.101,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Split",
+   "corr": {
+    "p": 0.3987,
+    "edge_pp": 1.41,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.33,
+    "edge_pp": -5.46,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "home",
+   "line": 12.5,
+   "odds": 2.65,
+   "y": 0,
+   "p_gp": 0.4724,
+   "p_market": 0.3774,
+   "pRound_prod": 0.4999,
+   "p_map_prod": 0.4998,
+   "abs_dev_prod": 0.0002,
+   "p_map_h1": 0.5812,
+   "home_won_map": 1,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.3987,
+    "edge_pp": 2.13,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.33,
+    "edge_pp": -4.74,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_EQUIPO_under_12.5_1",
+   "family": "RONDAS_EQUIPO",
+   "side": "under",
+   "team": "away",
+   "line": 12.5,
+   "odds": 2.75,
+   "y": 0,
+   "p_gp": 0.656,
+   "p_market": 0.3636,
+   "pRound_prod": 0.5437,
+   "p_map_prod": 0.5994,
+   "abs_dev_prod": 0.0994,
+   "p_map_h1": 0.4814,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.4577,
+    "edge_pp": 9.41,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.4474,
+    "edge_pp": 8.38,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_HANDICAP_home_-2.5_3",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 3.36,
+   "y": 1,
+   "p_gp": 0.4048,
+   "p_market": 0.2976,
+   "pRound_prod": 0.5075,
+   "p_map_prod": 0.5171,
+   "abs_dev_prod": 0.0171,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Lotus",
+   "corr": {
+    "p": 0.3513,
+    "edge_pp": 5.37,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3448,
+    "edge_pp": 4.72,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_HANDICAP_home_-5.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -5.5,
+   "odds": 6.83,
+   "y": 0,
+   "p_gp": 0.2281,
+   "p_market": 0.1464,
+   "pRound_prod": 0.5116,
+   "p_map_prod": 0.5265,
+   "abs_dev_prod": 0.0265,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Abyss",
+   "corr": {
+    "p": 0.1825,
+    "edge_pp": 3.61,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.1778,
+    "edge_pp": 3.14,
+    "nace": false
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3,
+   "y": 0,
+   "p_gp": 0.4011,
+   "p_market": 0.3333,
+   "pRound_prod": 0.5739,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1679,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Abyss"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_3",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.06,
+   "y": 1,
+   "p_gp": 0.3935,
+   "p_market": 0.3268,
+   "pRound_prod": 0.5718,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.1632,
+   "p_map_h1": 0.4814,
+   "home_won_map": 1,
+   "real_map": "Lotus"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_HANDICAP_away_3.5_2",
+   "family": "RONDAS_HANDICAP",
+   "side": "away",
+   "team": null,
+   "line": 3.5,
+   "odds": 3.45,
+   "y": 0,
+   "p_gp": 0.5482,
+   "p_market": 0.2899,
+   "pRound_prod": 0.4391,
+   "p_map_prod": 0.3617,
+   "abs_dev_prod": 0.1383,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Summit",
+   "corr": {
+    "p": 0.3475,
+    "edge_pp": 5.76,
+    "nace": true
+   },
+   "actual_h1": {
+    "p": 0.3761,
+    "edge_pp": 8.62,
+    "nace": true
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_19.5_2",
+   "family": "RONDAS",
+   "side": "under",
+   "team": null,
+   "line": 19.5,
+   "odds": 3.16,
+   "y": 0,
+   "p_gp": 0.4509,
+   "p_market": 0.3165,
+   "pRound_prod": 0.5936,
+   "p_map_prod": null,
+   "abs_dev_prod": 0.2127,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Summit"
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_HANDICAP_home_-2.5_1",
+   "family": "RONDAS_HANDICAP",
+   "side": "home",
+   "team": null,
+   "line": -2.5,
+   "odds": 2.25,
+   "y": 0,
+   "p_gp": 0.5084,
+   "p_market": 0.4444,
+   "pRound_prod": 0.5344,
+   "p_map_prod": 0.5781,
+   "abs_dev_prod": 0.0781,
+   "p_map_h1": 0.4635,
+   "home_won_map": 0,
+   "real_map": "Haven",
+   "corr": {
+    "p": 0.3413,
+    "edge_pp": -10.31,
+    "nace": false
+   },
+   "actual_h1": {
+    "p": 0.3204,
+    "edge_pp": -12.4,
+    "nace": false
+   }
+  }
+ ]
+}

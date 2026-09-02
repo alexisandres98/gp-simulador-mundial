@@ -1,0 +1,3665 @@
+{
+ "at": "2026-09-02T11:12:01.346Z",
+ "n_unders": 80,
+ "sin_rating": 0,
+ "resumen": {
+  "original": {
+   "n": 80,
+   "nacen": 80,
+   "win": 28,
+   "roi_pct": -14.63,
+   "p_under_medio": 0.4957,
+   "brier_p_under": 0.2398,
+   "edge_medio_pp": 9.41,
+   "brier_mercado_bruto": 0.2208
+  },
+  "actual_circuito": {
+   "n": 80,
+   "nacen": 14,
+   "win": 2,
+   "roi_pct": -66.43,
+   "p_under_medio": 0.423,
+   "brier_p_under": 0.2348,
+   "edge_medio_pp": 2.15,
+   "mean_rounds_medio": 20.97
+  },
+  "corregido_circuito": {
+   "n": 80,
+   "nacen": 1,
+   "win": 0,
+   "roi_pct": -100,
+   "p_under_medio": 0.3976,
+   "brier_p_under": 0.2216,
+   "edge_medio_pp": -0.39,
+   "mean_rounds_medio": 21.18
+  },
+  "actual_mapa_real": {
+   "n": 69,
+   "nacen": 8,
+   "win": 1,
+   "roi_pct": -71.5,
+   "p_under_medio": 0.4016,
+   "brier_p_under": 0.2333,
+   "edge_medio_pp": 0,
+   "mean_rounds_medio": 21.15
+  },
+  "corregido_mapa_real": {
+   "n": 69,
+   "nacen": 2,
+   "win": 0,
+   "roi_pct": -100,
+   "p_under_medio": 0.3814,
+   "brier_p_under": 0.2262,
+   "edge_medio_pp": -2.02,
+   "mean_rounds_medio": 21.31
+  }
+ },
+ "picks": [
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_2",
+   "home": "LOUD",
+   "away": "MIBR",
+   "map": 2,
+   "real_map": "Sunset",
+   "real_total": 23,
+   "line": 19.5,
+   "odds": 3.05,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4476,
+   "edge_orig": 11.97,
+   "p_market": 0.3279,
+   "y": 0,
+   "p_map_h1": 0.3406,
+   "unc": 5.76,
+   "calpp": 3.46,
+   "actual_circuito": {
+    "p_under": 0.3943,
+    "edge_pp": 6.64,
+    "nace": true,
+    "mean_rounds": 20.52,
+    "pRound": 0.4299
+   },
+   "corregido_circuito": {
+    "p_under": 0.3367,
+    "edge_pp": 0.88,
+    "nace": false,
+    "mean_rounds": 21.06,
+    "pRound": 0.4617
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3491,
+    "edge_pp": 2.12,
+    "nace": false,
+    "mean_rounds": 20.87,
+    "pRound": 0.4299
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2993,
+    "edge_pp": -2.86,
+    "nace": false,
+    "mean_rounds": 21.3,
+    "pRound": 0.4615
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-31:loud~mibr_RONDAS_under_19.5_1",
+   "home": "LOUD",
+   "away": "MIBR",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 23,
+   "line": 19.5,
+   "odds": 3.05,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3907,
+   "edge_orig": 6.28,
+   "p_market": 0.3279,
+   "y": 0,
+   "p_map_h1": 0.3406,
+   "unc": 5.58,
+   "calpp": 3.14,
+   "actual_circuito": {
+    "p_under": 0.3943,
+    "edge_pp": 6.64,
+    "nace": true,
+    "mean_rounds": 20.52,
+    "pRound": 0.4299
+   },
+   "corregido_circuito": {
+    "p_under": 0.3367,
+    "edge_pp": 0.88,
+    "nace": false,
+    "mean_rounds": 21.06,
+    "pRound": 0.4617
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4324,
+    "edge_pp": 10.45,
+    "nace": true,
+    "mean_rounds": 20.23,
+    "pRound": 0.4299
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.361,
+    "edge_pp": 3.31,
+    "nace": false,
+    "mean_rounds": 20.83,
+    "pRound": 0.4619
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_1",
+   "home": "Leviatan",
+   "away": "G2",
+   "map": 1,
+   "real_map": "Split",
+   "real_total": 23,
+   "line": 19.5,
+   "odds": 3.16,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4464,
+   "edge_orig": 12.99,
+   "p_market": 0.3165,
+   "y": 0,
+   "p_map_h1": 0.6404,
+   "unc": 4.94,
+   "calpp": 1.77,
+   "actual_circuito": {
+    "p_under": 0.3723,
+    "edge_pp": 5.58,
+    "nace": true,
+    "mean_rounds": 20.73,
+    "pRound": 0.5618
+   },
+   "corregido_circuito": {
+    "p_under": 0.3227,
+    "edge_pp": 0.62,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5341
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3974,
+    "edge_pp": 8.09,
+    "nace": true,
+    "mean_rounds": 20.5,
+    "pRound": 0.5618
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3425,
+    "edge_pp": 2.6,
+    "nace": false,
+    "mean_rounds": 20.95,
+    "pRound": 0.5334
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_2",
+   "home": "Leviatan",
+   "away": "G2",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 22,
+   "line": 19.5,
+   "odds": 3.16,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4402,
+   "edge_orig": 12.37,
+   "p_market": 0.3165,
+   "y": 0,
+   "p_map_h1": 0.6404,
+   "unc": 6.08,
+   "calpp": 3.96,
+   "actual_circuito": {
+    "p_under": 0.3723,
+    "edge_pp": 5.58,
+    "nace": true,
+    "mean_rounds": 20.73,
+    "pRound": 0.5618
+   },
+   "corregido_circuito": {
+    "p_under": 0.3227,
+    "edge_pp": 0.62,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5341
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_2",
+   "home": "Leviatan",
+   "away": "G2",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 22,
+   "line": 21.5,
+   "odds": 1.833333,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6337,
+   "edge_orig": 8.82,
+   "p_market": 0.5455,
+   "y": 0,
+   "p_map_h1": 0.6404,
+   "unc": 6.15,
+   "calpp": 4.07,
+   "actual_circuito": {
+    "p_under": 0.5832,
+    "edge_pp": 3.77,
+    "nace": false,
+    "mean_rounds": 20.73,
+    "pRound": 0.5618
+   },
+   "corregido_circuito": {
+    "p_under": 0.5342,
+    "edge_pp": -1.13,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5341
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_21.5_1",
+   "home": "Leviatan",
+   "away": "G2",
+   "map": 1,
+   "real_map": "Split",
+   "real_total": 23,
+   "line": 21.5,
+   "odds": 1.833333,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6257,
+   "edge_orig": 8.02,
+   "p_market": 0.5455,
+   "y": 0,
+   "p_map_h1": 0.6404,
+   "unc": 4.96,
+   "calpp": 1.84,
+   "actual_circuito": {
+    "p_under": 0.5832,
+    "edge_pp": 3.77,
+    "nace": false,
+    "mean_rounds": 20.73,
+    "pRound": 0.5618
+   },
+   "corregido_circuito": {
+    "p_under": 0.5342,
+    "edge_pp": -1.13,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5341
+   },
+   "actual_mapa_real": {
+    "p_under": 0.6049,
+    "edge_pp": 5.94,
+    "nace": true,
+    "mean_rounds": 20.5,
+    "pRound": 0.5618
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5491,
+    "edge_pp": 0.36,
+    "nace": false,
+    "mean_rounds": 20.95,
+    "pRound": 0.5334
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:g2~leviatan_RONDAS_under_19.5_3",
+   "home": "Leviatan",
+   "away": "G2",
+   "map": 3,
+   "real_map": "Summit",
+   "real_total": 21,
+   "line": 19.5,
+   "odds": 3.17,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.419,
+   "edge_orig": 10.35,
+   "p_market": 0.3155,
+   "y": 0,
+   "p_map_h1": 0.6404,
+   "unc": 6.96,
+   "calpp": 5.21,
+   "actual_circuito": {
+    "p_under": 0.3723,
+    "edge_pp": 5.68,
+    "nace": true,
+    "mean_rounds": 20.73,
+    "pRound": 0.5618
+   },
+   "corregido_circuito": {
+    "p_under": 0.3227,
+    "edge_pp": 0.72,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5341
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2734,
+    "edge_pp": -4.21,
+    "nace": false,
+    "mean_rounds": 21.54,
+    "pRound": 0.5618
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2222,
+    "edge_pp": -9.33,
+    "nace": false,
+    "mean_rounds": 21.95,
+    "pRound": 0.5336
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_21.5_4",
+   "home": "Liquid",
+   "away": "Karmine Corp",
+   "map": 4,
+   "real_map": "Summit",
+   "real_total": 23,
+   "line": 21.5,
+   "odds": 1.909091,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6138,
+   "edge_orig": 9,
+   "p_market": 0.5238,
+   "y": 0,
+   "p_map_h1": 0.4674,
+   "unc": 5.65,
+   "calpp": 3.27,
+   "actual_circuito": {
+    "p_under": 0.5219,
+    "edge_pp": -0.19,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4856
+   },
+   "corregido_circuito": {
+    "p_under": 0.5131,
+    "edge_pp": -1.07,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4934
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4268,
+    "edge_pp": -9.7,
+    "nace": false,
+    "mean_rounds": 22.1,
+    "pRound": 0.4856
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4237,
+    "edge_pp": -10.01,
+    "nace": false,
+    "mean_rounds": 22.09,
+    "pRound": 0.4916
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_20.5_1",
+   "home": "Liquid",
+   "away": "Karmine Corp",
+   "map": 1,
+   "real_map": "Sunset",
+   "real_total": 20,
+   "line": 20.5,
+   "odds": 2.39,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4906,
+   "edge_orig": 7.22,
+   "p_market": 0.4184,
+   "y": 1,
+   "p_map_h1": 0.4674,
+   "unc": 4.78,
+   "calpp": 1.27,
+   "actual_circuito": {
+    "p_under": 0.4091,
+    "edge_pp": -0.93,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4856
+   },
+   "corregido_circuito": {
+    "p_under": 0.4043,
+    "edge_pp": -1.41,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4934
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3812,
+    "edge_pp": -3.72,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4856
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3798,
+    "edge_pp": -3.86,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4934
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_2",
+   "home": "Liquid",
+   "away": "Karmine Corp",
+   "map": 2,
+   "real_map": "Ascent",
+   "real_total": 19,
+   "line": 19.5,
+   "odds": 3.17,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3763,
+   "edge_orig": 6.08,
+   "p_market": 0.3155,
+   "y": 1,
+   "p_map_h1": 0.4674,
+   "unc": 4.98,
+   "calpp": 1.89,
+   "actual_circuito": {
+    "p_under": 0.3078,
+    "edge_pp": -0.77,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4856
+   },
+   "corregido_circuito": {
+    "p_under": 0.3082,
+    "edge_pp": -0.73,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4934
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2914,
+    "edge_pp": -2.41,
+    "nace": false,
+    "mean_rounds": 21.36,
+    "pRound": 0.4856
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2917,
+    "edge_pp": -2.38,
+    "nace": false,
+    "mean_rounds": 21.34,
+    "pRound": 0.4921
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:karminecorp~liquid_RONDAS_under_19.5_1",
+   "home": "Liquid",
+   "away": "Karmine Corp",
+   "map": 1,
+   "real_map": "Sunset",
+   "real_total": 20,
+   "line": 19.5,
+   "odds": 3.15,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3882,
+   "edge_orig": 7.07,
+   "p_market": 0.3175,
+   "y": 0,
+   "p_map_h1": 0.4674,
+   "unc": 4.76,
+   "calpp": 1.2,
+   "actual_circuito": {
+    "p_under": 0.3078,
+    "edge_pp": -0.97,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4856
+   },
+   "corregido_circuito": {
+    "p_under": 0.3082,
+    "edge_pp": -0.93,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4934
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2801,
+    "edge_pp": -3.74,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4856
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.28,
+    "edge_pp": -3.75,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4934
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-30:evilgeniuses~mibr_RONDAS_under_18.5_2",
+   "home": "MIBR",
+   "away": "Evil Geniuses",
+   "map": 2,
+   "real_map": "Sunset",
+   "real_total": 23,
+   "line": 18.5,
+   "odds": 3.76,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4037,
+   "edge_orig": 13.77,
+   "p_market": 0.266,
+   "y": 0,
+   "p_map_h1": 0.655,
+   "unc": 9.16,
+   "calpp": 7.92,
+   "actual_circuito": {
+    "p_under": 0.2859,
+    "edge_pp": 1.99,
+    "nace": false,
+    "mean_rounds": 20.6,
+    "pRound": 0.5682
+   },
+   "corregido_circuito": {
+    "p_under": 0.2321,
+    "edge_pp": -3.39,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.5378
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2852,
+    "edge_pp": 1.92,
+    "nace": false,
+    "mean_rounds": 20.65,
+    "pRound": 0.5682
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2288,
+    "edge_pp": -3.72,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5372
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_21.5_1",
+   "home": "FUT Esports",
+   "away": "Team Liquid",
+   "map": 1,
+   "real_map": "Split",
+   "real_total": 18,
+   "line": 21.5,
+   "odds": 2,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.582,
+   "edge_orig": 8.2,
+   "p_market": 0.5,
+   "y": 1,
+   "p_map_h1": 0.5365,
+   "unc": 4.67,
+   "calpp": 0.75,
+   "actual_circuito": {
+    "p_under": 0.52,
+    "edge_pp": 2,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5161
+   },
+   "corregido_circuito": {
+    "p_under": 0.5152,
+    "edge_pp": 1.52,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5095
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5339,
+    "edge_pp": 3.39,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.5161
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5319,
+    "edge_pp": 3.19,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5084
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_20.5_3",
+   "home": "FUT",
+   "away": "Liquid",
+   "map": 3,
+   "real_map": "Lotus",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.41,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4876,
+   "edge_orig": 7.27,
+   "p_market": 0.4149,
+   "y": 0,
+   "p_map_h1": 0.5365,
+   "unc": 5.31,
+   "calpp": 2.63,
+   "actual_circuito": {
+    "p_under": 0.4103,
+    "edge_pp": -0.46,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5161
+   },
+   "corregido_circuito": {
+    "p_under": 0.4048,
+    "edge_pp": -1.01,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5095
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4242,
+    "edge_pp": 0.93,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5161
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4168,
+    "edge_pp": 0.19,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5079
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_1",
+   "home": "FUT",
+   "away": "Liquid",
+   "map": 1,
+   "real_map": "Split",
+   "real_total": 18,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4325,
+   "edge_orig": 11.8,
+   "p_market": 0.3145,
+   "y": 1,
+   "p_map_h1": 0.5365,
+   "unc": 5.9,
+   "calpp": 3.69,
+   "actual_circuito": {
+    "p_under": 0.3081,
+    "edge_pp": -0.64,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5161
+   },
+   "corregido_circuito": {
+    "p_under": 0.3062,
+    "edge_pp": -0.83,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5095
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3213,
+    "edge_pp": 0.68,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.5161
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3222,
+    "edge_pp": 0.77,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5084
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:fut~liquid_RONDAS_under_19.5_3",
+   "home": "FUT",
+   "away": "Liquid",
+   "map": 3,
+   "real_map": "Lotus",
+   "real_total": 23,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3868,
+   "edge_orig": 7.23,
+   "p_market": 0.3145,
+   "y": 0,
+   "p_map_h1": 0.5365,
+   "unc": 5.24,
+   "calpp": 2.49,
+   "actual_circuito": {
+    "p_under": 0.3081,
+    "edge_pp": -0.64,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5161
+   },
+   "corregido_circuito": {
+    "p_under": 0.3062,
+    "edge_pp": -0.83,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5095
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3186,
+    "edge_pp": 0.41,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5161
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3171,
+    "edge_pp": 0.26,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5079
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:geng~t1_RONDAS_under_20.5_2",
+   "home": "Gen.G",
+   "away": "T1",
+   "map": 2,
+   "real_map": "Split",
+   "real_total": 24,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4851,
+   "edge_orig": 7.19,
+   "p_market": 0.4132,
+   "y": 0,
+   "p_map_h1": 0.5,
+   "unc": 4.77,
+   "calpp": 1.23,
+   "actual_circuito": {
+    "p_under": 0.4065,
+    "edge_pp": -0.67,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.5
+   },
+   "corregido_circuito": {
+    "p_under": 0.4055,
+    "edge_pp": -0.77,
+    "nace": false,
+    "mean_rounds": 21.3,
+    "pRound": 0.4998
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4229,
+    "edge_pp": 0.97,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4209,
+    "edge_pp": 0.77,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5006
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:paperrex~varrel_RONDAS_under_20.5_3",
+   "home": "VARREL",
+   "away": "Paper Rex",
+   "map": 3,
+   "real_map": "Sunset",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.28,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5289,
+   "edge_orig": 9.03,
+   "p_market": 0.4386,
+   "y": 0,
+   "p_map_h1": 0.2703,
+   "unc": 5.86,
+   "calpp": 3.61,
+   "actual_circuito": {
+    "p_under": 0.5869,
+    "edge_pp": 14.83,
+    "nace": true,
+    "mean_rounds": 19.82,
+    "pRound": 0.3989
+   },
+   "corregido_circuito": {
+    "p_under": 0.4667,
+    "edge_pp": 2.81,
+    "nace": false,
+    "mean_rounds": 20.77,
+    "pRound": 0.4422
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5444,
+    "edge_pp": 10.58,
+    "nace": true,
+    "mean_rounds": 20.22,
+    "pRound": 0.3989
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4365,
+    "edge_pp": -0.21,
+    "nace": false,
+    "mean_rounds": 21.04,
+    "pRound": 0.4409
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_19.5_2",
+   "home": "Leviatan",
+   "away": "100 Thieves",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 20,
+   "line": 19.5,
+   "odds": 3.12,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3788,
+   "edge_orig": 5.83,
+   "p_market": 0.3205,
+   "y": 0,
+   "p_map_h1": 0.534,
+   "unc": 5,
+   "calpp": 1.93,
+   "actual_circuito": {
+    "p_under": 0.3072,
+    "edge_pp": -1.33,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.5149
+   },
+   "corregido_circuito": {
+    "p_under": 0.3062,
+    "edge_pp": -1.43,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.5089
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2067,
+    "edge_pp": -11.38,
+    "nace": false,
+    "mean_rounds": 22.08,
+    "pRound": 0.5149
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2035,
+    "edge_pp": -11.7,
+    "nace": false,
+    "mean_rounds": 22.12,
+    "pRound": 0.5082
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-29:100thieves~leviatan_RONDAS_under_21.5_1",
+   "home": "Leviatan",
+   "away": "100 Thieves",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 15,
+   "line": 21.5,
+   "odds": 1.8696,
+   "book": "pinnacle",
+   "books": 2,
+   "p_gp_orig": 0.5815,
+   "edge_orig": 4.66,
+   "p_market": 0.5349,
+   "y": 1,
+   "p_map_h1": 0.534,
+   "unc": 4.64,
+   "calpp": 0.54,
+   "actual_circuito": {
+    "p_under": 0.5196,
+    "edge_pp": -1.53,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.5149
+   },
+   "corregido_circuito": {
+    "p_under": 0.5172,
+    "edge_pp": -1.77,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.5089
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5333,
+    "edge_pp": -0.16,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5149
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5267,
+    "edge_pp": -0.82,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5078
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_18.5_1",
+   "home": "LOUD",
+   "away": "NRG",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 20,
+   "line": 18.5,
+   "odds": 3.65,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3808,
+   "edge_orig": 10.68,
+   "p_market": 0.274,
+   "y": 0,
+   "p_map_h1": 0.2656,
+   "unc": 5.95,
+   "calpp": 3.76,
+   "actual_circuito": {
+    "p_under": 0.3909,
+    "edge_pp": 11.69,
+    "nace": true,
+    "mean_rounds": 19.78,
+    "pRound": 0.3968
+   },
+   "corregido_circuito": {
+    "p_under": 0.278,
+    "edge_pp": 0.4,
+    "nace": false,
+    "mean_rounds": 20.73,
+    "pRound": 0.4411
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3408,
+    "edge_pp": 6.68,
+    "nace": true,
+    "mean_rounds": 20.1,
+    "pRound": 0.3968
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2471,
+    "edge_pp": -2.69,
+    "nace": false,
+    "mean_rounds": 20.96,
+    "pRound": 0.4412
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:loud~nrg_RONDAS_under_19.5_2",
+   "home": "LOUD",
+   "away": "NRG",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 24,
+   "line": 19.5,
+   "odds": 2.82,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4154,
+   "edge_orig": 6.08,
+   "p_market": 0.3546,
+   "y": 0,
+   "p_map_h1": 0.2656,
+   "unc": 4.75,
+   "calpp": 1.13,
+   "actual_circuito": {
+    "p_under": 0.4889,
+    "edge_pp": 13.43,
+    "nace": true,
+    "mean_rounds": 19.78,
+    "pRound": 0.3968
+   },
+   "corregido_circuito": {
+    "p_under": 0.3732,
+    "edge_pp": 1.86,
+    "nace": false,
+    "mean_rounds": 20.73,
+    "pRound": 0.4411
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_19.5_2",
+   "home": "Liquid",
+   "away": "Fire Flux",
+   "map": 2,
+   "real_map": "Lotus",
+   "real_total": 23,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4068,
+   "edge_orig": 9.23,
+   "p_market": 0.3145,
+   "y": 0,
+   "p_map_h1": 0.7549,
+   "unc": 5.77,
+   "calpp": 3.47,
+   "actual_circuito": {
+    "p_under": 0.5122,
+    "edge_pp": 19.77,
+    "nace": true,
+    "mean_rounds": 19.6,
+    "pRound": 0.6122
+   },
+   "corregido_circuito": {
+    "p_under": 0.3816,
+    "edge_pp": 6.71,
+    "nace": true,
+    "mean_rounds": 20.67,
+    "pRound": 0.5657
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5093,
+    "edge_pp": 19.48,
+    "nace": true,
+    "mean_rounds": 19.64,
+    "pRound": 0.6122
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3795,
+    "edge_pp": 6.5,
+    "nace": true,
+    "mean_rounds": 20.64,
+    "pRound": 0.5639
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fireflux~liquid_RONDAS_under_21.5_2",
+   "home": "Liquid",
+   "away": "Fire Flux",
+   "map": 2,
+   "real_map": "Lotus",
+   "real_total": 23,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.5991,
+   "edge_orig": 6.43,
+   "p_market": 0.5348,
+   "y": 0,
+   "p_map_h1": 0.7549,
+   "unc": 6.01,
+   "calpp": 3.86,
+   "actual_circuito": {
+    "p_under": 0.711,
+    "edge_pp": 17.62,
+    "nace": true,
+    "mean_rounds": 19.6,
+    "pRound": 0.6122
+   },
+   "corregido_circuito": {
+    "p_under": 0.5889,
+    "edge_pp": 5.41,
+    "nace": false,
+    "mean_rounds": 20.67,
+    "pRound": 0.5657
+   },
+   "actual_mapa_real": {
+    "p_under": 0.7089,
+    "edge_pp": 17.41,
+    "nace": true,
+    "mean_rounds": 19.64,
+    "pRound": 0.6122
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5914,
+    "edge_pp": 5.66,
+    "nace": true,
+    "mean_rounds": 20.64,
+    "pRound": 0.5639
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_19.5_2",
+   "home": "FUT",
+   "away": "Karmine Corp",
+   "map": 2,
+   "real_map": "Haven",
+   "real_total": 21,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4048,
+   "edge_orig": 9.03,
+   "p_market": 0.3145,
+   "y": 0,
+   "p_map_h1": 0.5039,
+   "unc": 6.08,
+   "calpp": 3.97,
+   "actual_circuito": {
+    "p_under": 0.3046,
+    "edge_pp": -0.99,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5017
+   },
+   "corregido_circuito": {
+    "p_under": 0.3055,
+    "edge_pp": -0.9,
+    "nace": false,
+    "mean_rounds": 21.3,
+    "pRound": 0.5009
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3132,
+    "edge_pp": -0.13,
+    "nace": false,
+    "mean_rounds": 21.18,
+    "pRound": 0.5017
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3143,
+    "edge_pp": -0.02,
+    "nace": false,
+    "mean_rounds": 21.17,
+    "pRound": 0.5002
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_1",
+   "home": "FUT",
+   "away": "Karmine Corp",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 19,
+   "line": 21.5,
+   "odds": 1.885,
+   "book": "pinnacle",
+   "books": 2,
+   "p_gp_orig": 0.5771,
+   "edge_orig": 4.66,
+   "p_market": 0.5305,
+   "y": 1,
+   "p_map_h1": 0.5039,
+   "unc": 4.79,
+   "calpp": 1.29,
+   "actual_circuito": {
+    "p_under": 0.5119,
+    "edge_pp": -1.86,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5017
+   },
+   "corregido_circuito": {
+    "p_under": 0.5119,
+    "edge_pp": -1.86,
+    "nace": false,
+    "mean_rounds": 21.3,
+    "pRound": 0.5009
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5231,
+    "edge_pp": -0.74,
+    "nace": false,
+    "mean_rounds": 21.18,
+    "pRound": 0.5017
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5236,
+    "edge_pp": -0.69,
+    "nace": false,
+    "mean_rounds": 21.17,
+    "pRound": 0.5002
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:fut~karminecorp_RONDAS_under_21.5_2",
+   "home": "FUT Esports",
+   "away": "Karmine Corp",
+   "map": 2,
+   "real_map": "Haven",
+   "real_total": 21,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.5979,
+   "edge_orig": 6.31,
+   "p_market": 0.5348,
+   "y": 1,
+   "p_map_h1": 0.5039,
+   "unc": 6.43,
+   "calpp": 4.48,
+   "actual_circuito": {
+    "p_under": 0.5119,
+    "edge_pp": -2.29,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5017
+   },
+   "corregido_circuito": {
+    "p_under": 0.5119,
+    "edge_pp": -2.29,
+    "nace": false,
+    "mean_rounds": 21.3,
+    "pRound": 0.5009
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5231,
+    "edge_pp": -1.17,
+    "nace": false,
+    "mean_rounds": 21.18,
+    "pRound": 0.5017
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5236,
+    "edge_pp": -1.12,
+    "nace": false,
+    "mean_rounds": 21.17,
+    "pRound": 0.5002
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_2",
+   "home": "Paper Rex",
+   "away": "ONSIDE",
+   "map": 2,
+   "real_map": "Ascent",
+   "real_total": 18,
+   "line": 20.5,
+   "odds": 2.28,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5421,
+   "edge_orig": 10.35,
+   "p_market": 0.4386,
+   "y": 1,
+   "p_map_h1": 0.75,
+   "unc": 9.53,
+   "calpp": 8.34,
+   "actual_circuito": {
+    "p_under": 0.6103,
+    "edge_pp": 17.17,
+    "nace": true,
+    "mean_rounds": 19.64,
+    "pRound": 0.61
+   },
+   "corregido_circuito": {
+    "p_under": 0.481,
+    "edge_pp": 4.24,
+    "nace": false,
+    "mean_rounds": 20.69,
+    "pRound": 0.5642
+   },
+   "actual_mapa_real": {
+    "p_under": 0.6272,
+    "edge_pp": 18.86,
+    "nace": true,
+    "mean_rounds": 19.4,
+    "pRound": 0.61
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4828,
+    "edge_pp": 4.42,
+    "nace": false,
+    "mean_rounds": 20.64,
+    "pRound": 0.5602
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:onside~paperrex_RONDAS_under_20.5_1",
+   "home": "Paper Rex",
+   "away": "ONSIDE",
+   "map": 1,
+   "real_map": "Abyss",
+   "real_total": 24,
+   "line": 20.5,
+   "odds": 2.24,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5059,
+   "edge_orig": 5.95,
+   "p_market": 0.4464,
+   "y": 0,
+   "p_map_h1": 0.75,
+   "unc": 6.24,
+   "calpp": 4.21,
+   "actual_circuito": {
+    "p_under": 0.6103,
+    "edge_pp": 16.39,
+    "nace": true,
+    "mean_rounds": 19.64,
+    "pRound": 0.61
+   },
+   "corregido_circuito": {
+    "p_under": 0.481,
+    "edge_pp": 3.46,
+    "nace": false,
+    "mean_rounds": 20.69,
+    "pRound": 0.5642
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:furia~loud_RONDAS_under_19.5_1",
+   "home": "LOUD",
+   "away": "FURIA",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 17,
+   "line": 19.5,
+   "odds": 3.16,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4613,
+   "edge_orig": 14.48,
+   "p_market": 0.3165,
+   "y": 1,
+   "p_map_h1": 0.5376,
+   "unc": 6.02,
+   "calpp": 3.87,
+   "actual_circuito": {
+    "p_under": 0.3085,
+    "edge_pp": -0.8,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.5165
+   },
+   "corregido_circuito": {
+    "p_under": 0.3073,
+    "edge_pp": -0.92,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.5097
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3192,
+    "edge_pp": 0.27,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5165
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3171,
+    "edge_pp": 0.06,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5083
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-28:leviatan~mibr_RONDAS_under_21.5_1",
+   "home": "Leviatan",
+   "away": "MIBR",
+   "map": 1,
+   "real_map": "Abyss",
+   "real_total": 20,
+   "line": 21.5,
+   "odds": 1.909091,
+   "book": "bovada",
+   "books": 2,
+   "p_gp_orig": 0.566,
+   "edge_orig": 4.22,
+   "p_market": 0.5238,
+   "y": 1,
+   "p_map_h1": 0.5998,
+   "unc": 4.64,
+   "calpp": 0.53,
+   "actual_circuito": {
+    "p_under": 0.5476,
+    "edge_pp": 2.38,
+    "nace": false,
+    "mean_rounds": 21.02,
+    "pRound": 0.5439
+   },
+   "corregido_circuito": {
+    "p_under": 0.5279,
+    "edge_pp": 0.41,
+    "nace": false,
+    "mean_rounds": 21.2,
+    "pRound": 0.5229
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_3",
+   "home": "Gen.G",
+   "away": "Nongshim RedForce",
+   "map": 3,
+   "real_map": "Sunset",
+   "real_total": 24,
+   "line": 20.5,
+   "odds": 2.4,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4917,
+   "edge_orig": 7.5,
+   "p_market": 0.4167,
+   "y": 0,
+   "p_map_h1": 0.4736,
+   "unc": 6.02,
+   "calpp": 3.87,
+   "actual_circuito": {
+    "p_under": 0.4076,
+    "edge_pp": -0.91,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.4046,
+    "edge_pp": -1.21,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3827,
+    "edge_pp": -3.4,
+    "nace": false,
+    "mean_rounds": 21.47,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3794,
+    "edge_pp": -3.73,
+    "nace": false,
+    "mean_rounds": 21.46,
+    "pRound": 0.4954
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_20.5_1",
+   "home": "Gen.G",
+   "away": "Nongshim RedForce",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 21,
+   "line": 20.5,
+   "odds": 2.39,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5312,
+   "edge_orig": 11.28,
+   "p_market": 0.4184,
+   "y": 0,
+   "p_map_h1": 0.4736,
+   "unc": 9.88,
+   "calpp": 8.74,
+   "actual_circuito": {
+    "p_under": 0.4076,
+    "edge_pp": -1.08,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.4046,
+    "edge_pp": -1.38,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3894,
+    "edge_pp": -2.9,
+    "nace": false,
+    "mean_rounds": 21.37,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3915,
+    "edge_pp": -2.69,
+    "nace": false,
+    "mean_rounds": 21.34,
+    "pRound": 0.4947
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_1",
+   "home": "Gen.G",
+   "away": "Nongshim RedForce",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 21,
+   "line": 21.5,
+   "odds": 2,
+   "book": "bovada",
+   "books": 2,
+   "p_gp_orig": 0.624,
+   "edge_orig": 12.4,
+   "p_market": 0.5,
+   "y": 1,
+   "p_map_h1": 0.4736,
+   "unc": 9.96,
+   "calpp": 8.83,
+   "actual_circuito": {
+    "p_under": 0.52,
+    "edge_pp": 2,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.513,
+    "edge_pp": 1.3,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4993,
+    "edge_pp": -0.07,
+    "nace": false,
+    "mean_rounds": 21.37,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.507,
+    "edge_pp": 0.7,
+    "nace": false,
+    "mean_rounds": 21.34,
+    "pRound": 0.4947
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:geng~nongshimredforce_RONDAS_under_21.5_2",
+   "home": "Gen.G",
+   "away": "Nongshim Red Force",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 22,
+   "line": 21.5,
+   "odds": 1.8,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.619,
+   "edge_orig": 6.34,
+   "p_market": 0.5556,
+   "y": 0,
+   "p_map_h1": 0.4736,
+   "unc": 6.22,
+   "calpp": 4.18,
+   "actual_circuito": {
+    "p_under": 0.52,
+    "edge_pp": -3.56,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.513,
+    "edge_pp": -4.26,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4233,
+    "edge_pp": -13.23,
+    "nace": false,
+    "mean_rounds": 22.11,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4262,
+    "edge_pp": -12.94,
+    "nace": false,
+    "mean_rounds": 22.11,
+    "pRound": 0.494
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-27:global~varrel_RONDAS_under_20.5_2",
+   "home": "VARREL",
+   "away": "Global",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 18,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5132,
+   "edge_orig": 10,
+   "p_market": 0.4132,
+   "y": 1,
+   "p_map_h1": 0.3618,
+   "unc": 6.14,
+   "calpp": 4.06,
+   "actual_circuito": {
+    "p_under": 0.4719,
+    "edge_pp": 5.87,
+    "nace": true,
+    "mean_rounds": 20.72,
+    "pRound": 0.4392
+   },
+   "corregido_circuito": {
+    "p_under": 0.4244,
+    "edge_pp": 1.12,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.467
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3661,
+    "edge_pp": -4.71,
+    "nace": false,
+    "mean_rounds": 21.64,
+    "pRound": 0.4392
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.319,
+    "edge_pp": -9.42,
+    "nace": false,
+    "mean_rounds": 21.99,
+    "pRound": 0.4663
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_2",
+   "home": "Paper Rex",
+   "away": "Nongshim RedForce",
+   "map": 2,
+   "real_map": "Split",
+   "real_total": 23,
+   "line": 21.5,
+   "odds": 1.9174,
+   "book": "pinnacle",
+   "books": 2,
+   "p_gp_orig": 0.5623,
+   "edge_orig": 4.08,
+   "p_market": 0.5215,
+   "y": 0,
+   "p_map_h1": 0.536,
+   "unc": 4.67,
+   "calpp": 0.76,
+   "actual_circuito": {
+    "p_under": 0.5198,
+    "edge_pp": -0.17,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5159
+   },
+   "corregido_circuito": {
+    "p_under": 0.515,
+    "edge_pp": -0.65,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5094
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5331,
+    "edge_pp": 1.16,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.5159
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5317,
+    "edge_pp": 1.02,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5084
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_21.5_1",
+   "home": "Paper Rex",
+   "away": "Nongshim RedForce",
+   "map": 1,
+   "real_map": "Abyss",
+   "real_total": 20,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6153,
+   "edge_orig": 8.05,
+   "p_market": 0.5348,
+   "y": 1,
+   "p_map_h1": 0.536,
+   "unc": 6.29,
+   "calpp": 4.28,
+   "actual_circuito": {
+    "p_under": 0.5198,
+    "edge_pp": -1.5,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5159
+   },
+   "corregido_circuito": {
+    "p_under": 0.515,
+    "edge_pp": -1.98,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5094
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-26:nongshimredforce~paperrex_RONDAS_under_20.5_1",
+   "home": "Paper Rex",
+   "away": "Nongshim RedForce",
+   "map": 1,
+   "real_map": "Abyss",
+   "real_total": 20,
+   "line": 20.5,
+   "odds": 2.41,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4968,
+   "edge_orig": 8.19,
+   "p_market": 0.4149,
+   "y": 1,
+   "p_map_h1": 0.536,
+   "unc": 5.05,
+   "calpp": 2.06,
+   "actual_circuito": {
+    "p_under": 0.4098,
+    "edge_pp": -0.51,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5159
+   },
+   "corregido_circuito": {
+    "p_under": 0.4043,
+    "edge_pp": -1.06,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.5094
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_1",
+   "home": "Evil Geniuses",
+   "away": "KRU",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 22,
+   "line": 21.5,
+   "odds": 1.952381,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.5939,
+   "edge_orig": 8.17,
+   "p_market": 0.5122,
+   "y": 0,
+   "p_map_h1": 0.5648,
+   "unc": 7.29,
+   "calpp": 5.65,
+   "actual_circuito": {
+    "p_under": 0.5331,
+    "edge_pp": 2.09,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5285
+   },
+   "corregido_circuito": {
+    "p_under": 0.5198,
+    "edge_pp": 0.76,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5158
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5376,
+    "edge_pp": 2.54,
+    "nace": false,
+    "mean_rounds": 21.1,
+    "pRound": 0.5285
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5327,
+    "edge_pp": 2.05,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5146
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_21.5_3",
+   "home": "Evil Geniuses",
+   "away": "KRU",
+   "map": 3,
+   "real_map": "Summit",
+   "real_total": 16,
+   "line": 21.5,
+   "odds": 1.909091,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.5985,
+   "edge_orig": 7.47,
+   "p_market": 0.5238,
+   "y": 1,
+   "p_map_h1": 0.5648,
+   "unc": 6.06,
+   "calpp": 3.94,
+   "actual_circuito": {
+    "p_under": 0.5331,
+    "edge_pp": 0.93,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5285
+   },
+   "corregido_circuito": {
+    "p_under": 0.5198,
+    "edge_pp": -0.4,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5158
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4397,
+    "edge_pp": -8.41,
+    "nace": false,
+    "mean_rounds": 21.98,
+    "pRound": 0.5285
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4304,
+    "edge_pp": -9.34,
+    "nace": false,
+    "mean_rounds": 22.08,
+    "pRound": 0.5165
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_1",
+   "home": "Evil Geniuses",
+   "away": "KRU",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 22,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4053,
+   "edge_orig": 9.08,
+   "p_market": 0.3145,
+   "y": 0,
+   "p_map_h1": 0.5648,
+   "unc": 6.93,
+   "calpp": 5.18,
+   "actual_circuito": {
+    "p_under": 0.3192,
+    "edge_pp": 0.47,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5285
+   },
+   "corregido_circuito": {
+    "p_under": 0.3077,
+    "edge_pp": -0.68,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5158
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3232,
+    "edge_pp": 0.87,
+    "nace": false,
+    "mean_rounds": 21.1,
+    "pRound": 0.5285
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3189,
+    "edge_pp": 0.44,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.5146
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-24:evilgeniuses~kru_RONDAS_under_19.5_3",
+   "home": "Evil Geniuses",
+   "away": "KRU",
+   "map": 3,
+   "real_map": "Summit",
+   "real_total": 16,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4012,
+   "edge_orig": 8.67,
+   "p_market": 0.3145,
+   "y": 1,
+   "p_map_h1": 0.5648,
+   "unc": 5.89,
+   "calpp": 3.66,
+   "actual_circuito": {
+    "p_under": 0.3192,
+    "edge_pp": 0.47,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.5285
+   },
+   "corregido_circuito": {
+    "p_under": 0.3077,
+    "edge_pp": -0.68,
+    "nace": false,
+    "mean_rounds": 21.25,
+    "pRound": 0.5158
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2193,
+    "edge_pp": -9.52,
+    "nace": false,
+    "mean_rounds": 21.98,
+    "pRound": 0.5285
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2085,
+    "edge_pp": -10.6,
+    "nace": false,
+    "mean_rounds": 22.08,
+    "pRound": 0.5165
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_19.5_2",
+   "home": "Envy",
+   "away": "G2",
+   "map": 2,
+   "real_map": "Ascent",
+   "real_total": 26,
+   "line": 19.5,
+   "odds": 2.94,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4325,
+   "edge_orig": 9.24,
+   "p_market": 0.3401,
+   "y": 0,
+   "p_map_h1": 0.3864,
+   "unc": 6.09,
+   "calpp": 3.98,
+   "actual_circuito": {
+    "p_under": 0.3536,
+    "edge_pp": 1.35,
+    "nace": false,
+    "mean_rounds": 20.87,
+    "pRound": 0.45
+   },
+   "corregido_circuito": {
+    "p_under": 0.3187,
+    "edge_pp": -2.14,
+    "nace": false,
+    "mean_rounds": 21.19,
+    "pRound": 0.4739
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3262,
+    "edge_pp": -1.39,
+    "nace": false,
+    "mean_rounds": 21.09,
+    "pRound": 0.45
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3006,
+    "edge_pp": -3.95,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4727
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:envy~g2_RONDAS_under_21.5_2",
+   "home": "Envy",
+   "away": "G2",
+   "map": 2,
+   "real_map": "Ascent",
+   "real_total": 26,
+   "line": 21.5,
+   "odds": 1.833333,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6263,
+   "edge_orig": 8.08,
+   "p_market": 0.5455,
+   "y": 0,
+   "p_map_h1": 0.3864,
+   "unc": 6.16,
+   "calpp": 4.08,
+   "actual_circuito": {
+    "p_under": 0.5616,
+    "edge_pp": 1.61,
+    "nace": false,
+    "mean_rounds": 20.87,
+    "pRound": 0.45
+   },
+   "corregido_circuito": {
+    "p_under": 0.5253,
+    "edge_pp": -2.02,
+    "nace": false,
+    "mean_rounds": 21.19,
+    "pRound": 0.4739
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5429,
+    "edge_pp": -0.26,
+    "nace": false,
+    "mean_rounds": 21.09,
+    "pRound": 0.45
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5181,
+    "edge_pp": -2.74,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4727
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:bbl~fireflux_RONDAS_under_19.5_1",
+   "home": "BBL",
+   "away": "Fire Flux",
+   "map": 1,
+   "real_map": "Abyss",
+   "real_total": 24,
+   "line": 19.5,
+   "odds": 3.14,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4445,
+   "edge_orig": 12.6,
+   "p_market": 0.3185,
+   "y": 0,
+   "p_map_h1": 0.7846,
+   "unc": 10.07,
+   "calpp": 8.95,
+   "actual_circuito": {
+    "p_under": 0.5533,
+    "edge_pp": 23.48,
+    "nace": true,
+    "mean_rounds": 19.26,
+    "pRound": 0.6252
+   },
+   "corregido_circuito": {
+    "p_under": 0.3993,
+    "edge_pp": 8.08,
+    "nace": false,
+    "mean_rounds": 20.52,
+    "pRound": 0.5725
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_21.5_1",
+   "home": "ENTERPRISE",
+   "away": "Liquid",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 17,
+   "line": 21.5,
+   "odds": 1.952381,
+   "book": "bovada",
+   "books": 2,
+   "p_gp_orig": 0.6372,
+   "edge_orig": 12.5,
+   "p_market": 0.5122,
+   "y": 1,
+   "p_map_h1": 0.5783,
+   "unc": 7.12,
+   "calpp": 5.43,
+   "actual_circuito": {
+    "p_under": 0.5334,
+    "edge_pp": 2.12,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5344
+   },
+   "corregido_circuito": {
+    "p_under": 0.5219,
+    "edge_pp": 0.97,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5186
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5476,
+    "edge_pp": 3.54,
+    "nace": false,
+    "mean_rounds": 21.04,
+    "pRound": 0.5344
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5312,
+    "edge_pp": 1.9,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5183
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_1",
+   "home": "ENTERPRISE",
+   "away": "Liquid",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 17,
+   "line": 19.5,
+   "odds": 3.17,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4405,
+   "edge_orig": 12.5,
+   "p_market": 0.3155,
+   "y": 1,
+   "p_map_h1": 0.5783,
+   "unc": 7.08,
+   "calpp": 5.37,
+   "actual_circuito": {
+    "p_under": 0.3229,
+    "edge_pp": 0.74,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5344
+   },
+   "corregido_circuito": {
+    "p_under": 0.3082,
+    "edge_pp": -0.73,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5186
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3308,
+    "edge_pp": 1.53,
+    "nace": false,
+    "mean_rounds": 21.04,
+    "pRound": 0.5344
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3186,
+    "edge_pp": 0.31,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5183
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:enterprise~liquid_RONDAS_under_19.5_2",
+   "home": "ENTERPRISE",
+   "away": "Liquid",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 26,
+   "line": 19.5,
+   "odds": 3.17,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4033,
+   "edge_orig": 8.78,
+   "p_market": 0.3155,
+   "y": 0,
+   "p_map_h1": 0.5783,
+   "unc": 6.13,
+   "calpp": 4.04,
+   "actual_circuito": {
+    "p_under": 0.3229,
+    "edge_pp": 0.74,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5344
+   },
+   "corregido_circuito": {
+    "p_under": 0.3082,
+    "edge_pp": -0.73,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5186
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_2",
+   "home": "JD Gaming",
+   "away": "TYLOO",
+   "map": 2,
+   "real_map": "Split",
+   "real_total": 20,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5827,
+   "edge_orig": 16.95,
+   "p_market": 0.4132,
+   "y": 1,
+   "p_map_h1": 0.408,
+   "unc": 5.17,
+   "calpp": 2.35,
+   "actual_circuito": {
+    "p_under": 0.4369,
+    "edge_pp": 2.37,
+    "nace": false,
+    "mean_rounds": 21.02,
+    "pRound": 0.4595
+   },
+   "corregido_circuito": {
+    "p_under": 0.4135,
+    "edge_pp": 0.03,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.4792
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4481,
+    "edge_pp": 3.49,
+    "nace": false,
+    "mean_rounds": 20.9,
+    "pRound": 0.4595
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4282,
+    "edge_pp": 1.5,
+    "nace": false,
+    "mean_rounds": 21.08,
+    "pRound": 0.479
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_1",
+   "home": "JD Gaming",
+   "away": "TYLOO",
+   "map": 1,
+   "real_map": "Lotus",
+   "real_total": 19,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5365,
+   "edge_orig": 12.33,
+   "p_market": 0.4132,
+   "y": 1,
+   "p_map_h1": 0.408,
+   "unc": 6.24,
+   "calpp": 4.2,
+   "actual_circuito": {
+    "p_under": 0.4369,
+    "edge_pp": 2.37,
+    "nace": false,
+    "mean_rounds": 21.02,
+    "pRound": 0.4595
+   },
+   "corregido_circuito": {
+    "p_under": 0.4135,
+    "edge_pp": 0.03,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.4792
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4615,
+    "edge_pp": 4.83,
+    "nace": false,
+    "mean_rounds": 20.8,
+    "pRound": 0.4595
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4344,
+    "edge_pp": 2.12,
+    "nace": false,
+    "mean_rounds": 21,
+    "pRound": 0.4785
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-23:jd~tyloo_RONDAS_under_20.5_3",
+   "home": "JD Gaming",
+   "away": "TYLOO",
+   "map": 3,
+   "real_map": "Breeze",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5261,
+   "edge_orig": 11.29,
+   "p_market": 0.4132,
+   "y": 0,
+   "p_map_h1": 0.408,
+   "unc": 6.09,
+   "calpp": 3.98,
+   "actual_circuito": {
+    "p_under": 0.4369,
+    "edge_pp": 2.37,
+    "nace": false,
+    "mean_rounds": 21.02,
+    "pRound": 0.4595
+   },
+   "corregido_circuito": {
+    "p_under": 0.4135,
+    "edge_pp": 0.03,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.4792
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4051,
+    "edge_pp": -0.81,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4595
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3832,
+    "edge_pp": -3,
+    "nace": false,
+    "mean_rounds": 21.44,
+    "pRound": 0.4774
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "home": "FURIA",
+   "away": "Evil Geniuses",
+   "map": 2,
+   "real_map": "Breeze",
+   "real_total": 20,
+   "line": 19.5,
+   "odds": 3.16,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4086,
+   "edge_orig": 9.21,
+   "p_market": 0.3165,
+   "y": 0,
+   "p_map_h1": 0.4575,
+   "unc": 5.79,
+   "calpp": 3.51,
+   "actual_circuito": {
+    "p_under": 0.3117,
+    "edge_pp": -0.48,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.4813
+   },
+   "corregido_circuito": {
+    "p_under": 0.3066,
+    "edge_pp": -0.99,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4903
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2823,
+    "edge_pp": -3.42,
+    "nace": false,
+    "mean_rounds": 21.47,
+    "pRound": 0.4813
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2743,
+    "edge_pp": -4.22,
+    "nace": false,
+    "mean_rounds": 21.49,
+    "pRound": 0.4906
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:fullsense~onside_RONDAS_under_20.5_2",
+   "home": "ONSIDE",
+   "away": "FULL SENSE",
+   "map": 2,
+   "real_map": "Haven",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.37,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5781,
+   "edge_orig": 15.62,
+   "p_market": 0.4219,
+   "y": 0,
+   "p_map_h1": 0.4376,
+   "unc": 9.39,
+   "calpp": 8.18,
+   "actual_circuito": {
+    "p_under": 0.4188,
+    "edge_pp": -0.31,
+    "nace": false,
+    "mean_rounds": 21.16,
+    "pRound": 0.4725
+   },
+   "corregido_circuito": {
+    "p_under": 0.4091,
+    "edge_pp": -1.28,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4855
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4394,
+    "edge_pp": 1.75,
+    "nace": false,
+    "mean_rounds": 20.96,
+    "pRound": 0.4725
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4256,
+    "edge_pp": 0.37,
+    "nace": false,
+    "mean_rounds": 21.09,
+    "pRound": 0.4853
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_21.5_1",
+   "home": "Bilibili",
+   "away": "TYLOO",
+   "map": 1,
+   "real_map": "Sunset",
+   "real_total": 26,
+   "line": 21.5,
+   "odds": 2,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6155,
+   "edge_orig": 11.55,
+   "p_market": 0.5,
+   "y": 0,
+   "p_map_h1": 0.4784,
+   "unc": 6.35,
+   "calpp": 4.37,
+   "actual_circuito": {
+    "p_under": 0.5168,
+    "edge_pp": 1.68,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.4905
+   },
+   "corregido_circuito": {
+    "p_under": 0.5103,
+    "edge_pp": 1.03,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4962
+   },
+   "actual_mapa_real": {
+    "p_under": 0.492,
+    "edge_pp": -0.8,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4905
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4915,
+    "edge_pp": -0.85,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4968
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_3",
+   "home": "Bilibili",
+   "away": "TYLOO",
+   "map": 3,
+   "real_map": "Split",
+   "real_total": 32,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5324,
+   "edge_orig": 11.92,
+   "p_market": 0.4132,
+   "y": 0,
+   "p_map_h1": 0.4784,
+   "unc": 10,
+   "calpp": 8.87,
+   "actual_circuito": {
+    "p_under": 0.407,
+    "edge_pp": -0.62,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.4905
+   },
+   "corregido_circuito": {
+    "p_under": 0.404,
+    "edge_pp": -0.92,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4962
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4241,
+    "edge_pp": 1.09,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.4905
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4222,
+    "edge_pp": 0.9,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.4952
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_1",
+   "home": "Bilibili",
+   "away": "TYLOO",
+   "map": 1,
+   "real_map": "Sunset",
+   "real_total": 26,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5198,
+   "edge_orig": 10.66,
+   "p_market": 0.4132,
+   "y": 0,
+   "p_map_h1": 0.4784,
+   "unc": 6.26,
+   "calpp": 4.24,
+   "actual_circuito": {
+    "p_under": 0.407,
+    "edge_pp": -0.62,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.4905
+   },
+   "corregido_circuito": {
+    "p_under": 0.404,
+    "edge_pp": -0.92,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4962
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3797,
+    "edge_pp": -3.35,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4905
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3767,
+    "edge_pp": -3.65,
+    "nace": false,
+    "mean_rounds": 21.48,
+    "pRound": 0.4968
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:bilibili~tyloo_RONDAS_under_20.5_2",
+   "home": "Bilibili",
+   "away": "TYLOO",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 19,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5022,
+   "edge_orig": 8.9,
+   "p_market": 0.4132,
+   "y": 1,
+   "p_map_h1": 0.4784,
+   "unc": 5.26,
+   "calpp": 2.53,
+   "actual_circuito": {
+    "p_under": 0.407,
+    "edge_pp": -0.62,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.4905
+   },
+   "corregido_circuito": {
+    "p_under": 0.404,
+    "edge_pp": -0.92,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4962
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3024,
+    "edge_pp": -11.08,
+    "nace": false,
+    "mean_rounds": 22.11,
+    "pRound": 0.4905
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3046,
+    "edge_pp": -10.86,
+    "nace": false,
+    "mean_rounds": 22.11,
+    "pRound": 0.4955
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:detonationfocusme~zetadivision_RONDAS_under_20.5_1",
+   "home": "DetonatioN FocusMe",
+   "away": "ZETA DIVISION",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 17,
+   "line": 20.5,
+   "odds": 2.37,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4999,
+   "edge_orig": 7.8,
+   "p_market": 0.4219,
+   "y": 1,
+   "p_map_h1": 0.6066,
+   "unc": 4.64,
+   "calpp": 0.52,
+   "actual_circuito": {
+    "p_under": 0.4454,
+    "edge_pp": 2.35,
+    "nace": false,
+    "mean_rounds": 20.98,
+    "pRound": 0.5469
+   },
+   "corregido_circuito": {
+    "p_under": 0.4165,
+    "edge_pp": -0.54,
+    "nace": false,
+    "mean_rounds": 21.18,
+    "pRound": 0.5243
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4528,
+    "edge_pp": 3.09,
+    "nace": false,
+    "mean_rounds": 20.89,
+    "pRound": 0.5469
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4124,
+    "edge_pp": -0.95,
+    "nace": false,
+    "mean_rounds": 21.18,
+    "pRound": 0.5247
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:evilgeniuses~furia_RONDAS_under_19.5_2",
+   "home": "FURIA",
+   "away": "Evil Geniuses",
+   "map": 2,
+   "real_map": "Breeze",
+   "real_total": 20,
+   "line": 19.5,
+   "odds": 3.15,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4086,
+   "edge_orig": 9.11,
+   "p_market": 0.3175,
+   "y": 0,
+   "p_map_h1": 0.4575,
+   "unc": 5.79,
+   "calpp": 3.51,
+   "actual_circuito": {
+    "p_under": 0.3117,
+    "edge_pp": -0.58,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.4813
+   },
+   "corregido_circuito": {
+    "p_under": 0.3066,
+    "edge_pp": -1.09,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4903
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2823,
+    "edge_pp": -3.52,
+    "nace": false,
+    "mean_rounds": 21.47,
+    "pRound": 0.4813
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2743,
+    "edge_pp": -4.32,
+    "nace": false,
+    "mean_rounds": 21.49,
+    "pRound": 0.4906
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-22:eintrachtfrankfurt~liquid_RONDAS_under_19.5_2",
+   "home": "Liquid",
+   "away": "Eintracht Frankfurt",
+   "map": 2,
+   "real_map": "Split",
+   "real_total": 14,
+   "line": 19.5,
+   "odds": 3.12,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.434,
+   "edge_orig": 11.35,
+   "p_market": 0.3205,
+   "y": 1,
+   "p_map_h1": 0.5316,
+   "unc": 5.84,
+   "calpp": 3.59,
+   "actual_circuito": {
+    "p_under": 0.3071,
+    "edge_pp": -1.34,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.5139
+   },
+   "corregido_circuito": {
+    "p_under": 0.3072,
+    "edge_pp": -1.33,
+    "nace": false,
+    "mean_rounds": 21.27,
+    "pRound": 0.5084
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3227,
+    "edge_pp": 0.22,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.5139
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3234,
+    "edge_pp": 0.29,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5075
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bilibili~jd_RONDAS_under_20.5_2",
+   "home": "JD Gaming",
+   "away": "Bilibili",
+   "map": 2,
+   "real_map": "Split",
+   "real_total": 21,
+   "line": 20.5,
+   "odds": 2.36,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5042,
+   "edge_orig": 8.05,
+   "p_market": 0.4237,
+   "y": 0,
+   "p_map_h1": 0.429,
+   "unc": 5.27,
+   "calpp": 2.56,
+   "actual_circuito": {
+    "p_under": 0.4225,
+    "edge_pp": -0.12,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.4688
+   },
+   "corregido_circuito": {
+    "p_under": 0.4076,
+    "edge_pp": -1.61,
+    "nace": false,
+    "mean_rounds": 21.24,
+    "pRound": 0.4833
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4376,
+    "edge_pp": 1.39,
+    "nace": false,
+    "mean_rounds": 21,
+    "pRound": 0.4688
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4211,
+    "edge_pp": -0.26,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.4843
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_3",
+   "home": "Kiwoom Drx",
+   "away": "Sharper Esports",
+   "map": 3,
+   "real_map": "Sunset",
+   "real_total": 22,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6121,
+   "edge_orig": 7.73,
+   "p_market": 0.5348,
+   "y": 0,
+   "p_map_h1": 0.3767,
+   "unc": 5.92,
+   "calpp": 3.72,
+   "actual_circuito": {
+    "p_under": 0.568,
+    "edge_pp": 3.32,
+    "nace": false,
+    "mean_rounds": 20.8,
+    "pRound": 0.4458
+   },
+   "corregido_circuito": {
+    "p_under": 0.5286,
+    "edge_pp": -0.62,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.4717
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5389,
+    "edge_pp": 0.41,
+    "nace": false,
+    "mean_rounds": 21.12,
+    "pRound": 0.4458
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5126,
+    "edge_pp": -2.22,
+    "nace": false,
+    "mean_rounds": 21.35,
+    "pRound": 0.4694
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:kiwoomdrx~sharper_RONDAS_under_21.5_1",
+   "home": "Kiwoom Drx",
+   "away": "Sharper Esports",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 15,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6271,
+   "edge_orig": 9.23,
+   "p_market": 0.5348,
+   "y": 1,
+   "p_map_h1": 0.3767,
+   "unc": 9.93,
+   "calpp": 8.8,
+   "actual_circuito": {
+    "p_under": 0.568,
+    "edge_pp": 3.32,
+    "nace": false,
+    "mean_rounds": 20.8,
+    "pRound": 0.4458
+   },
+   "corregido_circuito": {
+    "p_under": 0.5286,
+    "edge_pp": -0.62,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.4717
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5847,
+    "edge_pp": 4.99,
+    "nace": false,
+    "mean_rounds": 20.58,
+    "pRound": 0.4458
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.5484,
+    "edge_pp": 1.36,
+    "nace": false,
+    "mean_rounds": 20.94,
+    "pRound": 0.4716
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_1",
+   "home": "T1",
+   "away": "Nongshim RedForce",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 18,
+   "line": 20.5,
+   "odds": 2.4,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5033,
+   "edge_orig": 8.66,
+   "p_market": 0.4167,
+   "y": 1,
+   "p_map_h1": 0.4736,
+   "unc": 5.96,
+   "calpp": 3.78,
+   "actual_circuito": {
+    "p_under": 0.4076,
+    "edge_pp": -0.91,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.4046,
+    "edge_pp": -1.21,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3894,
+    "edge_pp": -2.73,
+    "nace": false,
+    "mean_rounds": 21.37,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3915,
+    "edge_pp": -2.52,
+    "nace": false,
+    "mean_rounds": 21.34,
+    "pRound": 0.4947
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nongshimredforce~t1_RONDAS_under_20.5_2",
+   "home": "T1",
+   "away": "Nongshim RedForce",
+   "map": 2,
+   "real_map": "Haven",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.41,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4858,
+   "edge_orig": 7.09,
+   "p_market": 0.4149,
+   "y": 0,
+   "p_map_h1": 0.4736,
+   "unc": 4.66,
+   "calpp": 0.71,
+   "actual_circuito": {
+    "p_under": 0.4076,
+    "edge_pp": -0.73,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.4884
+   },
+   "corregido_circuito": {
+    "p_under": 0.4046,
+    "edge_pp": -1.03,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4947
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4244,
+    "edge_pp": 0.95,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.4884
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4226,
+    "edge_pp": 0.77,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.4939
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_20.5_1",
+   "home": "Enterprise",
+   "away": "Karmine Corp",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.4,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4997,
+   "edge_orig": 8.3,
+   "p_market": 0.4167,
+   "y": 0,
+   "p_map_h1": 0.5461,
+   "unc": 4.78,
+   "calpp": 1.26,
+   "actual_circuito": {
+    "p_under": 0.4122,
+    "edge_pp": -0.45,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5203
+   },
+   "corregido_circuito": {
+    "p_under": 0.4042,
+    "edge_pp": -1.25,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.511
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4206,
+    "edge_pp": 0.39,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5203
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4191,
+    "edge_pp": 0.24,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5103
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_19.5_2",
+   "home": "Enterprise",
+   "away": "Karmine Corp",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 22,
+   "line": 19.5,
+   "odds": 3.17,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3765,
+   "edge_orig": 6.1,
+   "p_market": 0.3155,
+   "y": 0,
+   "p_map_h1": 0.5461,
+   "unc": 5.23,
+   "calpp": 2.46,
+   "actual_circuito": {
+    "p_under": 0.3098,
+    "edge_pp": -0.57,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5203
+   },
+   "corregido_circuito": {
+    "p_under": 0.3065,
+    "edge_pp": -0.9,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.511
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_1",
+   "home": "Nova",
+   "away": "TYLOO",
+   "map": 1,
+   "real_map": "Ascent",
+   "real_total": 20,
+   "line": 20.5,
+   "odds": 2.41,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5176,
+   "edge_orig": 10.27,
+   "p_market": 0.4149,
+   "y": 1,
+   "p_map_h1": 0.5057,
+   "unc": 6.14,
+   "calpp": 4.05,
+   "actual_circuito": {
+    "p_under": 0.4028,
+    "edge_pp": -1.21,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5025
+   },
+   "corregido_circuito": {
+    "p_under": 0.4041,
+    "edge_pp": -1.08,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5012
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3957,
+    "edge_pp": -1.92,
+    "nace": false,
+    "mean_rounds": 21.32,
+    "pRound": 0.5025
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.395,
+    "edge_pp": -1.99,
+    "nace": false,
+    "mean_rounds": 21.32,
+    "pRound": 0.5019
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:nova~tyloo_RONDAS_under_20.5_2",
+   "home": "Nova",
+   "away": "TYLOO",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 23,
+   "line": 20.5,
+   "odds": 2.42,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5049,
+   "edge_orig": 9.17,
+   "p_market": 0.4132,
+   "y": 0,
+   "p_map_h1": 0.5057,
+   "unc": 5.26,
+   "calpp": 2.54,
+   "actual_circuito": {
+    "p_under": 0.4028,
+    "edge_pp": -1.04,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5025
+   },
+   "corregido_circuito": {
+    "p_under": 0.4041,
+    "edge_pp": -0.91,
+    "nace": false,
+    "mean_rounds": 21.31,
+    "pRound": 0.5012
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3037,
+    "edge_pp": -10.95,
+    "nace": false,
+    "mean_rounds": 22.12,
+    "pRound": 0.5025
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3018,
+    "edge_pp": -11.14,
+    "nace": false,
+    "mean_rounds": 22.13,
+    "pRound": 0.5003
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:bbl~fut_RONDAS_under_19.5_2",
+   "home": "FUT",
+   "away": "BBL",
+   "map": 2,
+   "real_map": "Haven",
+   "real_total": 19,
+   "line": 19.5,
+   "odds": 3.18,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3835,
+   "edge_orig": 6.9,
+   "p_market": 0.3145,
+   "y": 1,
+   "p_map_h1": 0.4946,
+   "unc": 5.23,
+   "calpp": 2.47,
+   "actual_circuito": {
+    "p_under": 0.304,
+    "edge_pp": -1.05,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4976
+   },
+   "corregido_circuito": {
+    "p_under": 0.3057,
+    "edge_pp": -0.88,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4991
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3205,
+    "edge_pp": 0.6,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.4976
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3197,
+    "edge_pp": 0.52,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.4984
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-21:enterprise~karminecorp_RONDAS_under_21.5_1",
+   "home": "Enterprise",
+   "away": "Karmine Corp",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 23,
+   "line": 21.5,
+   "odds": 1.87,
+   "book": "bovada",
+   "books": 1,
+   "p_gp_orig": 0.6069,
+   "edge_orig": 7.21,
+   "p_market": 0.5348,
+   "y": 0,
+   "p_map_h1": 0.5461,
+   "unc": 4.78,
+   "calpp": 1.27,
+   "actual_circuito": {
+    "p_under": 0.522,
+    "edge_pp": -1.28,
+    "nace": false,
+    "mean_rounds": 21.22,
+    "pRound": 0.5203
+   },
+   "corregido_circuito": {
+    "p_under": 0.5187,
+    "edge_pp": -1.61,
+    "nace": false,
+    "mean_rounds": 21.26,
+    "pRound": 0.511
+   },
+   "actual_mapa_real": {
+    "p_under": 0.5289,
+    "edge_pp": -0.59,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5203
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.529,
+    "edge_pp": -0.58,
+    "nace": false,
+    "mean_rounds": 21.15,
+    "pRound": 0.5103
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_19.5_1",
+   "home": "Sentinels",
+   "away": "2GAME",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 21,
+   "line": 19.5,
+   "odds": 2.98,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4363,
+   "edge_orig": 10.07,
+   "p_market": 0.3356,
+   "y": 0,
+   "p_map_h1": 0.5812,
+   "unc": 9.78,
+   "calpp": 8.62,
+   "actual_circuito": {
+    "p_under": 0.3256,
+    "edge_pp": -1,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.5357
+   },
+   "corregido_circuito": {
+    "p_under": 0.3107,
+    "edge_pp": -2.49,
+    "nace": false,
+    "mean_rounds": 21.2,
+    "pRound": 0.5189
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3324,
+    "edge_pp": -0.32,
+    "nace": false,
+    "mean_rounds": 21.04,
+    "pRound": 0.5357
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3188,
+    "edge_pp": -1.68,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5187
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:2game~sentinels_RONDAS_under_18.5_1",
+   "home": "Sentinels",
+   "away": "2GAME",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 21,
+   "line": 18.5,
+   "odds": 4.07,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3521,
+   "edge_orig": 10.64,
+   "p_market": 0.2457,
+   "y": 0,
+   "p_map_h1": 0.5812,
+   "unc": 9.18,
+   "calpp": 7.94,
+   "actual_circuito": {
+    "p_under": 0.2326,
+    "edge_pp": -1.31,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.5357
+   },
+   "corregido_circuito": {
+    "p_under": 0.2222,
+    "edge_pp": -2.35,
+    "nace": false,
+    "mean_rounds": 21.2,
+    "pRound": 0.5189
+   },
+   "actual_mapa_real": {
+    "p_under": 0.238,
+    "edge_pp": -0.77,
+    "nace": false,
+    "mean_rounds": 21.04,
+    "pRound": 0.5357
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2267,
+    "edge_pp": -1.9,
+    "nace": false,
+    "mean_rounds": 21.14,
+    "pRound": 0.5187
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:xipto~zetadivision_RONDAS_under_20.5_1",
+   "home": "ZETA DIVISION",
+   "away": "Xipto",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 24,
+   "line": 20.5,
+   "odds": 2.4,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.5705,
+   "edge_orig": 15.38,
+   "p_market": 0.4167,
+   "y": 0,
+   "p_map_h1": 0.6078,
+   "unc": 12.61,
+   "calpp": 11.74,
+   "actual_circuito": {
+    "p_under": 0.4476,
+    "edge_pp": 3.09,
+    "nace": false,
+    "mean_rounds": 20.96,
+    "pRound": 0.5474
+   },
+   "corregido_circuito": {
+    "p_under": 0.4185,
+    "edge_pp": 0.18,
+    "nace": false,
+    "mean_rounds": 21.17,
+    "pRound": 0.525
+   },
+   "actual_mapa_real": {
+    "p_under": 0.4499,
+    "edge_pp": 3.32,
+    "nace": false,
+    "mean_rounds": 20.91,
+    "pRound": 0.5474
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.4225,
+    "edge_pp": 0.58,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.5249
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_18.5_1",
+   "home": "ENTERPRISE",
+   "away": "Vitality",
+   "map": 1,
+   "real_map": "Summit",
+   "real_total": 19,
+   "line": 18.5,
+   "odds": 4.02,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4027,
+   "edge_orig": 15.39,
+   "p_market": 0.2488,
+   "y": 0,
+   "p_map_h1": 0.4814,
+   "unc": 12.45,
+   "calpp": 11.56,
+   "actual_circuito": {
+    "p_under": 0.2183,
+    "edge_pp": -3.05,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4918
+   },
+   "corregido_circuito": {
+    "p_under": 0.2158,
+    "edge_pp": -3.3,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4965
+   },
+   "actual_mapa_real": {
+    "p_under": 0.1258,
+    "edge_pp": -12.3,
+    "nace": false,
+    "mean_rounds": 22.09,
+    "pRound": 0.4918
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.126,
+    "edge_pp": -12.28,
+    "nace": false,
+    "mean_rounds": 22.1,
+    "pRound": 0.4961
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_18.5_1",
+   "home": "Liquid",
+   "away": "FUT",
+   "map": 1,
+   "real_map": "Haven",
+   "real_total": 24,
+   "line": 18.5,
+   "odds": 4.32,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4492,
+   "edge_orig": 21.77,
+   "p_market": 0.2315,
+   "y": 0,
+   "p_map_h1": 0.4635,
+   "unc": 10.53,
+   "calpp": 9.47,
+   "actual_circuito": {
+    "p_under": 0.2196,
+    "edge_pp": -1.19,
+    "nace": false,
+    "mean_rounds": 21.23,
+    "pRound": 0.4839
+   },
+   "corregido_circuito": {
+    "p_under": 0.2184,
+    "edge_pp": -1.31,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4921
+   },
+   "actual_mapa_real": {
+    "p_under": 0.2419,
+    "edge_pp": 1.04,
+    "nace": false,
+    "mean_rounds": 21.05,
+    "pRound": 0.4839
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2368,
+    "edge_pp": 0.53,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.4909
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_2",
+   "home": "ENTERPRISE",
+   "away": "Vitality",
+   "map": 2,
+   "real_map": "Abyss",
+   "real_total": 24,
+   "line": 19.5,
+   "odds": 3,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4011,
+   "edge_orig": 6.78,
+   "p_market": 0.3333,
+   "y": 0,
+   "p_map_h1": 0.4814,
+   "unc": 6.08,
+   "calpp": 3.96,
+   "actual_circuito": {
+    "p_under": 0.3066,
+    "edge_pp": -2.67,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4918
+   },
+   "corregido_circuito": {
+    "p_under": 0.3049,
+    "edge_pp": -2.84,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4965
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:enterprise~vitality_RONDAS_under_19.5_3",
+   "home": "ENTERPRISE",
+   "away": "Vitality",
+   "map": 3,
+   "real_map": "Lotus",
+   "real_total": 17,
+   "line": 19.5,
+   "odds": 3.06,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.3935,
+   "edge_orig": 6.67,
+   "p_market": 0.3268,
+   "y": 1,
+   "p_map_h1": 0.4814,
+   "unc": 5.88,
+   "calpp": 3.65,
+   "actual_circuito": {
+    "p_under": 0.3066,
+    "edge_pp": -2.02,
+    "nace": false,
+    "mean_rounds": 21.29,
+    "pRound": 0.4918
+   },
+   "corregido_circuito": {
+    "p_under": 0.3049,
+    "edge_pp": -2.19,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4965
+   },
+   "actual_mapa_real": {
+    "p_under": 0.3229,
+    "edge_pp": -0.39,
+    "nace": false,
+    "mean_rounds": 21.11,
+    "pRound": 0.4918
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.3207,
+    "edge_pp": -0.61,
+    "nace": false,
+    "mean_rounds": 21.13,
+    "pRound": 0.4958
+   }
+  },
+  {
+   "pick_id": "es_valorant_valorant:2026-08-20:fut~liquid_RONDAS_under_19.5_2",
+   "home": "Liquid",
+   "away": "FUT",
+   "map": 2,
+   "real_map": "Summit",
+   "real_total": 24,
+   "line": 19.5,
+   "odds": 3.16,
+   "book": "pinnacle",
+   "books": 1,
+   "p_gp_orig": 0.4509,
+   "edge_orig": 13.44,
+   "p_market": 0.3165,
+   "y": 0,
+   "p_map_h1": 0.4635,
+   "unc": 5.68,
+   "calpp": 3.32,
+   "actual_circuito": {
+    "p_under": 0.3069,
+    "edge_pp": -0.96,
+    "nace": false,
+    "mean_rounds": 21.23,
+    "pRound": 0.4839
+   },
+   "corregido_circuito": {
+    "p_under": 0.3067,
+    "edge_pp": -0.98,
+    "nace": false,
+    "mean_rounds": 21.28,
+    "pRound": 0.4921
+   },
+   "actual_mapa_real": {
+    "p_under": 0.207,
+    "edge_pp": -10.95,
+    "nace": false,
+    "mean_rounds": 22.08,
+    "pRound": 0.4839
+   },
+   "corregido_mapa_real": {
+    "p_under": 0.2042,
+    "edge_pp": -11.23,
+    "nace": false,
+    "mean_rounds": 22.11,
+    "pRound": 0.4906
+   }
+  }
+ ]
+}

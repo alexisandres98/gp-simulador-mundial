@@ -1,0 +1,35 @@
+
+═══ WNBA · H4 rest_diff · n=202
+corr(rest_diff, real−línea) toda la muestra: -0.2 (t -2.89)
+colinealidad: corr(rest_diff, home_rest)=0.595 corr(rest_diff, away_rest)=-0.589
+  rest_diff [-8,-1.5): n=17 over 14 (82.35%) resid medio 8.79 pts · ROI over 57.21%
+  rest_diff [-1.5,-0.5): n=39 over 29 (74.36%) resid medio 8.17 pts · ROI over 41.95%
+  rest_diff [-0.5,0.5): n=74 over 40 (54.05%) resid medio 2.81 pts · ROI over 3.19%
+  rest_diff [0.5,1.5): n=44 over 24 (54.55%) resid medio 2.66 pts · ROI over 4.13%
+  rest_diff [1.5,8): n=28 over 8 (28.57%) resid medio -8.36 pts · ROI over -45.46%
+   tasa de over ciega en TEST: 56.49% (n=131) → ROI over ciego 7.84%
+corte 50/50: corr dev -0.322 (n71) test -0.153 (n131) · umbral p75_dev=0.73 · dev n=17 14W ROI 57.21±18.19 · TEST n=34 24W ROI 34.75±15.14
+     test umbral 0: n=49 35W ROI 36.36
+     test umbral 0.5: n=36 26W ROI 37.87
+     test umbral 1: n=16 11W ROI 31.24
+     test umbral 1.5: n=11 8W ROI 38.84
+     test umbral 2: n=10 7W ROI 33.63
+   tasa de over ciega en TEST: 56.19% (n=105) → ROI over ciego 7.27%
+corte 60/40: corr dev -0.237 (n97) test -0.164 (n105) · umbral p75_dev=0.9 · dev n=24 19W ROI 51.13±16.17 · TEST n=18 13W ROI 37.87±20.74
+     test umbral 0: n=37 27W ROI 39.31
+     test umbral 0.5: n=25 19W ROI 45.08
+     test umbral 1: n=11 7W ROI 21.48
+     test umbral 1.5: n=7 4W ROI 9.09
+     test umbral 2: n=6 3W ROI -4.55
+   tasa de over ciega en TEST: 56.41% (n=78) → ROI over ciego 7.69%
+corte 70/30: corr dev -0.217 (n124) test -0.17 (n78) · umbral p75_dev=0.96 · dev n=30 24W ROI 52.72±14.18 · TEST n=9 6W ROI 27.27±31.82
+     test umbral 0: n=27 20W ROI 41.41
+     test umbral 0.5: n=16 12W ROI 43.17
+     test umbral 1: n=7 5W ROI 36.36
+     test umbral 1.5: n=4 3W ROI 43.18
+     test umbral 2: n=4 3W ROI 43.18
+regla (away_rest − home_rest > 0,9) toda la muestra: n=42 over 32 · por mes: {"2026-05":[3,3],"2026-06":[18,13],"2026-07":[17,14],"2026-08":[4,2]}
+   descanso bruto del visitante en esas picks: media 4.11 días · local 2.14 · casos con away_rest_raw ≥ 6: 6
+   equipos visitantes: {"IND":5,"LA":6,"DAL":3,"SEA":4,"WSH":1,"NY":4,"GS":3,"MIN":3,"ATL":3,"TOR":1,"POR":2,"PHX":1,"CHI":3,"CON":2,"LV":1}
+   excluyendo parones (≥6 días): n=36 over 28 ROI 48.48
+permutación (una sola feature, signo fijado en dev): P(ROI test ≥ 37.87%) = 0.112

@@ -1,4 +1,30 @@
-# HANDOFF — estado al 2-sep-2026 (autopsia de los modelos frente al mercado + LoL cerrado)
+# HANDOFF — estado al 2-sep-2026 (autopsia + backtests de mejoras + LoL cerrado)
+
+## 🧪 BACKTESTS DE MEJORAS POR FAMILIA (2-sep, noche) — la respuesta a "mejorar, no cerrar"
+Informe: **`docs/BACKTESTS_FAMILIAS_2026-09-02.md`** (tabla ejecutiva en §2, orden de trabajo en §9). Cinco
+backtesters + cinco escépticos independientes; todo reproducido; nada aplicado en producción. Lo que sobrevive:
+- **Tenis ATP**: edad lineal en el ensamble (skill 10,12→10,62 %, t 5,8, estable 9 años) y días-sin-jugar +
+  partidos-en-7-días (t 3,0; exige fecha real de partido). Distribución de juegos C6 (punto + residuo
+  empírico) **solo en ATP bo3** (Brier O/U t 9,9); en bo5 y WTA NO demostrada. El +18 % del libro TOTAL cae al
+  contar eventos (43, t 0,72). WTA: edad y fatiga rechazadas.
+- **Valorant**: bisección de pRound en vez de `×0,44` (hándicap −0,015, SE 0,0055, n=128; con ella 0 de las 80
+  under nacen) + anclar la p de mapa al mercado (favorito de producción 45 %, implícita 55,7 %). Blend c=−0,20.
+- **Combate**: el modelo ACTUAL bate al Elo puro (t −8,2/−6,4) y está calibrado; ningún rasgo nuevo pasa (la
+  edad por tramos EMPEORA t +2,4). Único corte robusto del libro: comprar perro del mercado CLV −8,6 vs
+  favorito +3,3 (diff t 4,0) → preregistrar "FIGHT solo si el lado es favorito del mercado". Techo 3 es 100 %
+  en muestra. w=0,8 y veto por deriva: rechazados. Orden f1/f2 de ESPN tiene fuga: nunca usarlo.
+- **Fútbol**: blend c=−0,14 (el Elo no informa el 1X2); "excluir copas" CAE (regex contaba Championship y
+  omitía Coppa Italia: t −1,3, no −3,8) pero el mecanismo sí (pools fusionados sin recalibrar); GOALS calibrado
+  (problema de precio, CLV −1,3 t −4,1); córners ≥2 casas inconcluso-favorable (+12 % t 2,0; Liga MX es el
+  60 %; `books` es el refrescado ≤2 h). De-vig Shin/potencia pendiente del vector 1X2 del odds-archive.
+- **Baloncesto**: histograma OK como código, no como rentabilidad; β≈0 en las dos ligas; **el CLV está mal
+  medido** (−3,2 de los −4,6 puntos son vig: cierre sin margen vs cuota con margen) → corregir
+  `settleHoopsPicks`; 79 picks = 15 tesis; la capa de plantilla de producción nunca se backtesteó (no hay
+  bajas histórico). Descanso diferencial → over WNBA a preregistro (p 0,11).
+- Preregistro escrito: `docs/PREREGISTRO_WNBA_TOTALES.md` (60 totales desde el 17-sep, vara CLV).
+- Cómo cotizan casas y sharps (60 fuentes): `docs/MERCADO_COMO_COTIZAN_2026-09-02.md`.
+- Scripts y resultados chicos: `research/backtests-2026-09-02/`.
+- **Intocables confirmados:** `cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`.
 
 ## 🔬 AUTOPSIA DE LOS MODELOS (2-sep, tarde) — léelo antes de tocar cualquier familia
 Informe completo: **`docs/AUTOPSIA_MODELOS_2026-09-02.md`**. Lo esencial:

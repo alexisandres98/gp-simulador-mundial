@@ -1,0 +1,20 @@
+
+══════════ NBA · H4 · distancia al cierre
+  HÁNDICAP: {"n":879,"mae_model_margin":11.94,"mae_market_margin":11.22,"sd_model_err":15.1,"sd_market_err":14.36,"sd_model_minus_market":4.67,"mean_model_minus_market":-0.7,"beta":0,"beta_se":0.104,"beta_t":0,"corr_errors":0.951}
+  hándicap por |línea| (¿el modelo comprime al favorito?):
+    {"band":"|línea| 0-4","n":267,"model_minus_market_toward_fav_pts":-1.26,"real_minus_market_toward_fav_pts":0.02,"fav_cover_pct":48.31,"p_home_model_avg":0.492,"home_cover_pct":47.94}
+    {"band":"|línea| 4-8","n":274,"model_minus_market_toward_fav_pts":-2.29,"real_minus_market_toward_fav_pts":-0.31,"fav_cover_pct":51.82,"p_home_model_avg":0.5,"home_cover_pct":53.65}
+    {"band":"|línea| 8-12","n":174,"model_minus_market_toward_fav_pts":-3.69,"real_minus_market_toward_fav_pts":-0.86,"fav_cover_pct":48.85,"p_home_model_avg":0.458,"home_cover_pct":51.15}
+    {"band":"|línea| 12-40","n":164,"model_minus_market_toward_fav_pts":-4.75,"real_minus_market_toward_fav_pts":1.73,"fav_cover_pct":53.05,"p_home_model_avg":0.463,"home_cover_pct":53.66}
+  calibración P(local cubre): 0-0.4: n=242 p̄=0.326 real=0.537 | 0.4-0.47: n=170 p̄=0.435 real=0.512 | 0.47-0.53: n=147 p̄=0.5 real=0.537 | 0.53-0.6: n=154 p̄=0.566 real=0.429 | 0.6-1.01: n=166 p̄=0.665 real=0.542
+
+  RESIDUO DEL CIERRE (real − línea) vs rasgos pre-partido · desarrollo n=490 · evaluación n=389
+   model_dis    corr dev  -0.043 (t -0.95) · corr test   0.006 (t 0.11)
+   tpa_sum      corr dev   0.017 (t 0.37) · corr test   0.029 (t 0.57)
+   rest_diff    corr dev  -0.027 (t -0.6) · corr test   0.017 (t 0.34)
+   b2b_any      corr dev   0.041 (t 0.9) · corr test   0.063 (t 1.23)
+   home_rest    corr dev  -0.012 (t -0.28) · corr test   0.007 (t 0.13)
+   away_rest    corr dev   0.011 (t 0.24) · corr test  -0.011 (t -0.22)
+   ptsres_sum   corr dev  -0.013 (t -0.28) · corr test  -0.009 (t -0.17)
+   off_resid    corr dev    null (t null) · corr test    null (t null)
+  árbitros: {"games_with_officials":0,"distinct":0,"avg_prior_games_per_crew":0}

@@ -139,6 +139,81 @@ function snapshotCloses(rows) {
   if (dirty) wrD('closes.json', st);
 }
 
+// ── AJUSTES AL GANADOR ATP (2-sep): EDAD Y CALENDARIO ───────────────────────────────────────────────────
+// Salen del backtest por familia del 2-sep (docs/BACKTESTS_FAMILIAS_2026-09-02.md §6.1-6.2, §6.8) y de la
+// revisión del escéptico. Los dos son términos ADITIVOS en el logit del ensamble, SIN intercepto y con
+// especificación simétrica (lo que suma a A se lo resta a B), ajustados en desarrollo 2018-2024 y evaluados
+// una vez en el holdout 2025→:
+//   · EDAD: el Elo sobreestima a los veteranos. −0,103 por cada 5 años de diferencia (t 5,8; coeficiente
+//     negativo y estable los nueve años). SOLO ATP: en la WTA empeora (t −1,6 / −2,7) y NO se aplica.
+//   · CALENDARIO: días sin jugar (log, tope 60) y partidos en los últimos 7 días (t 3,1 dada la edad). Solo
+//     vale con la FECHA REAL del último partido: la espina de Sackmann fecha el torneo entero con el día de
+//     inicio, así que se exige que el último partido de AMBOS venga de la cola ESPN (fecha ≥ tail.from).
+// Ninguna cuota entra aquí: el modelo sigue siendo market-blind por construcción.
+const ATP = 0; // índice del circuito masculino (el de tourSpwStart 0,63 en data.js)
+const AJUSTES_ATP = { edad_por_5a: -0.103, dias_log: -0.137, n7: 0.012, dias_tope: 60 };
+const logitP = (p) => Math.log(p / (1 - p));
+const sigm = (x) => 1 / (1 + Math.exp(-x));
+const clampP = (p) => Math.max(1e-4, Math.min(1 - 1e-4, p));
+const diaDeYmd = (n) => { const s = String(n); return Math.round(Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)) / 864e5); };
+const ymdDeMs = (ms) => +new Date(ms).toISOString().slice(0, 10).replace(/-/g, '');
+
+function ajustesGanador(tn, idA, idB, matchMs) {
+  const out = { age_logit: 0, age_pp: null, age: null, calendar_logit: 0, calendar_pp: null, calendar: null };
+  if (tn !== ATP) { out.age = 'no aplica (WTA: el término empeora fuera de muestra)'; out.calendar = 'no aplica (WTA)'; return out; }
+  const d = D.build();
+  const ms = Number.isFinite(matchMs) ? matchMs : Date.now();
+  const dia = diaDeYmd(ymdDeMs(ms));
+  const pa = d.players[tn + ':' + idA], pb = d.players[tn + ':' + idB];
+  if (pa && pb && pa.dob > 19000101 && pb.dob > 19000101) {
+    const edadA = (dia - diaDeYmd(pa.dob)) / 365.25, edadB = (dia - diaDeYmd(pb.dob)) / 365.25;
+    out.age_logit = AJUSTES_ATP.edad_por_5a * (edadA - edadB) / 5;
+    out.age = { a: r2(edadA), b: r2(edadB), diff: r2(edadA - edadB) };
+  } else out.age = 'sin fecha de nacimiento de ' + (!(pa && pa.dob > 19000101) && !(pb && pb.dob > 19000101) ? 'ambos' : !(pa && pa.dob > 19000101) ? 'a' : 'b') + ': no se aplica';
+  // calendario: solo con fecha real (cola ESPN) del último partido de los dos
+  const tailFrom = d.meta && d.meta.tail && +d.meta.tail.from;
+  const profA = d.T[tn].prof.get(idA), profB = d.T[tn].prof.get(idB);
+  const real = (p) => !!(p && tailFrom > 20000000 && p.lastDate >= tailFrom);
+  if (real(profA) && real(profB)) {
+    const feat = (p) => {
+      const days = Math.min(AJUSTES_ATP.dias_tope, Math.max(0, dia - diaDeYmd(p.lastDate)));
+      const n7 = (p.recent || []).filter((m) => { const dm = diaDeYmd(m.d); return dm < dia && dm >= dia - 7; }).length;
+      return { days, n7 };
+    };
+    const fA = feat(profA), fB = feat(profB);
+    out.calendar_logit = AJUSTES_ATP.dias_log * (Math.log1p(fA.days) - Math.log1p(fB.days)) + AJUSTES_ATP.n7 * (fA.n7 - fB.n7);
+    out.calendar = 'aplicado';
+    // el retraso de la base infla los días de los dos por igual: se anota para que la revisión lo vea
+    const lm = d.meta && d.meta.last_match_date; const cut = lm && typeof lm === 'object' ? +lm.atp : +lm;
+    out.calendar_detail = { days_a: fA.days, days_b: fB.days, n7_a: fA.n7, n7_b: fB.n7, base_lag_days: cut > 20000000 ? Math.max(0, dia - diaDeYmd(cut)) : null };
+  } else out.calendar = 'sin fecha real';
+  return out;
+}
+
+// aplica los ajustes al ensamble y cuantifica en pp lo que movió cada uno
+function aplicarAjustes(pBase, adj) {
+  const z0 = logitP(clampP(pBase));
+  const p1 = sigm(z0 + adj.age_logit), p2 = sigm(z0 + adj.age_logit + adj.calendar_logit);
+  adj.age_pp = r2(100 * (p1 - pBase)); adj.calendar_pp = r2(100 * (p2 - p1));
+  adj.age_logit = +adj.age_logit.toFixed(4); adj.calendar_logit = +adj.calendar_logit.toFixed(4);
+  return p2;
+}
+
+// las líneas en español de la ficha ("lo que decide"), con los pp que movió cada ajuste
+function ajustesWhatMatters(adj, nameA, nameB) {
+  const out = [];
+  if (!adj) return out;
+  if (adj.age && typeof adj.age === 'object') {
+    const dif = adj.age.diff;
+    out.push({ rank: out.length + 1, driver: 'Edad', pp: adj.age_pp, text: `${nameA} tiene ${Math.abs(dif).toFixed(1)} años ${dif >= 0 ? 'más' : 'menos'} que ${nameB}: el Elo sobreestima a los veteranos y el ajuste mueve la probabilidad de ${nameA} ${adj.age_pp >= 0 ? '+' : ''}${adj.age_pp} pp.` });
+  } else if (typeof adj.age === 'string') out.push({ rank: out.length + 1, driver: 'Edad', pp: 0, text: `Edad: ${adj.age}.` });
+  if (adj.calendar === 'aplicado' && adj.calendar_detail) {
+    const c = adj.calendar_detail;
+    out.push({ rank: out.length + 1, driver: 'Calendario', pp: adj.calendar_pp, text: `${nameA} llega con ${c.days_a} días sin jugar y ${c.n7_a} partido${c.n7_a === 1 ? '' : 's'} en 7 días; ${nameB} con ${c.days_b} y ${c.n7_b}: ${adj.calendar_pp >= 0 ? '+' : ''}${adj.calendar_pp} pp para ${nameA}.` });
+  } else if (adj.calendar === 'sin fecha real') out.push({ rank: out.length + 1, driver: 'Calendario', pp: 0, text: 'Calendario: sin fecha real del último partido de ambos (la espina histórica fecha por torneo): no se aplica.' });
+  return out;
+}
+
 // ── EL MODELO SOBRE UN EVENTO: resolver jugadores, compilar el partido, comparar con el mercado ─────────
 function eventModel(ev) {
   const tn = tourOfKey(ev._tkey), surf = surfOfKey(ev._tkey);
@@ -149,28 +224,62 @@ function eventModel(ev) {
   const cst = D.build().T[tn].cst;
   const md = C.matchDist(mp.paSrv, mp.pbSrv, bo, cst.shock || 0);
   // ganador: ensamble congelado (mezcla en logit del Elo mixto y el compilado)
-  const logit = (p) => Math.log(p / (1 - p)), sg = (x) => 1 / (1 + Math.exp(-x));
-  const clampP = (p) => Math.max(1e-4, Math.min(1 - 1e-4, p));
   const u = cst.ensembleU || 0;
-  const pA = sg((1 - u) * logit(clampP(mp.pMix)) + u * logit(clampP(md.pA)));
+  const pBase = sigm((1 - u) * logitP(clampP(mp.pMix)) + u * logitP(clampP(md.pA)));
+  // ... más los ajustes de edad y calendario (solo ATP; ver arriba)
+  const adj = ajustesGanador(tn, A.id, B.id, Date.parse(ev.commence_time || 0));
+  const pA = aplicarAjustes(pBase, adj);
   const cal = (cst.gamesCal || {})[bo === 5 ? 'bo5' : 'bo3'] || [0, 1];
-  return {
+  const model = {
     available: true, tour: tn, surface: surf, best_of: bo,
     a: { id: A.id, name: A.name, ref: ev.home_team }, b: { id: B.id, name: B.name, ref: ev.away_team },
-    p_a: r3(pA), dist: md, exp_games: r2(cal[0] + cal[1] * md.expGames), tb_any: r3(md.tbAny),
+    p_a: r3(pA), p_a_base: r3(pBase), dist: md, exp_games: r2(cal[0] + cal[1] * md.expGames), tb_any: r3(md.tbAny),
     hold_a: r3(md.holdA), hold_b: r3(md.holdB), p_set_a: r3(md.pSetA),
+    adjustments: adj,
     model_version: (D.build().priors || {}).model_version || 'tennis-sr-1',
   };
+  adj.dist_method = gamesPmf(model).method;
+  return model;
+}
+
+// ── LA DISTRIBUCIÓN DE JUEGOS CON LA QUE SE PUNTÚA EL TOTAL (2-sep) ─────────────────────────────────────
+// La distribución desplazada (calibración lineal sobre la forma IID del compilador) está mal en FORMA: la
+// real es bimodal por número de sets y el desplazamiento predecía over 45,1 % donde ocurría 40,7 %
+// (§6.4). C6 = punto calibrado (calG) + residuo EMPÍRICO de desarrollo por formato × tercil de juegos
+// esperados: Brier over/under 0,2421 → 0,2392 (t 9,9) en ATP a tres sets. En bo5 (t 0,3-1,7) y en la WTA
+// (cae) NO está demostrado, así que la tabla se guarda para los dos pero solo se USA en ATP bo3. La tabla
+// la escribe scripts/tennis-resid.js en model-priors.json (constants.gamesResid); si no está, se cae al
+// desplazamiento de siempre. El hándicap sigue con el desplazamiento sobre el margen (no medido).
+// La masa fraccional de calG + R se reparte entre los dos enteros vecinos (misma mecánica que validó el
+// backtest), así el soporte queda entero y el push en líneas enteras está bien definido.
+function gamesPmf(model) {
+  const md = model.dist;
+  const cst = D.build().T[model.tour].cst;
+  const cal = (cst.gamesCal || {})[model.best_of === 5 ? 'bo5' : 'bo3'] || [0, 1];
+  const calG = cal[0] + cal[1] * md.expGames;
+  const tabla = model.tour === ATP && model.best_of === 3 ? (cst.gamesResid || {}).bo3 : null;
+  if (tabla && Array.isArray(tabla.cuts) && tabla.cuts.length === 2 && Array.isArray(tabla.hist) && tabla.hist.length === 3) {
+    const t = md.expGames < tabla.cuts[0] ? 0 : md.expGames < tabla.cuts[1] ? 1 : 2;
+    const acc = new Map();
+    for (const [rs, p] of Object.entries(tabla.hist[t])) {
+      const x = calG + +rs, f = Math.floor(x), w = x - f;
+      acc.set(f, (acc.get(f) || 0) + p * (1 - w));
+      if (w > 1e-12) acc.set(f + 1, (acc.get(f + 1) || 0) + p * w);
+    }
+    return { method: 'c6', tercil: t, pairs: [...acc.entries()].sort((x, y) => x[0] - y[0]) };
+  }
+  const shift = calG - md.expGames; // la calibración desplaza la dist (misma forma)
+  return { method: 'shift', pairs: md.totalGames.map(([g, p]) => [g + shift, p]) };
 }
 
 // P(juegos > linea) y P(margen A > -linea) desde las distribuciones compiladas + calibración de juegos
 function distProbs(model, totalLine, spreadLineA) {
   const md = model.dist;
-  const shift = model.exp_games - md.expGames; // la calibración desplaza la dist (misma forma)
+  const gd = gamesPmf(model);
   let pOver = null, pushT = 0, pCoverA = null, pushS = 0;
   if (totalLine != null) {
     let over = 0, push = 0;
-    for (const [g, p] of md.totalGames) { const gs = g + shift; if (gs > totalLine + 1e-9) over += p; else if (Math.abs(gs - totalLine) < 0.5) { if (Math.abs(gs - totalLine) < 1e-9) push += p; } }
+    for (const [gs, p] of gd.pairs) { if (gs > totalLine + 1e-9) over += p; else if (Math.abs(gs - totalLine) < 1e-9) push += p; }
     pOver = over; pushT = push;
   }
   if (spreadLineA != null) {
@@ -178,7 +287,7 @@ function distProbs(model, totalLine, spreadLineA) {
     for (const [m, p] of md.margin) { const v = m + spreadLineA; if (v > 1e-9) cover += p; else if (Math.abs(v) < 1e-9) push += p; }
     pCoverA = cover; pushS = push;
   }
-  return { pOver, pushT, pCoverA, pushS };
+  return { pOver, pushT, pCoverA, pushS, dist_method: gd.method };
 }
 
 // EL RETRASO DE LA BASE, QUE NO ES LO MISMO QUE UN JUGADOR PARADO (19-ago). Los repos de Sackmann fueron
@@ -233,6 +342,8 @@ function gate(c) {
     verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
     no_pick_reason: pass ? null : (gates.find((x) => !x.pass) || {}).gate,
     benchmark: c.family === 'ML' || undefined,
+    // con qué distribución se puntuó el TOTAL ('c6' en ATP bo3 con tabla; 'shift' en el resto)
+    dist_method: c.dist_method || undefined,
   };
 }
 
@@ -270,7 +381,7 @@ function evaluateEdges(model, mk) {
     for (const side of ['over', 'under']) {
       const b = side === 'over' ? mk.best.total_over : mk.best.total_under;
       const odds = side === 'over' ? b.over : b.under;
-      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale, base_lag_days: lag }));
+      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale, base_lag_days: lag, dist_method: dp.dist_method }));
     }
   }
   if (dp.pCoverA != null && mk.best.spread_a && mk.best.spread_b) {
@@ -418,20 +529,22 @@ async function matchDetail(eventId) {
   };
   if (!model.available) return { ...base, available: false, why: model.why };
   const md = model.dist;
-  const cst = D.build().T[model.tour].cst;
-  const cal = (cst.gamesCal || {})[model.best_of === 5 ? 'bo5' : 'bo3'] || [0, 1];
-  const shift = model.exp_games - md.expGames;
-  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round((g + shift) * 2) / 2, r3(p)]);
+  // la ficha enseña la MISMA distribución de juegos con la que se puntúa el TOTAL (C6 en ATP bo3 con tabla;
+  // desplazamiento en el resto), no una distinta
+  const gd = gamesPmf(model);
+  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round(g * 2) / 2, r3(p)]);
   return {
     ...base, available: true,
     a: { ...model.a, photo: photoOf(model.tour, model.a.id) },
     b: { ...model.b, photo: photoOf(model.tour, model.b.id) },
-    p_a: model.p_a, p_set_a: model.p_set_a, exp_games: model.exp_games, tb_any: model.tb_any,
+    p_a: model.p_a, p_a_base: model.p_a_base, p_set_a: model.p_set_a, exp_games: model.exp_games, tb_any: model.tb_any,
+    adjustments: model.adjustments,
+    what_matters: ajustesWhatMatters(model.adjustments, model.a.name, model.b.name),
     duel: {
       hold_a: model.hold_a, hold_b: model.hold_b,
       break_a: r3(1 - model.hold_b), break_b: r3(1 - model.hold_a),
       tb_any: model.tb_any, exp_games: model.exp_games,
-      set_scores: md.setScores, total_games: bucket(md.totalGames),
+      set_scores: md.setScores, total_games: bucket(gd.pairs), dist_method: gd.method,
     },
     h2h: h2h(model.tour, model.a.id, model.b.id),
     profiles: { a: playerProfile(model.tour, model.a.id), b: playerProfile(model.tour, model.b.id) },
@@ -924,23 +1037,27 @@ function simMatch(tour, refA, refB, { surface = 0, bestOf = 3 } = {}) {
   const mp = D.matchProb(tour, A.id, B.id, surface);
   const cst = D.build().T[tour].cst;
   const md = C.matchDist(mp.paSrv, mp.pbSrv, bestOf, cst.shock || 0);
-  const logit = (p) => Math.log(p / (1 - p)), sg = (x) => 1 / (1 + Math.exp(-x));
-  const clampP = (p) => Math.max(1e-4, Math.min(1 - 1e-4, p));
   const u = cst.ensembleU || 0;
-  const pA = sg((1 - u) * logit(clampP(mp.pMix)) + u * logit(clampP(md.pA)));
+  const pBase = sigm((1 - u) * logitP(clampP(mp.pMix)) + u * logitP(clampP(md.pA)));
+  // el simulador puntúa "hoy": la edad y el calendario se miden a la fecha de la consulta (solo ATP)
+  const adj = ajustesGanador(tour, A.id, B.id, Date.now());
+  const pA = aplicarAjustes(pBase, adj);
   const cal = (cst.gamesCal || {})[bestOf === 5 ? 'bo5' : 'bo3'] || [0, 1];
-  const shift = (cal[0] + cal[1] * md.expGames) - md.expGames;
-  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round((g + shift) * 2) / 2, r3(p)]);
+  const gd = gamesPmf({ dist: md, tour, best_of: bestOf });
+  adj.dist_method = gd.method;
+  const bucket = (arr) => arr.filter(([, p]) => p > 0.004).map(([g, p]) => [Math.round(g * 2) / 2, r3(p)]);
   return {
     available: true, tour, surface: D.SURFACES[surface], best_of: bestOf,
     // el retrato viaja con el jugador: el simulador dibujaba iniciales de colores teniendo la foto a mano
     a: { id: A.id, name: A.name, hand: A.hand, country: A.country, photo: photoOf(tour, A.id) },
     b: { id: B.id, name: B.name, hand: B.hand, country: B.country, photo: photoOf(tour, B.id) },
-    p_a: r3(pA), p_set_a: r3(md.pSetA),
+    p_a: r3(pA), p_a_base: r3(pBase), p_set_a: r3(md.pSetA),
+    adjustments: adj,
+    what_matters: ajustesWhatMatters(adj, A.name, B.name),
     duel: {
       hold_a: r3(md.holdA), hold_b: r3(md.holdB), break_a: r3(1 - md.holdB), break_b: r3(1 - md.holdA),
-      tb_any: r3(md.tbAny), exp_games: r2(md.expGames + shift),
-      set_scores: md.setScores, total_games: bucket(md.totalGames),
+      tb_any: r3(md.tbAny), exp_games: r2(cal[0] + cal[1] * md.expGames),
+      set_scores: md.setScores, total_games: bucket(gd.pairs), dist_method: gd.method,
     },
     h2h: h2h(tour, A.id, B.id),
     profiles: { a: playerProfile(tour, A.id), b: playerProfile(tour, B.id) },

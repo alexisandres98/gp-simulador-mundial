@@ -142,9 +142,22 @@ async function cs2Results({ since, max = 300 } = {}) {
 // Pública y sin clave. Da el partido (un "mapa" en la gramática de GP) con su ganador y su duración, pero NO
 // la estructura de serie: `series_id` existe pero el marcador de serie hay que reconstruirlo agrupando.
 async function dota2Results({ since } = {}) {
-  const j = await getJSON('https://api.opendota.com/api/proMatches');
-  if (!Array.isArray(j)) return [];
   const cut = since ? Date.parse(since) / 1000 : 0;
+  // PAGINACIÓN HACIA ATRÁS (2-sep). `/proMatches` devuelve los 100 partidos pro más recientes — uno o dos
+  // días de agenda — y con eso cualquier pick de más de 48 h era inliquidable para siempre (62 atascadas y
+  // 52 de kills reabiertas que no podían cerrarse). OpenDota acepta `less_than_match_id`: se pide página a
+  // página hasta cubrir `since` (tope 12 páginas ≈ 1.200 partidos, de sobra para la ventana de 30 días).
+  const j = [];
+  let lt = null;
+  for (let page = 0; page < 12; page++) {
+    const pg = await getJSON('https://api.opendota.com/api/proMatches' + (lt ? `?less_than_match_id=${lt}` : ''));
+    if (!Array.isArray(pg) || !pg.length) break;
+    j.push(...pg);
+    const oldest = pg.reduce((m, x) => (x.start_time < m ? x.start_time : m), Infinity);
+    lt = pg.reduce((m, x) => (x.match_id < m ? x.match_id : m), Infinity);
+    if (!cut || oldest < cut || !Number.isFinite(lt)) break;
+  }
+  if (!j.length) return [];
   const bySeries = new Map();
   for (const m of j) {
     if (!m.radiant_name || !m.dire_name || (cut && m.start_time < cut)) continue;

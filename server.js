@@ -4237,33 +4237,18 @@ const oddsReserve = () => Number(process.env.SPORTSBOOK_QUOTA_RESERVE || 2000);
 //      Cloudbet para CUALQUIER partido cotizado; value/picks requieren modelo y quedan para cuando se fitee.
 //      Se apaga con GP_QUOTES_ALL_SOCCER=false. Nota honesta: amistosos tipo PSG–Madrid NO existen en The
 //      Odds API (no hay clave de friendlies) — esos entran por API-Football (fixtures/contexto), no por aquí.
-const CLUB_CUPS = {
-  libertadores: { name: 'Copa Libertadores', odds_key: 'soccer_conmebol_copa_libertadores', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
-  sudamericana: { name: 'Copa Sudamericana', odds_key: 'soccer_conmebol_copa_sudamericana', from: ['brasileirao', 'brasilb', 'argentina', 'chile', 'colombia', 'paraguay'], hfa: 50 },
-  leaguescup:   { name: 'Leagues Cup', odds_key: 'soccer_concacaf_leagues_cup', from: ['mls', 'ligamx'], hfa: 45 },
-  eflcup:       { name: 'EFL Cup', odds_key: 'soccer_england_efl_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
-  facup:        { name: 'FA Cup', odds_key: 'soccer_fa_cup', from: ['premier', 'championship', 'league1', 'league2'], hfa: 55 },
-  dfbpokal:     { name: 'DFB-Pokal', odds_key: 'soccer_germany_dfb_pokal', from: ['bundesliga', 'bundesliga2', 'liga3'], hfa: 55 },
-  copadelrey:   { name: 'Copa del Rey', odds_key: 'soccer_spain_copa_del_rey', from: ['laliga', 'laliga2'], hfa: 55 },
-  coppaitalia:  { name: 'Coppa Italia', odds_key: 'soccer_italy_coppa_italia', from: ['seriea', 'serieb'], hfa: 55 },
-  coupefrance:  { name: 'Coupe de France', odds_key: 'soccer_france_coupe_de_france', from: ['ligue1', 'ligue2'], hfa: 55 },
-  uclq:         { name: 'Champions League · clasificación', odds_key: 'soccer_uefa_champs_league_qualification', from: ['premier', 'laliga', 'bundesliga', 'seriea', 'ligue1', 'eredivisie', 'portugal', 'belgica', 'turquia', 'grecia', 'escocia', 'austria', 'suiza', 'dinamarca', 'noruega', 'suecia', 'polonia', 'irlanda', 'finlandia'], hfa: 55 },
-  saudi:        { name: 'Saudi Pro League', odds_key: 'soccer_saudi_arabia_pro_league', from: [], hfa: 60 },
-  aleague:      { name: 'A-League', odds_key: 'soccer_australia_aleague', from: [], hfa: 60 },
-};
-// Placeholders que YA existían en ratings.json sin odds_key → se les cablea la clave del proveedor.
-const CLUB_CUP_KEY_FIX = { champions: 'soccer_uefa_champs_league', europa: 'soccer_uefa_europa_league', uefa: 'soccer_uefa_europa_conference_league' };
+// 2-sep: la configuración de copas y la fusión de pools viven en clubs-engine/cups.js (compartido con
+// scripts/clubs-cups-gap.js). CAMBIO: los ratings se COPIAN (la liga de origen no se muta) y a los equipos de
+// nivel k se les resta GAP·(k−1) Elo — prior por división DECLARADO (GP_CUP_TIER_GAP_ELO, default 150), no
+// ajustado; el orden de `from` es el nivel. Antes se fusionaba por referencia sin recalibrar escalas y la
+// discrepancia modelo−mercado en copas era el doble que en liga (docs/BACKTESTS_FAMILIAS_2026-09-02.md §3.2).
+const { CLUB_CUPS, CLUB_CUP_KEY_FIX, buildCupLeague } = require('./clubs-engine/cups');
 function clubsEnsureCups(RT) {
   if (!RT || !RT.leagues || RT._cupsDone) return RT;
   for (const [lg, k] of Object.entries(CLUB_CUP_KEY_FIX)) { if (RT.leagues[lg] && !RT.leagues[lg].odds_key) RT.leagues[lg].odds_key = k; }
   for (const [key, cfgC] of Object.entries(CLUB_CUPS)) {
     if (RT.leagues[key]) continue;
-    const merged = {};
-    for (const src of cfgC.from) {
-      const L = RT.leagues[src]; if (!L || !L.ratings) continue;
-      for (const [tid, tr] of Object.entries(L.ratings)) if (!merged[tid]) merged[tid] = tr; // referencia, no copia
-    }
-    RT.leagues[key] = { key, name: cfgC.name, odds_key: cfgC.odds_key, hfa: cfgC.hfa, ratings: merged, cup: true, backtest: { status: 'shadow' } };
+    RT.leagues[key] = buildCupLeague(RT, key, cfgC);
   }
   RT._cupsDone = true;
   return RT;
@@ -5745,22 +5730,33 @@ function clubBaseElo(lg, tid) {
   const L = RT.leagues && RT.leagues[lg];
   return (L && L.ratings && L.ratings[tid] && L.ratings[tid].elo) || 1500;
 }
+// Prior por división de una liga virtual de COPA (clubs-engine/cups.js, 2-sep): el overlay dinámico db.clubElos
+// es GLOBAL por equipo (nace en su liga de origen), así que el prior se SUMA al leer el Elo dentro de la copa y
+// se RESTA al escribirlo (applyClubElo) para que jamás se filtre a la liga de origen. Fuera de copas es 0.
+function clubCupTierOffset(lg, tid) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg];
+  const tr = L && L.cup && L.ratings && L.ratings[tid];
+  return (tr && Number(tr.tier_offset)) || 0;
+}
 function clubElo(lg, tid) {
-  return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] : clubBaseElo(lg, tid);
+  return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] + clubCupTierOffset(lg, tid) : clubBaseElo(lg, tid);
 }
 function applyClubElo(lg, hId, aId, hg, ag) {
   const RT = global._clubsRatings || {};
   const L = RT.leagues && RT.leagues[lg]; if (!L) return;
   db.clubElos = db.clubElos || {};
   const hfa = L.hfa || 60;
-  const eH = clubElo(lg, hId), eA = clubElo(lg, aId);
+  const offH = clubCupTierOffset(lg, hId), offA = clubCupTierOffset(lg, aId); // 0 fuera de copas
+  const eH = clubElo(lg, hId), eA = clubElo(lg, aId); // con el prior de división si el cruce es de copa
   const we = 1 / (1 + Math.pow(10, -((eH + hfa) - eA) / 400)); // esperanza del local con su ventaja de cancha
   const W = hg > ag ? 1 : hg === ag ? 0.5 : 0;
   const margin = Math.abs(hg - ag);
   const G = margin <= 1 ? 1 : margin === 2 ? 1.5 : (11 + margin) / 8;
   const delta = CLUB_ELO_K * G * (W - we);
-  db.clubElos[hId] = Math.round((eH + delta) * 10) / 10;
-  db.clubElos[aId] = Math.round((eA - delta) * 10) / 10;
+  // el overlay se guarda SIN el prior (es el Elo del equipo en su liga; el prior se vuelve a sumar al leer)
+  db.clubElos[hId] = Math.round((eH - offH + delta) * 10) / 10;
+  db.clubElos[aId] = Math.round((eA - offA - delta) * 10) / 10;
 }
 // resetea el overlay si el fit base cambió (nuevo ratings.json): el re-fit ya incorpora los resultados.
 function clubEloReconcileFit() {

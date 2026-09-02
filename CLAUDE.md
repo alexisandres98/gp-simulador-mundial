@@ -110,6 +110,14 @@ Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthro
 Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (regla congelada), sweep 10min,
 **reporte email al admin cada lunes** + revisión semanal con Alexis. Estado: `/api/internal/shadow?key=<GP_EXPORT_KEY>`.
 Plan completo y reglas (cómo agregar segmentos, go-live): sección "PLAN EDGE + EJECUTOR EN LA SOMBRA" en TODO_NEXT.md.
+**Ejecutor REAL (Cloudbet, `real-executor/`):** desde el 2-sep entra con **stake plano 40** en cards under
+(`GP_REAL_STAKE_FLAT=40`, orden de Alexis; sin la var vuelve a Kelly/4 con tope 1,5 %) y 5 en CS2
+(`GP_REAL_CS2_STAKE`). Libros completos: `/api/internal/picks-export?key=&shadow=1|real=1`.
+
+**Mejoras de modelo del 2-sep (desplegadas):** informes por familia en `docs/impl/*-REPORT.md`, humos en
+`scripts/smoke/*.js` (correr los cinco antes de cualquier deploy que toque tenis, Valorant, baloncesto, fútbol
+de clubes o combate). Vars nuevas: `GP_SOLID_C` (default 0: el `lead` del 1X2 no genera picks),
+`GP_CUP_TIER_GAP_ELO` (default 150). Preregistros vivos en `docs/PREREGISTRO_*.md`.
 
 ## 📌 PENDIENTE FIJO: revisión del domingo 23-ago
 El sistema corre **como está** hasta el domingo 23 acumulando datos. Ese día se aplican **cuatro

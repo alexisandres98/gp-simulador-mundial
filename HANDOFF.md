@@ -1,4 +1,45 @@
-# HANDOFF — estado al 2-sep-2026 (autopsia + backtests de mejoras + LoL cerrado)
+# HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
+
+## 🚀 MEJORAS IMPLEMENTADAS Y DESPLEGADAS (2-sep, noche) — cinco ramas fusionadas, orden de Alexis
+Alexis pidió "procede con todas las mejoras" del informe de backtests. Cinco agentes independientes, uno por
+familia, cada uno con su informe en **`docs/impl/<familia>-REPORT.md`** (tenis, valorant, hoops, futbol,
+combate) y su humo en `scripts/smoke/<familia>-smoke.js` (todos en verde: 38/24/39/47/16 comprobaciones).
+**Intocables respetados:** `cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1` (demostración en el REPORT de
+fútbol §3 y en el de Valorant). Lo que cambia en producción:
+- **Ejecutor real:** `GP_REAL_STAKE_FLAT=40` (env en Render, orden de Alexis): toda tarjeta under entra con 40
+  fijos en vez de Kelly/4 con tope 1,5 % (~30). CS2 sigue en 5 (`GP_REAL_CS2_STAKE`). El board publica
+  `stake_plano` y `stake_cs2`. `picks-export?shadow=1|real=1` exporta los libros completos.
+- **Tenis:** edad lineal (−0,103·Δedad/5) y calendario (días sin jugar + partidos en 7 días, solo con fecha real
+  de la cola ESPN) en el logit del ensamble **ATP**; distribución de juegos C6 (punto + residuo empírico por
+  tercil, tabla `gamesResid` en `model-priors.json`) **solo ATP bo3**; `best_of` de la cola ESPN derivado del
+  marcador (1.024 filas reparadas; en Render la repara la pasada diaria); `track.por_evento` para TOTAL;
+  `prereg_total8` y `docs/PREREGISTRO_TENIS_TOTAL.md`; cierres con `totals_all`/`spreads_all` y Pinnacle aparte.
+- **Valorant:** bisección de pRound (adiós `×0,44`), anclaje por mapa al mercado (`map_anchoring`, réplica de
+  CS2), nivel de serie con temperatura 0,85 y `maxModel 0,25`, signo del término de composición del veto
+  corregido, mapa nunca empatado, RONDAS_EQUIPO paga la incertidumbre del par, picks con `dist_method:'bisect'`.
+- **Baloncesto (monitor):** `clv_pct` pasa a justa-vs-justa (`clv_price_pct` conserva la vieja; migración
+  `clv_v:2`), **una pick por tesis** con `requotes`, `close_line`/`line_moved_pts`, `rest_diff` y
+  `prereg_rest_over` en TOTAL, `preregistro_descanso` en `/api/hoops/perf`, bajas a
+  `/data/hoops/injuries-history.jsonl` diario, `/api/hoops/picks?limit=` hasta 2000. Enmienda en el preregistro
+  de totales. **Hallazgo sin tocar:** el filtro "V2 solo under" compara `'total'` con la familia `match_total`
+  → es código muerto y los overs SÍ pasan (decidir antes del 17-sep).
+- **Fútbol clubes:** consenso 1X2 con **de-vig de Shin** (`lib/devig.js`; totales/córners/tarjetas siguen
+  proporcionales); `model_prob` del SOLID = `p_pub` con `GP_SOLID_C` (default **0** → el régimen `lead` no
+  genera picks; `anchor` sigue); **prior por división en copas** (`clubs-engine/cups.js`, `GP_CUP_TIER_GAP_ELO`
+  default 150, prior declarado; con él la discrepancia extra de copas que cruzan división pasa de +15,7 a
+  +1,5 pp); `shadow_result` en SUPERSEDED (solo medición); `odds_at_create`/`books_at_create` congelados;
+  `prereg_goals_late`, `prereg_corners_2books`; `roi_at_create` en el track; `docs/DEVIG_SHIN_MEDIDO.md`
+  (19.850 partidos de football-data: Shin corrige la mitad del sesgo favorito-longshot).
+- **Combate:** tags al nacer (`market_fair_at_create`, `prereg_fav45`, `espn_order_home`, `weigh_signal`,
+  `press_signals`), re-evaluación **T−24 h** (`degraded_monitor`), `fight_breakdown` en el track, guarda de
+  fechas placeholder, `docs/PREREGISTRO_COMBATE_FAVORITO.md`. **Cuotas históricas UFC conseguidas**
+  (`data/combat/odds-history.json.gz`, 6.090 peleas): el cierre bate al modelo (t 11) y a la mezcla (t 6); la
+  regla "favorito del mercado" replica +5,2 % vs −4,8 % en 2.031 picks simuladas
+  (`docs/COMBATE_CUOTAS_HISTORICAS.md`).
+- **Pendiente de UI** (no tocado `public/`): pintar `adjustments`/`what_matters` de tenis y `map_anchoring`
+  de Valorant en `premium.js`.
+- **Sandbox:** el sistema de archivos de la sesión se revirtió tres veces el 2-sep; por eso las ramas
+  `impl/*` se empujaron a GitHub como respaldo y la integración se hizo desde un clon limpio.
 
 ## 🧪 BACKTESTS DE MEJORAS POR FAMILIA (2-sep, noche) — la respuesta a "mejorar, no cerrar"
 Informe: **`docs/BACKTESTS_FAMILIAS_2026-09-02.md`** (tabla ejecutiva en §2, orden de trabajo en §9). Cinco

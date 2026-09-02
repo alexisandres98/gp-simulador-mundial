@@ -1,9 +1,24 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⚡ TRAS EL DESPLIEGUE DE LAS MEJORAS (2-sep noche) — ver HANDOFF §🚀 y `docs/impl/*-REPORT.md`
+- **Primera pasada en prod**: `_clubPicksLast.shadow_superseded.measured`, SOLID nuevas con `devig:'shin'`;
+  `/api/hoops/perf` → `clv_notas`, `preregistro_descanso`; `/api/tennis/track` → `por_evento`;
+  `/api/esports/track?game=valorant` → `by_dist_method`; combate → `fight_breakdown`; `/api/internal/real` →
+  `stake_plano: 40`.
+- **Decidir antes del 17-sep** (Alexis): el filtro "V2 solo under" de baloncesto es código muerto (`'total'` vs
+  `match_total`), los overs pasan. Arreglarlo cambia la regla de emisión: hacerlo ANTES de que empiece la muestra.
+- **Confirmar con Alexis** que `GP_SOLID_C=0` (el `lead` del 1X2 no genera picks; `anchor` sigue) es lo querido.
+- **UI**: `premium.js` no pinta aún `adjustments`/`what_matters` (tenis) ni `map_anchoring` (Valorant).
+- **Leer preregistros**: tenis TOTAL (60 eventos), GOALS tarde (60), CORNERS ≥2 casas (~225, Liga MX aparte),
+  combate favorito (40), WNBA totales (60 desde 17-sep) y descanso (60 partidos).
+- Tras cualquier `tennis-fit.js`, re-correr `scripts/tennis-resid.js` (82 s) para regenerar `gamesResid`.
+- Cloudbet: pedir a CS que revise los rechazos RESTRICTED del 1-sep y suba límites (Monika lo sugirió). Y
+  depositar: a 40 por tarjeta el dinero en juego sube a ~1.500-1.600 y la cuenta tiene ~1.290.
+
 ## ⚡ MEJORAS DE MODELO CON BACKTEST (2-sep noche) — ver `docs/BACKTESTS_FAMILIAS_2026-09-02.md`
-Sustituye a la lista "decisiones tras la autopsia": la consigna de Alexis es **mejorar las familias que
-pierden, no cerrarlas**, y nada se recomienda sin backtest + escéptico. Nada aplicado aún. Intocables:
-`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`.
+La consigna de Alexis es **mejorar las familias que pierden, no cerrarlas**, y nada se recomienda sin
+backtest + escéptico. **Los bloques A, B y C están implementados y desplegados (ver arriba)**; D parcialmente
+(cuotas UFC y football-data conseguidas). Intocables: `cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`.
 - **A. Medición primero (barato):** CLV de baloncesto en `settleHoopsPicks` (justa vs justa; hoy −3,2 pp son
   vig); una pick por tesis en el monitor; `books`/cuota de creación en los informes de fútbol y liquidar las
   SUPERSEDED (276 SOLID/353 GOALS/479 CORNERS); `best_of` de la cola ESPN de tenis (todo ATP sale bo5);

@@ -86,6 +86,17 @@ async function getFixtureById(fixtureId) {
     return r[0] || null;
   });
 }
+// Árbitro designado de un fixture (fixture.referee). Cache propia de 6 h (el de getFixtureById es de 45 s,
+// pensado para el marcador en vivo). Sin key o sin dato → null, nunca lanza. Un null se cachea 30 s (wrap).
+async function getFixtureReferee(fixtureId) {
+  if (!fixtureId || !KEY) return null;
+  const v = await cache.wrap(`af:referee:${fixtureId}`, cache.TTL.referee, async () => {
+    const r = await call('fixtures', { id: fixtureId });
+    const fx = r[0] && r[0].fixture;
+    return (fx && fx.referee) ? String(fx.referee).trim() : '';
+  });
+  return v || null;
+}
 async function getLiveFixtures() {
   return cache.wrap('af:live', cache.TTL.liveFixture, () =>
     call('fixtures', { league: LEAGUE, season: SEASON, live: 'all' }));
@@ -199,7 +210,7 @@ async function getTeamStatistics(teamApiId) {
 
 module.exports = {
   configured, resolveTeamId,
-  getFixtures, getFixtureById, getLiveFixtures, findFixture,
+  getFixtures, getFixtureById, getFixtureReferee, getLiveFixtures, findFixture,
   getFixtureEvents, getFixtureStatistics, getFixtureLineups, getFixtureOdds, getPredictions,
   getTeamById, getTeamSquad, getTeamPlayers, getTeamInjuries, getTeamSidelined,
   getTeamFixtures, getTeamRecentResults, getHeadToHead, getStandings, getTeamStatistics,

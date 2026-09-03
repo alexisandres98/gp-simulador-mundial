@@ -4592,6 +4592,9 @@ async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
     // índice de pares ya presentes (evita duplicar un partido que The Odds API ya sembró con otros nombres)
     const pairKey = (lg, a, b) => lg + '|' + [clubNorm(a), clubNorm(b)].sort().join('~');
     const have = new Set(Object.values(db.clubsQuoteEvents).map(m => pairKey(m.league, m.home, m.away)));
+    // 3-sep (córners/árbitro): par → ceid del evento ya sembrado, para anotarle el árbitro que AF publica
+    // días antes del saque (fixture.referee) sin gastar una llamada más. Solo anota; no cambia nada más.
+    const haveId = {}; for (const [id, m] of Object.entries(db.clubsQuoteEvents)) haveId[pairKey(m.league, m.home, m.away)] = id;
     for (const [key, L] of Object.entries(RT.leagues || {})) {
       const afLg = CLUB_AF_LEAGUE[key];
       if (!afLg || L.starts) continue;
@@ -4614,12 +4617,19 @@ async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
         const hName = (hTm && L.ratings[hTm] && L.ratings[hTm].name) || th.name;
         const aName = (aTm && L.ratings[aTm] && L.ratings[aTm].name) || ta.name;
         const pk = pairKey(key, hName, aName);
-        if (have.has(pk)) { out.dup++; continue; }
+        if (have.has(pk)) {
+          out.dup++;
+          // árbitro conocido → anotarlo en el evento ya existente (y su fixture AF si no lo tenía)
+          const ex = haveId[pk] && db.clubsQuoteEvents[haveId[pk]];
+          if (ex) { if (fi.referee && ex.referee !== fi.referee) ex.referee = fi.referee; if (!ex.af_fixture) ex.af_fixture = fi.id; }
+          continue;
+        }
         const ceid = stableGoalEventId('cl:' + key + ':' + hName, 'cl:' + key + ':' + aName);
         const prev = db.clubsQuoteEvents[ceid];
         db.clubsQuoteEvents[ceid] = {
           league: key, league_name: L.name || key, home: hName, away: aName,
           kickoff: fi.date, oa_id: (prev && prev.oa_id) || null, af_fixture: fi.id, src: 'af', at: Date.now(),
+          referee: fi.referee || (prev && prev.referee) || null,
         };
         have.add(pk);
         if (!prev) out.seeded++;
@@ -5526,6 +5536,74 @@ function clubPropsGate(league, family) {
   const pf = clubPropsFit(league);
   const f = pf && pf.backtest && pf.backtest.families && pf.backtest.families[family];
   return (f && f.status) || 'shadow';
+}
+// ===== CÓRNERS × ÁRBITRO (3-sep-2026; backtest en docs/CORNERS_ARBITRO_BACKTEST.md) ==========================
+// El árbitro como efecto aleatorio multiplicativo sobre el TOTAL de córners, con encogimiento empírico-Bayes
+// (clubs-engine/referees.js). Capa EN SOMBRA: con GP_CORNERS_REF apagado (default) la proyección de córners es
+// byte-idéntica a la de siempre y solo se ANOTAN ref_name/ref_effect/ref_n en la pick para medir después.
+// Con GP_CORNERS_REF=1 el total proyectado se multiplica por el efecto encogido (K = GP_CORNERS_REF_K o el
+// del backtest; tope ±REF_CLAMP). CARDS no pasa por aquí (su árbitro sigue en prop-engine como siempre).
+// Índice: props-history de cada liga (traen referee + córners del backfill AF) ∪ picks CORNERS liquidadas con
+// ref_name (total vía clubPropTotal), dedup por liga|equipos|día. Persistido en <dir(DB_FILE)>/clubs/referees.json.
+const REFS = require('./clubs-engine/referees');
+function cornersRefOn() { return /^(1|true|on|yes)$/i.test(String(process.env.GP_CORNERS_REF || '').trim()); }
+function cornersRefK() { const k = Number(process.env.GP_CORNERS_REF_K); return isFinite(k) && k >= 0 ? k : REFS.DEFAULTS.REF_PRIOR; }
+const CLUB_REFEREES_FILE = path.join(CLUB_DATA_DISK, 'referees.json');
+function clubRefereeIndex({ force = false } = {}) {
+  global._clubRefIdx = global._clubRefIdx || { stamp: null, idx: null };
+  let leagues = [];
+  try {
+    if (!global._clubsRatings) global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8'));
+    leagues = Object.keys(global._clubsRatings.leagues || {});
+  } catch { leagues = []; }
+  const files = [];
+  for (const lg of leagues) { try { const f = clubDataFile(`props-history-${lg}.json`); files.push({ lg, f, mtime: fs.statSync(f).mtimeMs }); } catch { /* liga sin props-history */ } }
+  const settled = (db.clubDailyPicks || []).filter(p => p.family === 'CORNERS' && p.ref_name && p.status === 'SETTLED' && p.result_code !== 'VOID');
+  const stamp = files.map(x => x.lg + ':' + x.mtime).join('|') + '#' + settled.length;
+  const c = global._clubRefIdx;
+  if (!force && c.idx && c.stamp === stamp) return c.idx;
+  const idx = REFS.emptyIndex();
+  const dayOf = (d) => { try { return new Date(d).toISOString().slice(0, 10); } catch { return String(d || '').slice(0, 10); } };
+  const keyOf = (lg, h, a, d) => lg + '|' + h + '|' + a + '|' + dayOf(d);
+  for (const { lg, f } of files) {
+    try {
+      const ms = (JSON.parse(fs.readFileSync(f, 'utf8')).matches || []).filter(m => !m.et && m.home && m.away && m.home.corners != null && m.away.corners != null);
+      if (!ms.length) continue;
+      const lm = ms.reduce((s, m) => s + Number(m.home.corners) + Number(m.away.corners), 0) / ms.length; // = league.totalCornersMean del fit
+      for (const m of ms) REFS.addMatch(idx, { referee: m.referee, total: Number(m.home.corners) + Number(m.away.corners), leagueMean: lm, league: lg, date: dayOf(m.date), key: keyOf(lg, m.home.code, m.away.code, m.date) });
+    } catch { /* fichero ilegible: siguiente */ }
+  }
+  for (const p of settled) {
+    try {
+      const tot = clubPropTotal(p.league, p.event, 'CORNERS'); if (tot == null) continue;
+      const pf = clubPropsFit(p.league); const lm = pf && pf.fit && pf.fit.league && pf.fit.league.totalCornersMean; if (!(lm > 0)) continue;
+      REFS.addMatch(idx, { referee: p.ref_name, total: tot, leagueMean: lm, league: p.league, date: dayOf(p.event.kickoff_at), key: keyOf(p.league, p.event.home_team_id, p.event.away_team_id, p.event.kickoff_at) });
+    } catch { /* siguiente */ }
+  }
+  idx.built_at = new Date().toISOString();
+  try { if (fs.existsSync(CLUB_DATA_DISK)) REFS.saveIndex(CLUB_REFEREES_FILE, idx); } catch { /* sin disco: solo memoria */ }
+  global._clubRefIdx = { stamp, idx };
+  return idx;
+}
+// Árbitro de un evento del sweep: (1) el que dejó la siembra AF (fixture.referee, gratis), (2) su fixture AF
+// por id (1 llamada cacheada 6 h, presupuesto diario), (3) null. Devuelve { name, n, effect, mult } SIN aplicar nada.
+async function clubRefereeFor(meta) {
+  let name = (meta && meta.referee) || null;
+  if (!name && meta && meta.af_fixture) {
+    try {
+      const cache = require('./data-providers/cache');
+      const day = new Date().toISOString().slice(0, 10);
+      global._afRefBudget = global._afRefBudget && global._afRefBudget.day === day ? global._afRefBudget : { day, n: 0 };
+      const cached = cache.has(`af:referee:${meta.af_fixture}`);
+      if (cached || global._afRefBudget.n < 200) {
+        if (!cached) global._afRefBudget.n++;
+        name = await require('./data-providers/apiFootballProvider').getFixtureReferee(meta.af_fixture);
+        if (name) meta.referee = name;
+      }
+    } catch { name = null; }
+  }
+  const eff = REFS.effectFor(clubRefereeIndex(), name, { REF_PRIOR: cornersRefK() });
+  return { name: name || null, n: eff.n, effect: +eff.effect.toFixed(4), mult: eff.mult, eff };
 }
 // ===== FASE CLUBES F1.1: XI clickeable al perfil =====
 // El XI/bench viene de API-Football (NOMBRES); los perfiles usan pl_ ids de TSA. Este resolver mapea nombre
@@ -7611,7 +7689,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
             AND observed_at > now() - interval '12 hours'`, [evIds2]).catch(() => ({ rows: [] }));
       const byGrp = {};
       for (const r of tq.rows) { (byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] = byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] || []).push(r); }
-      const projCache2 = {};
+      const projCache2 = {}, refCache2 = {}; // refCache2: árbitro por evento (solo córners; ver clubRefereeFor)
       for (const [k, rows] of Object.entries(byGrp)) {
         const [ceid, fam, lineStr] = k.split('|'); const line = Number(lineStr);
         if (Math.abs(line % 1 - 0.5) > 0.01) continue; // picks SOLO líneas .5 (sin push, mismo criterio del Mundial)
@@ -7630,8 +7708,19 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
               projCache2[ceid] = require('./prop-engine').project(pf.fit, { home: hId, away: aId, lambdas: { home: l3[0], away: l3[1] }, closeness1x2: pr3 });
             }
           } catch { projCache2[ceid] = null; }
+          // 3-sep (córners × árbitro, sombra): nombre del árbitro y su efecto encogido. Se ANOTAN siempre; la
+          // proyección solo cambia con GP_CORNERS_REF=1 (copia: la de tarjetas queda intacta). Nunca bloquea.
+          refCache2[ceid] = null;
+          if (projCache2[ceid]) {
+            try {
+              const ri = await clubRefereeFor(meta);
+              refCache2[ceid] = { ref_name: ri.name, ref_effect: ri.effect, ref_n: ri.n, ref_applied: false };
+              if (ri.name && cornersRefOn() && ri.mult !== 1) { projCache2[ceid] = REFS.applyToProjection(projCache2[ceid], ri.eff); refCache2[ceid].ref_applied = true; }
+            } catch { refCache2[ceid] = null; }
+          }
         }
         const proj = projCache2[ceid]; if (!proj) continue;
+        const refInfo = fam === 'corners_total' ? refCache2[ceid] : null;
         const quotes = rows.map(r => ({ sportsbook_code: r.sportsbook_code, independence_group: r.sportsbook_code, side: r.side, odds_decimal: r.o, quote_status: 'open', is_live: false }));
         // minGroups:1 — las líneas de córners/tarjetas de clubes hoy cotizan en 1-2 casas (mismo criterio que los
         // player props, playerMinBooks:1). Es MONITOREO privado (gate viaja, no público) → de-vig de 1 casa sirve
@@ -7655,6 +7744,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
             modelProb: model, marketProb: market, edgePp: model - market,
             bestOdds: best.odds_decimal, bestBook: best.sportsbook_code, books: new Set(sq.map(q => q.sportsbook_code)).size,
             familyApproved: famApproved, mu: +mu.toFixed(2),
+            ...(refInfo || {}), // córners: ref_name/ref_effect/ref_n/ref_applied (tarjetas: nada)
           });
         }
       }
@@ -7857,7 +7947,11 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     // régimen: 'edge' si el precio le gana al consenso (valor real, promocionable a público); 'monitor' si nació
     // en modo monitoreo (modelo convencido pero mercado eficiente → validamos over-bias con el track privado).
     const regime = priceAboveFair ? 'edge' : (g.monitoring ? 'monitor' : 'edge');
-    fresh.push(mkRecord(g.family, g.eventId, { league: pm2.league, home: g.home, away: g.away, homeId: pm2.homeId, awayId: pm2.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime }, g.eventId + '|' + g.family + '|' + g.marketId));
+    const recP = mkRecord(g.family, g.eventId, { league: pm2.league, home: g.home, away: g.away, homeId: pm2.homeId, awayId: pm2.awayId, kickoff: g.kickoff, market_id: g.marketId, side: g.side, line: g.line, best_odds: g.bestOdds, best_book: g.bestBook, books: g.books, model_prob: g.modelProb, market_prob: g.marketProb, confidence: g.confidence, edge_pp: g.edgePp, why, regime }, g.eventId + '|' + g.family + '|' + g.marketId);
+    // 3-sep (córners × árbitro): anotación de MEDICIÓN en la pick — nombre, efecto encogido, nº de partidos del
+    // árbitro y si se aplicó (solo con GP_CORNERS_REF=1). CARDS no lleva nada de esto.
+    if (g.family === 'CORNERS' && pm2.ref_name !== undefined) Object.assign(recP, { ref_name: pm2.ref_name || null, ref_effect: pm2.ref_effect != null ? pm2.ref_effect : null, ref_n: pm2.ref_n || 0, ref_applied: !!pm2.ref_applied });
+    fresh.push(recP);
   }
   // PLAYER (assists + anytime goal): 1 pick por (evento, sub-familia), la de mayor confianza — feed limpio.
   const bestPlayer = {};
@@ -21695,6 +21789,22 @@ async function anotar(pid){
         };
       } catch (e) { b.papel_vs_dinero_24h = { error: e.message }; }
       return json(res, 200, b);
+    }
+    // Estado de la capa córners × árbitro (3-sep): índice, flag, prior, presupuesto AF. ?rebuild=1 fuerza el índice.
+    if (p === '/api/internal/corners-ref') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const idx = clubRefereeIndex({ force: !!url.searchParams.get('rebuild') });
+      const K = cornersRefK();
+      const refs = Object.values(idx.refs || {}).sort((a, b) => b.n - a.n);
+      const picks = (db.clubDailyPicks || []).filter(x => x.family === 'CORNERS');
+      return json(res, 200, {
+        enabled: cornersRefOn(), k: K, clamp: REFS.DEFAULTS.REF_CLAMP, file: CLUB_REFEREES_FILE, on_disk: fs.existsSync(CLUB_REFEREES_FILE),
+        built_at: idx.built_at, matches: idx.matches, referees: refs.length,
+        picks: { corners: picks.length, with_ref: picks.filter(x => x.ref_name).length, applied: picks.filter(x => x.ref_applied).length },
+        af_budget: global._afRefBudget || null,
+        top: refs.slice(0, 40).map(r => ({ name: r.name, n: r.n, mean_total: +(r.sum_total / r.n).toFixed(2), mean_ratio: +(r.sum_ratio / r.n).toFixed(3), mult: +REFS.shrunkMult(r.sum_ratio, r.n, K).toFixed(4), leagues: r.leagues, last: r.last })),
+      });
     }
     if (p === '/api/internal/shadow') {
       const xk = process.env.GP_EXPORT_KEY || '';

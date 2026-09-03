@@ -21,6 +21,7 @@ const TTL = {
   h2h: 16 * 60 * 60 * 1000,       // head to head
   predictions: 30 * 60 * 1000,    // predicciones API
   teamMeta: 24 * 60 * 60 * 1000,  // metadata / ids descubiertos
+  referee: 6 * 60 * 60 * 1000,    // árbitro designado de un fixture (se publica días antes; cambia rara vez)
   manual: 5 * 60 * 1000,          // archivos manuales (relectura ligera)
 };
 

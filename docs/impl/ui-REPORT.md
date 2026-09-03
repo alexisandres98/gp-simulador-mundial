@@ -13,7 +13,12 @@ existen ahí (`gx-panel`, `gx-ph`, `gx-es-what` / `gx-esw2`, `gx-es-kpis`, `gx-t
 | `e10e9b69` | `public/premium.js`: bloque de tenis + anclaje de Valorant. `scripts/smoke/ui-smoke.js` (nuevo, 52 comprobaciones). |
 | (este) | `docs/impl/ui-REPORT.md`. |
 
-Archivos tocados: `public/premium.js` (+115/−4), `scripts/smoke/ui-smoke.js`, `docs/impl/ui-REPORT.md`. Nada más.
+Archivos tocados: `public/premium.js` (+115/−4), `scripts/smoke/ui-smoke.js`, `docs/impl/ui-REPORT.md`. Nada más
+(`git diff --stat 673202bb..HEAD`).
+
+**Riesgo de merge:** `origin/main` avanzó durante la tarea a `e8f86f1e` (sombra de Polymarket:
+`propfirm/polyshadow.js`, `server.js`). Ningún archivo en común con esta rama; `public/premium.js` de ese main es
+idéntico al de la base, así que el smoke compara contra el mismo texto. Merge limpio esperado.
 
 ## Qué se pinta y dónde
 

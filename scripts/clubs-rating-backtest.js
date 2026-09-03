@@ -267,7 +267,10 @@ async function main() {
   // con K=250; los dos equipos suman 0,72): K≈350 cierra la brecha entera en un partido, más allá sobrepasa.
   const kGrid = [30, 60, 120, 180, 250, 300, 350, 400, 500];
   const tuneB = kGrid.map((k) => ({ k, ll: devLL(add(`B_k${k}`, { update: 'odds', kOdds: k, alpha: 0, newcomer: '1500', hfa: hfaOdds })) }));
-  const bestK = tuneB.reduce((b, x) => (x.ll < b.ll ? x : b)).k;
+  // regla declarada: entre 250 y 300 el log-loss es una meseta (difieren en la 5ª cifra) → el K MENOR dentro de
+  // 0,0001 del mínimo (parsimonia: menos sobrepaso cuando el mercado se mueve mucho entre partidos)
+  const minB = Math.min(...tuneB.map((x) => x.ll));
+  const bestK = tuneB.filter((x) => x.ll <= minB + 1e-4).sort((a, b) => a.k - b.k)[0].k;
   add('B', variants[`B_k${bestK}`].cfg);
   // C: híbrido — w en desarrollo (K de B)
   const wGrid = [0.25, 0.5, 0.75, 0.9];

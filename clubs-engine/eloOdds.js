@@ -15,7 +15,9 @@
 
 const BASE_ELO = 1500;
 const K_RESULT = 30;   // = CLUB_ELO_K de server.js (ligas domésticas)
-const K_ODDS = 60;     // default para la actualización con cuotas; el backtest lo elige en desarrollo
+const K_ODDS = 250;    // elegido en desarrollo (docs/ELO_CUOTAS_BACKTEST.md): cada partido cierra ≈72 % de la
+                       // brecha Elo↔mercado; con K≥350 sobrepasa y empeora. Override: GP_CLUB_ELO_ODDS_K.
+const W_HYBRID = 0.75; // peso de las cuotas en el modo híbrido (backtest); override: GP_CLUB_ELO_ODDS_W
 const EPS = 1e-4;
 
 // esperanza del local con su ventaja de cancha (logística de Elo)
@@ -60,7 +62,7 @@ function ratingDiffFromExpectancy(e) {
 // Actualización combinada: modo 'odds' (solo cuotas), 'results' (solo resultado), 'hybrid' (mezcla con peso w
 // sobre el Δ de cuotas). Sin cierre disponible cae al resultado (el rating nunca se queda parado).
 //   → { delta, used: 'odds'|'results'|'hybrid' } (delta = Δ del local; el visitante recibe −delta)
-function combinedDelta({ eH, eA, hfa, hg, ag, fair, mode = 'odds', w = 0.5, kOdds = K_ODDS, kResult = K_RESULT }) {
+function combinedDelta({ eH, eA, hfa, hg, ag, fair, mode = 'odds', w = W_HYBRID, kOdds = K_ODDS, kResult = K_RESULT }) {
   const hasResult = Number.isFinite(hg) && Number.isFinite(ag);
   const dO = fair ? oddsDelta(eH, eA, hfa, fair, kOdds) : null;
   const dR = hasResult ? resultDelta(eH, eA, hfa, hg, ag, kResult) : null;
@@ -103,13 +105,13 @@ function oddsParams(env = process.env) {
   const mode = String(env.GP_CLUB_ELO_ODDS_MODE || 'odds').trim().toLowerCase();
   return {
     kOdds: Number.isFinite(k) && k > 0 ? k : K_ODDS,
-    w: Number.isFinite(w) && w >= 0 && w <= 1 ? w : 0.5,
+    w: Number.isFinite(w) && w >= 0 && w <= 1 ? w : W_HYBRID,
     mode: ['odds', 'hybrid', 'results'].includes(mode) ? mode : 'odds',
   };
 }
 
 module.exports = {
-  BASE_ELO, K_RESULT, K_ODDS,
+  BASE_ELO, K_RESULT, K_ODDS, W_HYBRID,
   winExpectancy, marginFactor, resultDelta, marketExpectancy, oddsDelta, ratingDiffFromExpectancy,
   combinedDelta, regressSeason, applyToOverlay, eloSource, oddsParams,
 };

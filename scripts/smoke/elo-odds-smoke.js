@@ -97,10 +97,11 @@ const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: ${a
   assert.deepStrictEqual(ov2, { h: 1510, a: 1490 }, 'el prior de copa se resta al guardar');
   assert.strictEqual(EO.eloSource({}), 'results'); assert.strictEqual(EO.eloSource({ GP_CLUB_ELO_SOURCE: 'odds' }), 'odds');
   assert.strictEqual(EO.eloSource({ GP_CLUB_ELO_SOURCE: 'ODDS ' }), 'odds'); assert.strictEqual(EO.eloSource({ GP_CLUB_ELO_SOURCE: 'x' }), 'results');
-  const p = EO.oddsParams({}); assert.deepStrictEqual(p, { kOdds: EO.K_ODDS, w: 0.5, mode: 'odds' });
-  const p2 = EO.oddsParams({ GP_CLUB_ELO_ODDS_K: '250', GP_CLUB_ELO_ODDS_W: '0.75', GP_CLUB_ELO_ODDS_MODE: 'hybrid' }); assert.deepStrictEqual(p2, { kOdds: 250, w: 0.75, mode: 'hybrid' });
-  const p3 = EO.oddsParams({ GP_CLUB_ELO_ODDS_K: '-5', GP_CLUB_ELO_ODDS_W: '7', GP_CLUB_ELO_ODDS_MODE: 'zzz' }); assert.deepStrictEqual(p3, { kOdds: EO.K_ODDS, w: 0.5, mode: 'odds' });
-  ok('applyToOverlay (décimas, prior de copa) · GP_CLUB_ELO_SOURCE default results · params con defaults sanos');
+  assert.strictEqual(EO.K_ODDS, 250, 'default K_odds = el del backtest'); assert.strictEqual(EO.W_HYBRID, 0.75);
+  const p = EO.oddsParams({}); assert.deepStrictEqual(p, { kOdds: 250, w: 0.75, mode: 'odds' });
+  const p2 = EO.oddsParams({ GP_CLUB_ELO_ODDS_K: '120', GP_CLUB_ELO_ODDS_W: '0.5', GP_CLUB_ELO_ODDS_MODE: 'hybrid' }); assert.deepStrictEqual(p2, { kOdds: 120, w: 0.5, mode: 'hybrid' });
+  const p3 = EO.oddsParams({ GP_CLUB_ELO_ODDS_K: '-5', GP_CLUB_ELO_ODDS_W: '7', GP_CLUB_ELO_ODDS_MODE: 'zzz' }); assert.deepStrictEqual(p3, { kOdds: 250, w: 0.75, mode: 'odds' });
+  ok('applyToOverlay (décimas, prior de copa) · GP_CLUB_ELO_SOURCE default results · params: K=250/w=0,75 del backtest, overrides y defaults sanos');
 }
 
 console.log(`\nelo-odds-smoke: ${pasos} bloques OK`);

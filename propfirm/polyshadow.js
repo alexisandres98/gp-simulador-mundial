@@ -100,8 +100,7 @@ function simulaFill(asks, limite, presupuesto) {
 async function rescate(s) {
   const mid = s.pm_mid || String(s.id || '').split('|')[0];
   if (!/^\d+$/.test(mid)) return null;
-  const j = await jfetch(`${GAMMA}/markets?id=${mid}`);
-  const m = Array.isArray(j) ? j[0] : null;
+  const m = await mercadoDe(mid); // recurso individual: también devuelve mercados ya cerrados
   if (!m) return null;
   const outs = (() => { try { return JSON.parse(m.outcomes || '[]'); } catch { return []; } })();
   const tks = (() => { try { return JSON.parse(m.clobTokenIds || '[]'); } catch { return []; } })();
@@ -176,23 +175,37 @@ async function sincronizar() {
 }
 
 // ── LIQUIDAR: con la resolución del propio Polymarket ────────────────────────────────────────────────────
+// BUG DEL 1-3 SEP (encontrado por Alexis: "esas partidas se liquidan al terminar"): la lista de gamma
+// `/markets?id=<id>` EXCLUYE los mercados cerrados por defecto (filtro closed=false implícito) → devolvía
+// `[]` para todo mercado ya resuelto y las 61 posiciones pasadas quedaban en "esperando" para siempre.
+// El recurso individual `/markets/<id>` sí devuelve el mercado cerrado con outcomePrices 1/0. Polymarket
+// cierra los mercados de esports 1-3 h después del partido (comprobado el 3-sep con 3DMAX-Heroic, DEPO-LVG,
+// FlyQuest-Kaleido). Se usa el recurso individual aquí y en `rescate`, y la salida dice por qué espera cada una.
+async function mercadoDe(mid) {
+  const j = await jfetch(`${GAMMA}/markets/${encodeURIComponent(mid)}`);
+  if (j && !Array.isArray(j) && j.id) return j;
+  const l = await jfetch(`${GAMMA}/markets?id=${encodeURIComponent(mid)}&closed=true`); // respaldo
+  if (Array.isArray(l) && l[0]) return l[0];
+  const l2 = await jfetch(`${GAMMA}/markets?id=${encodeURIComponent(mid)}`);
+  return Array.isArray(l2) ? (l2[0] || null) : null;
+}
+const midDe = (p) => p.pm_mid || (/^\d+$/.test(String(p.senal_id || '').split('|')[0]) ? String(p.senal_id).split('|')[0] : null);
 async function liquidarPoly() {
   const st = rd();
   const ahora = Date.now();
   const pend = Object.values(st.posiciones).filter((p) => p.estado === 'ABIERTA'
-    && p.pm_mid && Date.parse(p.ko || 0) < ahora - 30 * 60e3);
-  const out = { settled: 0, esperando: 0 };
+    && midDe(p) && Date.parse(p.ko || 0) < ahora - 30 * 60e3);
+  const out = { settled: 0, esperando: 0, sin_cupo: 0, sin_mercado: 0, abierto_en_gamma: 0, sin_ganador: 0, pendientes: pend.length };
   let toques = 0;
   for (const p of pend) {
-    if (toques >= 15) { out.esperando++; continue; }
+    if (toques >= 25) { out.esperando++; out.sin_cupo++; continue; }
     toques++;
-    const j = await jfetch(`${GAMMA}/markets?id=${p.pm_mid}`);
-    const m = Array.isArray(j) ? j[0] : null;
-    if (!m) { out.esperando++; continue; }
+    const m = await mercadoDe(midDe(p));
+    if (!m) { out.esperando++; out.sin_mercado++; continue; }
     const precios = (() => { try { return JSON.parse(m.outcomePrices || '[]').map(Number); } catch { return []; } })();
     // resuelto = el mercado cerró y un outcome vale ~1. Antes de eso, la posición sigue viva.
     const winIdx = precios.findIndex((x) => x >= 0.99);
-    if (!m.closed || winIdx < 0) { out.esperando++; continue; }
+    if (!m.closed || winIdx < 0) { out.esperando++; if (!m.closed) out.abierto_en_gamma++; else out.sin_ganador++; continue; }
     const gana = winIdx === p.outcome_idx;
     p.estado = gana ? 'WIN' : 'LOSS';
     p.resuelto_at = new Date().toISOString();

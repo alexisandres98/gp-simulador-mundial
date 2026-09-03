@@ -21364,6 +21364,9 @@ async function anotar(pid){
           precio: url.searchParams.get('precio'), costo: url.searchParams.get('costo') }));
         // borrón de la sombra de Polymarket (1-sep): solo a mano, para renacer con reglas nuevas
         if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset());
+        // liquidación a demanda de la sombra de Polymarket (3-sep): tras el arreglo del recurso de gamma,
+        // para no esperar al barrido de 10 min. Solo lee gamma y escribe el archivo de la sombra.
+        if (runPf === 'poly_settle') return json(res, 200, await require('./propfirm/polyshadow').liquidarPoly().catch((e) => ({ error: e.message })));
         return json(res, 200, await propfirmSweep().catch((e) => ({ error: e.message })));
       }
       // `?todas=1`: el libro entero (para la revisión del lunes); sin él, las 20 últimas

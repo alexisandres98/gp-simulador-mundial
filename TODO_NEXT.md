@@ -1,6 +1,8 @@
 # TODO_NEXT.md — GP Simulador
 
 ## ⚡ TRAS LA SEGUNDA TANDA (3-sep) — ver HANDOFF §🧩
+- **DECISIÓN DE ALEXIS (3-sep):** NO tocar el rating con cuotas (sigue en sombra, `GP_CLUB_ELO_SOURCE` sin
+  poner) ni la sombra de Polymarket (sigue acumulando con el liquidador arreglado). Se decide con muestra.
 - **Elo con cuotas:** leer `/api/internal/clubs-elo?key=&days=28` → `odds.compare` en 3-4 semanas; encender
   `GP_CLUB_ELO_SOURCE=odds` si n ≥ 300 y t ≤ −2. Correr `scripts/clubs-squad-values.js` con `THESTATSAPI_KEY`
   y el backtest `--squad` (prior de plantilla). Re-medir `CALIB_LAMBDA` del 1X2 de clubes (el transform pierde

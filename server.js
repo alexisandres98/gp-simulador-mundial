@@ -18403,6 +18403,11 @@ const server = http.createServer(async (req, res) => {
         const Sx = shadowInit();
         return json(res, 200, { count: (Sx.bets || []).length, bets: Sx.bets || [], unexec: Sx.unexec || [], bankroll: Sx.bankroll, start: Sx.start, exported_at: new Date().toISOString() });
       }
+      // ?poly=1 (3-sep): todas las posiciones de la sombra de Polymarket (estado() capa a 15)
+      if (url.searchParams.get('poly')) {
+        const Px = require('./propfirm/polyshadow').posiciones();
+        return json(res, 200, { count: Px.posiciones.length, ...Px, exported_at: new Date().toISOString() });
+      }
       if (url.searchParams.get('real')) {
         const Lx = require('./real-executor/store').load();
         return json(res, 200, { count: (Lx.bets || []).length, bets: Lx.bets || [], dias: Lx.dias || {}, nocional_inicial: Lx.nocional_inicial, nocional: Lx.nocional, realizado: Lx.realizado, exported_at: new Date().toISOString() });

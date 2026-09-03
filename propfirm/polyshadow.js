@@ -251,4 +251,6 @@ function reset() {
   return { ok: true, banco: st.banco_inicial };
 }
 
-module.exports = { sincronizar, liquidarPoly, estado, reset, DIR };
+// exportación completa de posiciones (3-sep, solo lectura): para el desglose por familia/mercado
+function posiciones() { const st = rd(); return { banco_inicial: st.banco_inicial, efectivo: st.efectivo, at: st.at, posiciones: Object.values(st.posiciones || {}) }; }
+module.exports = { sincronizar, liquidarPoly, estado, reset, posiciones, DIR };

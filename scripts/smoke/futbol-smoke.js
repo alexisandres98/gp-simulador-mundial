@@ -106,7 +106,7 @@ console.log('4) de-vig de totales a dos lados: idéntico al de antes');
   ok(sites.length >= 3, `server.js requiere lib/devig en ${sites.length} sitios`);
   for (const [, i] of sites) {
     const ctx = srv.slice(Math.max(0, i - 12), i + 1).join('\n');
-    ok(/1X2|SOLID/.test(ctx), `línea ${i + 1}: el uso está en un bloque 1X2/SOLID`);
+    ok(/1x2|SOLID/i.test(ctx), `línea ${i + 1}: el uso está en un bloque 1X2/SOLID`); // 3-sep: rememberClubClosing1x2 (cierre 1X2 de todos los partidos) también cuenta
   }
   const closingTotals = srv.some((l) => l.includes('const pOver = (1 / b.over.o) / (1 / b.over.o + 1 / b.under.o);'));
   ok(closingTotals, 'el cierre de GOALS/CORNERS/CARDS sigue con el proporcional a dos lados');

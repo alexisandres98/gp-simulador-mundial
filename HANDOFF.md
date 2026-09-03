@@ -1,5 +1,34 @@
 # HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
 
+## 🧩 SEGUNDA TANDA (3-sep) — punto 2 de la lista de pendientes, Polymarket arreglado, CS2 analizado
+Informes en `docs/impl/{ui,elo-odds,corners-ref,combat-mkt}-REPORT.md`; humos en `scripts/smoke/`.
+- **Interfaz:** la ficha y el simulador de tenis pintan `what_matters`/`adjustments` (edad, calendario, método de
+  la distribución); la serie de Valorant pinta el anclaje por mapa (`map_anchoring`) y `p_round_solved`.
+- **Fútbol, rating con cuotas** (`clubs-engine/eloOdds.js`, backtest `docs/ELO_CUOTAS_BACKTEST.md` sobre 33.335
+  partidos de football-data): el Elo alimentado con el cierre de Pinnacle (Wunderlich-Memmert, K=250) bate al
+  Elo de resultados con **t −7,7 (2425) y −6,0 (2526)**, pero ninguno se acerca al cierre (+0,013 de log-loss) y
+  el `lead` pierde con todos. En producción corre un **rating paralelo en sombra** (`db.clubElosOdds`,
+  alimentado por `db.clubClosing1x2`, que guarda el último consenso Shin pre-saque de TODOS los partidos);
+  `GP_CLUB_ELO_SOURCE=odds` lo enchufa a `clubElo()`; comparación en `/api/internal/clubs-elo?key=&days=28`
+  (`odds.compare`). Criterio para encender: n ≥ 300 con cierre y t ≤ −2. Prior de plantilla: script listo
+  (`scripts/clubs-squad-values.js`), falta correrlo con `THESTATSAPI_KEY` (solo en Render).
+- **Córners, árbitro** (`clubs-engine/referees.js`, backtest `docs/CORNERS_ARBITRO_BACKTEST.md`, 11.466 partidos
+  con árbitro): el árbitro explica el 0,2 % de la varianza del total → **no añade nada**; queda en sombra tras
+  `GP_CORNERS_REF` (off) anotando `ref_name`/`ref_n` en las picks CORNERS. Lo que SÍ mejora es la capa de
+  equipos (K_team≈40, DAMP 0,5, t −5,4): preregistrar un retune de `TOTALS_DAMP`/`PRIOR_MATCHES` de córners.
+  Probe: `/api/internal/corners-ref?key=`.
+- **Combate consciente del mercado** (`combat-engine/market-aware.js`, `docs/COMBATE_MODELO_MERCADO.md`): con
+  4.180 peleas OOS ningún rasgo del modelo añade información al cierre recalibrado (edad es lo más cercano, t
+  −1,45); lo único con t > 2 es **recalibrar el cierre** (a=1,11: el de-vig proporcional infla al perro). Priors
+  a cero; la pick FIGHT guarda `p_mkt_aware`/`edge_mkt_aware_pp` (hoy = cierre) y el track los desglosa.
+- **Polymarket (sombra de 2.000):** el liquidador usaba `/markets?id=` de Gamma, que **oculta los mercados
+  cerrados** → 0 liquidadas desde el 1-sep. Arreglado con `/markets/<id>`; 59 liquidadas de golpe (25W/34L,
+  −31 USD). Export completo: `picks-export?poly=1`; liquidar a demanda: `propfirm?run=poly_settle`. Lo que
+  gana: fútbol lado "No" a 0,50-0,70; lo que pierde: CS2 ganador de mapa/serie con 3,3 pp de deslizamiento.
+- **CS2 en Cloudbet (solo informe, sin cambios):** el edge de `cs2_rounds_v1` vive en Pinnacle (108 picks,
+  +23 % flat, CLV +1,6); a precio de Cloudbet pierde (59 picks, −19 %, líneas distintas) y 43 señales caducan
+  porque la casa no cotiza el mercado a 18 min del inicio. Decisión pendiente de Alexis.
+
 ## 🚀 MEJORAS IMPLEMENTADAS Y DESPLEGADAS (2-sep, noche) — cinco ramas fusionadas, orden de Alexis
 Alexis pidió "procede con todas las mejoras" del informe de backtests. Cinco agentes independientes, uno por
 familia, cada uno con su informe en **`docs/impl/<familia>-REPORT.md`** (tenis, valorant, hoops, futbol,

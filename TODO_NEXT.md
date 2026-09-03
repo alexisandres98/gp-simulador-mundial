@@ -1,5 +1,18 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⚡ TRAS LA SEGUNDA TANDA (3-sep) — ver HANDOFF §🧩
+- **Elo con cuotas:** leer `/api/internal/clubs-elo?key=&days=28` → `odds.compare` en 3-4 semanas; encender
+  `GP_CLUB_ELO_SOURCE=odds` si n ≥ 300 y t ≤ −2. Correr `scripts/clubs-squad-values.js` con `THESTATSAPI_KEY`
+  y el backtest `--squad` (prior de plantilla). Re-medir `CALIB_LAMBDA` del 1X2 de clubes (el transform pierde
+  +0,005 contra el propio cierre).
+- **Córners:** preregistrar el retune de la capa de equipos (K_team≈40, DAMP 0,5); comprobar en 48 h que las
+  picks CORNERS traen `ref_name` (`/api/internal/corners-ref?key=`).
+- **Combate:** decidir el de-vig de `combatFightOdds` (proporcional infla al perro; Shin t −2,96). Re-testear
+  edad contra el cierre recalibrado con 2025-26.
+- **Polymarket:** el lunes, leer `picks-export?poly=1` por familia; lo que sangra es CS2 ganador de mapa/serie.
+- **CS2 en Cloudbet:** decisión de Alexis (informe en HANDOFF §🧩): Pinnacle no está conectada; Cloudbet pierde.
+- **UI:** `valMapBoard` usa la clase `gx-dn` (no existe; debería ser `gx-down`); textos nuevos sin traducción EN.
+
 ## ⚡ TRAS EL DESPLIEGUE DE LAS MEJORAS (2-sep noche) — ver HANDOFF §🚀 y `docs/impl/*-REPORT.md`
 - **Primera pasada en prod**: `_clubPicksLast.shadow_superseded.measured`, SOLID nuevas con `devig:'shin'`;
   `/api/hoops/perf` → `clv_notas`, `preregistro_descanso`; `/api/tennis/track` → `por_evento`;

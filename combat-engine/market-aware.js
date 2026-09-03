@@ -64,6 +64,7 @@ function marketAwareProb({ pClose, features, coefs }) {
 
 // Ventaja informativa en puntos porcentuales de NUESTRO lado: (p − k)·100. null si falta algo.
 function edgePP(p, k) {
+  if (p == null || k == null || p === '' || k === '') return null; // Number(null) es 0: un null daría −50 pp
   const a = Number(p), b = Number(k);
   return (isFinite(a) && isFinite(b)) ? +((a - b) * 100).toFixed(2) : null;
 }

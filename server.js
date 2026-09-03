@@ -4341,6 +4341,7 @@ async function clubsQuotesSweep({ force = false } = {}) {
         // mercados de clubes: la tabla de quotes no guarda nombres y el JOIN de la casa no ve estos ids.
         db.clubsQuoteEvents = db.clubsQuoteEvents || {};
         db.clubsQuoteEvents[ceid] = { league: L.key, league_name: L.name || L.key, home: ev.home_team, away: ev.away_team, kickoff: ev.commence_time || null, oa_id: ev.id, at: Date.now() };
+        try { rememberClubClosing1x2(L, ceid, ev); } catch { /* el rating paralelo (sombra) nunca rompe el barrido */ }
         for (const bk of ev.bookmakers || []) {
           for (const mk of bk.markets || []) {
             if (mk.key === 'h2h') {
@@ -5743,8 +5744,87 @@ function clubCupTierOffset(lg, tid) {
   const tr = L && L.cup && L.ratings && L.ratings[tid];
   return (tr && Number(tr.tier_offset)) || 0;
 }
-function clubElo(lg, tid) {
+// ===== RATING PARALELO ALIMENTADO CON CUOTAS (3-sep, docs/ELO_CUOTAS_BACKTEST.md) ============================
+// Backtest walk-forward 2122-2526 (18 divisiones, football-data): el Elo cuyo "resultado observado" es la
+// esperanza implícita del cierre Pinnacle sin margen (Wunderlich-Memmert) bate al Elo de resultados en
+// log-loss con t −6/−8 en las dos temporadas de evaluación, pero sigue a +0,013 del cierre (t 7) — ninguna
+// variante se acerca al mercado. Por eso vive EN SOMBRA: db.clubElosOdds es un overlay paralelo (misma forma
+// que db.clubElos, valores absolutos), alimentado con el ÚLTIMO consenso Shin pre-saque que ve el barrido de
+// cuotas (db.clubClosing1x2) y, si no hay cierre para ese cruce, con el resultado (nunca se queda parado).
+// clubElo() lo lee SOLO con GP_CLUB_ELO_SOURCE=odds (default 'results' → nada cambia: picks, cockpit ni
+// track). La comparación walk-forward de ambos ratings (prob pre-partido vs resultado) se acumula en
+// db.clubElosOddsLog y se sirve en /api/internal/clubs-elo (bloque `odds`). Matemática: clubs-engine/eloOdds.js.
+const EloOdds = require('./clubs-engine/eloOdds');
+function clubEloResults(lg, tid) {
   return (db.clubElos && db.clubElos[tid] != null) ? db.clubElos[tid] + clubCupTierOffset(lg, tid) : clubBaseElo(lg, tid);
+}
+function clubEloOdds(lg, tid) {
+  return (db.clubElosOdds && db.clubElosOdds[tid] != null) ? db.clubElosOdds[tid] + clubCupTierOffset(lg, tid) : clubBaseElo(lg, tid);
+}
+function clubElo(lg, tid) {
+  if (EloOdds.eloSource() === 'odds' && db.clubElosOdds && db.clubElosOdds[tid] != null) return clubEloOdds(lg, tid);
+  return clubEloResults(lg, tid);
+}
+// Último consenso 1X2 pre-saque visto por el barrido (Shin por casa, mediana entre casas): el cierre "de la
+// casa" para TODOS los partidos con cuotas, no solo los de las picks (captureClubPicksClosing). Clave =
+// clubScoreKey (independiente del orden) + hId para orientar el vector. Se poda a los 7 días del saque.
+function rememberClubClosing1x2(L, ceid, ev) {
+  const ko = Date.parse((ev && ev.commence_time) || ''); if (!Number.isFinite(ko) || ko <= Date.now()) return; // solo prepartido
+  const books = [];
+  for (const bk of (ev.bookmakers || [])) {
+    const mk = (bk.markets || []).find((m) => m.key === 'h2h'); if (!mk) continue;
+    const o = {};
+    for (const oc of (mk.outcomes || [])) { if (!(oc.price > 1)) continue; o[oc.name === ev.home_team ? 'home' : oc.name === ev.away_team ? 'away' : 'draw'] = oc.price; }
+    if (o.home && o.draw && o.away) books.push(o);
+  }
+  if (!books.length) return;
+  const hId = resolveClubId(L.key, ev.home_team), aId = resolveClubId(L.key, ev.away_team);
+  if (!hId || !aId || hId === aId) return;
+  const cons = require('./lib/devig').shinConsensus1x2(books); if (!cons.fair) return;
+  db.clubClosing1x2 = db.clubClosing1x2 || {};
+  db.clubClosing1x2[clubScoreKey(L.key, hId, aId)] = { ceid, league: L.key, hId, aId, kickoff: new Date(ko).toISOString(), fair: cons.fair, books: cons.books, at: Date.now() };
+  const cutoff = Date.now() - 7 * 86400e3;
+  for (const [k, c] of Object.entries(db.clubClosing1x2)) { const t = Date.parse(c.kickoff || 0); if (!Number.isFinite(t) || t < cutoff) delete db.clubClosing1x2[k]; }
+}
+// Actualiza el rating paralelo al cerrar un partido (llamar ANTES de applyClubElo: la comparación usa el
+// overlay de resultados todavía pre-partido). Devuelve el registro de comparación o null.
+function applyClubEloOdds(lg, hId, aId, hg, ag) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg]; if (!L) return null;
+  db.clubElosOdds = db.clubElosOdds || {};
+  const hfa = L.hfa || 60;
+  const offH = clubCupTierOffset(lg, hId), offA = clubCupTierOffset(lg, aId);
+  const eH = clubEloOdds(lg, hId), eA = clubEloOdds(lg, aId);
+  const c = (db.clubClosing1x2 || {})[clubScoreKey(lg, hId, aId)];
+  const fair = !c ? null : c.hId === hId ? c.fair : { home: c.fair.away, draw: c.fair.draw, away: c.fair.home };
+  const P = EloOdds.oddsParams();
+  const { delta, used } = EloOdds.combinedDelta({ eH, eA, hfa, hg, ag, fair, mode: P.mode, w: P.w, kOdds: P.kOdds, kResult: CLUB_ELO_K });
+  // comparación walk-forward: probabilidad PRE-partido de cada rating (y del cierre) contra el resultado
+  const pr = matchProbs(clubEloResults(lg, hId) + hfa, clubEloResults(lg, aId)), po = matchProbs(eH + hfa, eA);
+  const rec = { at: Date.now(), lg, hId, aId, hg, ag, used, p_res: [pr.home, pr.draw, pr.away].map((x) => +x.toFixed(4)), p_odds: [po.home, po.draw, po.away].map((x) => +x.toFixed(4)), p_mkt: fair ? [fair.home, fair.draw, fair.away].map((x) => +Number(x).toFixed(4)) : null };
+  EloOdds.applyToOverlay(db.clubElosOdds, hId, aId, eH, eA, delta, offH, offA);
+  db.clubElosOddsLog = db.clubElosOddsLog || [];
+  db.clubElosOddsLog.push(rec);
+  if (db.clubElosOddsLog.length > 600) db.clubElosOddsLog.splice(0, db.clubElosOddsLog.length - 600);
+  return rec;
+}
+// Log-loss/Brier de ambos ratings (y del cierre cuando lo hubo) sobre los partidos liquidados de la ventana.
+function clubEloOddsCompare(days = 28) {
+  const since = Date.now() - days * 86400e3;
+  const rows = (db.clubElosOddsLog || []).filter((r) => r.at >= since && Number.isFinite(r.hg) && Number.isFinite(r.ag));
+  const y = (r) => (r.hg > r.ag ? 0 : r.hg === r.ag ? 1 : 2);
+  const ll = (p, k) => -Math.log(Math.max(1e-9, p[k])), br = (p, k) => p.reduce((s, x, i) => s + (x - (i === k ? 1 : 0)) ** 2, 0);
+  const agg = (key, filt = () => true) => { const rs = rows.filter((r) => r[key] && filt(r)); const n = rs.length; return n ? { n, logloss: +(rs.reduce((s, r) => s + ll(r[key], y(r)), 0) / n).toFixed(4), brier: +(rs.reduce((s, r) => s + br(r[key], y(r)), 0) / n).toFixed(4) } : { n: 0 }; };
+  const d = rows.map((r) => ll(r.p_odds, y(r)) - ll(r.p_res, y(r)));
+  const m = d.length ? d.reduce((s, x) => s + x, 0) / d.length : null;
+  const sdv = d.length > 1 ? Math.sqrt(d.reduce((s, x) => s + (x - m) ** 2, 0) / (d.length - 1)) : null;
+  const withMkt = (r) => !!r.p_mkt;
+  return {
+    window_days: days, n: rows.length, used: rows.reduce((o, r) => { o[r.used] = (o[r.used] || 0) + 1; return o; }, {}),
+    results: agg('p_res'), odds: agg('p_odds'),
+    with_closing: { results: agg('p_res', withMkt), odds: agg('p_odds', withMkt), market: agg('p_mkt') },
+    odds_vs_results_logloss: d.length ? { mean: +m.toFixed(4), se: sdv != null ? +(sdv / Math.sqrt(d.length)).toFixed(4) : null, t: sdv ? +((m / (sdv / Math.sqrt(d.length)))).toFixed(2) : null } : null,
+  };
 }
 function applyClubElo(lg, hId, aId, hg, ag) {
   const RT = global._clubsRatings || {};
@@ -5766,7 +5846,7 @@ function applyClubElo(lg, hId, aId, hg, ag) {
 function clubEloReconcileFit() {
   const RT = global._clubsRatings || {};
   const fa = (RT._meta && RT._meta.fitted_at) || 'none';
-  if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosFitAt = fa; }
+  if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosOdds = {}; db.clubElosFitAt = fa; } // el paralelo también nace del fit nuevo (su log se conserva)
 }
 // FORMA reciente de ambos equipos + H2H directo del cruce, desde results-<liga>.json (memo). Reusa el mismo
 // archivo que /api/clubs/team-form. Devuelve { home:[W/D/L de local], away:[...], h2h:[últimos directos] }.
@@ -5938,7 +6018,7 @@ async function clubScoresSync({ force = false } = {}) {
         if (!same) {
           // F0.4: al TRANSICIONAR a final, actualizar el Elo dinámico (una sola vez por partido).
           const wasFinal = prev && prev.status === 'final';
-          if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; persistClubFinal(lgKey, payload); }
+          if (payload.status === 'final' && !wasFinal && !(prev && prev.elo_applied)) { try { applyClubEloOdds(lgKey, hId, aId, hg, ag); } catch { /* el paralelo nunca rompe el sync */ } applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; persistClubFinal(lgKey, payload); }
           else if (prev && prev.elo_applied) payload.elo_applied = true;
           // transiciones para alertas de clubes seguidos (31-ago): misma lógica que el Mundial —
           // pasar a live sin haberlo estado = inicio; subir el total de goles estando live = gol
@@ -6087,7 +6167,7 @@ async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
         };
         if (fin) { payload.winner = hg > ag ? hId : ag > hg ? aId : null; payload.detail = 'FT'; db.clubTsaSeen[m.id] = Date.now(); }
         // Elo dinámico SOLO al cerrar y una única vez (mismo criterio que la rama ESPN)
-        if (fin && !(prev && prev.elo_applied)) { applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
+        if (fin && !(prev && prev.elo_applied)) { try { applyClubEloOdds(lgKey, hId, aId, hg, ag); } catch { /* el paralelo nunca rompe el sync */ } applyClubElo(lgKey, hId, aId, hg, ag); payload.elo_applied = true; }
         else if (prev && prev.elo_applied) payload.elo_applied = true;
         const same = prev && prev.status === payload.status && prev.hg === hg && prev.ag === ag && prev.minute === payload.minute;
         if (same) continue;
@@ -22904,8 +22984,19 @@ async function anotar(pid){
         applyClubElo(lg, hId, aId, Number(hg), Number(ag)); save();
         return json(res, 200, { lg, hId, aId, score: hg + '-' + ag, before, after: { home: clubElo(lg, hId), away: clubElo(lg, aId) } });
       }
+      // rating paralelo con cuotas (sombra): ?odds_test=lg,hId,aId,hg,ag[,pH,pD,pA] (POST) simula un cierre + final
+      const oddsTest = url.searchParams.get('odds_test');
+      if (oddsTest && req.method === 'POST') {
+        const [lg, hId, aId, hg, ag, pH, pD, pA] = oddsTest.split(',');
+        if (Number(pH) > 0 && Number(pD) > 0 && Number(pA) > 0) { db.clubClosing1x2 = db.clubClosing1x2 || {}; db.clubClosing1x2[clubScoreKey(lg, hId, aId)] = { ceid: 'test', league: lg, hId, aId, kickoff: new Date().toISOString(), fair: { home: Number(pH), draw: Number(pD), away: Number(pA) }, books: 0, at: Date.now() }; }
+        const before = { home: clubEloOdds(lg, hId), away: clubEloOdds(lg, aId) };
+        const rec = applyClubEloOdds(lg, hId, aId, Number(hg), Number(ag)); save();
+        return json(res, 200, { lg, hId, aId, score: hg + '-' + ag, before, after: { home: clubEloOdds(lg, hId), away: clubEloOdds(lg, aId) }, rec });
+      }
       const overlay = db.clubElos || {};
-      return json(res, 200, { fit_at: db.clubElosFitAt || null, adjusted: Object.keys(overlay).length, overlay });
+      const days = Math.max(1, Math.min(365, Number(url.searchParams.get('days')) || 28));
+      const odds = { source: EloOdds.eloSource(), params: EloOdds.oddsParams(), adjusted: Object.keys(db.clubElosOdds || {}).length, closings: Object.keys(db.clubClosing1x2 || {}).length, log: (db.clubElosOddsLog || []).length, compare: clubEloOddsCompare(days), overlay: db.clubElosOdds || {} };
+      return json(res, 200, { fit_at: db.clubElosFitAt || null, adjusted: Object.keys(overlay).length, overlay, odds });
     }
     // SCAN DE CLUBES (verificación read-only, misma key): el DTO que el admin ve mergeado en /api/beta/arbitrage,
     // sin necesitar sesión. Diagnóstico del pipeline sweep → loader → scanner.

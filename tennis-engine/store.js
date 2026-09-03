@@ -610,6 +610,7 @@ async function recordShadow() {
       // la tesis se marca si entra en la regla fija (TOTAL, ventaja ≥ 8 pp). Se cuenta por EVENTO, no por
       // pick, y la vara es el CLV medio contra el cierre, no el ROI.
       if (c.family === 'TOTAL') { pick.edge_pp_at_create = c.edge_pp; pick.prereg_total8 = c.edge_pp >= 8; pick.dist_method = c.dist_method || null; }
+      pick.era = process.env.GP_PICKS_ERA || 'v2-2026-09-02'; // marca de era (3-sep): picks nacidas tras los ajustes del 2-sep
       st.picks.push(pick);
     }
   }

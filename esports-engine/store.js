@@ -765,6 +765,7 @@ function valPickMeta(model, Rrow) {
     shift_logit: MA ? MA.shift_logit : null,
     p_round_solved: R && R.p_round_solved != null ? R.p_round_solved : null,
     dist_method: R && R.dist_method ? R.dist_method : 'bisect',
+    era: process.env.GP_PICKS_ERA || 'v2-2026-09-02', // marca de era (3-sep): picks nacidas tras los ajustes del 2-sep
   };
 }
 

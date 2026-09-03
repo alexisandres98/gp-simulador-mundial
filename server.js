@@ -5724,6 +5724,10 @@ function clubXgReport(league, hId, aId) {
 // cada partido que TRANSICIONA a final (nunca se escribe el archivo; el re-fit mensual resetea el overlay).
 // Misma matemática del Mundial (winExpectancy logística + G por margen de gol) con K de liga doméstica y la
 // localía (hfa) de cada liga en vez del HOME_BONUS del Mundial.
+// ERA de las picks (3-sep, decisión de Alexis): marca que llevan las picks nacidas tras los ajustes de modelo
+// del 2-sep (fútbol, baloncesto, combate; tenis y Valorant la ponen en su propio store). Los tracks internos
+// separan por `era` para que los análisis futuros distingan las dos muestras. Se cambia por env si hay otra ronda.
+const CLUB_PICKS_ERA = process.env.GP_PICKS_ERA || 'v2-2026-09-02';
 const CLUB_ELO_K = 30; // ligas domésticas (eloratings.net ~20-40); el Mundial usa 60
 function clubBaseElo(lg, tid) {
   const RT = global._clubsRatings || {};
@@ -7741,6 +7745,9 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     regime: fields.regime || null, // 'anchor' | 'edge' — régimen dual (análisis del track privado)
     rest_ctx: fields.rest_ctx || null, // descanso aplicado al 1X2 (clubRestContext) — solo SOLID; auditoría del efecto
     solid_lever: fields.solid_lever || false, // SOLID que pasa SOLO por la palanca ajustada (modelo<mercado) — monitoreo
+    // ERA (3-sep, decisión de Alexis): las picks nacidas tras los ajustes del 2-sep (de-vig Shin, p_pub con
+    // GP_SOLID_C, prior por división en copas) llevan esta marca para que el track las separe de las anteriores.
+    era: CLUB_PICKS_ERA,
     status: 'ACTIVE', result_code: 'PENDING', created_at: new Date().toISOString(), settled_at: null,
     };
   };
@@ -8669,6 +8676,10 @@ function clubDailyPicksTrackRecord() {
   for (const p of (db.clubDailyPicks || [])) {
     if (p.status !== 'SETTLED' || !['WIN', 'LOSS', 'PUSH'].includes(p.result_code)) continue;
     const keys = ['overall', p.league, p.family, 'gate:' + (p.gate_status || 'shadow'), 'regime:' + (p.regime || 'pre')];
+    // ERA (3-sep): antes/después de los ajustes del 2-sep, por familia y por régimen, para que los análisis
+    // futuros separen las dos muestras sin tener que mirar fechas.
+    const era = p.era || 'v1';
+    keys.push('era:' + era, 'era:' + era + '|' + p.family, 'era:' + era + '|' + p.family + '|' + (p.regime || 'pre'));
     if (p.family === 'SOLID') keys.push('solid_lever:' + (p.solid_lever ? 'on' : 'off')); // evaluación de la palanca (lunes)
     // Preregistros (2-sep): desglose por etiqueta; CORNERS además con Liga MX aparte (aportaba 14,8 de las 24,6 u).
     if (p.family === 'GOALS' && p.prereg_goals_late != null) keys.push('GOALS|prereg_goals_late:' + (p.prereg_goals_late ? 'on' : 'off'));
@@ -11775,6 +11786,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           // que se calculó esa probabilidad (la nuestra); `consensus_line_at_create` es la línea principal
           // del mercado, contra la que se mide el movimiento al cierre.
           thesis,
+          era: CLUB_PICKS_ERA, // marca de era (3-sep): picks nacidas tras los ajustes del 2-sep
           clv_v: CLV.CLV_V, clv_price_pct: null, close_fair: null, close_line: null, line_moved_pts: null,
           market_fair_at_create: +c.pMarket.toFixed(4), market_line_at_create: c.line,
           line_at_create: c.line, consensus_line_at_create: consensusLine,
@@ -14665,6 +14677,7 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       const tags = CBM.pickTags({ k: bestSide.k, side: bestSide.side, org, wctx, flags: pressFlags, evDate: ev.date, now });
       fresh.push({
         ...tags,
+        era: CLUB_PICKS_ERA, // marca de era (3-sep): picks nacidas tras los ajustes del 2-sep
         why_es: whyPair.es, why_en: whyPair.en,
         pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
         sport: 'combat', family: 'FIGHT', league: org, // 'ufc' | 'mma' (Bellator/PFL)

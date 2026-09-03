@@ -10562,7 +10562,9 @@
         '<b>' + esc(s.name) + '</b><span class="gx-dim">' + esc(who) + '</span>' +
         '<span class="gx-mono gx-dim">' + esPct0(s.p) + '</span></div>';
     }).join('') + (v.decider ? '<div class="gx-es-step dec"><span class="gx-es-step-k">DECISIVO</span><b>' + esc(v.decider.name) + '</b><span class="gx-dim">lo que sobra</span></div>' : '') + '</div>';
-    var maps = '<table class="gx-t gx-es-t"><thead><tr><th>Mapa probable</th><th class="r">' + esc(ev ? ev.home.name : 'A') + '</th><th>Lectura</th></tr></thead><tbody>' +
+    // con anclaje por mapa (Valorant, 3-sep) la tabla enseña la p del modelo Y la anclada; sin él, la de siempre
+    var ma = m.map_anchoring && typeof m.map_anchoring === 'object' ? m.map_anchoring : null;
+    var maps = ma ? esValAnchor(v, ma, m, ev) : '<table class="gx-t gx-es-t"><thead><tr><th>Mapa probable</th><th class="r">' + esc(ev ? ev.home.name : 'A') + '</th><th>Lectura</th></tr></thead><tbody>' +
       (v.likely_maps || []).map(function (mm) {
         return '<tr><td><b>' + esc(mm.name) + '</b></td><td class="r gx-mono">' + esPct0(mm.p_a) + '</td>' +
           '<td class="gx-dim">' + esc(mm.note || (mm.p_a >= 0.55 ? 'terreno favorable' : mm.p_a <= 0.45 ? 'terreno hostil' : 'parejo')) + '</td></tr>';
@@ -10572,6 +10574,50 @@
       '<div class="gx-dim gx-es-impact-n">' + esc(imp.baseline) + ' → serie sobre los mapas que se van a jugar. ' +
       (imp.market_p != null ? 'El precio del mercado (' + esPct0(imp.market_p) + ') va aparte: es otra escala y mezclarlas engañaría.' : '') + '</div></div>' : '';
     return esPanel('Veto de mapas', esc(v.pool_version || ''), impHtml + seq + maps + '<div class="gx-dim gx-es-note">' + esc(v.note) + '</div>', 'gx-es-veto');
+  }
+
+  // — ANCLAJE POR MAPA (Valorant, 3-sep). `veto.likely_maps[].p_a` es la fuerza por mapa del MODELO;
+  // `map_anchoring.maps[].p_a` es esa misma p desplazada en logit (una sola constante, `shift_logit`) hasta
+  // que la serie simulada sobre esos mapas vale lo que vale la serie anclada al mercado. Se pintan las dos
+  // columnas y el desplazamiento: la FORMA (qué mapa le va mejor a cada equipo) es de GP; el NIVEL (quién
+  // gana el mapa) lo pone el mercado. Si `rounds_by_map` trae la p de ronda resuelta de cada mapa, va al lado.
+  function esValDistLabel(method) {
+    return method === 'bisect' ? 'bisección' : method ? String(method) : '—';
+  }
+  function esValAnchor(v, ma, m, ev) {
+    var byKey = {};
+    ((v && v.likely_maps) || []).forEach(function (x) { if (x && x.map) byKey[x.map] = x; });
+    var rbm = m.rounds_by_map && typeof m.rounds_by_map === 'object' ? m.rounds_by_map : {};
+    var who = esc(ev && ev.home ? ev.home.name : 'A');
+    var rows = (ma.maps || []).map(function (x, i) {
+      var L = byKey[x.map] || {};
+      var dpp = x.p_a != null && x.p_a_model != null ? Math.round(1000 * (x.p_a - x.p_a_model)) / 10 : null;
+      var rb = rbm[i + 1] || null;
+      return '<tr><td><b>' + esc(L.name || x.map || '') + '</b>' +
+        (L.note ? '<div class="gx-dim" style="font-size:10.5px">' + esc(L.note) + '</div>' : '') + '</td>' +
+        '<td class="r gx-mono">' + esPct0(x.p_a_model) + '</td>' +
+        '<td class="r gx-mono"><b>' + esPct0(x.p_a) + '</b></td>' +
+        '<td class="r gx-mono ' + (dpp > 0 ? 'gx-up' : dpp < 0 ? 'gx-down' : 'gx-dim') + '">' + (dpp != null ? esSign(dpp) : '—') + '</td>' +
+        '<td class="r gx-mono">' + (rb && rb.p_round_solved != null ? esPct(rb.p_round_solved) : '—') + '</td></tr>';
+    }).join('');
+    var table = '<div class="gx-perf-scroll"><table class="gx-t gx-es-t"><thead><tr><th>Mapa probable</th>' +
+      '<th class="r" title="fuerza por mapa del modelo, sin anclar">' + who + ' · GP</th>' +
+      '<th class="r" title="la misma p desplazada al nivel del mercado: es la que alimenta rondas y hándicaps">' + who + ' · anclada</th>' +
+      '<th class="r" title="anclada menos modelo, en puntos de probabilidad">Δ pp</th>' +
+      '<th class="r" title="probabilidad de ronda resuelta por bisección para reproducir la p anclada del mapa">P(ronda)</th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>';
+    var sub = function (s) { return s ? '<div class="gx-dim" style="font-size:10px;margin-top:2px;line-height:1.35">' + esc(s) + '</div>' : ''; };
+    var kpis = '<div class="gx-es-kpis" style="margin-top:12px">' +
+      '<div><span>Nivel del mapa · mercado</span><b class="gx-mono">' + esPct0(ma.p_map_market) + '</b>' + sub(ma.p_map_market_from) + '</div>' +
+      (ma.p_map_model_mean != null ? '<div><span>Media del modelo</span><b class="gx-mono">' + esPct0(ma.p_map_model_mean) + '</b>' +
+        sub(ma.model_vs_market_pp != null ? esSign(ma.model_vs_market_pp) + ' pp frente al mercado' : '') + '</div>' : '') +
+      '<div><span>Desplazamiento</span><b class="gx-mono">' + esSign(ma.shift_logit) + '</b>' +
+        sub(ma.bracketed === false ? 'en logit · fuera de rango: sin desplazar' : 'en logit · resuelto por bisección') + '</div></div>';
+    var pr = m.probability && typeof m.probability === 'object' ? m.probability : null;
+    var temp = pr && pr.temperature != null && pr.max_model != null
+      ? ' La voz propia sobre la serie va templada (temperatura ' + pr.temperature + ', peso máximo ' + Math.round(100 * pr.max_model) + ' % frente al consenso).' : '';
+    var note = '<div class="gx-dim gx-es-note">El nivel de cada mapa —quién lo gana— lo pone el mercado; el modelo aporta la forma: qué mapa le va mejor a cada equipo y cómo se reparten las rondas dentro de él. Por eso la columna anclada, y no la de GP, es la que alimenta rondas y hándicaps.' + temp + '</div>';
+    return table + kpis + note;
   }
 
   // — RONDAS (CS2 y Valorant). En Valorant además con la asimetría ataque/defensa, que no tiene análogo.
@@ -10588,11 +10634,22 @@
         '<div><span class="gx-label">Sesgo del mapa</span><b>' + r.map_bias + '</b></div></div>'
       : '';
     var hist = esHist(r.loser_distribution, 'loser_rounds', 'Rondas del perdedor');
+    // P(RONDA) RESUELTA (Valorant, 3-sep): solo con anclaje por mapa. La probabilidad de ronda no es una opinión
+    // aparte: se invierte por bisección para que la propia simulación reproduzca la p ANCLADA del mapa.
+    var anch = m.map_anchoring && typeof m.map_anchoring === 'object' && r.p_round_solved != null
+      ? '<div class="gx-es-kpis"><div><span>P(ronda) resuelta</span><b class="gx-mono">' + esPct(r.p_round_solved) + '</b>' +
+          '<div class="gx-dim" style="font-size:10px;margin-top:2px;line-height:1.35">' + esc((ev && ev.home ? ev.home.name : 'A')) + ' gana una ronda cualquiera</div></div>' +
+        '<div><span>Mapa anclado</span><b class="gx-mono">' + esPct0(r.p_map_a) + '</b>' +
+          (r.p_map_a_model != null ? '<div class="gx-dim" style="font-size:10px;margin-top:2px;line-height:1.35">modelo sin anclar ' + esPct0(r.p_map_a_model) + '</div>' : '') + '</div>' +
+        '<div><span>Método</span><b style="font-size:13px">' + esc(esValDistLabel(r.dist_method)) + '</b>' +
+          (r.p_map_sim != null ? '<div class="gx-dim" style="font-size:10px;margin-top:2px;line-height:1.35">la simulación reproduce ' + esPct0(r.p_map_sim) + '</div>' : '') + '</div></div>' +
+        '<div class="gx-dim gx-es-note">El nivel del mapa viene del mercado; el modelo pone la forma de las rondas: reparto ataque/defensa, arrastre económico y prórroga.</div>'
+      : '';
     return esPanel('Rondas del mapa', '<span class="gx-mono">' + r.mean_rounds + ' de media</span>',
       asym +
       '<div class="gx-es-kpis"><div><span>Media</span><b>' + r.mean_rounds + '</b></div>' +
       '<div><span>Prórroga</span><b>' + esPct(r.overtime_p) + '</b></div></div>' +
-      hist +
+      anch + hist +
       '<table class="gx-t gx-es-t"><thead><tr><th>Línea</th><th class="r">Más de</th><th class="r">Menos de</th></tr></thead><tbody>' + lines + '</tbody></table>' +
       (r.note ? '<div class="gx-dim gx-es-note">' + esc(r.note) + '</div>' : ''), 'gx-es-rounds');
   }
@@ -12687,7 +12744,7 @@
 
     var lens = S.ten.lens || 'partido';
     var LENSES = [
-      ['partido', 'El partido', tenDuelPanel(d) + tenPathPanel(d) + tenGamesPanel(d) + tenScoresPanel(d)],
+      ['partido', 'El partido', tenDuelPanel(d) + tenWhatPanel(d) + tenPathPanel(d) + tenGamesPanel(d) + tenScoresPanel(d)],
       ['modelo', 'El modelo', tenSurfacePanel(d, A, B) + tenIndexPanel(d, A, B) + tenPicksPanel(d)],
       // EN TENIS LAS SEÑALES VAN LAS PRIMERAS DEL CONTEXTO. En un deporte individual una retirada o una
       // molestia no es un matiz del pronóstico: es lo que decide si el partido se juega. Enterrarla debajo
@@ -12731,6 +12788,60 @@
       tenCmp('conserva su saque', du.hold_a, du.hold_b, tenPctF, 'probabilidad de ganar un juego con su servicio') +
       tenCmp('rompe el del rival', du.break_a, du.break_b, tenPctF, 'probabilidad de quebrar el saque contrario') +
       '<div class="gx-dim gx-es-note">El compilador va punto → juego → set → partido con la alternancia real del saque y el desempate resuelto de forma exacta, no simulado. Los porcentajes están ajustados por rival: no son la media del jugador, son lo que le sale CONTRA ESTE.</div></div>';
+  }
+
+  // 1b) QUÉ MUEVE LA PROBABILIDAD (3-sep). El motor aplica sobre el ensamble dos ajustes que hasta ahora
+  // viajaban en el JSON sin pintarse: la edad (el Elo sobreestima a los veteranos) y el calendario (días sin
+  // jugar y partidos en 7 días). Solo ATP: en WTA los dos términos vienen como "no aplica" y el bloque no
+  // existe. Debajo, con qué distribución se reparten los juegos totales (la misma con la que se puntúa el
+  // TOTAL). Devuelve '' cuando no hay nada que decir, así la ficha de antes queda idéntica.
+  function tenDistLabel(method) {
+    return method === 'c6' ? 'distribución empírica (ATP 3 sets)' : method === 'shift' ? 'distribución desplazada' : null;
+  }
+  function tenWhatPanel(d) {
+    if (!d) return '';
+    var adj = d.adjustments && typeof d.adjustments === 'object' ? d.adjustments : null;
+    var w = (d.what_matters || []).filter(function (x) { return x && (x.text || x.driver); });
+    var na = function (v) { return typeof v === 'string' && /no aplica/i.test(v); };
+    if (adj && na(adj.age) && na(adj.calendar)) return '';
+    if (!w.length && !adj) return '';
+    var p1 = function (x) { return x == null ? '—' : (100 * x).toFixed(1) + '%'; };
+    var mx = w.reduce(function (a, x) { return Math.max(a, Math.abs(x.pp || 0)); }, 0);
+    var rows = w.map(function (x, i) {
+      var pp = x.pp != null ? x.pp : null;
+      var wpx = mx && pp != null ? Math.max(4, Math.round(100 * Math.abs(pp) / mx)) : 0;
+      return '<div class="gx-esw2">' +
+        '<div class="gx-esw2-h"><span class="gx-es-wn">' + (x.rank || i + 1) + '</span>' +
+        '<b>' + esc(x.driver || '') + '</b>' +
+        (pp != null ? '<span class="gx-spacer"></span><span class="gx-mono ' + (pp > 0 ? 'gx-up' : pp < 0 ? 'gx-down' : 'gx-dim') + '">' + esSign(pp) + ' pp</span>' : '') + '</div>' +
+        (wpx ? '<div class="gx-esw2-bar"><i class="' + (pp > 0 ? 'up' : 'dn') + '" style="width:' + wpx + '%"></i></div>' : '') +
+        (x.text ? '<p>' + esc(x.text) + '</p>' : '') + '</div>';
+    }).join('');
+    // una línea por ajuste: aplicado → sus pp; no aplicado → el motivo, en la misma casilla
+    var tiles = [];
+    if (adj) {
+      var ageObj = adj.age && typeof adj.age === 'object';
+      if (ageObj) tiles.push(['Edad', esSign(adj.age_pp != null ? adj.age_pp : 0) + ' pp', adj.age.a != null && adj.age.b != null ? adj.age.a.toFixed(1) + ' vs ' + adj.age.b.toFixed(1) + ' años' : '']);
+      else if (typeof adj.age === 'string' && !na(adj.age)) tiles.push(['Edad', 'no se aplica', adj.age]);
+      if (adj.calendar === 'aplicado') {
+        var c = adj.calendar_detail || null;
+        tiles.push(['Calendario', esSign(adj.calendar_pp != null ? adj.calendar_pp : 0) + ' pp',
+          c ? c.days_a + ' / ' + c.days_b + ' días sin jugar · ' + c.n7_a + ' / ' + c.n7_b + ' en 7 días' : '']);
+      } else if (adj.calendar === 'sin fecha real') tiles.push(['Calendario', 'sin fecha real', 'sin fecha del último partido de ambos: no se aplica']);
+    }
+    var tilesHtml = tiles.length ? '<div class="gx-es-kpis" style="margin-top:12px">' + tiles.map(function (x) {
+      return '<div><span>' + esc(x[0]) + '</span><b class="gx-mono" style="font-size:15px">' + esc(x[1]) + '</b>' +
+        (x[2] ? '<div class="gx-dim" style="font-size:10px;margin-top:2px;line-height:1.35">' + esc(x[2]) + '</div>' : '') + '</div>';
+    }).join('') + '</div>' : '';
+    var method = (d.duel && d.duel.dist_method) || (adj && adj.dist_method) || null;
+    var methodLab = tenDistLabel(method);
+    if (!rows && !tilesHtml && !methodLab) return '';
+    var extra = d.p_a_base != null && d.p_a != null
+      ? '<span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px" title="probabilidad del ensamble antes y después de los ajustes">base ' + p1(d.p_a_base) + ' → ' + p1(d.p_a) + '</span>' : '';
+    return '<div class="gx-panel gx-es-what-p"><div class="gx-ph"><span class="gx-label">Qué mueve la probabilidad</span>' + extra + '</div>' +
+      (rows ? '<div class="gx-es-what">' + rows + '</div>' : '') + tilesHtml +
+      '<div class="gx-dim gx-es-note">' + (methodLab ? 'Juegos totales: ' + esc(methodLab) + '. ' : '') +
+      'Ajustes medidos fuera de muestra sobre el ensamble; estimaciones de un modelo estadístico, no consejo financiero.</div></div>';
   }
 
   // 2) EL CAMINO: cómo se llega al resultado, set a set
@@ -13128,7 +13239,7 @@
         (r.h2h.rows || []).slice(0, 6).map(function (m) {
           return '<div class="gx-ten-h2h"><span class="gx-mono gx-dim">' + String(m.date).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1/$2') + '</span><b>' + (m.winner === 'a' ? esc(r.a.name) : esc(r.b.name)) + '</b><span class="gx-dim gx-mono">' + esc(m.score || '') + '</span><span class="gx-dim">' + esc(m.surface || '') + '</span></div>';
         }).join('') + '</div>' : '';
-      res = head + setRows + gbars + h2 + '<div class="gx-dim gx-es-trunc">' + esc(r.note || '') + '</div>';
+      res = head + tenWhatPanel(r) + setRows + gbars + h2 + '<div class="gx-dim gx-es-trunc">' + esc(r.note || '') + '</div>';
     }
     tenShell(t('nav_sim'), form + res);
   }

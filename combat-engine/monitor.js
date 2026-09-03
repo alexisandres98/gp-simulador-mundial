@@ -17,6 +17,7 @@ const DRIFT_MAX = 0.05;         // nuestro lado se alargó más de un 5 % → de
 const T24_WINDOW_H = 26;        // la re-evaluación vive entre 26 h y 0 h antes del campanazo
 const PREREG_FAV_K = 0.45;      // favorito "amplio" del mercado (k ≥ 0,45: no se pierden los pick'em)
 const PLACEHOLDER_MAX_DAYS = 120; // una pelea a más de 120 días es un rumor de cartelera, no una fecha
+const MKT_AWARE_EDGE_PP = 2;    // corte del track para la ventaja del modelo consciente del mercado (3-sep)
 
 const round = (x, d) => (x == null || !isFinite(x)) ? null : +Number(x).toFixed(d);
 
@@ -130,7 +131,15 @@ function trackBreakdown(fightRows) {
       sin_t24: aggClv(rows.filter(p => typeof p.degraded_monitor !== 'boolean')), // nacieron antes o no llegaron a la ventana
     },
     clv_by_side: { favorito: aggClv(rows.filter(p => isFavMkt(p) === true)), perro: aggClv(rows.filter(p => isFavMkt(p) === false)) },
+    // MODELO CONSCIENTE DEL MERCADO (3-sep): corte por la ventaja informativa `edge_mkt_aware_pp` (≥ 2 pp vs < 2).
+    // Con los coeficientes en 0 la ventaja es 0 y todo cae en `lt2`; el corte cobra sentido cuando algún rasgo
+    // pase el backtest. Las picks sin el campo (anteriores) van a `sin_dato`.
+    mkt_aware_edge: {
+      ge2: aggClv(rows.filter(p => typeof p.edge_mkt_aware_pp === 'number' && p.edge_mkt_aware_pp >= MKT_AWARE_EDGE_PP)),
+      lt2: aggClv(rows.filter(p => typeof p.edge_mkt_aware_pp === 'number' && p.edge_mkt_aware_pp < MKT_AWARE_EDGE_PP)),
+      sin_dato: aggClv(rows.filter(p => typeof p.edge_mkt_aware_pp !== 'number')),
+    },
   };
 }
 
-module.exports = { pickTags, t24Eval, isPlaceholderDate, hoursToEvent, aggClv, trackBreakdown, BLEND_W, EDGE_MIN_PP, DRIFT_MAX, T24_WINDOW_H, PREREG_FAV_K, PLACEHOLDER_MAX_DAYS };
+module.exports = { pickTags, t24Eval, isPlaceholderDate, hoursToEvent, aggClv, trackBreakdown, BLEND_W, EDGE_MIN_PP, DRIFT_MAX, T24_WINDOW_H, PREREG_FAV_K, PLACEHOLDER_MAX_DAYS, MKT_AWARE_EDGE_PP };

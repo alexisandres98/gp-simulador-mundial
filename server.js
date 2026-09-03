@@ -14584,6 +14584,11 @@ const COMBAT_MAX_ODDS = Number(process.env.GP_COMBAT_MAX_ODDS || 3);
 // PREREGISTRO (2-sep, backtests §7): etiquetas al nacer + re-evaluación T−24 h + desgloses del track. Puro,
 // separado de ratings.js a propósito: no toca ni el blend ni el umbral ni el techo (ver combat-engine/monitor.js).
 const CBM = require('./combat-engine/monitor');
+// MODELO CONSCIENTE DEL MERCADO (3-sep, docs/COMBATE_MODELO_MERCADO.md): p_mkt_aware = cierre corregido por los
+// rasgos con los coeficientes de data/combat/market-aware-priors.json (hoy 0: ningún rasgo pasó el backtest →
+// p_mkt_aware = fair del consenso). INFORMATIVO: viaja en la pick para juzgarlo en el track; jamás compuerta.
+const CBMA = require('./combat-engine/market-aware');
+const CB_MKT_AWARE = CBMA.loadPriors();
 async function buildCombatPicksOrg(org, out, dryRun) {
   const CE = require('./combat-engine/ratings');
   const C = combatLoad(org);
@@ -14675,8 +14680,19 @@ async function buildCombatPicksOrg(org, out, dryRun) {
       let pressFlags = [];
       try { pressFlags = combatIntelFlags(C, ft, ev.date).concat(combatNewsFlags(ft)); } catch { pressFlags = []; }
       const tags = CBM.pickTags({ k: bestSide.k, side: bestSide.side, org, wctx, flags: pressFlags, evDate: ev.date, now });
+      // MODELO CONSCIENTE DEL MERCADO (3-sep): probabilidad de NUESTRO lado con el cierre como ancla y los rasgos
+      // como corrección (coeficientes del backtest; hoy 0 → p_mkt_aware = k). Solo informativo: dentro de un try,
+      // nunca tumba la pick ni entra a la compuerta. Rasgos = featDiff del mismo modelo; p_elo puro = expected
+      // sobre los ratings con rust que fightProb ya devuelve (r1/r2), sin tocar ratings.js.
+      let pMktAware = null, edgeMktAware = null;
+      try {
+        const fdM = CE.featDiff(C.elo, C.elo.PF, ft.f1.id, ft.f2.id, ev.date, wctx);
+        const pM1 = CBMA.marketAwareProb({ pClose: mo.fair_f1, features: CBMA.featuresFor({ fd: fdM, pElo: CE.expected(pr.r1, pr.r2), pClose: mo.fair_f1 }), coefs: CB_MKT_AWARE.coefs });
+        if (pM1 != null) { pMktAware = +(bestSide.side === 'f1' ? pM1 : 1 - pM1).toFixed(4); edgeMktAware = CBMA.edgePP(pMktAware, bestSide.k); }
+      } catch { pMktAware = null; edgeMktAware = null; }
       fresh.push({
         ...tags,
+        p_mkt_aware: pMktAware, edge_mkt_aware_pp: edgeMktAware, // informativos (3-sep); ver combat-engine/market-aware.js
         era: CLUB_PICKS_ERA, // marca de era (3-sep): picks nacidas tras los ajustes del 2-sep
         why_es: whyPair.es, why_en: whyPair.en,
         pick_id: stable('cb-' + ft.comp_id + '|FIGHT|' + bestSide.side),
@@ -22540,7 +22556,8 @@ async function anotar(pid){
         // ?picks=1 → el detalle pick a pick (auditoría: sin esto no se puede hacer la autopsia del track)
         if (url.searchParams.get('picks')) return json(res, 200, { picks: db.combatPicks || [] });
         return json(res, 200, { enabled: combatPicksOn(), track: combatPicksTrack(), active: (db.combatPicks || []).filter(x => x.status === 'ACTIVE').length, total: (db.combatPicks || []).length, cloudbet: cbDbg,
-          card_watch: { alerts: (db.combatCardAlerts || []).slice(-10), pending: Object.fromEntries(Object.entries(db.combatCards || {}).map(([o3, s3]) => [o3, Object.keys(s3.missing || {}).length])) } });
+          card_watch: { alerts: (db.combatCardAlerts || []).slice(-10), pending: Object.fromEntries(Object.entries(db.combatCards || {}).map(([o3, s3]) => [o3, Object.keys(s3.missing || {}).length])) },
+          market_aware: { ...CB_MKT_AWARE.meta, coefs: CB_MKT_AWARE.coefs } }); // 3-sep: qué priors cargó el modelo consciente del mercado
       } catch (e) { return json(res, 200, { error: e.message }); }
     }
     // SUPRESIÓN DE MASIVOS (26-jul): marca/desmarca emails que pidieron baja → no_bulk=true. La cuenta,

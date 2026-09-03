@@ -1,0 +1,189 @@
+{
+ "generado": "2026-09-03T10:11:38.982Z",
+ "fuente": "scripts/combat-market-aware.js sobre data/combat/odds-history.json.gz (UFC 2010-2024, cierre del Ultimate UFC Dataset)",
+ "muestra": {
+  "cruzadas": 6090,
+  "fuera_de_muestra": 4180,
+  "años_evaluados": [
+   "2015",
+   "2016",
+   "2017",
+   "2018",
+   "2019",
+   "2020",
+   "2021",
+   "2022",
+   "2023",
+   "2024"
+  ],
+  "entrenamiento_final": 0
+ },
+ "devig": "prop",
+ "forma": "logit(p) = close·logit(p_cierre) + Σ feats[i]·x_i · x_i = featDiff de combat-engine/ratings.js (misma escala); delo = logit(p_elo) − logit(p_cierre)",
+ "criterio": "rasgo → Δlog-loss pareado vs cierre RECALIBRADO t ≤ −2 fuera de muestra Y |t| ≥ 2 del coeficiente; conjunta → t ≤ −2 vs recalibrado",
+ "variante": "cierre_solo",
+ "rasgos_que_pasan": [],
+ "rasgos_que_rozan": [],
+ "recalibracion_del_cierre": {
+  "close": 1.1119,
+  "t_coef": 28.72,
+  "dLogloss_oos": -0.00084,
+  "t_oos": -2.37,
+  "nota": "NO se publica sola: es sesgo favorito-longshot del de-vig proporcional, no un rasgo del modelo"
+ },
+ "veredicto": "NINGÚN rasgo añade información al cierre recalibrado fuera de muestra: coeficientes 0, la función devuelve el cierre tal cual.",
+ "coefs": {
+  "close": 1,
+  "feats": {
+   "reach": 0,
+   "exp": 0,
+   "years": 0,
+   "age": 0,
+   "chin": 0,
+   "streak": 0,
+   "mileage": 0,
+   "misswt": 0,
+   "slpm": 0,
+   "td15": 0,
+   "tddef": 0,
+   "ctrl": 0,
+   "kdr": 0,
+   "delo": 0
+  }
+ },
+ "resumen_oos": {
+  "cierre_recal": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": null,
+   "t_recal": null
+  },
+  "+reach": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00106,
+   "t": -1.88,
+   "dLogloss_vs_recal": -0.00021,
+   "t_recal": -0.48
+  },
+  "+exp": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00074,
+   "t": -2.04,
+   "dLogloss_vs_recal": 0.0001,
+   "t_recal": 1.48
+  },
+  "+years": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00083,
+   "t": -1.77,
+   "dLogloss_vs_recal": 0.00001,
+   "t_recal": 0.05
+  },
+  "+age": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.0018,
+   "t": -2.28,
+   "dLogloss_vs_recal": -0.00095,
+   "t_recal": -1.45
+  },
+  "+chin": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00073,
+   "t": -1.95,
+   "dLogloss_vs_recal": 0.00011,
+   "t_recal": 0.95
+  },
+  "+streak": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00075,
+   "t": -1.76,
+   "dLogloss_vs_recal": 0.0001,
+   "t_recal": 0.35
+  },
+  "+mileage": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00079,
+   "t": -1.97,
+   "dLogloss_vs_recal": 0.00005,
+   "t_recal": 0.23
+  },
+  "+misswt": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+slpm": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+td15": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+tddef": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+ctrl": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+kdr": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00084,
+   "t": -2.37,
+   "dLogloss_vs_recal": 0,
+   "t_recal": null
+  },
+  "+delo": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.0009,
+   "t": -1.82,
+   "dLogloss_vs_recal": -0.00006,
+   "t_recal": -0.16
+  },
+  "+dmodel": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00068,
+   "t": -1.43,
+   "dLogloss_vs_recal": 0.00017,
+   "t_recal": 0.63
+  },
+  "fisicos7": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00193,
+   "t": -1.85,
+   "dLogloss_vs_recal": -0.00109,
+   "t_recal": -1.12
+  },
+  "rasgos13": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00193,
+   "t": -1.85,
+   "dLogloss_vs_recal": -0.00109,
+   "t_recal": -1.12
+  },
+  "full(delo+13)": {
+   "n": 4180,
+   "dLogloss_vs_cierre": -0.00182,
+   "t": -1.73,
+   "dLogloss_vs_recal": -0.00098,
+   "t_recal": -1
+  }
+ }
+}

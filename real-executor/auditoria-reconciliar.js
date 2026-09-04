@@ -206,7 +206,7 @@ LIBRO_CASA = [
     marketUrl: 'soccer.total_bookings/under?total=3.5', price: 1.66, stake: 40, betStatus: 'ACCEPTED', currency: 'USDT' };
   const sombra2 = [...sombra, { pick_id: 'cdp_nueva_perdida', id: 'sh_new', match: 'Nueva A vs Nueva B',
     league: 'ligue1', line: 3.5, odds: 1.7, model_prob: 0.64, kickoff_at: new Date().toISOString() }];
-  const porRef = await R.compararPorReferencia({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, pausaMs: 0 });
+  const porRef = await R.compararPorReferencia({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, pausaMs: 0, esperar: false });
   t('el modo por referencia funciona sin listado', porRef.ok === true && porRef.modo === 'referencias');
   t('encuentra la huérfana preguntando una a una', porRef.huerfanas.length === 1
     && porRef.huerfanas[0].pick_id === 'cdp_nueva_perdida', porRef.huerfanas.map((h) => h.pick_id));
@@ -217,18 +217,18 @@ LIBRO_CASA = [
   console.log('\n── 10. UNA REFERENCIA QUE NO CONTESTA NO ES UN FANTASMA ────────────');
   REFS_QUE_FALLAN = new Set(S.load().bets.filter((b) => b.pick_id === 'cdp_igual').map((b) => b.ref_id));
   for (const b of S.load().bets) if (b.pick_id === 'cdp_igual') { for (let e = 0; e <= 2; e++) REFS_QUE_FALLAN.add(S.refIdDe('cdp_igual', e)); }
-  const conFallo = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0 });
+  const conFallo = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0, esperar: false });
   t('la que no contestó NO sale como fantasma', !conFallo.fantasmas.some((f) => f.pick_id === 'cdp_igual'), conFallo.fantasmas.map((f) => f.pick_id));
   t('sale como sin_respuesta y se avisa', conFallo.sin_respuesta.some((x) => x.pick_id === 'cdp_igual') && !!conFallo.aviso_fantasmas);
   REFS_QUE_FALLAN = new Set();
 
   console.log('\n── 11. REPARAR EN MODO REFERENCIA ──────────────────────────────────');
   const antes = S.load().bets.length;
-  const rep = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
+  const rep = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true, pausaMs: 0, esperar: false });
   t('inserta la huérfana encontrada por referencia', rep.insertadas === 1 && S.load().bets.length === antes + 1, rep.insertadas);
   const nueva = S.load().bets.find((b) => b.pick_id === 'cdp_nueva_perdida');
   t('con los datos de la casa', nueva && nueva.stake === 40 && nueva.odds_real === 1.66 && nueva.line === 3.5);
-  const rep2 = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
+  const rep2 = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true, pausaMs: 0, esperar: false });
   t('y sigue siendo idempotente', rep2.insertadas === 0 && S.load().bets.length === antes + 1);
 
   console.log('\n── 12. UNA PASADA CIEGA NO PUEDE DECIR "CUADRA" ────────────────────');
@@ -237,11 +237,11 @@ LIBRO_CASA = [
   const todasLasRefs = new Set();
   for (const b of S.load().bets) { if (b.ref_id) todasLasRefs.add(b.ref_id); for (let e = 0; e <= 2; e++) todasLasRefs.add(S.refIdDe(b.pick_id, e)); }
   REFS_QUE_FALLAN = new Set([...todasLasRefs].slice(0, Math.floor(todasLasRefs.size * 0.95)));
-  const ciega = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0 });
+  const ciega = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0, esperar: false });
   t('con la casa fallando, cuadra NO es true', ciega.cuadra !== true, ciega.cuadra);
   t('lo marca como no concluyente y explica', ciega.concluyente === false && !!ciega.por_que_no_concluyente, ciega.por_que_no_concluyente);
   const nAntes = S.load().bets.length;
-  const noAplica = await R.reparar({ pickIds, sombra, aplicar: true, pausaMs: 0 });
+  const noAplica = await R.reparar({ pickIds, sombra, aplicar: true, pausaMs: 0, esperar: false });
   t('y reparar se niega a tocar el libro', noAplica.insertadas === 0 && S.load().bets.length === nAntes, noAplica.why);
   REFS_QUE_FALLAN = new Set();
 

@@ -111,47 +111,55 @@ async function libroDeLaCasa({ limit = 100, maxPaginas = 30 } = {}) {
 // la casa empezaba a fallar peticiones y cada fallo se leía como "no existe".
 // Aquí se mira la respuesta de GraphQL en crudo: `errors` → no sabemos; `data.bet === null` sin errores →
 // la casa dice que no la tiene; `data.bet` → existe.
-async function leerApuesta(llave, ref, { reintentos = 1 } = {}) {
+async function leerApuesta(llave, ref, { reintentos = 3, esperar = true } = {}) {
   const CB = require('../market-scanner/venues/cloudbet');
   const Q = `query Apuesta($ref: String!) {
     bet(referenceId: $ref) { referenceId eventId eventName marketUrl currency price stake side returnAmount betStatus betErrorCode }
   }`;
   for (let intento = 0; intento <= reintentos; intento++) {
-    const r = await CB.gql(llave, Q, { ref }).catch((e) => ({ ok: false, errors: null, data: null, raw: String((e && e.message) || e).slice(0, 120) }));
+    const r = await CB.gql(llave, Q, { ref }).catch((e) => ({ ok: false, status: 0, errors: null, data: null, raw: String((e && e.message) || e).slice(0, 120) }));
     if (r && r.data && Object.prototype.hasOwnProperty.call(r.data, 'bet') && !(r.errors && r.errors.length)) {
       return r.data.bet ? { estado: 'existe', bet: r.data.bet } : { estado: 'no_existe' };
     }
+    const porCuota = r && (r.status === 429 || /Too Many Requests/i.test(String(r.raw || '')));
     if (intento === reintentos) {
-      return { estado: 'sin_respuesta',
+      return { estado: 'sin_respuesta', cuota: !!porCuota,
         why: ((r && r.errors) ? r.errors.map((e) => e.message).join(' | ') : (r && r.raw) || 'sin detalle').slice(0, 140) };
     }
-    await new Promise((s2) => setTimeout(s2, 400 * (intento + 1)));
+    // A UN 429 SE LE HACE CASO. La casa nos limita de verdad —lo dice con ese código— y volver a preguntar
+    // al instante solo alarga el castigo. Se espera de forma creciente y bastante: esta herramienta no tiene
+    // ninguna prisa, y una respuesta tardía vale infinitamente más que una conclusión sin datos.
+    if (esperar) await new Promise((s2) => setTimeout(s2, (porCuota ? 3000 : 500) * (intento + 1)));
   }
   return { estado: 'sin_respuesta', why: 'agotados los reintentos' };
 }
 
 // CONCURRENCIA 2 Y NO 4, y con una pausa entre tandas: la casa empieza a fallar peticiones cuando se la
 // aprieta, y aquí un fallo no cuesta lentitud, cuesta una conclusión equivocada sobre dinero.
-async function preguntarPorReferencias(refs, { concurrencia = 2, cap = 400, pausaMs = 60 } = {}) {
+// CONCURRENCIA 1 Y PAUSA DE VERDAD (4-sep, medido): con 2 en paralelo y 60 ms la casa contestó al 4,7 % y
+// devolvió 429 en el resto. Esta herramienta se ejecuta a mano una vez por semana; no hay ninguna razón
+// para ir rápido y sí una muy buena para llegar entera.
+async function preguntarPorReferencias(refs, { concurrencia = 1, cap = 400, pausaMs = 350, esperar = true } = {}) {
   const llave = process.env.CLOUDBET_API_KEY || '';
   if (!llave) return { ok: false, why: 'sin CLOUDBET_API_KEY', respuestas: new Map() };
   const lista = [...new Set(refs)].slice(0, cap);
   const respuestas = new Map();   // ref → apuesta de la casa | null (la casa dice que NO la tiene)
   const dudosas = [];             // ref → no se pudo saber
+  let porCuota = 0;               // de esas, cuántas fueron porque la casa nos limitó (429)
   let i = 0;
   const obrero = async () => {
     while (i < lista.length) {
       const ref = lista[i++];
-      const r = await leerApuesta(llave, ref);
+      const r = await leerApuesta(llave, ref, { esperar });
       if (r.estado === 'existe') respuestas.set(ref, r.bet);
       else if (r.estado === 'no_existe') respuestas.set(ref, null);
-      else dudosas.push({ ref, why: r.why });
+      else { dudosas.push({ ref, why: r.why }); if (r.cuota) porCuota++; }
       if (pausaMs) await new Promise((s2) => setTimeout(s2, pausaMs));
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, obrero));
   return { ok: true, preguntadas: lista.length, contestadas: respuestas.size, fallos: dudosas.length,
-    dudosas: dudosas.slice(0, 10), truncado: refs.length > cap, respuestas };
+    limitados_por_la_casa: porCuota, dudosas: dudosas.slice(0, 10), truncado: refs.length > cap, respuestas };
 }
 
 // ── TABLA REFERENCIA → PICK ─────────────────────────────────────────────────────────────────────────────
@@ -178,7 +186,7 @@ const lineaDe = (marketUrl) => {
 //   · las de las picks recientes que NO están en nuestro libro → si la casa sí la tiene, es huérfana
 // Lo que este modo no puede ver son apuestas ajenas a nuestras picks (las que Alexis coloque por la web):
 // para eso hace falta el listado, y se dice en el resultado en vez de fingir que se miró.
-async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap = 400, concurrencia = 4 } = {}) {
+async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true } = {}) {
   const L = S.load();
   const filas = Array.isArray(L.bets) ? L.bets : [];
   const porPick = new Map(sombra.filter((s) => s.pick_id).map((s) => [s.pick_id, s]));
@@ -226,7 +234,7 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   for (const pid of candidatas) for (let e = 0; e <= 2; e++) refsCandidatas.set(S.refIdDe(pid, e), { pick_id: pid, envio: e });
 
   const todas = [...refsNuestras.keys(), ...refsCandidatas.keys()];
-  const q = await preguntarPorReferencias(todas, { concurrencia, cap });
+  const q = await preguntarPorReferencias(todas, { concurrencia, cap, pausaMs, esperar });
   if (!q.ok) return { ok: false, why: q.why };
 
   const huerfanas = [], fantasmas = [], descuadres = [], sin_respuesta = [];
@@ -274,7 +282,7 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   return {
     ok: true, modo: 'referencias',
     casa: { preguntadas: q.preguntadas, contestadas: q.contestadas, fallos: q.fallos, truncado: q.truncado,
-      tasa_respuesta: +(100 * tasa).toFixed(1) + '%', dudosas: q.dudosas || [] },
+      limitados_por_la_casa: q.limitados_por_la_casa || 0, tasa_respuesta: +(100 * tasa).toFixed(1) + '%', dudosas: q.dudosas || [] },
     libro: { filas: filas.length, colocadas: filas.filter((f) => f.status === 'PLACED').length },
     huerfanas, fantasmas, descuadres, desconocidas: [], sin_respuesta,
     cuadra: concluyente ? limpio : null,
@@ -376,13 +384,13 @@ async function comparar({ pickIds = [], sombra = [], casa = null, limit = 100, m
 // Solo inserta huérfanas, y solo las que se pudieron atribuir a una pick. Nunca borra ni modifica una fila
 // existente: lo único que este módulo puede hacerle al libro es AÑADIR lo que la casa demuestra que existe.
 async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100, maxPaginas = 30,
-  modo = 'referencias', dias = 7, cap = 400, concurrencia = 4 } = {}) {
+  modo = 'referencias', dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true } = {}) {
   // POR DEFECTO SE PREGUNTA POR REFERENCIA: es el camino que la casa contesta hoy. El listado queda como
   // segundo modo porque ve una cosa que el otro no —las apuestas ajenas a nuestras picks— y volverá a ser
   // útil el día que la casa arregle su resolver.
   const cmp = modo === 'listado'
     ? await comparar({ pickIds, sombra, limit, maxPaginas })
-    : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia });
+    : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia, pausaMs, esperar });
   if (!cmp.ok) return cmp;
   // no se toca el libro con una comparación que no vio lo suficiente
   if (aplicar && cmp.concluyente === false) {

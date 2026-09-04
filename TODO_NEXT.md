@@ -5,7 +5,15 @@ Ya hecho: escritura atómica en `db.json` y en los siete almacenes que escribía
 autorrepara desde la copia diaria; freno por fecha en los avisos de final (Telegram y correo); aviso por
 correo al admin cuando el arranque es anómalo; `db_origen` en `/api/internal/ops`.
 Pendiente de vigilar:
-- **EJECUTOR REAL: parado y con reconciliador listo.** El libro perdió 8 apuestas al restaurar el disco.
+- **EJECUTOR REAL: reconciliado y ENCENDIDO otra vez (4-sep).** Las tres pruebas que lo justifican:
+  (1) de las 183 apuestas del sombra en el perímetro `cards_under_v1`, las 72 que no están en el libro real
+  tienen saque entre el 15 y el 24-ago —anteriores a que el ejecutor empezara a colocar—, y **ninguna es de
+  hoy ni tiene saque futuro**: no hay nada que pudiera volver a colocarse; (2) la única lectura limpia del
+  libro de la casa (773 preguntas, 773 respuestas, cero fallos) dio **cero huérfanas**; (3) la referencia es
+  un hash del `pick_id`, así que un segundo envío lo rechaza la propia casa (`DUPLICATE_REQUEST`, ya
+  contemplado). **Ojo con la cuota:** Cloudbet devuelve 429 al preguntar en volumen; el reconciliador ahora
+  va de uno en uno con espera creciente, así que una pasada completa tarda minutos. Correrlo con calma.
+- **Reconciliador (rutina semanal recomendada).** El libro perdió 8 apuestas al restaurar el disco.
   Herramienta: `POST /api/internal/real?key=&run=reconciliar` (solo mira) y `&aplicar=1` (inserta las
   huérfanas). **Orden para volver a encenderlo:** (1) `run=reconciliar` en seco y leer `huerfanas`,
   `fantasmas`, `descuadres` y `desconocidas`; (2) `&aplicar=1`; (3) repetir en seco hasta que `huerfanas`

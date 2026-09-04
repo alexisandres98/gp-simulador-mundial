@@ -129,8 +129,50 @@ function clubDataFile(name) {
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------
+// ARRANQUE A PRUEBA DE ARCHIVO ROTO (4-sep-2026, tras perder la base entera en un reinicio).
+// QUÉ PASÓ. `flushDb` escribía db.json ENCIMA del archivo bueno con un writeFileSync que NO es atómico. Un
+// deploy manda SIGTERM (que dispara otro flush) y a los pocos segundos SIGKILL: si el golpe cae dentro de esa
+// escritura, db.json queda TRUNCADO a medio JSON. En el arranque siguiente el JSON.parse fallaba, el `catch`
+// se lo tragaba en silencio y la plataforma seguía viva con la base VACÍA —sin usuarios, sin resultados y sin
+// `sentTg`—, que es exactamente lo que hizo que el canal de Telegram recibiera de golpe todos los finales de
+// un Mundial terminado en julio. Fallar en silencio sobre una base vacía es lo peor que podía hacer.
+// QUÉ HACE AHORA. Si el archivo no se puede leer, o se lee pero viene sin usuarios habiendo copias diarias
+// que sí los tienen, arranca desde la copia más reciente utilizable y lo GRITA en el log. La escritura pasa a
+// ser atómica (ver flushDb) para que el archivo roto no vuelva a existir.
 let db = { users: {}, sessions: {}, codes: {}, magic: {}, results: {}, elos: {}, history: [] };
-try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) }; } catch { /* primera ejecución */ }
+const dbOrigen = { archivo: DB_FILE, error: null, restaurado: null, usuarios: 0 };
+{
+  const cuantos = (o) => (o && o.users && typeof o.users === 'object') ? Object.keys(o.users).length : 0;
+  let actual = null, leido = null;
+  try { actual = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+  catch (e) { dbOrigen.error = e.message; }
+  leido = actual;
+  if (!actual || cuantos(actual) === 0) {
+    const dir = path.join(path.dirname(DB_FILE), 'backups');
+    let copias = [];
+    try { copias = fs.readdirSync(dir).filter(f => /^db-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().reverse(); } catch { /* aún sin copias */ }
+    for (const f of copias) {
+      let c = null;
+      try { c = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; } // copia rota: probar la anterior
+      if (cuantos(c) === 0) continue;
+      console.error(`[db] ¡ALERTA! db.json ${dbOrigen.error ? 'ILEGIBLE (' + dbOrigen.error + ')' : 'legible pero SIN USUARIOS'} — restaurando desde backups/${f} (${cuantos(c)} usuarios)`);
+      leido = c; dbOrigen.restaurado = f;
+      break;
+    }
+    if (!dbOrigen.restaurado) console.error(`[db] db.json sin usuarios y sin copia utilizable (${dbOrigen.error || 'archivo legible'}) — arranque en vacío`);
+  }
+  if (leido) db = { ...db, ...leido };
+  // NADIE SE QUEDA FUERA. Si hubo restauración y el archivo roto era legible, sus usuarios se conservan: son
+  // altas ocurridas mientras la base estaba vacía y no están en ninguna copia. La copia manda en todo lo
+  // demás; aquí solo se suman los que faltan.
+  if (dbOrigen.restaurado && actual && cuantos(actual)) {
+    let sumados = 0;
+    for (const [email, u] of Object.entries(actual.users)) if (!db.users[email]) { db.users[email] = u; sumados++; }
+    if (sumados) console.error(`[db] ${sumados} usuarios del archivo roto conservados (altas posteriores a la copia)`);
+    dbOrigen.sumados = sumados;
+  }
+  dbOrigen.usuarios = cuantos(db);
+}
 TEAMS.forEach(t => { if (db.elos[t.id] == null) db.elos[t.id] = t.elo; });
 db.sentAlerts = db.sentAlerts || {}; // inicializado temprano: markExistingFinalsSeen() lo usa al arrancar
 db.sentTg = db.sentTg || {};         // inicializado temprano: markExistingTgSeen() lo usa al arrancar
@@ -175,10 +217,20 @@ setInterval(() => {
 
 let saveTimer = null;
 // Escritura síncrona de db.json. Con try/catch para que un fallo de disco no tumbe el proceso.
+// ATÓMICA desde el 4-sep-2026: se escribe en un temporal y se RENOMBRA encima. El rename dentro del mismo
+// sistema de archivos es atómico, así que db.json solo puede existir en dos estados —el de antes o el de
+// después—, nunca a medias. Antes se escribía directo sobre el archivo bueno: un SIGKILL de deploy en mitad
+// de la escritura lo dejaba truncado, el arranque siguiente no podía parsearlo y la base salía vacía.
 function flushDb() {
   saveTimer = null;
-  try { fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 1)); }
-  catch (e) { console.error('[save] error al escribir db.json:', e.message); }
+  const tmp = DB_FILE + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 1));
+    fs.renameSync(tmp, DB_FILE);
+  } catch (e) {
+    console.error('[save] error al escribir db.json:', e.message);
+    try { fs.unlinkSync(tmp); } catch { /* puede no existir */ }
+  }
 }
 function save() {
   // FIX CRÍTICO: NO reiniciar un timer ya pendiente. Garantiza que el write ocurra como máximo 200ms
@@ -2930,17 +2982,51 @@ async function dispatchClubLiveAlerts(list) {
   save();
 }
 
+// ── FRENO POR FECHA DE LOS AVISOS DE FINAL (4-sep-2026) ─────────────────────────────────────────────────
+// POR QUÉ EXISTE. El aviso de "partido terminado" se deduplica con `sentAlerts` (correo) y `sentTg` (canal).
+// Ese dedup vive DENTRO de db.json, así que el día que db.json se rompió y la base arrancó vacía, el sync de
+// ESPN —que reingiere el torneo entero a propósito, para autorrepararse— volvió a ver 104 partidos como
+// "finales nuevos" y el canal recibió una avalancha de resultados de julio. Con usuarios en memoria habría
+// sido lo mismo por correo, a casi mil personas.
+// QUÉ HACE. Un partido que se jugó hace más de la ventana NO genera aviso, exista o no su marca de dedup.
+// El dedup sigue cubriendo el caso normal; esto cubre el caso en que el dedup se pierde. Un resultado de
+// hace semanas no es noticia para nadie: no hay escenario legítimo en que deba avisarse.
+const AVISO_VENTANA_DIAS = Number(process.env.GP_AVISO_FINAL_DIAS || 3);
+const MATCH_FECHA = (() => {
+  const m = {};
+  GROUP_FIXTURES.forEach(f => { m[f.id] = f.datetime || f.date || null; });
+  KNOCKOUT.forEach(k => { m[String(k.m)] = k.datetime || k.date || null; });
+  return m;
+})();
+// true = el partido cae dentro de la ventana y puede avisarse. Sin fecha conocida se permite (no bloquear
+// por un dato que falte); el dedup normal sigue evitando el reenvío.
+function avisoDentroDeVentana(matchId) {
+  const d = MATCH_FECHA[matchId];
+  if (!d) return true;
+  const t = Date.parse(d);
+  if (!Number.isFinite(t)) return true;
+  return (Date.now() - t) <= AVISO_VENTANA_DIAS * 86400e3;
+}
+
 // Revisa todos los partidos finalizados y alerta los que aún no se han notificado
 async function dispatchPendingAlerts() {
   const finals = [];
+  let viejos = 0;
+  const considerar = (id) => {
+    if (db.sentAlerts[id]) return;
+    // fuera de ventana: se marca como visto (para no volver a evaluarlo) pero NO se avisa
+    if (!avisoDentroDeVentana(id)) { db.sentAlerts[id] = Date.now(); viejos++; return; }
+    finals.push(id);
+  };
   for (const f of GROUP_FIXTURES) {
     const r = db.results[f.id];
-    if (r && r.status === 'final' && !db.sentAlerts[f.id]) finals.push(f.id);
+    if (r && r.status === 'final') considerar(f.id);
   }
   for (const k of KNOCKOUT) {
     const id = String(k.m), r = db.results[id];
-    if (r && r.status === 'final' && r.home && !db.sentAlerts[id]) finals.push(id);
+    if (r && r.status === 'final' && r.home) considerar(id);
   }
+  if (viejos) { save(); console.log(`[alert] ${viejos} finales fuera de ventana marcados sin avisar`); }
   if (finals.length) await sendTeamAlerts(finals);
 }
 
@@ -3065,12 +3151,20 @@ async function tgClubDispatch() {
     if (t && await telegram.post(t)) { db.sentTg[kPick] = Date.now(); save(); console.log('[tg] pick gratis', day); }
   }
 }
-// Publica finales nuevos al canal (no reenvía)
+// Publica finales nuevos al canal (no reenvía). El freno por fecha (avisoDentroDeVentana) es lo que impide
+// que una base sin `sentTg` vuelva a volcar el torneo entero en el canal, como pasó el 4-sep-2026.
 async function tgDispatchFinals() {
   if (!telegram.configured()) return;
   const ids = [];
-  GROUP_FIXTURES.forEach(f => { const r = db.results[f.id]; if (r && r.status === 'final' && !db.sentTg['final:' + f.id]) ids.push(f.id); });
-  KNOCKOUT.forEach(k => { const id = String(k.m), r = db.results[id]; if (r && r.status === 'final' && r.home && !db.sentTg['final:' + id]) ids.push(id); });
+  let viejos = 0;
+  const considerar = (id) => {
+    if (db.sentTg['final:' + id]) return;
+    if (!avisoDentroDeVentana(id)) { db.sentTg['final:' + id] = Date.now(); viejos++; return; }
+    ids.push(id);
+  };
+  GROUP_FIXTURES.forEach(f => { const r = db.results[f.id]; if (r && r.status === 'final') considerar(f.id); });
+  KNOCKOUT.forEach(k => { const id = String(k.m), r = db.results[id]; if (r && r.status === 'final' && r.home) considerar(id); });
+  if (viejos) { save(); console.log(`[tg] ${viejos} finales fuera de ventana marcados sin publicar`); }
   for (const id of ids) { const t = tgFinalText(id); if (t && await telegram.post(t)) { db.sentTg['final:' + id] = Date.now(); save(); } }
 }
 // Tick periódico: resumen diario (ventana mañana América) + 1 oportunidad fuerte nueva
@@ -20154,6 +20248,9 @@ const server = http.createServer(async (req, res) => {
             techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice() }; })(),
         running: Object.keys(OPS.running).filter(k => OPS.running[k]),
         days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
+        // ORIGEN DE LA BASE (4-sep): de dónde salió db en este arranque y cuántos usuarios tiene. Sin esto,
+        // "¿arrancó con la base buena?" solo se podía responder esperando al correo diario del CSV.
+        db_origen: { ...dbOrigen, usuarios_ahora: Object.keys(db.users || {}).length },
         rosters, amf_skips: db.ops.amf_skips || 0,
         cs2_auto_enabled: cs2AutoOn(),
         boxing_env: /^(1|true|yes|on)$/i.test(String(process.env.GP_BOXING_BACKFILL || '').trim()),

@@ -21791,6 +21791,27 @@ async function anotar(pid){
         // a mano, que es una decisión de persona y por eso no se hace sola.
         // Anotar una apuesta que Alexis colocó A MANO por la web, mientras la cuenta no puede por API.
         // `?pick=<pick_id>&odds=<cuota real>&stake=<monto>` — convierte la fila ya existente del libro.
+        // ── RECONCILIACIÓN CONTRA EL LIBRO DE LA CASA (4-sep) ────────────────────────────────────────
+        // `run=reconciliar` solo MIRA y dice en qué se diferencian los dos libros. Con `&aplicar=1` inserta
+        // las huérfanas —apuestas que la casa tiene y nosotros no— reconstruidas desde su propio libro.
+        // Existe porque una restauración del disco devolvió el libro 11 horas atrás y ocho apuestas reales
+        // dejaron de contar: exposición, P&L y banco nocional pasaron a ser falsos. La casa manda; esto solo
+        // cuadra. Nunca borra ni modifica una fila: lo único que puede hacer es AÑADIR lo que la casa
+        // demuestra que existe. Ver real-executor/reconciliar.js.
+        if (run === 'reconciliar') {
+          const RC = require('./real-executor/reconciliar');
+          // el universo de picks que pudieron llegar a apostarse: las del sombra y las del feed de clubes.
+          // Con ellas se regenera la tabla referencia → pick (la referencia es un hash del pick_id).
+          const S9 = shadowInit();
+          const sombra = (S9.bets || []).map((b) => ({ pick_id: b.pick_id, id: b.id, match: b.match,
+            league: b.league, line: b.line, odds: b.odds, model_prob: b.model_prob, kickoff_at: b.kickoff_at }));
+          const pickIds = [...sombra.map((s) => s.pick_id), ...(db.clubDailyPicks || []).map((p) => p.pick_id)];
+          const aplicar = url.searchParams.get('aplicar') === '1';
+          const out = await RC.reparar({ pickIds, sombra, aplicar,
+            maxPaginas: Math.min(60, Math.max(1, parseInt(url.searchParams.get('paginas'), 10) || 30)) })
+            .catch((e) => ({ ok: false, why: e.message }));
+          return json(res, 200, out);
+        }
         if (run === 'aviso_manual') { await realAvisoApuestaManual(); return json(res, 200, { ok: true }); }
         // `run=reavisar&pick=`: borra la marca de avisada de UNA fila (correo que se perdió, o que Alexis
         // quiere recibir de nuevo) — el siguiente run=aviso_manual o el barrido la vuelve a mandar.

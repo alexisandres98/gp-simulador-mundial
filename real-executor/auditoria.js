@@ -16,7 +16,12 @@ process.env.GP_REAL_STAKE_CAP_PCT = '1.5';
 process.env.GP_REAL_MAX_OPEN = '400';
 process.env.GP_REAL_MIN_BALANCE = '40';
 
-const REPO = '/home/user/gp-simulador-mundial';
+// LA RAÍZ DEL REPO SE DEDUCE DE ESTE FICHERO, no se escribe a mano (4-sep-2026). Estaba fija a
+// /home/user/gp-simulador-mundial, así que la auditoría cargaba el módulo de ESA copia y no el del
+// repo en el que se estaba trabajando: daba fallos de un código que ya no existía y verde de uno que
+// no se había probado. En una auditoría de dinero real, probar el fichero equivocado es peor que no
+// probar nada. `GP_AUDIT_REPO` sigue permitiendo apuntar a otro sitio a propósito.
+const REPO = process.env.GP_AUDIT_REPO || path.join(__dirname, '..');
 const CBPATH = require.resolve(REPO + '/market-scanner/venues/cloudbet.js');
 
 // ── la casa de mentira ────────────────────────────────────────────────────────────────────────────────

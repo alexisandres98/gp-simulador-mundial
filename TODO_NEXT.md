@@ -5,10 +5,17 @@ Ya hecho: escritura atómica en `db.json` y en los siete almacenes que escribía
 autorrepara desde la copia diaria; freno por fecha en los avisos de final (Telegram y correo); aviso por
 correo al admin cuando el arranque es anómalo; `db_origen` en `/api/internal/ops`.
 Pendiente de vigilar:
-- **🔴 EJECUTOR REAL PARADO** (`GP_REAL_ENABLED=false`). El libro perdió 8 apuestas colocadas hoy al
-  restaurar el disco, y si la sombra regenera esas tesis para partidos que aún no han empezado el ejecutor
-  las colocaría OTRA VEZ con dinero real. **No volver a encenderlo sin reconciliar el libro contra el
-  historial de Cloudbet** (hay que leerlo desde el servidor: Cloudflare bloquea su API desde desarrollo).
+- **EJECUTOR REAL: parado y con reconciliador listo.** El libro perdió 8 apuestas al restaurar el disco.
+  Herramienta: `POST /api/internal/real?key=&run=reconciliar` (solo mira) y `&aplicar=1` (inserta las
+  huérfanas). **Orden para volver a encenderlo:** (1) `run=reconciliar` en seco y leer `huerfanas`,
+  `fantasmas`, `descuadres` y `desconocidas`; (2) `&aplicar=1`; (3) repetir en seco hasta que `huerfanas`
+  sea 0; (4) `GP_REAL_ENABLED=true` y **disparar deploy** (cambiar la variable por API no basta);
+  (5) volver a comparar al día siguiente. Conviene dejarlo como rutina semanal aunque no haya incidente:
+  es la única forma de saber que nuestro libro y el de la casa dicen lo mismo.
+  Nota tranquilizadora medida el 4-sep: la referencia que se manda a la casa es un **hash del pick_id**, así
+  que aunque el libro pierda una fila, un segundo envío de la misma apuesta lo rechaza **la propia casa**
+  (`DUPLICATE_REQUEST`, ya contemplado en el código). El riesgo de duplicar dinero era menor de lo temido;
+  el de contar mal la exposición y el P&L, no.
 - ✅ Copia diaria de TODOS los almacenes del disco: hecha (`backupStoresDaily`).
 - **Confirmar el conteo de usuarios** en la copia diaria del 5-sep: debe volver a ~982. Si sale 0 otra vez,
   la restauración no está entrando y hay que mirar `db_origen` en `/api/internal/ops`.

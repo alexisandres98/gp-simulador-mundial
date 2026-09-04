@@ -1,5 +1,14 @@
 # HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
 
+## 🔧 RECONCILIADOR DEL EJECUTOR REAL (4-sep) — `real-executor/reconciliar.js`
+Cuadra NUESTRO libro contra el de Cloudbet leyendo `/historial` por el reenviador. Clasifica en **huérfanas**
+(en la casa y no en nuestro libro: dinero comprometido sin contar), **fantasmas** (nosotros sí, la casa no),
+**descuadres** (mismo id, distinto importe o precio) y **desconocidas** (referencia ajena, p.ej. apuestas por
+la web). Solo AÑADE huérfanas; nunca borra ni modifica. Las inserta como PLACED y deja que `liquidar()` las
+cierre con la aritmética de siempre. `POST /api/internal/real?key=&run=reconciliar[&aplicar=1]`.
+Auditado con casa de mentira: `node real-executor/auditoria-reconciliar.js` (36 en verde, incluida la
+idempotencia). El orden para reactivar el ejecutor está al principio de TODO_NEXT.md.
+
 ## 🚨 INCIDENTE 4-sep — db.json roto, base vacía y avalancha en Telegram (RESUELTO)
 Informe completo: **`docs/INCIDENTE_2026-09-04_DB_VACIA.md`**. Resumen:
 - **Síntoma:** a las 08:08 UTC el canal @gpsimulador publicó 40 mensajes "⚽ FINAL" del Mundial (torneo

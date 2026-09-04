@@ -20430,6 +20430,17 @@ const server = http.createServer(async (req, res) => {
         // corre, o la comprobación se hace mirando otra cosa y deja de hacerse.
         days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null,
           hoops: db.ops.hoops_day || null, nfl_harvest: db.ops.nfl_harvest_day || null },
+        // FRENO DE MEMORIA DE LA INGESTA (4-sep). Cuántas pasadas se han saltado por RSS alto y si siguen
+        // saltándose ahora mismo. Si `seguidos` sube y no vuelve a cero, la ingesta está parada —degradada
+        // pero viva, que es el trato— y toca mirar la fuga en vez de esperar a la próxima muerte.
+        ingesta: (() => {
+          try {
+            const st = require('./market-data/scheduler').status();
+            return { memoria: st.memoria,
+              por_proveedor: (st.providers || []).map((x) => ({ proveedor: x.provider, saltos_memoria: x.memSkips,
+                seguidos: x.memSkipsSeguidos, ultimo: x.lastMemSkipAt })) };
+          } catch (e) { return { error: e.message }; }
+        })(),
         // ESPACIO EN DISCO (4-sep). El disco se llenó y `db.json` dejó de guardarse veinte minutos sin que
         // nada lo dijera desde fuera: el proceso seguía sirviendo y aceptando altas que solo existían en
         // memoria. Un dato que solo aparece cuando ya es tarde no es un dato. Aquí está siempre, con lo que

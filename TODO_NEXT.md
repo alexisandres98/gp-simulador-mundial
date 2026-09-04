@@ -1,5 +1,26 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔴 FUGA DE MEMORIA EN LA INGESTA DE POLYMARKET (abierta)
+**3 muertes por memoria en 36 h** (3-sep 07:09, 3-sep 20:59, 4-sep 18:11; límite del contenedor 4 GiB), más
+4 salidas tempranas el 3-sep. La curva del 4-sep: heap de **714 MB a 3.382 MB en tres minutos**, con el
+vigía señalando al dueño — `ingesta: ciclo con salto de memoria · provider: polymarket · heap_antes 1488`.
+El ciclo corre **cada 30 s**, así que una fuga pequeña se convierte en gigas en minutos.
+
+**Mitigado, NO resuelto (4-sep, `market-data/scheduler.js`):** hay freno de memoria antes de cada ciclo —
+por encima de `GP_INGESTA_TECHO_MB` (1.700 MB de RSS) la pasada se SALTA en vez de matar el proceso. La
+plataforma ya tenía guardia, pero solo para los trabajos lanzados como proceso hijo (`opsMemOk`); las
+ingestas en línea no pasaban por ningún control y son justo las que reventaban. Humo:
+`scripts/smoke/ingesta-memoria-smoke.js` (14 en verde). Visible en `/api/internal/ops` → `ingesta`.
+
+**Por qué esto importaba más que un reinicio feo:** cada muerte por memoria es un `SIGKILL` —sin apagado
+ordenado, sin oportunidad de guardar—, que es la clase de evento que deja un fichero a medias. El 4-sep por
+la mañana costó la base entera. Con la escritura atómica ya puesta, el OOM de las 18:11 se atravesó **sin
+un rasguño** (`db_origen`: sin error, sin restauración, 982 usuarios).
+
+**Lo que falta:** encontrar la fuga. Ahora hay pista firme (proveedor y ciclo). Mientras no se arregle,
+vigilar en `/api/internal/ops` → `ingesta.por_proveedor[].seguidos`: si sube y no vuelve a cero, la ingesta
+está parada —degradada pero viva, que es el trato— y los precios de Polymarket dejan de refrescarse.
+
 ## 🔄 ¿SE ACTUALIZA SOLO CADA DEPORTE? (auditado el 4-sep)
 La pregunta de Alexis: si el Madrid gana al Athletic, ¿su ficha y su rating lo recogen sin que nadie toque nada?
 

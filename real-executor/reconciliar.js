@@ -103,25 +103,55 @@ async function libroDeLaCasa({ limit = 100, maxPaginas = 30 } = {}) {
 // producción todos los días. Así que la reconciliación no necesita el listado: necesita saber qué dice la
 // casa de un conjunto ACOTADO de referencias, y eso se puede preguntar una a una.
 // Va con concurrencia baja y con tope: son peticiones contra la casa, no contra nosotros.
-async function preguntarPorReferencias(refs, { concurrencia = 4, cap = 400 } = {}) {
+// TRES DESENLACES, NO DOS. Esta función existe en vez de usar `CB.betByReference` porque esa devuelve
+// `null` tanto cuando la casa dice "no tengo esa apuesta" como cuando la petición falla. Para liquidar da
+// igual —las dos cosas significan "espera y vuelve a intentarlo"—, pero para reconciliar NO: confundirlas
+// es declarar fantasma una apuesta que existe. Pasó, medido: la primera pasada contra el libro real marcó
+// 21 fantasmas y al preguntar por esas mismas referencias una a una la casa las tenía. Con concurrencia 4
+// la casa empezaba a fallar peticiones y cada fallo se leía como "no existe".
+// Aquí se mira la respuesta de GraphQL en crudo: `errors` → no sabemos; `data.bet === null` sin errores →
+// la casa dice que no la tiene; `data.bet` → existe.
+async function leerApuesta(llave, ref, { reintentos = 1 } = {}) {
   const CB = require('../market-scanner/venues/cloudbet');
+  const Q = `query Apuesta($ref: String!) {
+    bet(referenceId: $ref) { referenceId eventId eventName marketUrl currency price stake side returnAmount betStatus betErrorCode }
+  }`;
+  for (let intento = 0; intento <= reintentos; intento++) {
+    const r = await CB.gql(llave, Q, { ref }).catch((e) => ({ ok: false, errors: null, data: null, raw: String((e && e.message) || e).slice(0, 120) }));
+    if (r && r.data && Object.prototype.hasOwnProperty.call(r.data, 'bet') && !(r.errors && r.errors.length)) {
+      return r.data.bet ? { estado: 'existe', bet: r.data.bet } : { estado: 'no_existe' };
+    }
+    if (intento === reintentos) {
+      return { estado: 'sin_respuesta',
+        why: ((r && r.errors) ? r.errors.map((e) => e.message).join(' | ') : (r && r.raw) || 'sin detalle').slice(0, 140) };
+    }
+    await new Promise((s2) => setTimeout(s2, 400 * (intento + 1)));
+  }
+  return { estado: 'sin_respuesta', why: 'agotados los reintentos' };
+}
+
+// CONCURRENCIA 2 Y NO 4, y con una pausa entre tandas: la casa empieza a fallar peticiones cuando se la
+// aprieta, y aquí un fallo no cuesta lentitud, cuesta una conclusión equivocada sobre dinero.
+async function preguntarPorReferencias(refs, { concurrencia = 2, cap = 400, pausaMs = 60 } = {}) {
   const llave = process.env.CLOUDBET_API_KEY || '';
   if (!llave) return { ok: false, why: 'sin CLOUDBET_API_KEY', respuestas: new Map() };
   const lista = [...new Set(refs)].slice(0, cap);
-  const respuestas = new Map();
-  let fallos = 0;
+  const respuestas = new Map();   // ref → apuesta de la casa | null (la casa dice que NO la tiene)
+  const dudosas = [];             // ref → no se pudo saber
   let i = 0;
   const obrero = async () => {
     while (i < lista.length) {
       const ref = lista[i++];
-      const r = await CB.betByReference(llave, ref).catch(() => undefined);
-      // undefined = la petición falló (no sabemos); null = la casa contestó que no la tiene
-      if (r === undefined) { fallos++; continue; }
-      respuestas.set(ref, r || null);
+      const r = await leerApuesta(llave, ref);
+      if (r.estado === 'existe') respuestas.set(ref, r.bet);
+      else if (r.estado === 'no_existe') respuestas.set(ref, null);
+      else dudosas.push({ ref, why: r.why });
+      if (pausaMs) await new Promise((s2) => setTimeout(s2, pausaMs));
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, obrero));
-  return { ok: true, preguntadas: lista.length, contestadas: respuestas.size, fallos, truncado: refs.length > cap, respuestas };
+  return { ok: true, preguntadas: lista.length, contestadas: respuestas.size, fallos: dudosas.length,
+    dudosas: dudosas.slice(0, 10), truncado: refs.length > cap, respuestas };
 }
 
 // ── TABLA REFERENCIA → PICK ─────────────────────────────────────────────────────────────────────────────
@@ -156,7 +186,11 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   const corte = Date.now() - dias * 864e5;
 
   // 1) las nuestras que decimos tener colocadas (las manuales no: la casa no las conoce por referencia)
-  const nuestras = filas.filter((f) => (f.status === 'PLACED' || f.status === 'EN_ACEPTACION') && f.via !== 'manual' && f.pick_id);
+  // fuera las colocadas A MANO por la web: la casa no las conoce por nuestra referencia, así que
+  // preguntarle por ellas solo puede producir fantasmas falsos. `via: 'manual'` marca las de tarjetas y
+  // `motivo: 'solo_manual'` las de CS2, cuyo mercado la API ni siquiera cotiza.
+  const esManual = (f) => f.via === 'manual' || f.motivo === 'solo_manual';
+  const nuestras = filas.filter((f) => (f.status === 'PLACED' || f.status === 'EN_ACEPTACION') && !esManual(f) && f.pick_id);
   const refsNuestras = new Map();     // ref → fila
   for (const f of nuestras) {
     if (f.ref_id) refsNuestras.set(f.ref_id, f);
@@ -388,4 +422,4 @@ async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100
     nota: 'las filas entran como PLACED; liquidar() las cerrará contra la casa en la pasada siguiente' };
 }
 
-module.exports = { libroDeLaCasa, preguntarPorReferencias, comparar, compararPorReferencia, reparar, tablaReferencias, ENVIOS_MAX };
+module.exports = { libroDeLaCasa, leerApuesta, preguntarPorReferencias, comparar, compararPorReferencia, reparar, tablaReferencias, ENVIOS_MAX };

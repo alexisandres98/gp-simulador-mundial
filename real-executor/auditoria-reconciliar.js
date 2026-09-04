@@ -20,9 +20,12 @@ const CBPATH = require.resolve(path.join(__dirname, '..', 'market-scanner', 'ven
 let POR_REFERENCIA = {};          // ref → apuesta de la casa (o null si la casa dice que no la tiene)
 let REFS_QUE_FALLAN = new Set();  // ref → la petición revienta (no sabemos nada)
 require.cache[CBPATH] = { id: CBPATH, filename: CBPATH, loaded: true, exports: {
-  betByReference: async (k, ref) => {
-    if (REFS_QUE_FALLAN.has(ref)) throw new Error('ETIMEDOUT');
-    return Object.prototype.hasOwnProperty.call(POR_REFERENCIA, ref) ? POR_REFERENCIA[ref] : null;
+  // el reconciliador habla GraphQL en crudo a propósito: necesita distinguir "no la tengo" de "no pude"
+  gql: async (k, q, vars) => {
+    const ref = vars.ref;
+    if (REFS_QUE_FALLAN.has(ref)) return { ok: false, data: null, errors: [{ message: 'Internal server error' }], raw: null };
+    const b = Object.prototype.hasOwnProperty.call(POR_REFERENCIA, ref) ? POR_REFERENCIA[ref] : null;
+    return { ok: true, status: 200, data: { bet: b }, errors: null, raw: null };
   },
   ESTADOS_LIQUIDADOS: new Set(['WIN', 'LOSS', 'PUSH', 'HALF_WIN', 'HALF_LOSS', 'PARTIAL']),
 } };
@@ -203,7 +206,7 @@ LIBRO_CASA = [
     marketUrl: 'soccer.total_bookings/under?total=3.5', price: 1.66, stake: 40, betStatus: 'ACCEPTED', currency: 'USDT' };
   const sombra2 = [...sombra, { pick_id: 'cdp_nueva_perdida', id: 'sh_new', match: 'Nueva A vs Nueva B',
     league: 'ligue1', line: 3.5, odds: 1.7, model_prob: 0.64, kickoff_at: new Date().toISOString() }];
-  const porRef = await R.compararPorReferencia({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2 });
+  const porRef = await R.compararPorReferencia({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, pausaMs: 0 });
   t('el modo por referencia funciona sin listado', porRef.ok === true && porRef.modo === 'referencias');
   t('encuentra la huérfana preguntando una a una', porRef.huerfanas.length === 1
     && porRef.huerfanas[0].pick_id === 'cdp_nueva_perdida', porRef.huerfanas.map((h) => h.pick_id));
@@ -214,7 +217,7 @@ LIBRO_CASA = [
   console.log('\n── 10. UNA REFERENCIA QUE NO CONTESTA NO ES UN FANTASMA ────────────');
   REFS_QUE_FALLAN = new Set(S.load().bets.filter((b) => b.pick_id === 'cdp_igual').map((b) => b.ref_id));
   for (const b of S.load().bets) if (b.pick_id === 'cdp_igual') { for (let e = 0; e <= 2; e++) REFS_QUE_FALLAN.add(S.refIdDe('cdp_igual', e)); }
-  const conFallo = await R.compararPorReferencia({ pickIds, sombra });
+  const conFallo = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0 });
   t('la que no contestó NO sale como fantasma', !conFallo.fantasmas.some((f) => f.pick_id === 'cdp_igual'), conFallo.fantasmas.map((f) => f.pick_id));
   t('sale como sin_respuesta y se avisa', conFallo.sin_respuesta.some((x) => x.pick_id === 'cdp_igual') && !!conFallo.aviso_fantasmas);
   REFS_QUE_FALLAN = new Set();
@@ -227,6 +230,18 @@ LIBRO_CASA = [
   t('con los datos de la casa', nueva && nueva.stake === 40 && nueva.odds_real === 1.66 && nueva.line === 3.5);
   const rep2 = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
   t('y sigue siendo idempotente', rep2.insertadas === 0 && S.load().bets.length === antes + 1);
+
+  console.log('\n── 12. LOS TRES DESENLACES DE UNA LECTURA (el contrato que faltaba) ─');
+  // esto es lo que confundía `betByReference`: devolvía null para "no la tengo" Y para "no pude preguntar".
+  POR_REFERENCIA = { 'ref-existe': { referenceId: 'ref-existe', stake: 40, price: 1.7, betStatus: 'ACCEPTED' } };
+  REFS_QUE_FALLAN = new Set(['ref-falla']);
+  const e1 = await R.leerApuesta('k', 'ref-existe');
+  const e2 = await R.leerApuesta('k', 'ref-no-esta');
+  const e3 = await R.leerApuesta('k', 'ref-falla', { reintentos: 0 });
+  t('existe → estado "existe" con la apuesta', e1.estado === 'existe' && e1.bet.stake === 40, e1);
+  t('la casa dice que no la tiene → "no_existe"', e2.estado === 'no_existe', e2);
+  t('la casa falla → "sin_respuesta", NUNCA "no_existe"', e3.estado === 'sin_respuesta' && !!e3.why, e3);
+  REFS_QUE_FALLAN = new Set();
 
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* da igual */ }
   console.log(`\n${ok} comprobaciones en verde, ${ko} en rojo.`);

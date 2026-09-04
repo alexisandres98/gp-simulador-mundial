@@ -1,6 +1,13 @@
 # TODO_NEXT.md — GP Simulador
 
-## ⏱️ VENTANA DE SAQUE DEL EJECUTOR (activa desde el 4-sep, orden de Alexis)
+## ⏱️ VENTANA DE SAQUE DEL EJECUTOR — **MEDIDA TEMPORAL**, hay que quitarla (4-sep, orden de Alexis)
+> **Esto no es política permanente.** Alexis lo dijo explícitamente: *"Esta medida es temporal, luego la
+> quitamos pero por ahora mantenla."* Mientras siga puesta, el ejecutor NO apuesta nada del lunes 7 en
+> adelante, así que **cada día que pase de más es edge que se deja de tomar**. Quitarla es un solo paso:
+> borrar `GP_REAL_KICKOFF_MAX` en Render y disparar un deploy. Preguntarle a Alexis si no lo ha dicho él.
+> La apuesta que quedó fuera de ventana (Udinese vs Lazio, 7-sep 18:45 UTC, 40 USDT) **se deja correr** —
+> decisión suya, ya está resuelta, no hace falta volver sobre ella.
+
 `GP_REAL_KICKOFF_MAX=2026-09-07T08:00:00Z` — **ninguna apuesta para un partido que empiece después del
 lunes 7 a las 08:00 UTC**. Corte de exposición, no de calidad: da igual lo buena que sea la señal.
 Cubre los tres caminos que mueven dinero (tarjetas por `colocar`, CS2 por el brazo automático, y el canal
@@ -8,8 +15,6 @@ manual de CS2, cuya fila ni siquiera nace). Bloquea también si el saque es desc
 puede afirmar que cae dentro. Se ve en `/api/internal/real` → `config.ventana_saque`.
 **Para levantarlo: borrar la variable en Render y desplegar.** No hay que tocar código.
 Auditoría: `node real-executor/auditoria-ventana.js` (16 en verde, incluido el borde exacto de las 08:00).
-**Ojo:** quedó UNA apuesta ya colocada antes de la orden que cae fuera —Udinese vs Lazio, 7-sep 18:45 UTC,
-40 USDT—. El dinero ya está comprometido en la casa; decidir con Alexis si se deja correr.
 
 ## 🔴 FUGA DE MEMORIA EN LA INGESTA DE POLYMARKET (abierta)
 **3 muertes por memoria en 36 h** (3-sep 07:09, 3-sep 20:59, 4-sep 18:11; límite del contenedor 4 GiB), más

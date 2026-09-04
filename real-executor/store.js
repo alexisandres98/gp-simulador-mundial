@@ -165,6 +165,10 @@ const expuesto = () => +[...abiertas(), ...enElAire()]
 // Es un corte de EXPOSICIÓN, no de calidad: da igual lo buena que sea la señal, si el partido empieza
 // después de ese instante no se apuesta.
 //
+// TEMPORAL, Y CONVIENE QUE QUIEN LO LEA LO SEPA: Alexis lo pidió como medida de circunstancia ("luego la
+// quitamos"). Mientras la variable siga puesta el ejecutor deja de tomar todo lo que caiga al otro lado del
+// corte, así que no es un ajuste que pueda quedarse ahí por inercia. Se levanta borrando la variable.
+//
 // SE BLOQUEA TAMBIÉN SIN SAQUE CONOCIDO, y es deliberado: si no se sabe cuándo empieza el partido, no se
 // puede afirmar que cae dentro de la ventana, y una orden de no exponerse se cumple con el silencio, no con
 // una suposición optimista. Comprobado antes de decidirlo para no romper nada: de las 216 filas del libro y

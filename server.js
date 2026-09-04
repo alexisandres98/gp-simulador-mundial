@@ -21807,7 +21807,12 @@ async function anotar(pid){
             league: b.league, line: b.line, odds: b.odds, model_prob: b.model_prob, kickoff_at: b.kickoff_at }));
           const pickIds = [...sombra.map((s) => s.pick_id), ...(db.clubDailyPicks || []).map((p) => p.pick_id)];
           const aplicar = url.searchParams.get('aplicar') === '1';
-          const out = await RC.reparar({ pickIds, sombra, aplicar,
+          // `modo=listado` pide el libro entero a la casa (hoy su resolver da error); por defecto se
+          // pregunta POR REFERENCIA, que es el camino que contesta y el que ya usa la liquidación.
+          const modo = url.searchParams.get('modo') === 'listado' ? 'listado' : 'referencias';
+          const out = await RC.reparar({ pickIds, sombra, aplicar, modo,
+            dias: Math.min(60, Math.max(1, parseInt(url.searchParams.get('dias'), 10) || 7)),
+            cap: Math.min(2000, Math.max(10, parseInt(url.searchParams.get('cap'), 10) || 600)),
             maxPaginas: Math.min(60, Math.max(1, parseInt(url.searchParams.get('paginas'), 10) || 30)) })
             .catch((e) => ({ ok: false, why: e.message }));
           return json(res, 200, out);

@@ -71,7 +71,22 @@ async function libroDeLaCasa({ limit = 100, maxPaginas = 30 } = {}) {
     if (!r || !r.ok || !data) {
       return { ok: false, why: 'respuesta_ilegible', detalle: (r && (r.crudo || r.status)) || null, bets, saldos, paginas };
     }
-    const lote = Array.isArray(data.bets) ? data.bets : [];
+    // UN ERROR DE LA CASA NO ES UN LIBRO VACÍO (4-sep, medido en producción). Cloudbet contesta HTTP 200 con
+    // `errors: [INTERNAL_SERVER_ERROR]` y `data: { bets: null }`. La primera versión de esto miraba solo que
+    // `data` existiera, convertía el null en `[]` y concluía tan tranquila que la casa no tenía ni una
+    // apuesta: 47 filas nuestras salieron marcadas como fantasmas cuando la casa las tenía todas. Es el
+    // mismo error que se llevó el track de esports —tratar "no pude leer" como "no hay"— y aquí habría
+    // llevado a tocar el libro del dinero. Ahora cualquier error, o un `bets` que no sea una lista, corta.
+    const errs = (r.gql && r.gql.errors) || null;
+    if (errs && errs.length) {
+      return { ok: false, why: 'la casa devolvió errores al leer su libro', paginas,
+        detalle: errs.map((e) => e.message).join(' | ').slice(0, 200), bets, saldos };
+    }
+    if (!Array.isArray(data.bets)) {
+      return { ok: false, why: 'la casa no devolvió una lista de apuestas', paginas,
+        detalle: 'bets = ' + JSON.stringify(data.bets), bets, saldos };
+    }
+    const lote = data.bets;
     if (Array.isArray(data.accountBalances) && data.accountBalances.length) saldos = data.accountBalances;
     bets.push(...lote);
     paginas++;
@@ -80,6 +95,33 @@ async function libroDeLaCasa({ limit = 100, maxPaginas = 30 } = {}) {
   // COMPLETO O NO, Y QUE SE VEA. Si el libro de la casa se leyó a medias, cualquier "fantasma" es sospecha
   // de página que falta, no hallazgo. Quien use esto tiene que poder distinguirlo.
   return { ok: true, bets, saldos, paginas, completo, total: bets.length };
+}
+
+// ── PREGUNTAR POR UNA REFERENCIA CONCRETA ───────────────────────────────────────────────────────────────
+// EL CAMINO QUE SÍ FUNCIONA HOY. El listado del libro entero depende de un resolver de la casa que está
+// devolviendo error; preguntar POR REFERENCIA no, y es además el camino que ya usa la liquidación en
+// producción todos los días. Así que la reconciliación no necesita el listado: necesita saber qué dice la
+// casa de un conjunto ACOTADO de referencias, y eso se puede preguntar una a una.
+// Va con concurrencia baja y con tope: son peticiones contra la casa, no contra nosotros.
+async function preguntarPorReferencias(refs, { concurrencia = 4, cap = 400 } = {}) {
+  const CB = require('../market-scanner/venues/cloudbet');
+  const llave = process.env.CLOUDBET_API_KEY || '';
+  if (!llave) return { ok: false, why: 'sin CLOUDBET_API_KEY', respuestas: new Map() };
+  const lista = [...new Set(refs)].slice(0, cap);
+  const respuestas = new Map();
+  let fallos = 0;
+  let i = 0;
+  const obrero = async () => {
+    while (i < lista.length) {
+      const ref = lista[i++];
+      const r = await CB.betByReference(llave, ref).catch(() => undefined);
+      // undefined = la petición falló (no sabemos); null = la casa contestó que no la tiene
+      if (r === undefined) { fallos++; continue; }
+      respuestas.set(ref, r || null);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, obrero));
+  return { ok: true, preguntadas: lista.length, contestadas: respuestas.size, fallos, truncado: refs.length > cap, respuestas };
 }
 
 // ── TABLA REFERENCIA → PICK ─────────────────────────────────────────────────────────────────────────────
@@ -97,7 +139,97 @@ const lineaDe = (marketUrl) => {
   return m ? Number(m[1]) : null;
 };
 
-// ── LA COMPARACIÓN ──────────────────────────────────────────────────────────────────────────────────────
+// ── LA COMPARACIÓN, PREGUNTANDO POR REFERENCIA (modo por defecto) ───────────────────────────────────────
+// POR QUÉ ESTE MODO Y NO EL LISTADO. El listado del libro entero depende de un resolver de la casa que hoy
+// devuelve INTERNAL_SERVER_ERROR; preguntar por una referencia concreta funciona —es lo que usa la
+// liquidación a diario—. Así que en vez de pedirle a la casa "dame todo lo que tienes" y razonar sobre esa
+// lista, se le pregunta por un conjunto ACOTADO de referencias que nos interesan:
+//   · las de NUESTRAS filas dadas por colocadas  → si la casa no la tiene, es fantasma DE VERDAD
+//   · las de las picks recientes que NO están en nuestro libro → si la casa sí la tiene, es huérfana
+// Lo que este modo no puede ver son apuestas ajenas a nuestras picks (las que Alexis coloque por la web):
+// para eso hace falta el listado, y se dice en el resultado en vez de fingir que se miró.
+async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap = 400, concurrencia = 4 } = {}) {
+  const L = S.load();
+  const filas = Array.isArray(L.bets) ? L.bets : [];
+  const porPick = new Map(sombra.filter((s) => s.pick_id).map((s) => [s.pick_id, s]));
+  const enElLibro = new Set(filas.map((f) => f.pick_id));
+  const corte = Date.now() - dias * 864e5;
+
+  // 1) las nuestras que decimos tener colocadas (las manuales no: la casa no las conoce por referencia)
+  const nuestras = filas.filter((f) => (f.status === 'PLACED' || f.status === 'EN_ACEPTACION') && f.via !== 'manual' && f.pick_id);
+  const refsNuestras = new Map();     // ref → fila
+  for (const f of nuestras) {
+    if (f.ref_id) refsNuestras.set(f.ref_id, f);
+    for (let e = 0; e <= Math.min(2, Number(f.envios) || 0); e++) refsNuestras.set(S.refIdDe(f.pick_id, e), f);
+  }
+
+  // 2) las picks recientes que NO tenemos en el libro: si la casa tiene alguna, la perdimos nosotros.
+  // LAS CANDIDATAS SALEN DEL SOMBRA, NO DEL FEED ENTERO DE CLUBES. El ejecutor solo puede haber apostado
+  // algo que antes fue apuesta del sombra dentro de su perímetro; meter las 3.600 picks del feed multiplica
+  // por veinte las preguntas a la casa para buscar donde por construcción no puede haber nada, y encima
+  // hace saltar el tope y truncar justo lo que sí importa. `pickIds` solo se usa si no vino el sombra.
+  const universo = sombra.length ? sombra.map((s) => s.pick_id) : pickIds;
+  const candidatas = [...new Set(universo)]
+    .filter((pid) => pid && !enElLibro.has(pid))
+    .filter((pid) => {
+      const sb = porPick.get(pid);
+      const t = sb && (sb.kickoff_at || sb.at) ? Date.parse(sb.kickoff_at || sb.at) : null;
+      return t == null || t >= corte;   // sin fecha se pregunta igual: no perder una por no saber cuándo fue
+    });
+  const refsCandidatas = new Map();    // ref → {pick_id, envio}
+  for (const pid of candidatas) for (let e = 0; e <= 2; e++) refsCandidatas.set(S.refIdDe(pid, e), { pick_id: pid, envio: e });
+
+  const todas = [...refsNuestras.keys(), ...refsCandidatas.keys()];
+  const q = await preguntarPorReferencias(todas, { concurrencia, cap });
+  if (!q.ok) return { ok: false, why: q.why };
+
+  const huerfanas = [], fantasmas = [], descuadres = [], sin_respuesta = [];
+  for (const [ref, fila] of refsNuestras) {
+    if (!q.respuestas.has(ref)) continue;               // no se preguntó (tope) o no contestó
+    const b = q.respuestas.get(ref);
+    if (b) {
+      const dif = {};
+      const stC = Number(b.stake), stN = Number(fila.stake);
+      const prC = Number(b.price), prN = Number(fila.odds_real);
+      if (Number.isFinite(stC) && Number.isFinite(stN) && Math.abs(stC - stN) > 0.011) dif.stake = { casa: stC, libro: stN };
+      if (Number.isFinite(prC) && Number.isFinite(prN) && Math.abs(prC - prN) > 0.011) dif.precio = { casa: prC, libro: prN };
+      if (Object.keys(dif).length) descuadres.push({ ref_id: ref, pick_id: fila.pick_id, evento: fila.match, ...dif });
+    }
+  }
+  // una fila es fantasma solo si la casa CONTESTÓ que no tiene NINGUNA de sus referencias
+  for (const f of nuestras) {
+    const suyas = [f.ref_id, ...Array.from({ length: Math.min(3, (Number(f.envios) || 0) + 1) }, (_, e) => S.refIdDe(f.pick_id, e))].filter(Boolean);
+    const contestadas = suyas.filter((r) => q.respuestas.has(r));
+    if (!contestadas.length) { sin_respuesta.push({ pick_id: f.pick_id, match: f.match }); continue; }
+    if (contestadas.some((r) => q.respuestas.get(r))) continue;      // la casa sí la tiene
+    fantasmas.push({ ref_id: f.ref_id, pick_id: f.pick_id, match: f.match, stake: f.stake, status: f.status, placed_at: f.placed_at || f.at });
+  }
+  for (const [ref, quien] of refsCandidatas) {
+    const b = q.respuestas.get(ref);
+    if (!b) continue;
+    huerfanas.push({
+      ref_id: ref, pick_id: quien.pick_id, envio: quien.envio,
+      evento: b.eventName || null, market_url: b.marketUrl || null,
+      precio: Number(b.price) || null, stake: Number(b.stake) || null,
+      estado_casa: String(b.betStatus || '').toUpperCase() || null,
+      retorno: b.returnAmount != null ? Number(b.returnAmount) : null,
+      moneda: b.currency || null, event_id: b.eventId || null,
+    });
+  }
+
+  return {
+    ok: true, modo: 'referencias',
+    casa: { preguntadas: q.preguntadas, contestadas: q.contestadas, fallos: q.fallos, truncado: q.truncado },
+    libro: { filas: filas.length, colocadas: filas.filter((f) => f.status === 'PLACED').length },
+    huerfanas, fantasmas, descuadres, desconocidas: [], sin_respuesta,
+    cuadra: huerfanas.length === 0 && fantasmas.length === 0 && descuadres.length === 0,
+    aviso_fantasmas: sin_respuesta.length ? `${sin_respuesta.length} filas se quedaron sin respuesta de la casa: no son concluyentes` : null,
+    nota_desconocidas: 'este modo pregunta solo por NUESTRAS referencias: no puede ver apuestas ajenas (las colocadas por la web)',
+    sombra_disponible: porPick.size,
+  };
+}
+
+// ── LA COMPARACIÓN POR LISTADO ──────────────────────────────────────────────────────────────────────────
 // `pickIds` son todas las picks que pudieron llegar a apostarse (las del propio libro, las del sombra y las
 // del feed de clubes). `sombra` es opcional y solo sirve para enriquecer una fila reconstruida con los
 // datos que la casa no tiene: cuota del sombra, probabilidad del modelo, liga y saque.
@@ -107,6 +239,13 @@ async function comparar({ pickIds = [], sombra = [], casa = null, limit = 100, m
 
   const L = S.load();
   const filas = Array.isArray(L.bets) ? L.bets : [];
+  // UN LIBRO VACÍO NO PRUEBA NADA cuando el nuestro dice que hay apuestas colocadas. Es muchísimo más
+  // probable que la lectura haya fallado a que la casa haya perdido 84 apuestas, y sacar de ahí una lista
+  // de "fantasmas" es exactamente cómo se toma una decisión destructiva sobre el libro del dinero.
+  if (!libro.bets.length && filas.some((f) => f.status === 'PLACED')) {
+    return { ok: false, why: 'la casa devolvió un libro vacío y el nuestro tiene apuestas colocadas: se asume lectura fallida, no libro vacío',
+      libro: { filas: filas.length, colocadas: filas.filter((f) => f.status === 'PLACED').length } };
+  }
   // una fila puede haber usado varias referencias (una por envío): se indexan TODAS o una apuesta colocada
   // con la referencia vieja parecería huérfana y se duplicaría al repararla.
   const porRef = new Map();
@@ -178,8 +317,14 @@ async function comparar({ pickIds = [], sombra = [], casa = null, limit = 100, m
 // ── LA REPARACIÓN ───────────────────────────────────────────────────────────────────────────────────────
 // Solo inserta huérfanas, y solo las que se pudieron atribuir a una pick. Nunca borra ni modifica una fila
 // existente: lo único que este módulo puede hacerle al libro es AÑADIR lo que la casa demuestra que existe.
-async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100, maxPaginas = 30 } = {}) {
-  const cmp = await comparar({ pickIds, sombra, limit, maxPaginas });
+async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100, maxPaginas = 30,
+  modo = 'referencias', dias = 7, cap = 400, concurrencia = 4 } = {}) {
+  // POR DEFECTO SE PREGUNTA POR REFERENCIA: es el camino que la casa contesta hoy. El listado queda como
+  // segundo modo porque ve una cosa que el otro no —las apuestas ajenas a nuestras picks— y volverá a ser
+  // útil el día que la casa arregle su resolver.
+  const cmp = modo === 'listado'
+    ? await comparar({ pickIds, sombra, limit, maxPaginas })
+    : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia });
   if (!cmp.ok) return cmp;
   const porPick = new Map(sombra.filter((s) => s.pick_id).map((s) => [s.pick_id, s]));
 
@@ -243,4 +388,4 @@ async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100
     nota: 'las filas entran como PLACED; liquidar() las cerrará contra la casa en la pasada siguiente' };
 }
 
-module.exports = { libroDeLaCasa, comparar, reparar, tablaReferencias, ENVIOS_MAX };
+module.exports = { libroDeLaCasa, preguntarPorReferencias, comparar, compararPorReferencia, reparar, tablaReferencias, ENVIOS_MAX };

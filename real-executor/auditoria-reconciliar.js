@@ -14,6 +14,20 @@ process.env.GP_REAL_RELAY_URL = 'https://reenviador-de-mentira';
 process.env.GP_REAL_RELAY_TOKEN = 'secreto-de-mentira';
 process.env.GP_REAL_ENABLED = '0';
 
+// la casa de mentira TAMBIÉN para las lecturas por referencia: `preguntarPorReferencias` pide el módulo de
+// Cloudbet en caliente, así que se precarga en la caché de require igual que hace auditoria.js.
+const CBPATH = require.resolve(path.join(__dirname, '..', 'market-scanner', 'venues', 'cloudbet.js'));
+let POR_REFERENCIA = {};          // ref → apuesta de la casa (o null si la casa dice que no la tiene)
+let REFS_QUE_FALLAN = new Set();  // ref → la petición revienta (no sabemos nada)
+require.cache[CBPATH] = { id: CBPATH, filename: CBPATH, loaded: true, exports: {
+  betByReference: async (k, ref) => {
+    if (REFS_QUE_FALLAN.has(ref)) throw new Error('ETIMEDOUT');
+    return Object.prototype.hasOwnProperty.call(POR_REFERENCIA, ref) ? POR_REFERENCIA[ref] : null;
+  },
+  ESTADOS_LIQUIDADOS: new Set(['WIN', 'LOSS', 'PUSH', 'HALF_WIN', 'HALF_LOSS', 'PARTIAL']),
+} };
+process.env.CLOUDBET_API_KEY = 'llave-de-mentira';
+
 const S = require('./store');
 const R = require('./reconciliar');
 
@@ -102,12 +116,12 @@ LIBRO_CASA = [
   t('comparar no toca el libro', S.load().bets.length === 5);
 
   console.log('\n── 2. REPARAR en seco ──────────────────────────────────────────────');
-  const seco = await R.reparar({ pickIds, sombra, aplicar: false });
+  const seco = await R.reparar({ pickIds, sombra, aplicar: false, modo: 'listado' });
   t('anuncia 2 inserciones', seco.aplicado === false && seco.insertaria === 2, seco.insertaria);
   t('en seco no escribe nada', S.load().bets.length === 5);
 
   console.log('\n── 3. REPARAR de verdad ────────────────────────────────────────────');
-  const ap = await R.reparar({ pickIds, sombra, aplicar: true });
+  const ap = await R.reparar({ pickIds, sombra, aplicar: true, modo: 'listado' });
   const L2 = S.load();
   t('inserta 2 filas', ap.insertadas === 2 && L2.bets.length === 7, { ins: ap.insertadas, n: L2.bets.length });
   const p1 = L2.bets.find((b) => b.pick_id === 'cdp_perdida1');
@@ -128,11 +142,11 @@ LIBRO_CASA = [
   t('el descuadre NO se toca', L2.bets.find((b) => b.pick_id === 'cdp_descuadre').stake === 29);
 
   console.log('\n── 4. IDEMPOTENCIA (lo que impide duplicar dinero) ─────────────────');
-  const otra = await R.reparar({ pickIds, sombra, aplicar: true });
+  const otra = await R.reparar({ pickIds, sombra, aplicar: true, modo: 'listado' });
   t('la segunda pasada no inserta nada', otra.insertadas === 0, otra.insertadas);
   t('el libro sigue con 7 filas', S.load().bets.length === 7);
   t('y ahora dice que cuadra salvo fantasma/descuadre', otra.huerfanas.length === 0);
-  const tercera = await R.reparar({ pickIds, sombra, aplicar: true });
+  const tercera = await R.reparar({ pickIds, sombra, aplicar: true, modo: 'listado' });
   t('la tercera tampoco', tercera.insertadas === 0 && S.load().bets.length === 7);
 
   console.log('\n── 5. EL LIBRO DE LA CASA A MEDIAS ─────────────────────────────────');
@@ -148,10 +162,71 @@ LIBRO_CASA = [
 
   console.log('\n── 7. LA CASA NO CONTESTA ──────────────────────────────────────────');
   const f0 = global.fetch; global.fetch = async () => { throw new Error('ETIMEDOUT'); };
-  const caido = await R.reparar({ pickIds, sombra, aplicar: true });
+  const caido = await R.reparar({ pickIds, sombra, aplicar: true, modo: 'listado' });
   global.fetch = f0;
   t('no inserta nada si no pudo leer la casa', caido.ok === false, caido.why);
   t('y el libro queda intacto', S.load().bets.length === 7);
+
+  console.log('\n── 8. LA CASA CONTESTA 200 PERO CON ERROR (el fallo del 4-sep) ─────');
+  // Cloudbet devuelve HTTP 200 con errors:[INTERNAL_SERVER_ERROR] y data:{bets:null}. La primera versión de
+  // esto lo convertía en "la casa no tiene ninguna apuesta" y marcaba 47 filas nuestras como fantasmas.
+  const fOK = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ ok: true, status: 200,
+    gql: { errors: [{ message: 'Internal server error' }], data: { bets: null, accountBalances: null } } }) });
+  const conError = await R.comparar({ pickIds, sombra });
+  t('un error de la casa NO es un libro vacío', conError.ok === false, conError.why);
+  t('y no produce ni un fantasma', !conError.fantasmas, Object.keys(conError));
+  const repError = await R.reparar({ pickIds, sombra, aplicar: true, modo: 'listado' });
+  t('con error de la casa no se toca el libro', repError.ok === false && S.load().bets.length === 7);
+
+  // y el caso hermano: data.bets es null sin errors
+  global.fetch = async () => ({ ok: true, json: async () => ({ ok: true, status: 200, gql: { data: { bets: null } } }) });
+  const nulo = await R.comparar({ pickIds, sombra });
+  t('un `bets` que no es lista tampoco es libro vacío', nulo.ok === false, nulo.why);
+
+  // y el caso más traicionero: la casa devuelve [] de verdad mientras nosotros tenemos colocadas
+  global.fetch = async () => ({ ok: true, json: async () => ({ ok: true, status: 200, gql: { data: { bets: [], accountBalances: [] } } }) });
+  const vacio = await R.comparar({ pickIds, sombra });
+  t('libro vacío con colocadas nuestras se asume lectura fallida', vacio.ok === false, vacio.why);
+  global.fetch = fOK;
+
+  console.log('\n── 9. MODO POR REFERENCIA (el que la casa sí contesta) ─────────────');
+  // el libro tiene ahora 7 filas; se le pregunta a la casa por cada referencia
+  POR_REFERENCIA = {};
+  for (const b of S.load().bets) {
+    if (b.pick_id === 'cdp_fantasma') continue;                       // la casa NO la tiene
+    POR_REFERENCIA[b.ref_id] = { referenceId: b.ref_id, price: b.odds_real, stake: b.stake, betStatus: 'ACCEPTED' };
+  }
+  // una pick reciente que NO está en nuestro libro y que la casa SÍ tiene: huérfana
+  const refHuerfana = S.refIdDe('cdp_nueva_perdida', 0);
+  POR_REFERENCIA[refHuerfana] = { referenceId: refHuerfana, eventName: 'Nueva A vs Nueva B',
+    marketUrl: 'soccer.total_bookings/under?total=3.5', price: 1.66, stake: 40, betStatus: 'ACCEPTED', currency: 'USDT' };
+  const sombra2 = [...sombra, { pick_id: 'cdp_nueva_perdida', id: 'sh_new', match: 'Nueva A vs Nueva B',
+    league: 'ligue1', line: 3.5, odds: 1.7, model_prob: 0.64, kickoff_at: new Date().toISOString() }];
+  const porRef = await R.compararPorReferencia({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2 });
+  t('el modo por referencia funciona sin listado', porRef.ok === true && porRef.modo === 'referencias');
+  t('encuentra la huérfana preguntando una a una', porRef.huerfanas.length === 1
+    && porRef.huerfanas[0].pick_id === 'cdp_nueva_perdida', porRef.huerfanas.map((h) => h.pick_id));
+  t('marca fantasma solo la que la casa niega', porRef.fantasmas.length === 1
+    && porRef.fantasmas[0].pick_id === 'cdp_fantasma', porRef.fantasmas.map((f) => f.pick_id));
+  t('avisa de que no puede ver apuestas ajenas', !!porRef.nota_desconocidas);
+
+  console.log('\n── 10. UNA REFERENCIA QUE NO CONTESTA NO ES UN FANTASMA ────────────');
+  REFS_QUE_FALLAN = new Set(S.load().bets.filter((b) => b.pick_id === 'cdp_igual').map((b) => b.ref_id));
+  for (const b of S.load().bets) if (b.pick_id === 'cdp_igual') { for (let e = 0; e <= 2; e++) REFS_QUE_FALLAN.add(S.refIdDe('cdp_igual', e)); }
+  const conFallo = await R.compararPorReferencia({ pickIds, sombra });
+  t('la que no contestó NO sale como fantasma', !conFallo.fantasmas.some((f) => f.pick_id === 'cdp_igual'), conFallo.fantasmas.map((f) => f.pick_id));
+  t('sale como sin_respuesta y se avisa', conFallo.sin_respuesta.some((x) => x.pick_id === 'cdp_igual') && !!conFallo.aviso_fantasmas);
+  REFS_QUE_FALLAN = new Set();
+
+  console.log('\n── 11. REPARAR EN MODO REFERENCIA ──────────────────────────────────');
+  const antes = S.load().bets.length;
+  const rep = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
+  t('inserta la huérfana encontrada por referencia', rep.insertadas === 1 && S.load().bets.length === antes + 1, rep.insertadas);
+  const nueva = S.load().bets.find((b) => b.pick_id === 'cdp_nueva_perdida');
+  t('con los datos de la casa', nueva && nueva.stake === 40 && nueva.odds_real === 1.66 && nueva.line === 3.5);
+  const rep2 = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
+  t('y sigue siendo idempotente', rep2.insertadas === 0 && S.load().bets.length === antes + 1);
 
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* da igual */ }
   console.log(`\n${ok} comprobaciones en verde, ${ko} en rojo.`);

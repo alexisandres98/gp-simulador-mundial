@@ -1,5 +1,26 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔄 ¿SE ACTUALIZA SOLO CADA DEPORTE? (auditado el 4-sep)
+La pregunta de Alexis: si el Madrid gana al Athletic, ¿su ficha y su rating lo recogen sin que nadie toque nada?
+
+**Sí, y solos:** fútbol de clubes (`applyClubElo` en cuanto el partido pasa a final; los resultados entran
+cada 30-90 s), Mundial (sync ESPN cada 30 s + `recomputeElos`), combate (`mmaResultsSync`/`boxingResultsSync`
+cada 30 min, fusionados al pool de rating), tenis (cola diaria a la base propia), esports en sus cuatro juegos
+(PandaScore, vlr.gg, bo3.gg y Leaguepedia, con cursor al día), F1 (`refreshSeason` cada 6 h; el GP de Países
+Bajos del 23-ago ya está dentro) y fútbol americano CFL/NCAAF (`refreshResults` cada 6 h del feed oficial).
+
+**NO se actualizan solos — son artefactos del repo que alguien tiene que recosechar a mano:**
+- 🔴 **BALONCESTO.** `basketball-engine/store.js` lee `data/basketball/games-<liga>-<año>.json` **del repo**;
+  nada lo escribe en caliente y `/data/hoops` está vacío. La NBA está completa (hasta el 14-jun, temporada
+  cerrada) pero la **WNBA se queda en el 15-ago: le faltan ~3 semanas y está en playoffs**. Impacto acotado
+  porque las picks de baloncesto están apagadas por doctrina (0 abiertas) y lo que se publica sale de precios
+  entre casas, no del modelo — pero la ficha y el rating que se ven en pantalla están congelados.
+- 🔴 **NFL.** Base cosechada el 17-ago (`data/nfl/meta.json`); ESPN se usa SOLO para liquidar picks, no para
+  actualizar el rating. **El saque es el 9-sep**: desde la semana 1, el modelo valorará equipos con datos de
+  2025 salvo que se recorra `scripts/nfl-harvest.js`. Es el más urgente de los dos.
+Arreglo propuesto (pendiente de decidir): un trabajo de refresco por deporte que escriba en el disco
+persistente y que la carga prefiera al artefacto del repo, igual que ya hacen F1 (overlay) y amfoot.
+
 ## 🚨 TRAS EL INCIDENTE DEL 4-sep (`docs/INCIDENTE_2026-09-04_DB_VACIA.md`)
 Ya hecho: escritura atómica en `db.json` y en los siete almacenes que escribían directo; arranque que se
 autorrepara desde la copia diaria; freno por fecha en los avisos de final (Telegram y correo); aviso por

@@ -29,7 +29,14 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const AGG_DIR = path.join(ROOT, 'data', 'nfl');
+// DÓNDE ESCRIBE EL AGREGADO (4-sep-2026). Por defecto el repo, que es donde se versiona la base histórica.
+// Con `--out=disk` escribe en el disco persistente, que es como corre el trabajo semanal en producción: el
+// directorio del repo se recongela en cada deploy, así que lo cosechado en caliente ahí se perdería y el
+// rating se quedaría con la foto del último backfill commiteado. El motor lee los dos y el disco manda.
+const AGG_REPO = path.join(ROOT, 'data', 'nfl');
+const AGG_DISK = path.join(path.dirname(process.env.DB_FILE || path.join(ROOT, 'db.json')), 'nfl-agg');
+const AL_DISCO = process.argv.includes('--out=disk') || String(process.env.GP_NFL_OUT || '') === 'disk';
+const AGG_DIR = AL_DISCO ? AGG_DISK : AGG_REPO;
 const RAW_DIR = (() => {
   const d = path.join(path.dirname(process.env.DB_FILE || path.join(ROOT, 'db.json')), 'nfl-raw');
   try { fs.mkdirSync(d, { recursive: true }); return d; } catch { }
@@ -125,7 +132,7 @@ function aggregate() {
   const nowSeason = Math.max(...Object.keys(bySeason).map(Number));
   // el repo lleva 2016+ (los modelos modernos, NFL-0026); lo anterior queda en el crudo para investigación
   const kept = games.filter((g) => g.season >= 2016);
-  fs.writeFileSync(path.join(AGG_DIR, 'games.json'), JSON.stringify({
+  fs.mkdirSync(AGG_DIR, { recursive: true }); fs.writeFileSync(path.join(AGG_DIR, 'games.json'), JSON.stringify({
     at: new Date().toISOString(), from: 2016, current_season: nowSeason, n: kept.length,
     note: 'games.csv de nflverse/nfldata (Lee Sharpe). spread_close es la línea del LOCAL al cierre; result = home − away. Uso de investigación/desarrollo (Tier 0 del blueprint, NFL-1061/1062): revisar derechos antes de redistribuir el dato crudo públicamente.',
     games: kept,
@@ -171,7 +178,7 @@ function aggregate() {
     }
     log(`  team-weeks ${y}: acumuladas`);
   }
-  fs.writeFileSync(path.join(AGG_DIR, 'team-weeks.json'), JSON.stringify({
+  fs.mkdirSync(AGG_DIR, { recursive: true }); fs.writeFileSync(path.join(AGG_DIR, 'team-weeks.json'), JSON.stringify({
     at: new Date().toISOString(), n: tw.length,
     note: 'EPA/jugada ofensiva por equipo-semana (nflverse stats_team_week); la defensiva se deriva de la fila del rival en el mismo partido. Point-in-time por construcción: cada fila lleva (season, week) y el consumidor filtra por corte (NFL-0100).',
     rows: tw,
@@ -213,7 +220,7 @@ function aggregate() {
     const vol = Object.values(p.seasons).some((s) => s.att >= 40 || s.car >= 25 || s.tgt >= 20);
     if (vol) kept2[id] = p;
   }
-  fs.writeFileSync(path.join(AGG_DIR, 'players.json'), JSON.stringify({
+  fs.mkdirSync(AGG_DIR, { recursive: true }); fs.writeFileSync(path.join(AGG_DIR, 'players.json'), JSON.stringify({
     at: new Date().toISOString(), n: Object.keys(kept2).length,
     note: 'directorio de jugadores con volumen real en las dos últimas temporadas (nflverse stats_player_week). Totales por temporada; la posición/equipo es la ÚLTIMA vista — el roster 2026 real se confirma con la Semana 1 (sin feed licenciado de roster, NFL-0069).',
     players: kept2,
@@ -221,7 +228,7 @@ function aggregate() {
   log(`  players.json: ${Object.keys(kept2).length} jugadores con volumen`);
 
   // ── META ───────────────────────────────────────────────────────────────────────────────────────────────
-  fs.writeFileSync(path.join(AGG_DIR, 'meta.json'), JSON.stringify({
+  fs.mkdirSync(AGG_DIR, { recursive: true }); fs.writeFileSync(path.join(AGG_DIR, 'meta.json'), JSON.stringify({
     at: new Date().toISOString(), seasons: SEASONS_STATS.filter((y) => fs.existsSync(path.join(RAW_DIR, `stats_team_week_${y}.csv`))),
     sources: [
       { source: 'nflverse/nfldata games.csv', kind: 'histórico + cierres', rights: 'desarrollo/investigación (revisar antes de redistribuir crudo)' },

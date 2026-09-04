@@ -15,12 +15,24 @@
 const fs = require('fs');
 const path = require('path');
 
-const DIR = path.join(__dirname, '..', 'data', 'nfl');
+// BASE DEL REPO + AGREGADO FRESCO DEL DISCO (4-sep-2026). El directorio del repo se recongela en cada
+// deploy, así que la temporada en curso no entraba nunca: el rating de equipo —que sale de los MÁRGENES de
+// `games.json`— y el estado de EPA —que sale de `team-weeks.json`— se quedaban en la cosecha del 17-ago.
+// Con el saque el 9-sep eso significaba valorar equipos de 2026 con datos de 2025 desde la semana 1. Ahora
+// el trabajo semanal escribe el agregado en el disco y aquí manda el disco cuando existe, igual que ya
+// hacían F1 y fútbol americano universitario.
+const REPO_DIR = path.join(__dirname, '..', 'data', 'nfl');
+const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'nfl-agg');
+const DIR = REPO_DIR;   // se conserva: se exporta y hay quien lo usa para rutas de lectura
 const G = global._nfldata = global._nfldata || { at: 0, stamp: '', data: null };
 
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
+const FILES = ['games.json', 'team-weeks.json', 'venues.json', 'model-priors.json', 'players.json'];
+const rdIn = (dir, f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } };
+// el disco manda fichero a fichero: si la cosecha semanal aún no escribió `players.json`, se usa el del repo
+const rd = (f) => rdIn(DISK_DIR, f) || rdIn(REPO_DIR, f);
 function stamp() {
-  try { return ['games.json', 'team-weeks.json', 'venues.json', 'model-priors.json', 'players.json'].map((f) => { try { return fs.statSync(path.join(DIR, f)).mtimeMs; } catch { return 0; } }).join('|'); } catch { return ''; }
+  // la marca mira los DOS sitios: si solo mirara el repo, una cosecha nueva en disco no invalidaría la caché
+  try { return FILES.map((f) => [DISK_DIR, REPO_DIR].map((d) => { try { return fs.statSync(path.join(d, f)).mtimeMs; } catch { return 0; } }).join('/')).join('|'); } catch { return ''; }
 }
 
 // ── identidad: abreviatura nflverse → nombre, ciudad y logo (ESPN CDN, mismas siglas casi siempre) ───────

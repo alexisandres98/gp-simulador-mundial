@@ -32,13 +32,29 @@ const LEAGUE = String(args.league || 'nba');
 const SEASON = +args.season || new Date().getUTCFullYear();
 const MAX = +args.max || 0;
 const SLEEP = +args.sleep || 130;
-const DIR = path.join(__dirname, '..', 'data', 'basketball');
+// DÓNDE ESCRIBE (4-sep-2026). Por defecto el repo, que es donde se construye el histórico grande y se
+// versiona. Con `--out=disk` (o GP_HOOPS_OUT=disk) escribe en el disco persistente: así es como corre el
+// trabajo diario en producción, porque el directorio del repo se recongela en cada deploy y lo cosechado
+// ahí se perdería. Para poder ser INCREMENTAL lee de los dos sitios: el repo es la semilla, el disco crece.
+const REPO_DIR = path.join(__dirname, '..', 'data', 'basketball');
+const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'hoops');
+const AL_DISCO = String(args.out || process.env.GP_HOOPS_OUT || '') === 'disk';
+const DIR = AL_DISCO ? DISK_DIR : REPO_DIR;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const L = E.LEAGUES[LEAGUE];
 if (!L) { console.error('liga desconocida:', LEAGUE, '· disponibles:', Object.keys(E.LEAGUES).join(', ')); process.exit(1); }
 
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
-const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(path.join(DIR, f), JSON.stringify(o)); };
+const rdIn = (dir, f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } };
+// lee del destino y, si ahí no está, del repo: el histórico versionado hace de semilla del overlay
+const rd = (f) => rdIn(DIR, f) || (AL_DISCO ? rdIn(REPO_DIR, f) : null);
+// escritura atómica: un temporal y un rename. Un SIGKILL a mitad no puede dejar el fichero truncado, que es
+// como se perdieron otros almacenes de la casa el 4-sep.
+const wr = (f, o) => {
+  fs.mkdirSync(DIR, { recursive: true });
+  const tmp = path.join(DIR, '.' + f + '.tmp');
+  fs.writeFileSync(tmp, JSON.stringify(o));
+  fs.renameSync(tmp, path.join(DIR, f));
+};
 
 (async () => {
   const gFile = `games-${LEAGUE}-${SEASON}.json`;
@@ -103,7 +119,7 @@ const wr = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(
   // trae partidos nuevos y nadie vuelve a ajustar, el artefacto queda viejo en silencio. Se re-ajusta acá
   // para que "hay datos nuevos" y "el modelo los conoce" no puedan separarse por olvido.
   if (ok > 0 || !fs.existsSync(path.join(DIR, `fit-${LEAGUE}.json`))) {
-    try { require('./hoops-fit'); const { fitLeague } = require('./hoops-fit');
+    try { if (AL_DISCO) process.env.GP_HOOPS_OUT = 'disk'; const { fitLeague } = require('./hoops-fit');
       const out = fitLeague(LEAGUE);
       if (out && !out.error) { wr(`fit-${LEAGUE}.json`, out);
         console.log(`[${LEAGUE}] artefacto de ajuste reescrito: ${out.games_n} partidos · rapm ${out.rapm ? out.rapm.n_players : 0} jugadores · ${out.ms} ms`); }

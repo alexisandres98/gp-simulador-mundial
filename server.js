@@ -545,6 +545,64 @@ async function cs2DailyJob() {
 setTimeout(cs2DailyJob, 6 * 60e3);
 setInterval(cs2DailyJob, 3600e3);
 
+// ── BALONCESTO: cosecha diaria de la temporada en curso (4-sep-2026) ────────────────────────────────────
+// POR QUÉ NO EXISTÍA Y POR QUÉ HACE FALTA. El motor de baloncesto leía SOLO `data/basketball` del repo, que
+// se recongela en cada deploy: los partidos nuevos no entraban nunca y el rating se quedaba en la foto del
+// último backfill que alguien recordara correr y commitear. Medido el 4-sep al auditar los siete deportes:
+// la WNBA clavada en el 15-ago **estando en playoffs**, tres semanas de partidos que el modelo no había
+// visto. Los demás deportes ya se refrescaban solos; este era el hueco.
+// QUÉ HACE. Corre el mismo `hoops-backfill` de siempre —incremental e idempotente— pero con `--out=disk`,
+// así que escribe en el disco persistente y el motor lo lee como overlay por encima de la base del repo.
+// El script re-ajusta el artefacto del modelo al terminar, así que "hay datos nuevos" y "el modelo los
+// conoce" siguen sin poder separarse por olvido. Con tope de partidos por pasada: ponerse al día puede
+// tardar dos días y no pasa nada; bloquear el contenedor una hora, sí.
+const hoopsHarvestOn = () => !/^(0|false|no|off)$/i.test(String(process.env.GP_HOOPS_HARVEST != null ? process.env.GP_HOOPS_HARVEST : '1').trim());
+async function hoopsHarvestJob() {
+  try {
+    if (!hoopsHarvestOn()) return;
+    const day = opsToday();
+    if (db.ops.hoops_day === day) return;
+    if (!opsMemOk('hoops_harvest', 200)) { setTimeout(hoopsHarvestJob, 20 * 60e3); return; }
+    db.ops.hoops_day = day; save();     // se marca antes: un fallo no debe reintentar en bucle todo el día
+    const anio = new Date().getUTCFullYear();
+    const out = {};
+    // WNBA primero: es la que está en temporada ahora. NBA en pretemporada no traerá nada y la pasada será
+    // barata (una llamada de calendario), así que no hace falta saber de antemano quién juega.
+    for (const lg of ['wnba', 'nba']) {
+      const r = await opsSpawn('hoops_harvest', ['scripts/hoops-backfill.js', `--league=${lg}`,
+        `--season=${anio}`, '--out=disk', '--max=120'], { heapMb: 320, timeoutMin: 25 });
+      out[lg] = r.code != null ? r.code : r.error;
+      if (!opsMemOk('hoops_harvest', 200)) break;   // si la primera dejó el contenedor gordo, la otra espera a mañana
+    }
+    opsLog('hoops_harvest', out);
+  } catch (e) { opsLog('hoops_harvest', { error: e.message }); }
+}
+setTimeout(hoopsHarvestJob, 9 * 60e3);
+setInterval(hoopsHarvestJob, 3600e3);
+
+// ── NFL: recosecha del agregado, para que la temporada en curso ENTRE al rating (4-sep-2026) ────────────
+// EL MISMO HUECO QUE BALONCESTO, y con fecha de caducidad puesta: el saque es el 9-sep. El rating de equipo
+// sale de los MÁRGENES de `games.json` y el estado de EPA de `team-weeks.json`, los dos cosechados de
+// nflverse y versionados en el repo — que se recongela en cada deploy. Sin esto, desde la semana 1 el
+// modelo habría valorado equipos de 2026 con datos de 2025 sin que nada lo dijera.
+// CADENCIA. nflverse publica el CSV actualizado uno o dos días después de cada jornada, así que basta una
+// pasada diaria: barata (dos CSV) y siempre al día sin depender de que nadie se acuerde. Escribe en el
+// disco con `--out=disk` y el motor la prefiere a la base del repo.
+const nflHarvestOn = () => !/^(0|false|no|off)$/i.test(String(process.env.GP_NFL_HARVEST != null ? process.env.GP_NFL_HARVEST : '1').trim());
+async function nflHarvestJob() {
+  try {
+    if (!nflHarvestOn()) return;
+    const day = opsToday();
+    if (db.ops.nfl_harvest_day === day) return;
+    if (!opsMemOk('nfl_harvest', 200)) { setTimeout(nflHarvestJob, 20 * 60e3); return; }
+    db.ops.nfl_harvest_day = day; save();
+    const r = await opsSpawn('nfl_harvest', ['scripts/nfl-harvest.js', '--out=disk'], { heapMb: 380, timeoutMin: 30 });
+    opsLog('nfl_harvest', { code: r.code != null ? r.code : r.error });
+  } catch (e) { opsLog('nfl_harvest', { error: e.message }); }
+}
+setTimeout(nflHarvestJob, 12 * 60e3);
+setInterval(nflHarvestJob, 3600e3);
+
 // ── Plantillas de College y CFL (19-ago). ───────────────────────────────────────────────────────────────
 // La pestaña de Jugadores estaba vacía en las dos ligas porque el motor no tenía capa de jugadores. La
 // cosecha vive en scripts/amfoot-rosters.js y CORRE AQUÍ y no en desarrollo: ESPN (Akamai) responde 403 a

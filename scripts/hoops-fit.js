@@ -25,22 +25,33 @@ const PLY = require('../basketball-engine/players');
 const CX = require('../basketball-engine/context');
 const MD = require('../basketball-engine/model');
 
-const DIR = path.join(__dirname, '..', 'data', 'basketball');
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
+// BASE DEL REPO + OVERLAY DEL DISCO, igual que el motor (4-sep-2026). Si el ajuste solo mirara el repo,
+// re-ajustaría ignorando justo los partidos recién cosechados — el artefacto quedaría viejo el mismo día en
+// que se actualizan los datos, que es la peor forma de estar desactualizado: la que no se nota.
+const REPO_DIR = path.join(__dirname, '..', 'data', 'basketball');
+const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'hoops');
+const DIR = process.env.GP_HOOPS_OUT === 'disk' ? DISK_DIR : REPO_DIR;   // dónde se ESCRIBE el artefacto
+const rdIn = (dir, f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } };
+const rd = (f) => rdIn(DISK_DIR, f) || rdIn(REPO_DIR, f);
+const listar = (dir, pref) => { try { return fs.readdirSync(dir).filter((f) => f.startsWith(pref)); } catch { return []; } };
 
 function leaguesOnDisk() {
   const set = new Set();
-  try { for (const f of fs.readdirSync(DIR)) { const m = f.match(/^games-([a-z0-9]+)-\d+\.json$/); if (m) set.add(m[1]); } } catch { /* sin datos */ }
+  for (const dir of [REPO_DIR, DISK_DIR]) {
+    for (const f of listar(dir, 'games-')) { const m = f.match(/^games-([a-z0-9]+)-\d+\.json$/); if (m) set.add(m[1]); }
+  }
   return [...set];
 }
 
 function loadGames(league) {
-  let games = [];
-  for (const f of fs.readdirSync(DIR)) {
-    if (!f.startsWith(`games-${league}-`)) continue;
-    const st = rd(f); if (st && st.games) games = games.concat(Object.values(st.games));
+  const porId = new Map();
+  for (const dir of [REPO_DIR, DISK_DIR]) {
+    for (const f of listar(dir, `games-${league}-`)) {
+      const st = rdIn(dir, f);
+      for (const [k, g] of Object.entries((st && st.games) || {})) if (g) porId.set(String(g.id != null ? g.id : k), g);
+    }
   }
-  return games;
+  return [...porId.values()];
 }
 
 function fitLeague(league) {

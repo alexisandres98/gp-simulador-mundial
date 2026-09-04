@@ -14,8 +14,20 @@ const R = require('./ratings');
 const S = require('./simulate');
 const ESPN = require('../data-providers/basketball/espn');
 
-const DIR = path.join(__dirname, '..', 'data', 'basketball');
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
+// DÓNDE VIVEN LOS DATOS, Y POR QUÉ EN DOS SITIOS (4-sep-2026). El directorio del repo se recongela en cada
+// deploy: lo que se cosecha en caliente ahí desaparece a la siguiente subida de código. Hasta hoy este motor
+// leía SOLO el repo, así que los partidos de la temporada en curso no entraban nunca y el rating se quedaba
+// en la foto del último `hoops-backfill` que alguien recordara correr y commitear. Se vio medido: la WNBA
+// clavada el 15-ago estando en playoffs. Ahora es lo mismo que ya hacen F1 y fútbol americano: BASE del repo
+// (histórico grande, versionado) + OVERLAY en el disco persistente (la temporada viva, escrita por el
+// trabajo diario). El overlay MANDA partido a partido, que es lo que permite corregir uno ya cosechado.
+const REPO_DIR = path.join(__dirname, '..', 'data', 'basketball');
+const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'hoops');
+const DIR = REPO_DIR;   // se conserva por compatibilidad con lo que ya lo importaba
+const rdIn = (dir, f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } };
+// lee del repo y, si existe, deja que el disco pise: el overlay es más nuevo por construcción
+const rd = (f) => rdIn(DISK_DIR, f) || rdIn(REPO_DIR, f);
+const listar = (dir, pref) => { try { return fs.readdirSync(dir).filter((f) => f.startsWith(pref)); } catch { return []; } };
 const G = global._hoops = global._hoops || {};
 
 // liga → { games[], teams{}, players{}, fit, at }
@@ -24,9 +36,16 @@ function load(league, { season = null, force = false } = {}) {
   if (C && !force && Date.now() - C.at < 30 * 60e3) return C;
   const yr = season || (new Date().getUTCFullYear());
   // se aceptan varias temporadas en disco: se usan todas para el histórico y la más nueva manda en el rating
-  const files = (() => { try { return fs.readdirSync(DIR).filter(f => f.startsWith(`games-${league}-`)); } catch { return []; } })();
-  let games = [];
-  for (const f of files) { const st = rd(f); if (st && st.games) games = games.concat(Object.values(st.games)); }
+  // los partidos se juntan por ID en un mapa: primero el repo, después el disco, que pisa. Así un partido
+  // recosechado (marcador corregido, tramos añadidos) sustituye al viejo en vez de duplicarse.
+  const porId = new Map();
+  for (const dir of [REPO_DIR, DISK_DIR]) {
+    for (const f of listar(dir, `games-${league}-`)) {
+      const st = rdIn(dir, f);
+      for (const [k, g] of Object.entries((st && st.games) || {})) if (g) porId.set(String(g.id != null ? g.id : k), g);
+    }
+  }
+  const games = [...porId.values()];
   const teams = {}; const tl = rd(`teams-${league}.json`); for (const t of ((tl && tl.teams) || [])) teams[t.id] = t;
   const players = {}; const pl = rd(`players-${league}.json`); for (const p of ((pl && pl.players) || [])) players[p.id] = p;
   const byTeam = {}; for (const p of Object.values(players)) (byTeam[p.team_id] = byTeam[p.team_id] || []).push(p);

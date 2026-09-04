@@ -9,7 +9,15 @@ cada 30 min, fusionados al pool de rating), tenis (cola diaria a la base propia)
 (PandaScore, vlr.gg, bo3.gg y Leaguepedia, con cursor al día), F1 (`refreshSeason` cada 6 h; el GP de Países
 Bajos del 23-ago ya está dentro) y fútbol americano CFL/NCAAF (`refreshResults` cada 6 h del feed oficial).
 
-**NO se actualizan solos — son artefactos del repo que alguien tiene que recosechar a mano:**
+**ARREGLADO el 4-sep** (`db9dc07`): baloncesto y NFL ya usan el mismo patrón que F1 y college — base del
+repo + **overlay en el disco persistente**, con trabajo diario que recosecha (`hoopsHarvestJob`,
+`nflHarvestJob`) y re-ajusta el artefacto del modelo en la misma pasada. Apagables con `GP_HOOPS_HARVEST` y
+`GP_NFL_HARVEST`. Humo: `scripts/smoke/overlay-smoke.js` (16 en verde).
+**Vigilar la primera semana:** que `days.hoops_day` y `days.nfl_harvest_day` avancen a diario en
+`/api/internal/ops`, y que las carpetas `hoops/` y `nfl-agg/` del disco crezcan. Con la NFL sacando el 9-sep,
+la comprobación que importa es que en la semana 1 el rating incorpore los partidos jugados.
+
+**El diagnóstico original, para memoria — eran artefactos del repo que alguien recosechaba a mano:**
 - 🔴 **BALONCESTO.** `basketball-engine/store.js` lee `data/basketball/games-<liga>-<año>.json` **del repo**;
   nada lo escribe en caliente y `/data/hoops` está vacío. La NBA está completa (hasta el 14-jun, temporada
   cerrada) pero la **WNBA se queda en el 15-ago: le faltan ~3 semanas y está en playoffs**. Impacto acotado

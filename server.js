@@ -221,15 +221,48 @@ let saveTimer = null;
 // sistema de archivos es atómico, así que db.json solo puede existir en dos estados —el de antes o el de
 // después—, nunca a medias. Antes se escribía directo sobre el archivo bueno: un SIGKILL de deploy en mitad
 // de la escritura lo dejaba truncado, el arranque siguiente no podía parsearlo y la base salía vacía.
+// ESPACIO EN DISCO, PORQUE LA ESCRITURA ATÓMICA NECESITA EL DOBLE (4-sep-2026, medido en producción).
+// El disco de 1 GB se llenó y `db.json` dejó de guardarse: `[save] error ... ENOSPC` cada pocos minutos
+// durante veinte, con el proceso vivo y aceptando altas que solo existían en memoria. Escribir en un
+// temporal y renombrar exige tener sitio para DOS copias del archivo a la vez, así que un disco al 99 %
+// convierte un guardado apretado en un guardado imposible. La atomicidad no se negocia —es lo que impide
+// dejar el archivo a medias—, así que en vez de renunciar a ella se hace sitio: se borra la copia diaria
+// más antigua y se reintenta. Una copia de hace dos semanas vale mucho menos que poder guardar hoy.
+let OPS_DISCO_LLENO = 0;   // última vez que un guardado se quedó sin disco (lo publica /api/internal/ops)
+function liberarEspacio() {
+  const dir = path.join(path.dirname(DB_FILE), 'backups');
+  // primero los directorios de almacenes (son los más gordos), luego las copias de db.json
+  for (const sub of ['almacenes', null]) {
+    const base = sub ? path.join(dir, sub) : dir;
+    let ents = [];
+    try { ents = fs.readdirSync(base).filter((f) => (sub ? /^\d{4}-\d{2}-\d{2}$/ : /^db-\d{4}-\d{2}-\d{2}\.json$/).test(f)).sort(); } catch { continue; }
+    if (ents.length <= 2) continue;             // nunca bajar de dos copias: quedarse sin red no es liberar
+    const victima = path.join(base, ents[0]);
+    try {
+      fs.rmSync(victima, { recursive: true, force: true });
+      console.error('[save] disco lleno — borrada la copia más antigua:', ents[0]);
+      return ents[0];
+    } catch { /* probar el siguiente grupo */ }
+  }
+  return null;
+}
 function flushDb() {
   saveTimer = null;
   const tmp = DB_FILE + '.tmp';
-  try {
-    fs.writeFileSync(tmp, JSON.stringify(db, null, 1));
-    fs.renameSync(tmp, DB_FILE);
-  } catch (e) {
-    console.error('[save] error al escribir db.json:', e.message);
+  const intentar = () => { fs.writeFileSync(tmp, JSON.stringify(db, null, 1)); fs.renameSync(tmp, DB_FILE); };
+  try { intentar(); return; }
+  catch (e) {
     try { fs.unlinkSync(tmp); } catch { /* puede no existir */ }
+    if (e.code !== 'ENOSPC') { console.error('[save] error al escribir db.json:', e.message); return; }
+    // sin sitio: hacer hueco y reintentar. Si tampoco así, se grita — pero no se escribe a medias jamás.
+    const libre = liberarEspacio();
+    if (libre) {
+      try { intentar(); console.error('[save] db.json guardado tras liberar', libre); return; }
+      catch (e2) { try { fs.unlinkSync(tmp); } catch { /* */ } e = e2; }
+    }
+    console.error('[save] ¡ALERTA! db.json NO se pudo guardar por falta de espacio:', e.message,
+      '— la base vive solo en memoria hasta que haya sitio');
+    OPS_DISCO_LLENO = Date.now();
   }
 }
 function save() {
@@ -20335,6 +20368,37 @@ const server = http.createServer(async (req, res) => {
             techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice() }; })(),
         running: Object.keys(OPS.running).filter(k => OPS.running[k]),
         days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
+        // ESPACIO EN DISCO (4-sep). El disco se llenó y `db.json` dejó de guardarse veinte minutos sin que
+        // nada lo dijera desde fuera: el proceso seguía sirviendo y aceptando altas que solo existían en
+        // memoria. Un dato que solo aparece cuando ya es tarde no es un dato. Aquí está siempre, con lo que
+        // ocupa cada cosa, para poder ver que se acerca en vez de descubrirlo cuando revienta.
+        disco: (() => {
+          const base = path.dirname(DB_FILE);
+          const out = { ruta: base };
+          try {
+            const st = fs.statfsSync(base);
+            const tot = st.blocks * st.bsize, libre = st.bavail * st.bsize;
+            out.total_mb = Math.round(tot / 1048576);
+            out.libre_mb = Math.round(libre / 1048576);
+            out.usado_pct = tot ? +(100 * (1 - libre / tot)).toFixed(1) : null;
+          } catch (e) { out.error = e.message; }
+          try { out.db_json_mb = +(fs.statSync(DB_FILE).size / 1048576).toFixed(1); } catch { /* aún no existe */ }
+          // lo que ocupa cada subdirectorio del disco, que es donde se ve quién crece
+          const du = (d) => { let n = 0; try { for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+            const p2 = path.join(d, f.name);
+            n += f.isDirectory() ? du(p2) : (() => { try { return fs.statSync(p2).size; } catch { return 0; } })();
+          } } catch { /* sin permiso o no existe */ } return n; };
+          out.por_carpeta = {};
+          try {
+            for (const f of fs.readdirSync(base, { withFileTypes: true })) {
+              if (!f.isDirectory()) continue;
+              out.por_carpeta[f.name] = +(du(path.join(base, f.name)) / 1048576).toFixed(1);
+            }
+          } catch { /* */ }
+          // ¿se ha quedado algún guardado sin sitio? La cifra que de verdad importa.
+          out.guardado_sin_sitio_at = OPS_DISCO_LLENO ? new Date(OPS_DISCO_LLENO).toISOString() : null;
+          return out;
+        })(),
         // ORIGEN DE LA BASE (4-sep): de dónde salió db en este arranque y cuántos usuarios tiene. Sin esto,
         // "¿arrancó con la base buena?" solo se podía responder esperando al correo diario del CSV.
         db_origen: { ...dbOrigen, usuarios_ahora: Object.keys(db.users || {}).length },

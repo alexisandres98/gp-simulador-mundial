@@ -160,13 +160,51 @@ const enElAire = () => load().bets.filter((b) => b.status === 'EN_ACEPTACION');
 const expuesto = () => +[...abiertas(), ...enElAire()]
   .reduce((a, b) => a + (b.stake || b.stake_comprometido || 0), 0).toFixed(2);
 
+// ── VENTANA DE SAQUE: hasta cuándo se puede apostar (4-sep-2026, orden de Alexis) ───────────────────────
+// "No quiero que se coloque ninguna apuesta para partidos que sean después de las 8am hora UTC del lunes 7."
+// Es un corte de EXPOSICIÓN, no de calidad: da igual lo buena que sea la señal, si el partido empieza
+// después de ese instante no se apuesta.
+//
+// SE BLOQUEA TAMBIÉN SIN SAQUE CONOCIDO, y es deliberado: si no se sabe cuándo empieza el partido, no se
+// puede afirmar que cae dentro de la ventana, y una orden de no exponerse se cumple con el silencio, no con
+// una suposición optimista. Comprobado antes de decidirlo para no romper nada: de las 216 filas del libro y
+// las 576 del sombra, CERO carecen de `kickoff_at`, así que este bloqueo no deja fuera nada legítimo.
+//
+// Se controla con `GP_REAL_KICKOFF_MAX` (fecha ISO). Sin la variable NO hay ventana y todo sigue como antes:
+// levantar el corte es borrarla, no tocar código.
+function ventanaMax() {
+  const v = String(process.env.GP_REAL_KICKOFF_MAX || '').trim();
+  if (!v) return null;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? t : null;
+}
+// null = se puede apostar. Objeto = fuera de ventana, con el porqué.
+function fueraDeVentana(kickoff) {
+  const max = ventanaMax();
+  if (max == null) return null;                       // sin ventana configurada no se frena nada
+  const t = Date.parse(kickoff || '');
+  if (!Number.isFinite(t)) return { motivo: 'saque_desconocido', limite: new Date(max).toISOString(), saque: kickoff || null };
+  if (t > max) return { motivo: 'saque_posterior', limite: new Date(max).toISOString(), saque: new Date(t).toISOString() };
+  return null;
+}
+
 // ── los frenos, en orden de gravedad ─────────────────────────────────────────────────────────────────────
 // Devuelve null si se puede apostar, o el motivo por el que no. El orden importa: primero lo que apaga todo,
 // después lo que solo bloquea esta apuesta.
-function frenos(stake) {
+// `kickoff` llega desde la fila y NO es opcional en la práctica: es lo que hace que la ventana de saque sea
+// imposible de esquivar — los dos caminos que mueven dinero (tarjetas por `colocar`, CS2 por el brazo
+// automático) pasan por aquí, así que el corte vive en un solo sitio.
+function frenos(stake, kickoff) {
   const C = CFG(), L = load();
   if (!C.enabled) return { freno: 'apagado', detalle: 'GP_REAL_ENABLED no está encendido' };
   if (!process.env.CLOUDBET_API_KEY) return { freno: 'sin_api_key' };
+  const fv = fueraDeVentana(kickoff);
+  if (fv) {
+    return { freno: 'fuera_de_ventana',
+      detalle: fv.motivo === 'saque_desconocido'
+        ? `sin saque conocido y hay ventana hasta ${fv.limite}: no se apuesta a ciegas`
+        : `el partido empieza ${fv.saque} y la ventana acaba ${fv.limite}` };
+  }
   const d = dia(hoy());
   const tope = C.dayStopPct * (L.nocional || C.nocional);
   if (d.pnl <= -tope) return { freno: 'parada_diaria', detalle: `${d.pnl.toFixed(2)} en el día, tope ${(-tope).toFixed(2)}` };
@@ -227,7 +265,9 @@ async function refrescarSaldo() {
 // llena, el reenviador vuelve, el precio se recupera. Lo único definitivo es que el modelo no le vea valor
 // —eso no cambia— y que se acabe el tiempo.
 const REINTENTOS_MAX = 80;                 // freno de bucle, no de política: 80 barridos son ~13 horas
-const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro']);
+// `fuera_de_ventana` es DEFINITIVO: el tiempo solo va hacia adelante, así que un partido que ya cae
+// fuera del corte no va a volver a entrar. Reintentarlo 80 veces sería ruido con dinero al lado.
+const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro', 'fuera_de_ventana']);
 
 function filaNueva(sb, pick) {
   return {
@@ -359,7 +399,7 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0 } = {}) {
   fila.stake = stake;
   if (stakeFijo > 0) fila.stake_fijado = +stakeFijo;
 
-  const f = frenos(stake);
+  const f = frenos(stake, fila.kickoff_at);
   if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
 
   // 2) el id del partido en la casa
@@ -804,6 +844,10 @@ async function liquidar(resultados = {}) {
 function crearManualCs2(sb, { stake = null } = {}) {
   if (stake == null) stake = CS2_STAKE_TOPE(); // la regla plana de $5 también al nacer la fila
   if (!sb || sb.segment !== 'cs2_rounds_v1' || sb.book !== CASA) return null;
+  // la ventana de saque también aquí: esta fila no la coloca la API, pero genera el correo que le pide a
+  // Alexis colocarla a mano. Una orden de no exponerse después del corte no distingue por quién aprieta el
+  // botón, así que la fila no llega a nacer.
+  if (fueraDeVentana(sb.kickoff_at)) return null;
   const L = load();
   if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro
   const mapa = (m => (m ? +m[1] : null))(String(sb.pick_id).match(/_(\d)$/));
@@ -942,7 +986,7 @@ async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
     // auditado se envía de verdad por el brazo. Pasa por los MISMOS frenos de cartera que tarjetas.
     if (AUTO) {
       const L = load();
-      const f = frenos(stake);
+      const f = frenos(stake, fila.kickoff_at);
       if (f) { fila.ensayo_motivo = 'freno:' + f.freno; save(); return fila; }
       const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', fila.ensayo_payload);
       fila.intentos = (fila.intentos || 0) + 1;
@@ -1020,6 +1064,8 @@ function board({ limit = 40 } = {}) {
     config: {
       encendido: C.enabled, ensayo: C.dry, moneda: C.currency,
       perimetro: { segmento: SEGMENTO, familia: FAMILIA, lado: LADO, casa: CASA },
+      // el corte de saque, visible: un freno que no se ve en el panel es un freno del que nadie se acuerda
+      ventana_saque: (() => { const m = ventanaMax(); return m == null ? null : new Date(m).toISOString(); })(),
       nocional_inicial: L.nocional_inicial, nocional_vivo: L.nocional,
       stake_tope_pct: +(C.stakePct * 100).toFixed(2), stake_max: C.stakeMax, stake_min: C.stakeMin,
       stake_plano: C.stakeFlat > 0 ? C.stakeFlat : null, stake_cs2: CS2_STAKE_TOPE(),

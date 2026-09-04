@@ -1,5 +1,16 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⏱️ VENTANA DE SAQUE DEL EJECUTOR (activa desde el 4-sep, orden de Alexis)
+`GP_REAL_KICKOFF_MAX=2026-09-07T08:00:00Z` — **ninguna apuesta para un partido que empiece después del
+lunes 7 a las 08:00 UTC**. Corte de exposición, no de calidad: da igual lo buena que sea la señal.
+Cubre los tres caminos que mueven dinero (tarjetas por `colocar`, CS2 por el brazo automático, y el canal
+manual de CS2, cuya fila ni siquiera nace). Bloquea también si el saque es desconocido: sin fecha no se
+puede afirmar que cae dentro. Se ve en `/api/internal/real` → `config.ventana_saque`.
+**Para levantarlo: borrar la variable en Render y desplegar.** No hay que tocar código.
+Auditoría: `node real-executor/auditoria-ventana.js` (16 en verde, incluido el borde exacto de las 08:00).
+**Ojo:** quedó UNA apuesta ya colocada antes de la orden que cae fuera —Udinese vs Lazio, 7-sep 18:45 UTC,
+40 USDT—. El dinero ya está comprometido en la casa; decidir con Alexis si se deja correr.
+
 ## 🔴 FUGA DE MEMORIA EN LA INGESTA DE POLYMARKET (abierta)
 **3 muertes por memoria en 36 h** (3-sep 07:09, 3-sep 20:59, 4-sep 18:11; límite del contenedor 4 GiB), más
 4 salidas tempranas el 3-sep. La curva del 4-sep: heap de **714 MB a 3.382 MB en tres minutos**, con el

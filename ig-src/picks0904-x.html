@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1200px; height:675px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:#07090c; color:#EDF2F4; position:relative; overflow:hidden;
+  font-variant-numeric:tabular-nums; }
+.glow-g { position:absolute; top:-220px; left:-180px; width:660px; height:660px; border-radius:50%;
+  background:radial-gradient(circle,rgba(31,227,164,.17),transparent 62%); }
+.glow-b { position:absolute; bottom:-260px; right:-180px; width:720px; height:720px; border-radius:50%;
+  background:radial-gradient(circle,rgba(90,140,255,.11),transparent 62%); }
+.wrap { position:relative; padding:40px 54px 34px; height:100%; }
+.top { display:flex; align-items:center; gap:13px; margin-bottom:18px; }
+.badge { width:40px; height:40px; border-radius:12px; background:rgba(31,227,164,.14); border:1px solid rgba(31,227,164,.42);
+  display:flex; align-items:center; justify-content:center; font-size:20px; }
+.bname { font-size:23px; font-weight:800; letter-spacing:-.4px; }
+.new { margin-left:auto; font-size:13.5px; font-weight:800; letter-spacing:.13em; color:#1FE3A4;
+  border:1px solid rgba(31,227,164,.5); padding:8px 16px; border-radius:99px; background:rgba(31,227,164,.1); }
+h1 { font-size:43px; line-height:1.02; font-weight:800; letter-spacing:-1.6px; margin-bottom:5px; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:16px; color:#7E9198; font-weight:600; margin-bottom:20px; }
+.card { background:linear-gradient(165deg,#10171c,#0b1013); border:1px solid rgba(255,255,255,.09);
+  border-radius:17px; padding:19px 22px 19px 26px; margin-bottom:13px; position:relative; overflow:hidden;
+  display:flex; align-items:center; gap:22px; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:6px; background:#1FE3A4; }
+.card.c2::before { background:#34D6C8; }
+.card.c3::before { background:#5A8CFF; }
+.who { width:330px; flex:none; }
+.who b { font-size:21px; display:block; letter-spacing:-.4px; line-height:1.15; margin-bottom:3px; }
+.who span { font-size:13.5px; color:#7E9198; font-weight:700; display:block; }
+.why { font-size:13px; color:#61757C; font-weight:600; margin-top:5px; }
+.bet { width:250px; flex:none; }
+.bet .fam { font-size:11.5px; font-weight:800; letter-spacing:.12em; color:#1FE3A4; text-transform:uppercase; margin-bottom:4px; }
+.card.c2 .bet .fam { color:#34D6C8; } .card.c3 .bet .fam { color:#5A8CFF; }
+.bet .sel { font-size:19px; font-weight:800; letter-spacing:-.3px; line-height:1.15; }
+.mid { flex:1; }
+.bar { height:9px; border-radius:99px; overflow:hidden; display:flex; margin-bottom:7px; background:rgba(255,255,255,.09); }
+.bar .l { background:#1FE3A4; } .card.c2 .bar .l { background:#34D6C8; } .card.c3 .bar .l { background:#5A8CFF; }
+.nums { display:flex; justify-content:space-between; align-items:baseline; font-size:16px; font-weight:800; }
+.nums .lP { color:#1FE3A4; } .card.c2 .nums .lP { color:#34D6C8; } .card.c3 .nums .lP { color:#5A8CFF; }
+.nums small { color:#61757C; font-weight:700; margin-left:8px; font-size:13.5px; }
+.nums .bk { color:#61757C; font-weight:700; font-size:12.5px; letter-spacing:.06em; }
+.odds { flex:none; background:#1FE3A4; color:#06231A; font-size:20px; font-weight:800; padding:11px 19px; border-radius:99px; }
+.card.c2 .odds { background:#34D6C8; } .card.c3 .odds { background:#5A8CFF; color:#04122E; }
+.foot { position:absolute; left:54px; right:54px; top:586px; display:flex; align-items:center; justify-content:space-between; }
+.free { font-size:16.5px; font-weight:800; color:#1FE3A4; }
+.free span { color:#7E9198; font-weight:600; margin-left:10px; font-size:14px; }
+.cta { font-size:18px; font-weight:800; color:#06231A; background:#1FE3A4; padding:12px 24px; border-radius:99px; }
+.disc { position:absolute; top:646px; left:54px; font-size:11.5px; color:#4A5B61; font-weight:600; }
+</style></head>
+<body>
+  <div class="glow-g"></div><div class="glow-b"></div>
+  <div class="wrap">
+    <div class="top"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="new">VIERNES 4 DE SEPTIEMBRE</div></div>
+    <h1>3 picks para hoy. <span class="g">Las tres a 1.50.</span></h1>
+    <div class="sub">Serie A · Premier League · Brasileirão Série B — publicadas antes del saque</div>
+
+    <div class="card">
+      <div class="who"><b>Genoa vs Como</b><span>Serie A · 1:45 PM COL</span><div class="why">14 puntos sobre el mercado, la mayor de hoy.</div></div>
+      <div class="bet"><div class="fam">Tarjetas</div><div class="sel">Menos de 5.5</div></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:80%"></div></div>
+        <div class="nums"><span class="lP">GP 80%<small>mercado 66%</small></span><span class="bk">4 CASAS</span></div>
+      </div>
+      <div class="odds">@1.50</div>
+    </div>
+
+    <div class="card c2">
+      <div class="who"><b>Ipswich vs Liverpool</b><span>Premier League · 2:00 PM COL</span><div class="why">La línea con más consenso del día: seis casas.</div></div>
+      <div class="bet"><div class="fam">Córners</div><div class="sel">Más de 8.5</div></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:68%"></div></div>
+        <div class="nums"><span class="lP">GP 68%<small>mercado 64%</small></span><span class="bk">6 CASAS</span></div>
+      </div>
+      <div class="odds">@1.50</div>
+    </div>
+
+    <div class="card c3">
+      <div class="who"><b>Criciúma vs Cuiabá</b><span>Brasileirão Série B · 5:30 PM COL</span><div class="why">11 puntos sobre el consenso de dos casas.</div></div>
+      <div class="bet"><div class="fam">Córners</div><div class="sel">Menos de 11.5</div></div>
+      <div class="mid">
+        <div class="bar"><div class="l" style="width:73%"></div></div>
+        <div class="nums"><span class="lP">GP 73%<small>mercado 62%</small></span><span class="bk">2 CASAS</span></div>
+      </div>
+      <div class="odds">@1.50</div>
+    </div>
+
+    <div class="foot">
+      <div class="free">GRATIS 7 DÍAS<span>cada pick se liquida en público, gane o pierda</span></div>
+      <div class="cta">gpsimulador.com →</div>
+    </div>
+    <div class="disc">Estimaciones de un modelo estadístico — no es consejo financiero. 18+.</div>
+  </div>
+</body></html>

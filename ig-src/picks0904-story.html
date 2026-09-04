@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { width:1080px; height:1920px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  background:linear-gradient(165deg,#06090B 0%,#0B1714 48%,#0A5C3C 132%); color:#EAF1F2;
+  padding:140px 70px 140px; position:relative; font-variant-numeric:tabular-nums; }
+.brand { display:flex; align-items:center; gap:14px; margin-bottom:38px; }
+.badge { width:52px; height:52px; border-radius:15px; background:rgba(31,227,164,.16);
+  display:flex; align-items:center; justify-content:center; font-size:29px; border:1px solid rgba(31,227,164,.42); }
+.bname { font-size:30px; font-weight:800; color:#fff; }
+.tag { margin-left:auto; background:rgba(31,227,164,.16); border:1px solid rgba(31,227,164,.5); color:#1FE3A4;
+  font-weight:800; font-size:19px; padding:10px 20px; border-radius:99px; letter-spacing:1.2px; }
+h1 { font-size:74px; font-weight:800; letter-spacing:-2.4px; color:#fff; line-height:1.02; margin-bottom:10px; }
+h1 .g { color:#1FE3A4; }
+.sub { font-size:25px; color:#93A7AD; font-weight:600; margin-bottom:52px; }
+.pick { background:linear-gradient(160deg,#111A1E,#0D1417); border:1px solid rgba(255,255,255,.10);
+  border-radius:24px; padding:36px 40px; position:relative; overflow:hidden; margin-bottom:26px; }
+.pick::before { content:''; position:absolute; left:0; top:0; bottom:0; width:8px; background:#1FE3A4; }
+.pick.c2::before { background:#34D6C8; } .pick.c3::before { background:#5A8CFF; }
+.fam { font-size:21px; font-weight:800; letter-spacing:1.3px; color:#1FE3A4; text-transform:uppercase; }
+.pick.c2 .fam { color:#34D6C8; } .pick.c3 .fam { color:#5A8CFF; }
+.note { font-size:23px; font-weight:600; color:#93A7AD; margin:7px 0 15px; }
+.bet { font-size:50px; font-weight:800; letter-spacing:-1.2px; color:#fff; margin-bottom:20px; line-height:1.05; }
+.bar { height:13px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.09); margin-bottom:12px; }
+.bar .l { height:100%; background:#1FE3A4; }
+.pick.c2 .bar .l { background:#34D6C8; } .pick.c3 .bar .l { background:#5A8CFF; }
+.row { display:flex; align-items:flex-end; justify-content:space-between; }
+.gp { font-size:26px; font-weight:800; color:#1FE3A4; }
+.pick.c2 .gp { color:#34D6C8; } .pick.c3 .gp { color:#5A8CFF; }
+.gp small { color:#7E9198; font-weight:700; margin-left:10px; font-size:21px; }
+.odds { text-align:right; }
+.odds .ol { font-size:17px; font-weight:700; letter-spacing:1px; color:#5F747B; text-transform:uppercase; }
+.odds .ov { font-size:52px; font-weight:800; color:#1FE3A4; letter-spacing:-1px; line-height:1; }
+.pick.c2 .odds .ov { color:#34D6C8; } .pick.c3 .odds .ov { color:#5A8CFF; }
+.trans { background:rgba(31,227,164,.07); border:1px solid rgba(31,227,164,.35); border-radius:24px;
+  padding:32px 40px; position:relative; }
+.trans .fam { color:#1FE3A4; }
+.trans p { font-size:25px; line-height:1.45; color:#93A7AD; font-weight:600; margin-top:10px; }
+.foot { position:absolute; bottom:74px; left:70px; right:70px; display:flex; align-items:center; justify-content:space-between; }
+.cta { background:#1FE3A4; color:#06231A; font-size:28px; font-weight:800; padding:20px 38px; border-radius:99px; }
+.foot .small { font-size:20px; color:#93A7AD; font-weight:600; max-width:470px; }
+</style></head>
+<body>
+  <div class="brand"><div class="badge">⚽</div><div class="bname">GP Simulador</div><div class="tag">● HOY</div></div>
+  <h1>3 picks para hoy.<br><span class="g">Las tres a 1.50.</span></h1>
+  <div class="sub">4 de septiembre · publicadas antes del saque</div>
+
+  <div class="pick">
+    <div class="fam">Tarjetas · Serie A</div>
+    <div class="note">Genoa vs Como · 1:45 PM COL · consenso de 4 casas</div>
+    <div class="bet">Menos de 5.5 tarjetas</div>
+    <div class="bar"><div class="l" style="width:80%"></div></div>
+    <div class="row"><div class="gp">GP 80%<small>mercado 66%</small></div>
+      <div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.50</div></div></div>
+  </div>
+
+  <div class="pick c2">
+    <div class="fam">Córners · Premier League</div>
+    <div class="note">Ipswich vs Liverpool · 2:00 PM COL · consenso de 6 casas</div>
+    <div class="bet">Más de 8.5 córners</div>
+    <div class="bar"><div class="l" style="width:68%"></div></div>
+    <div class="row"><div class="gp">GP 68%<small>mercado 64%</small></div>
+      <div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.50</div></div></div>
+  </div>
+
+  <div class="pick c3">
+    <div class="fam">Córners · Brasileirão Série B</div>
+    <div class="note">Criciúma vs Cuiabá · 5:30 PM COL · consenso de 2 casas</div>
+    <div class="bet">Menos de 11.5 córners</div>
+    <div class="bar"><div class="l" style="width:73%"></div></div>
+    <div class="row"><div class="gp">GP 73%<small>mercado 62%</small></div>
+      <div class="odds"><div class="ol">Mejor cuota</div><div class="ov">1.50</div></div></div>
+  </div>
+
+  <div class="trans">
+    <div class="fam">Transparencia</div>
+    <p>Cada pick queda publicada ANTES del partido y se liquida en público — ganemos o perdamos, el récord completo está en la web.</p>
+  </div>
+
+  <div class="foot">
+    <div class="small">Estimaciones de un modelo estadístico — no es consejo financiero. 18+.</div>
+    <div class="cta">gpsimulador.com</div>
+  </div>
+</body></html>

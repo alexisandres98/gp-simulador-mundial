@@ -21,7 +21,17 @@
 - **Email:** Resend Pro (50k/mes) desde `codigo@gpsimulador.com`; fallback relay Google Apps Script. Vars: `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `MAIL_WEBHOOK_URL`, `MAIL_WEBHOOK_TOKEN`. Alertas: código de login + resultado final + **inicio de partido + gol** (equipos seguidos). Email masivo de novedades: `/api/admin/broadcast`.
 - **Telegram (activo):** `telegram.js` publica al canal **@gpsimulador**. Vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL=@gpsimulador`. Auto-publica resumen diario + oportunidades fuertes + resultados finales (dedup en `db.sentTg`).
 - **Cache-busting:** el server inyecta `?v=<mtime>` a `app.js`/`style.css` en `index.html` → cada deploy fuerza recarga del código en todos los navegadores (no más versiones viejas en desktop).
-- **Contenido redes:** HTML en `ig-src/` → render a PNG con **Chrome headless** (renderizar de a UNO; el 2º en un script se cuelga) → servidos en `gpsimulador.com/ig/*.png`.
+- **Contenido redes:** HTML en `ig-src/` → render a PNG con **Chrome headless** (renderizar de a UNO; el 2º en un
+  script se cuelga) → servidos en `gpsimulador.com/ig/*.png`. **El viewport real es ~85-100 px MÁS BAJO que el
+  `--window-size`** y todo lo que cae por debajo sale sin pintar (el pie salía en negro): renderizar con la
+  ventana más alta y recortar con `scripts/png-crop.js`. Receta:
+  ```bash
+  CH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
+  $CH --headless --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,790 \
+      --screenshot=/tmp/r.png ig-src/<pieza>.html          # X 1200x675 → ventana 790
+  node scripts/png-crop.js /tmp/r.png 675 public/ig/<pieza>.png
+  # story 1080x1920 → --window-size=1080,2020 y recortar a 1920
+  ```
 - **🔑 PENDIENTE:** rotar la API key de API-Football (quedó expuesta en chat) y actualizar `API_FOOTBALL_KEY` en Render.
 - **LLM (tres proveedores):** `llm.js` es la única puerta, con **cadena de reserva**: chat = Anthropic →
   Gemini → Groq; redactores = Gemini → Groq → Anthropic; extractor = Groq → Gemini → Anthropic. Vars:

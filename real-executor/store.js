@@ -86,24 +86,22 @@ function blank() {
   };
 }
 let _L = null;
+// Lectura/escritura a prueba de pérdida (4-sep-2026). Esto es el libro de DINERO REAL: si una lectura falla
+// y se guarda un libro en blanco encima, el ejecutor pierde la pista de las apuestas abiertas. `jsonstore`
+// distingue "no existe" de "no se pudo leer" y bloquea la escritura en el segundo caso. Ver lib/jsonstore.js.
+const JS = require('../lib/jsonstore');
+const LEDGER_F = path.basename(LEDGER);
+const LEDGER_DIR = path.dirname(LEDGER);
 function load() {
   if (_L) return _L;
-  try { _L = JSON.parse(fs.readFileSync(LEDGER, 'utf8')); } catch { _L = blank(); }
+  _L = JS.readJson(LEDGER_DIR, LEDGER_F, 'real') || blank();
   if (!_L || !Array.isArray(_L.bets)) _L = blank();
   _L.dias = _L.dias || {}; _L.avisos = _L.avisos || {}; _L.saldo = _L.saldo || { amount: null, at: null };
   return _L;
 }
 // ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
 // archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
-function save() {
-  const tmp = LEDGER + '.tmp';
-  try { fs.writeFileSync(tmp, JSON.stringify(load())); fs.renameSync(tmp, LEDGER); return true; }
-  catch (e) {
-    console.error('[real] no se pudo guardar el libro:', e.message);
-    try { fs.unlinkSync(tmp); } catch { /* puede no existir */ }
-    return false;
-  }
-}
+function save() { return JS.writeJson(LEDGER_DIR, LEDGER_F, load(), 'real'); }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const dia = (d) => { const L = load(); L.dias[d] = L.dias[d] || { pnl: 0, apostado: 0, n: 0 }; return L.dias[d]; };

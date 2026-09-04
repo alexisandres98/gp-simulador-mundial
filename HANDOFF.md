@@ -13,6 +13,14 @@ Informe completo: **`docs/INCIDENTE_2026-09-04_DB_VACIA.md`**. Resumen:
 - **No afectó** a la sombra, al ejecutor real, a las bases de los deportes ni a los CSV de usuarios por
   correo: viven en archivos propios del disco persistente. **No salió ni un correo** a usuarios porque
   `db.users` también estaba vacío — con la base sana habrían sido decenas de correos a 982 personas.
+- **SEGUNDA PÉRDIDA, distinta y encontrada después:** el **track del monitor de esports** de CS2, LoL y
+  Valorant (207 / 77 / 14 liquidadas el 21-ago → **0**). Dota 2 intacto (142) y todos los demás deportes
+  crecieron con normalidad. Otro mecanismo: `rd()` se tragaba cualquier error de lectura y devolvía null, el
+  llamador entendía "no hay nada" y el siguiente guardado escribía un almacén VACÍO encima del bueno.
+  Ocurrió **antes de las 05:20 de hoy**, o sea antes de los despliegues de la mañana. **No hay vuelta atrás**:
+  `/data/esports` no entra en la copia diaria. **Lo que NO se perdió es el edge**: la sombra sigue entera
+  (554 apuestas, 287 de `cs2_rounds_v1`, 368 liquidadas, desde el 14-ago) y el ejecutor real también (213).
+  Arreglado con `lib/jsonstore.js` (humo: `scripts/smoke/jsonstore-smoke.js`, 25 en verde).
 - **Arreglado (a348fb6 y siguiente):** escritura atómica (tmp + rename) en `db.json` **y en los siete
   almacenes que aún no la tenían** (ejecutor real, sombra, Polymarket, esports, props, NFL, amfoot);
   arranque que se autorrepara desde la copia diaria más reciente con usuarios y lo grita en el log,

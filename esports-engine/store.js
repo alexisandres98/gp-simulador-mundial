@@ -87,10 +87,14 @@ const DIR = (() => {
   try { fs.mkdirSync(DISK_DIR, { recursive: true }); return DISK_DIR; } catch { return REPO_DIR; }
 })();
 const ensureDir = () => { try { fs.mkdirSync(DIR, { recursive: true }); } catch {} };
-const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
-// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
-// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
-const wr = (f, o) => { try { ensureDir(); const t = path.join(DIR, '.' + f + '.tmp'); fs.writeFileSync(t, JSON.stringify(o)); fs.renameSync(t, path.join(DIR, f)); return true; } catch { return false; } };
+// LECTURA Y ESCRITURA A PRUEBA DE PÉRDIDA (4-sep-2026). Antes, `rd` se tragaba CUALQUIER error y devolvía
+// null; el llamador entendía "no hay nada" y el siguiente `wr` escribía un almacén VACÍO encima del bueno.
+// Así desapareció el track de CS2, LoL y Valorant (207/77/14 liquidadas el 21-ago → cero el 4-sep) mientras
+// Dota 2 sobrevivía. Ahora "no existe" y "no se pudo leer" son cosas distintas y la escritura es atómica.
+// El porqué completo está en lib/jsonstore.js.
+const JS = require('../lib/jsonstore');
+const rd = (f) => JS.readJson(DIR, f, 'esports');
+const wr = (f, o) => { ensureDir(); return JS.writeJson(DIR, f, o, 'esports'); };
 
 const G = global._esports = global._esports || { slate: {}, markets: {}, ratings: {} };
 const SLATE_TTL = 10 * 60e3;

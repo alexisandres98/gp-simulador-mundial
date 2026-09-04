@@ -43,10 +43,11 @@ const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirna
 const REPO_DIR = path.join(__dirname, '..', 'data', 'esports');
 const DIR = (() => { try { fs.mkdirSync(DISK_DIR, { recursive: true }); return DISK_DIR; } catch { return REPO_DIR; } })();
 const FILE = 'props-cs2.json';
-const rd = () => { try { return JSON.parse(fs.readFileSync(path.join(DIR, FILE), 'utf8')); } catch { return { picks: {} }; } };
-// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
-// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
-const wr = (o) => { try { fs.mkdirSync(DIR, { recursive: true }); const t = path.join(DIR, '.' + FILE + '.tmp'); fs.writeFileSync(t, JSON.stringify(o)); fs.renameSync(t, path.join(DIR, FILE)); return true; } catch { return false; } };
+// Lectura/escritura a prueba de pérdida: ver lib/jsonstore.js (una lectura fallida NUNCA se guarda como
+// almacén vacío, y la escritura es atómica).
+const JS = require('../lib/jsonstore');
+const rd = () => JS.readJson(DIR, FILE, 'props') || { picks: {} };
+const wr = (o) => JS.writeJson(DIR, FILE, o, 'props');
 
 const G = global._esprops = global._esprops || { board: null, at: 0 };
 const BOARD_TTL = 10 * 60e3;

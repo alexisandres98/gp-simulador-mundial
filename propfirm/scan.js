@@ -32,10 +32,12 @@ const LIQ_MIN = () => +(process.env.GP_PROPFIRM_MIN_LIQ || 500);
 const RIESGO_USD = () => +(process.env.GP_PROPFIRM_RIESGO_USD || 100);
 const MAX_SHARES_EVENTO = 568;                    // regla del Elite 10K, leída del dashboard
 
-function rd() { try { return JSON.parse(fs.readFileSync(F, 'utf8')); } catch { return { senales: {}, at: null }; } }
-// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
-// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
-function wr(st) { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(F + '.tmp', JSON.stringify(st)); fs.renameSync(F + '.tmp', F); }
+// Lectura/escritura a prueba de pérdida (4-sep-2026): una lectura FALLIDA no puede guardarse como
+// almacén vacío encima del bueno, que es como desapareció el track de esports. Ver lib/jsonstore.js.
+const JS = require('../lib/jsonstore');
+const FNAME = 'senales.json';
+function rd() { return JS.readJson(DIR, FNAME, 'propfirm') || { senales: {}, at: null }; }
+function wr(st) { return JS.writeJson(DIR, FNAME, st, 'propfirm'); }
 
 const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 // tokens con los que un nombre de equipo se reconoce en un título ajeno ("G2" / "Aurora Gaming" / "paiN")

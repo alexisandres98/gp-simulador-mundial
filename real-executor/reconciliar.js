@@ -202,7 +202,19 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   // algo que antes fue apuesta del sombra dentro de su perímetro; meter las 3.600 picks del feed multiplica
   // por veinte las preguntas a la casa para buscar donde por construcción no puede haber nada, y encima
   // hace saltar el tope y truncar justo lo que sí importa. `pickIds` solo se usa si no vino el sombra.
-  const universo = sombra.length ? sombra.map((s) => s.pick_id) : pickIds;
+  // Y DENTRO DEL PERÍMETRO. El ejecutor solo apuesta su segmento (familia, lado y casa fijos): una pick de
+  // otra familia no puede estar en la casa a nombre nuestro, y preguntarlo son cientos de peticiones para
+  // mirar donde por construcción no hay nada. Con la casa limitando peticiones, ese gasto no es neutro:
+  // desplaza a las preguntas que sí importan y las deja sin respuesta.
+  const enPerimetro = (sb) => {
+    if (!sb) return true;                                    // sin datos no se descarta
+    if (sb.segment && sb.segment !== S.SEGMENTO) return false;
+    if (sb.family && String(sb.family).toUpperCase() !== S.FAMILIA) return false;
+    if (sb.side && String(sb.side).toLowerCase() !== S.LADO) return false;
+    if (sb.book && String(sb.book).toLowerCase() !== S.CASA) return false;
+    return true;
+  };
+  const universo = sombra.length ? sombra.filter(enPerimetro).map((s) => s.pick_id) : pickIds;
   const candidatas = [...new Set(universo)]
     .filter((pid) => pid && !enElLibro.has(pid))
     .filter((pid) => {
@@ -251,12 +263,24 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
     });
   }
 
+  // "CUADRA" ES UNA AFIRMACIÓN, NO UNA AUSENCIA DE HALLAZGOS. Si la casa contestó a una de cada veinte
+  // preguntas, no encontrar nada no significa que no haya nada: significa que no se miró. Una pasada así
+  // devolviendo `cuadra: true` sería un semáforo en verde para encender el ejecutor sin haber comprobado
+  // nada, que es justo la decisión que esto tiene que impedir. Por debajo del 80% de respuesta, `cuadra`
+  // vale null y se dice por qué.
+  const tasa = q.preguntadas ? q.contestadas / q.preguntadas : 1;
+  const concluyente = tasa >= 0.8;
+  const limpio = huerfanas.length === 0 && fantasmas.length === 0 && descuadres.length === 0;
   return {
     ok: true, modo: 'referencias',
-    casa: { preguntadas: q.preguntadas, contestadas: q.contestadas, fallos: q.fallos, truncado: q.truncado },
+    casa: { preguntadas: q.preguntadas, contestadas: q.contestadas, fallos: q.fallos, truncado: q.truncado,
+      tasa_respuesta: +(100 * tasa).toFixed(1) + '%', dudosas: q.dudosas || [] },
     libro: { filas: filas.length, colocadas: filas.filter((f) => f.status === 'PLACED').length },
     huerfanas, fantasmas, descuadres, desconocidas: [], sin_respuesta,
-    cuadra: huerfanas.length === 0 && fantasmas.length === 0 && descuadres.length === 0,
+    cuadra: concluyente ? limpio : null,
+    concluyente,
+    por_que_no_concluyente: concluyente ? null
+      : `la casa solo contestó ${q.contestadas} de ${q.preguntadas} preguntas (${(100 * tasa).toFixed(1)}%): no encontrar nada aquí no prueba nada`,
     aviso_fantasmas: sin_respuesta.length ? `${sin_respuesta.length} filas se quedaron sin respuesta de la casa: no son concluyentes` : null,
     nota_desconocidas: 'este modo pregunta solo por NUESTRAS referencias: no puede ver apuestas ajenas (las colocadas por la web)',
     sombra_disponible: porPick.size,
@@ -360,6 +384,11 @@ async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100
     ? await comparar({ pickIds, sombra, limit, maxPaginas })
     : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia });
   if (!cmp.ok) return cmp;
+  // no se toca el libro con una comparación que no vio lo suficiente
+  if (aplicar && cmp.concluyente === false) {
+    return { ...cmp, aplicado: false, insertadas: 0,
+      why: 'no se aplica nada: la comparación no fue concluyente — ' + cmp.por_que_no_concluyente };
+  }
   const porPick = new Map(sombra.filter((s) => s.pick_id).map((s) => [s.pick_id, s]));
 
   const nuevas = cmp.huerfanas.map((h) => {

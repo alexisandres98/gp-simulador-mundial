@@ -231,7 +231,21 @@ LIBRO_CASA = [
   const rep2 = await R.reparar({ pickIds: [...pickIds, 'cdp_nueva_perdida'], sombra: sombra2, aplicar: true });
   t('y sigue siendo idempotente', rep2.insertadas === 0 && S.load().bets.length === antes + 1);
 
-  console.log('\n── 12. LOS TRES DESENLACES DE UNA LECTURA (el contrato que faltaba) ─');
+  console.log('\n── 12. UNA PASADA CIEGA NO PUEDE DECIR "CUADRA" ────────────────────');
+  // si la casa apenas contesta, no encontrar nada significa que no se miró. Devolver `cuadra: true` ahí
+  // sería un semáforo en verde para encender el ejecutor sin haber comprobado nada.
+  const todasLasRefs = new Set();
+  for (const b of S.load().bets) { if (b.ref_id) todasLasRefs.add(b.ref_id); for (let e = 0; e <= 2; e++) todasLasRefs.add(S.refIdDe(b.pick_id, e)); }
+  REFS_QUE_FALLAN = new Set([...todasLasRefs].slice(0, Math.floor(todasLasRefs.size * 0.95)));
+  const ciega = await R.compararPorReferencia({ pickIds, sombra, pausaMs: 0 });
+  t('con la casa fallando, cuadra NO es true', ciega.cuadra !== true, ciega.cuadra);
+  t('lo marca como no concluyente y explica', ciega.concluyente === false && !!ciega.por_que_no_concluyente, ciega.por_que_no_concluyente);
+  const nAntes = S.load().bets.length;
+  const noAplica = await R.reparar({ pickIds, sombra, aplicar: true, pausaMs: 0 });
+  t('y reparar se niega a tocar el libro', noAplica.insertadas === 0 && S.load().bets.length === nAntes, noAplica.why);
+  REFS_QUE_FALLAN = new Set();
+
+  console.log('\n── 13. LOS TRES DESENLACES DE UNA LECTURA (el contrato que faltaba) ─');
   // esto es lo que confundía `betByReference`: devolvía null para "no la tengo" Y para "no pude preguntar".
   POR_REFERENCIA = { 'ref-existe': { referenceId: 'ref-existe', stake: 40, price: 1.7, betStatus: 'ACCEPTED' } };
   REFS_QUE_FALLAN = new Set(['ref-falla']);

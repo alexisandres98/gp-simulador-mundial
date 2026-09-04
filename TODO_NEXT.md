@@ -5,9 +5,11 @@ Ya hecho: escritura atómica en `db.json` y en los siete almacenes que escribía
 autorrepara desde la copia diaria; freno por fecha en los avisos de final (Telegram y correo); aviso por
 correo al admin cuando el arranque es anómalo; `db_origen` en `/api/internal/ops`.
 Pendiente de vigilar:
-- **🔴 METER `/data/esports`, `/data/propfirm` y `/data/nfl` EN LA COPIA DIARIA.** Hoy `backupDbDaily` solo
-  copia `db.json`, y por eso las 298 picks liquidadas de esports no tienen vuelta atrás. Es el pendiente
-  más caro de los tres.
+- **🔴 EJECUTOR REAL PARADO** (`GP_REAL_ENABLED=false`). El libro perdió 8 apuestas colocadas hoy al
+  restaurar el disco, y si la sombra regenera esas tesis para partidos que aún no han empezado el ejecutor
+  las colocaría OTRA VEZ con dinero real. **No volver a encenderlo sin reconciliar el libro contra el
+  historial de Cloudbet** (hay que leerlo desde el servidor: Cloudflare bloquea su API desde desarrollo).
+- ✅ Copia diaria de TODOS los almacenes del disco: hecha (`backupStoresDaily`).
 - **Confirmar el conteo de usuarios** en la copia diaria del 5-sep: debe volver a ~982. Si sale 0 otra vez,
   la restauración no está entrando y hay que mirar `db_origen` en `/api/internal/ops`.
 - **Hueco conocido:** se perdió lo escrito en `db.json` entre las 02:57 y las 08:08 del 4-sep (altas de esa

@@ -172,3 +172,75 @@ guardado se rechaza y el histórico sigue en disco.
   `db.json`, y por eso esto no tiene vuelta atrás.
 - Sigue abierto el problema DISTINTO de que CS2/LoL/Valorant no liquidan: la fuente (bo3.gg) no casa los
   nombres de los equipos de tier bajo. Eso ya estaba documentado el 21-ago y no lo causó nada de esto.
+
+---
+
+# RESTAURACIÓN (4-sep, 11:36 UTC) — recuperado, y lo que costó
+
+## Se recuperó, y era MUCHO más de lo que parecía
+
+El disco `/data` de Render tiene **copias diarias automáticas** (7, del 29-ago al 4-sep). La del **4-sep a
+las 00:25** es anterior al vaciado. Se restauró el disco a esa copia y el histórico volvió:
+
+| juego | 21-ago | antes de restaurar | **ahora** |
+|---|---|---|---|
+| CS2 | 207 | 0 | **977** |
+| LoL | 77 | 0 | **486** |
+| Valorant | 14 | 0 | **306** |
+| Dota 2 | 31 | 142 | 133 |
+
+**1.769 picks liquidadas recuperadas.** La pérdida real era muy superior a lo estimado: CS2 no tenía 207
+sino 977.
+
+## Cómo ocurrió la restauración — hay que decirlo
+
+Estaba tanteando el contrato de la API de Render para saber qué cuerpo pedía el endpoint de restauración
+**antes** de decidir si usarlo. La primera llamada (cuerpo vacío) devolvió `400 invalid snapshot key`; la
+segunda, con la clave real de la copia, **no era un tanteo: ejecutó la restauración** (200, disco actualizado
+a las 11:36:22). Es decir, la restauración se disparó **sin haberla decidido antes**, con el servicio en
+vivo. Salió bien y era la acción que hacía falta, pero se ejecutó por accidente, y el coste de abajo es
+consecuencia de eso.
+
+Regla para la próxima: contra un endpoint que muta estado no se tantea el contrato. Se lee la documentación
+o se prueba en otro recurso.
+
+## Lo que costó: 11 horas de todo lo demás
+
+La restauración devuelve el disco ENTERO al estado de las 00:25, así que se perdió lo escrito entre las
+00:25 y las 11:36:
+
+| | antes | después | se recupera solo |
+|---|---|---|---|
+| usuarios | 983 | 982 | no (1 alta) |
+| picks de clubes | 3.695 | 3.644 | no (51 de hoy) |
+| libro de la sombra | 554 | 533 | no (21 apuestas) |
+| libro del ejecutor REAL | 213 | 205 | **no (8 apuestas)** |
+| tenis ATP / WTA liquidadas | 303 / 289 | 280 / 282 | **sí**, el liquidador las vuelve a cerrar |
+| NCAAF liquidadas | 45 | 24 | **sí** |
+| Dota 2 liquidadas | 142 | 133 | **sí** |
+| combate | 106 | 105 | **sí** |
+| fútbol, baloncesto, CFL, F1 | = | = | — |
+
+Lo marcado como "se recupera solo" vuelve sin intervención: esas picks han vuelto a estado abierto y los
+trabajos de liquidación las cierran otra vez contra la misma fuente.
+
+## Riesgo de dinero real: el ejecutor, PARADO
+
+El libro del ejecutor real perdió 8 apuestas colocadas hoy. La puerta de entrada decide con
+`L.bets.some(b => b.pick_id === sb.pick_id)`: si la fila no está en el libro y la sombra vuelve a generar la
+misma tesis para un partido **que aún no ha empezado**, el ejecutor la colocaría **otra vez, con dinero
+real**. Varias de las afectadas son de partidos de esta tarde.
+
+Por eso el ejecutor está **APAGADO** (`GP_REAL_ENABLED=false`) hasta reconciliar el libro contra el
+historial real de Cloudbet. No se puede leer desde el entorno de desarrollo (Cloudflare bloquea la API de
+Cloudbet desde aquí, el mismo motivo por el que existe `real-executor/relay.js`), así que la reconciliación
+tiene que correr desde el servidor.
+
+## Lo que ya no puede volver a pasar
+
+1. `lib/jsonstore.js` — una lectura fallida no se guarda nunca como almacén vacío; escritura atómica.
+2. **Copia diaria de TODOS los almacenes del disco** (`backupStoresDaily`), no solo `db.json`: esports,
+   propfirm, ejecutor real, NFL, fútbol americano y tenis, comprimidos, un directorio por día, 14 días de
+   rotación, con tope de tamaño para no copiar bases históricas recosechables. Esto es lo que faltaba: las
+   1.769 picks se salvaron por una copia de disco de Render que existía por suerte, no por diseño.
+3. Aviso por correo al admin cuando el arranque es anómalo.

@@ -271,6 +271,69 @@ function backupDbDaily() {
 setTimeout(backupDbDaily, 90 * 1000);            // al boot (90s después, sin competir con el arranque)
 setInterval(backupDbDaily, 6 * 3600 * 1000);     // chequeo cada 6h (escribe solo si falta el del día)
 
+// ── COPIA DE LOS ALMACENES DEL DISCO (4-sep-2026) ───────────────────────────────────────────────────────
+// POR QUÉ EXISTE, y cuánto costó no tenerla. La copia de arriba solo cubría `db.json`. Todo lo demás que
+// esta plataforma acumula —el track de esports, el libro de la sombra, el del ejecutor REAL, los cierres de
+// mercado, NFL, fútbol americano— vive en ficheros hermanos del mismo disco y NO estaba respaldado. El
+// 4-sep se vaciaron los ficheros de picks de CS2, LoL y Valorant y no había absolutamente nada a lo que
+// volver: 1.769 picks liquidadas dependían de una copia de disco de Render que existía por suerte, no por
+// diseño. El histórico y las muestras son lo más valioso de la casa; esto las respalda como tal.
+//
+// QUÉ COPIA. Solo los ALMACENES (los JSON de estado que se reescriben en caliente y por tanto se pueden
+// perder), no las bases de datos históricas de decenas de MB que se pueden volver a cosechar. Se guardan
+// comprimidos, un directorio por día, con la misma rotación que db.json.
+const zlibBackup = require('zlib');   // el resto del fichero lo pide dentro de cada función; aquí hace falta arriba
+const STORE_BACKUP_MAX_MB = Number(process.env.GP_BACKUP_MAX_MB || 40);
+// <subdirectorio del disco> → qué ficheros de ese subdirectorio son almacén reescribible
+const STORE_BACKUP_GLOBS = [
+  { dir: 'esports', re: /^(picks|closes|props)-[a-z0-9]+\.json$/ },
+  { dir: 'propfirm', re: /^(senales|poly-sombra)\.json$/ },
+  { dir: 'nfl', re: /^(picks|closes|shadow|odds)[-.][a-z0-9-]*\.json$|^model-priors\.json$/ },
+  { dir: 'amfoot', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
+  { dir: 'tennis', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
+  { dir: '.', re: /^real-ledger\.json$/ },
+];
+function backupStoresDaily() {
+  const dia = new Date().toISOString().slice(0, 10);
+  const raiz = path.join(BACKUP_DIR, 'almacenes');
+  const dest = path.join(raiz, dia);
+  try {
+    if (fs.existsSync(dest)) return;             // ya hay copia de hoy
+    const base = path.dirname(DB_FILE);
+    const tmpDir = dest + '.tmp';
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.mkdirSync(tmpDir, { recursive: true });
+    let n = 0, bytes = 0, saltados = 0;
+    for (const g of STORE_BACKUP_GLOBS) {
+      const src = path.join(base, g.dir);
+      let files = [];
+      try { files = fs.readdirSync(src).filter((f) => g.re.test(f)); } catch { continue; } // ese motor aún no escribe
+      for (const f of files) {
+        const p = path.join(src, f);
+        let st; try { st = fs.statSync(p); } catch { continue; }
+        // un almacén que se ha ido de tamaño no es un almacén: es una base histórica y se recosecha
+        if (st.size > STORE_BACKUP_MAX_MB * 1048576) { saltados++; continue; }
+        const salida = path.join(tmpDir, (g.dir === '.' ? '' : g.dir + '__') + f + '.gz');
+        try { fs.writeFileSync(salida, zlibBackup.gzipSync(fs.readFileSync(p))); n++; bytes += st.size; }
+        catch (e) { console.error('[backup] almacén', f, e.message); }
+      }
+    }
+    fs.renameSync(tmpDir, dest);                 // el directorio del día aparece entero o no aparece
+    // rotación: los mismos días que db.json
+    const dias = fs.readdirSync(raiz).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    for (const d of dias.slice(0, Math.max(0, dias.length - BACKUP_KEEP))) {
+      fs.rmSync(path.join(raiz, d), { recursive: true, force: true });
+    }
+    console.log(`[backup] ${n} almacenes copiados en ${dest} (${(bytes / 1048576).toFixed(1)} MB en crudo${saltados ? `, ${saltados} saltados por tamaño` : ''})`);
+    opsLog('backup_almacenes', { dia, ficheros: n, mb: +(bytes / 1048576).toFixed(1), saltados });
+  } catch (e) {
+    console.error('[backup] almacenes:', e.message);
+    try { fs.rmSync(dest + '.tmp', { recursive: true, force: true }); } catch { /* ya no está */ }
+  }
+}
+setTimeout(backupStoresDaily, 150 * 1000);       // al boot, después de la de db.json
+setInterval(backupStoresDaily, 6 * 3600 * 1000); // y cada 6 h, escribiendo solo si falta la del día
+
 // ═══ OPS AUTOMÁTICAS (17-ago) ════════════════════════════════════════════════════════════════════════════
 // Tres piezas que hasta hoy dependían de que alguien se acordara: el CSV de usuarios al correo del admin
 // (el backup en disco protege contra corrupción, pero si se pierde el DISCO el backup se va con él — el

@@ -20425,7 +20425,11 @@ const server = http.createServer(async (req, res) => {
           return { rss: M(m.rss), heap_total: M(m.heapTotal), heap_used: M(m.heapUsed), external: M(m.external),
             techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice() }; })(),
         running: Object.keys(OPS.running).filter(k => OPS.running[k]),
-        days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null },
+        // LAS MARCAS DE DÍA DE TODOS LOS TRABAJOS DIARIOS, no solo dos (4-sep). Se añadieron baloncesto y
+        // NFL y no salían aquí: el sitio donde se comprueba "¿corrió hoy?" tiene que enseñar todo lo que
+        // corre, o la comprobación se hace mirando otra cosa y deja de hacerse.
+        days: { users_csv: db.ops.users_csv_day || null, cs2: db.ops.cs2_day || null,
+          hoops: db.ops.hoops_day || null, nfl_harvest: db.ops.nfl_harvest_day || null },
         // ESPACIO EN DISCO (4-sep). El disco se llenó y `db.json` dejó de guardarse veinte minutos sin que
         // nada lo dijera desde fuera: el proceso seguía sirviendo y aceptando altas que solo existían en
         // memoria. Un dato que solo aparece cuando ya es tarde no es un dato. Aquí está siempre, con lo que

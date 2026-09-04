@@ -237,7 +237,7 @@ function aggregate() {
   }));
   const sizes = ['games.json', 'team-weeks.json', 'meta.json']
     .map((f) => `${f} ${(fs.statSync(path.join(AGG_DIR, f)).size / 1024).toFixed(0)} KB`).join(' · ');
-  log(`▸ agregados escritos en data/nfl/: ${sizes}`);
+  log(`▸ agregados escritos en ${AGG_DIR}: ${sizes}`);
 }
 
 (async () => {

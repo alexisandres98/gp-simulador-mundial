@@ -1,5 +1,25 @@
 # HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
 
+## 🚨 INCIDENTE 4-sep — db.json roto, base vacía y avalancha en Telegram (RESUELTO)
+Informe completo: **`docs/INCIDENTE_2026-09-04_DB_VACIA.md`**. Resumen:
+- **Síntoma:** a las 08:08 UTC el canal @gpsimulador publicó 40 mensajes "⚽ FINAL" del Mundial (torneo
+  terminado el 19 de julio). Los 40 mensajes (id 470-509) se **borraron del canal**; el último legítimo es
+  el 469 del 3-sep.
+- **Avería real:** la base arrancó VACÍA. `flushDb` escribía `db.json` con un `writeFileSync` **no atómico**
+  encima del archivo bueno; el `SIGKILL` de un deploy en mitad de la escritura lo dejó truncado, el
+  `JSON.parse` del arranque falló y el `catch` se lo tragó en silencio. Sin `sentTg`, el sync de ESPN
+  —que reingiere el torneo entero a propósito— vio 104 finales "nuevos" y los publicó. Prueba: la copia
+  diaria de usuarios pasó de **982 a las 03:00** a **0 a las 08:11**.
+- **No afectó** a la sombra, al ejecutor real, a las bases de los deportes ni a los CSV de usuarios por
+  correo: viven en archivos propios del disco persistente. **No salió ni un correo** a usuarios porque
+  `db.users` también estaba vacío — con la base sana habrían sido decenas de correos a 982 personas.
+- **Arreglado (a348fb6 y siguiente):** escritura atómica (tmp + rename) en `db.json` **y en los siete
+  almacenes que aún no la tenían** (ejecutor real, sombra, Polymarket, esports, props, NFL, amfoot);
+  arranque que se autorrepara desde la copia diaria más reciente con usuarios y lo grita en el log,
+  conservando además los usuarios del archivo roto; **freno por fecha** (`avisoDentroDeVentana`,
+  `GP_AVISO_FINAL_DIAS`=3) que impide avisar de un partido jugado hace días **por Telegram y por correo**,
+  exista o no su marca de dedup. `/api/internal/ops` publica `db_origen`.
+
 ## 🧩 SEGUNDA TANDA (3-sep) — punto 2 de la lista de pendientes, Polymarket arreglado, CS2 analizado
 Informes en `docs/impl/{ui,elo-odds,corners-ref,combat-mkt}-REPORT.md`; humos en `scripts/smoke/`.
 - **Interfaz:** la ficha y el simulador de tenis pintan `what_matters`/`adjustments` (edad, calendario, método de

@@ -88,7 +88,9 @@ const DIR = (() => {
 })();
 const ensureDir = () => { try { fs.mkdirSync(DIR, { recursive: true }); } catch {} };
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8')); } catch { return null; } };
-const wr = (f, o) => { try { ensureDir(); fs.writeFileSync(path.join(DIR, f), JSON.stringify(o)); return true; } catch { return false; } };
+// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
+// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
+const wr = (f, o) => { try { ensureDir(); const t = path.join(DIR, '.' + f + '.tmp'); fs.writeFileSync(t, JSON.stringify(o)); fs.renameSync(t, path.join(DIR, f)); return true; } catch { return false; } };
 
 const G = global._esports = global._esports || { slate: {}, markets: {}, ratings: {} };
 const SLATE_TTL = 10 * 60e3;

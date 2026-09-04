@@ -31,7 +31,9 @@ const REPO_DIR = path.join(__dirname, '..', 'data', 'amfoot');
 const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'amfoot');
 const ensure = () => { try { fs.mkdirSync(DISK_DIR, { recursive: true }); } catch { } };
 const rdD = (f) => { try { return JSON.parse(fs.readFileSync(path.join(DISK_DIR, f), 'utf8')); } catch { return null; } };
-const wrD = (f, o) => { try { ensure(); fs.writeFileSync(path.join(DISK_DIR, f), JSON.stringify(o)); return true; } catch { return false; } };
+// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
+// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
+const wrD = (f, o) => { try { ensure(); const t = path.join(DISK_DIR, '.' + f + '.tmp'); fs.writeFileSync(t, JSON.stringify(o)); fs.renameSync(t, path.join(DISK_DIR, f)); return true; } catch { return false; } };
 const rdR = (f) => { try { return JSON.parse(fs.readFileSync(path.join(REPO_DIR, f), 'utf8')); } catch { return null; } };
 
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);

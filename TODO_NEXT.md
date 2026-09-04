@@ -1,5 +1,17 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🚨 TRAS EL INCIDENTE DEL 4-sep (`docs/INCIDENTE_2026-09-04_DB_VACIA.md`)
+Ya hecho: escritura atómica en `db.json` y en los siete almacenes que escribían directo; arranque que se
+autorrepara desde la copia diaria; freno por fecha en los avisos de final (Telegram y correo); aviso por
+correo al admin cuando el arranque es anómalo; `db_origen` en `/api/internal/ops`.
+Pendiente de vigilar:
+- **Confirmar el conteo de usuarios** en la copia diaria del 5-sep: debe volver a ~982. Si sale 0 otra vez,
+  la restauración no está entrando y hay que mirar `db_origen` en `/api/internal/ops`.
+- **Hueco conocido:** se perdió lo escrito en `db.json` entre las 02:57 y las 08:08 del 4-sep (altas de esa
+  franja e historial de simulación). No es recuperable: la copia diaria es de las 02:57.
+- **La copia diaria se toma una vez al día.** Con la escritura atómica el riesgo baja mucho, pero una copia
+  cada 6 h dejaría una ventana de pérdida mucho más corta. Decidir si vale la pena.
+
 ## ⚡ TRAS LA SEGUNDA TANDA (3-sep) — ver HANDOFF §🧩
 - **DECISIÓN DE ALEXIS (3-sep):** NO tocar el rating con cuotas (sigue en sombra, `GP_CLUB_ELO_SOURCE` sin
   poner) ni la sombra de Polymarket (sigue acumulando con el liquidador arreglado). Se decide con muestra.

@@ -385,6 +385,30 @@ async function emailUsersCsvDaily() {
   } catch (e) { opsLog('users_csv', { error: e.message }); }
 }
 setTimeout(emailUsersCsvDaily, 4 * 60e3);
+
+// AVISO DE ARRANQUE ANÓMALO (4-sep). Una restauración silenciosa es casi tan mala como una pérdida
+// silenciosa: la plataforma sigue en pie y nadie se entera de que el archivo estaba roto. Si el arranque
+// tuvo que reparar algo, o si arrancó en vacío, el admin recibe un correo con lo que pasó. Solo se manda
+// cuando hay algo que contar; en un arranque normal esta función no hace nada.
+async function avisarArranqueAnomalo() {
+  try {
+    if (!dbOrigen.restaurado && !dbOrigen.error && dbOrigen.usuarios > 0) return;
+    const admin = String(process.env.ADMIN_EMAILS || '').split(',')[0].trim();
+    const mailer = require('./mailer');
+    if (!admin || !mailer.isConfigured()) return;
+    const q = dbOrigen.restaurado
+      ? `db.json ${dbOrigen.error ? 'estaba ILEGIBLE' : 'estaba legible pero SIN USUARIOS'} y la base se restauró desde backups/${dbOrigen.restaurado}.`
+      : `db.json arrancó SIN USUARIOS y no había copia utilizable.`;
+    const det = [q,
+      dbOrigen.error ? `Error de lectura: ${dbOrigen.error}` : null,
+      `Usuarios ahora: ${dbOrigen.usuarios}.`,
+      dbOrigen.sumados ? `Usuarios conservados del archivo roto: ${dbOrigen.sumados}.` : null,
+      `Estado completo: /api/internal/ops (campo db_origen).`].filter(Boolean).join('\n');
+    await mailer.sendMail({ to: admin, noListUnsub: true, subject: '⚠️ GP: arranque anómalo de la base', text: det });
+    opsLog('db_origen_aviso', { restaurado: dbOrigen.restaurado, usuarios: dbOrigen.usuarios });
+  } catch (e) { opsLog('db_origen_aviso', { error: e.message }); }
+}
+setTimeout(avisarArranqueAnomalo, 3 * 60e3);
 setInterval(emailUsersCsvDaily, 6 * 3600e3);
 
 // ── CS2: cosecha incremental + foto de plantillas, diaria. ───────────────────────────────────────────────

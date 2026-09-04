@@ -57,7 +57,9 @@ function rd() {
   try { return JSON.parse(fs.readFileSync(F, 'utf8')); }
   catch { return { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: null }; }
 }
-function wr(st) { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(F, JSON.stringify(st)); }
+// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
+// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
+function wr(st) { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(F + '.tmp', JSON.stringify(st)); fs.renameSync(F + '.tmp', F); }
 function senales() { try { return JSON.parse(fs.readFileSync(SENALES, 'utf8')).senales || {}; } catch { return {}; } }
 const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 

@@ -93,9 +93,16 @@ function load() {
   _L.dias = _L.dias || {}; _L.avisos = _L.avisos || {}; _L.saldo = _L.saldo || { amount: null, at: null };
   return _L;
 }
+// ESCRITURA ATÓMICA (4-sep-2026): temporal + rename. Escribir directo encima del archivo bueno deja el
+// archivo truncado si el proceso muere a mitad —así se perdió db.json entero en el deploy de esa mañana—.
 function save() {
-  try { fs.writeFileSync(LEDGER, JSON.stringify(load())); return true; }
-  catch (e) { console.error('[real] no se pudo guardar el libro:', e.message); return false; }
+  const tmp = LEDGER + '.tmp';
+  try { fs.writeFileSync(tmp, JSON.stringify(load())); fs.renameSync(tmp, LEDGER); return true; }
+  catch (e) {
+    console.error('[real] no se pudo guardar el libro:', e.message);
+    try { fs.unlinkSync(tmp); } catch { /* puede no existir */ }
+    return false;
+  }
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);

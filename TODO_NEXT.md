@@ -12,14 +12,20 @@ Las automáticas no cambian: la casa sigue mandando. Auditoría: `node real-exec
 **Sigue abierto:** 9 manuales de CS2 del 26-31 ago cuya apuesta de la sombra sigue OPEN (la liquidación de
 esports no las cerró) y 13 automáticas de CS2 que la casa aún no marca liquidadas — mirar el lunes.
 
-## 📊 LO QUE EL EJECUTOR APUESTA vs LO QUE VE EL USUARIO (analizado 5-sep, decisión pendiente de Alexis)
-La sombra y el ejecutor toman **toda** CARDS under ACTIVA del motor; la plataforma solo muestra
-`published && regime !== 'monitor'`. Cards-under solo publica en ligas intermedias/blandas (`SEGMENT_BANDS`),
-así que **todo lo que el ejecutor apuesta en Premier/Championship/Bundesliga/Serie A/Ligue 1/MLS es
-`monitor`**: nadie lo ve y el modelo ahí no bate al precio (sombra: 47 liquidadas en eficientes, ROI +0,4 %;
-publicadas +55,8 %; monitor −6,7 %). Ver el desglose completo en el hilo del 5-sep. Opciones: (a) restringir
-sombra+ejecutor a publicadas (cambia la muestra congelada → hacerlo como segmento NUEVO), (b) al menos vetar
-la banda eficiente en el ejecutor real, (c) dejar y documentar. **No tocar antes de que Alexis decida.**
+## 🚫 EJECUTOR REAL: VETADA LA BANDA EFICIENTE (5-sep, orden de Alexis tras la revisión del rendimiento)
+La sombra y el ejecutor tomaban **toda** CARDS under ACTIVA del motor; la plataforma solo muestra
+`published && regime !== 'monitor'`, y cards-under solo publica en intermedias/blandas (`SEGMENT_BANDS`).
+Resultado: todo lo apostado en Premier/Championship/Bundesliga/Serie A/Ligue 1/MLS era `monitor` — nadie lo
+veía y el modelo ahí no bate al precio (sombra: 47 liquidadas en eficientes, 57 % acierto vs 54 % break-even,
+ROI +0,4 %; publicadas +55,8 %; monitor −6,7 %). El 63 % del dinero real vivo (1.040 de 1.640 USDT) estaba ahí.
+**Desde el 5-sep el dinero real no entra en banda eficiente.** `colocar()` lo corta antes de stake, frenos o
+cualquier petición a la casa (`motivo: banda_eficiente`, DESCARTADA); la banda viaja con la fila y la
+calcula el motor (`leagueEfficiency`), también en los reintentos de filas anteriores y en `run=recuperar`.
+**La sombra NO cambia**: su regla congelada sigue midiendo todas las bandas para la revisión del domingo.
+Las 26 apuestas reales ya colocadas en eficientes se dejan correr (no se pueden cancelar en la casa).
+Variable `GP_REAL_BANDAS_VETADAS` (por defecto `eficiente`; vacía = sin veto). Panel: `config.bandas_vetadas`.
+Auditoría: `node real-executor/auditoria-banda.js`. Las 2-3 líneas sobre el mismo partido **se dejan** (decisión
+de Alexis, 5-sep).
 
 ## ⏱️ VENTANA DE SAQUE DEL EJECUTOR — **MEDIDA TEMPORAL**, hay que quitarla (4-sep, orden de Alexis)
 > **Esto no es política permanente.** Alexis lo dijo explícitamente: *"Esta medida es temporal, luego la

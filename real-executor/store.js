@@ -271,12 +271,32 @@ async function refrescarSaldo() {
 const REINTENTOS_MAX = 80;                 // freno de bucle, no de política: 80 barridos son ~13 horas
 // `fuera_de_ventana` es DEFINITIVO: el tiempo solo va hacia adelante, así que un partido que ya cae
 // fuera del corte no va a volver a entrar. Reintentarlo 80 veces sería ruido con dinero al lado.
-const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro', 'fuera_de_ventana']);
+// `banda_eficiente` también es DEFINITIVO: la banda de una liga no cambia entre dos barridos.
+const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro', 'fuera_de_ventana', 'banda_eficiente']);
 
-function filaNueva(sb, pick) {
+// ── EL VETO A LAS LIGAS EFICIENTES (5-sep, orden de Alexis tras la revisión del rendimiento) ────────────
+// El edge de tarjetas-under está en las ligas intermedias y blandas, y el motor ya lo sabe: en las
+// eficientes (Premier, Championship, Bundesliga, Serie A, Ligue 1, MLS…) la pick nace en régimen `monitor`
+// y NADIE la ve. La sombra las toma igual porque su regla congelada mide TODO, y el ejecutor real colgaba
+// de la sombra sin distinguir. Medido el 5-sep: 47 liquidadas de papel en eficientes, 57 % de acierto con
+// 54 % de break-even, ROI +0,4 % — ruido, no edge —, mientras que 26 de las 41 apuestas reales vivas (1.040
+// de 1.640 USDT) estaban justo ahí. Desde hoy el dinero real no entra en la banda eficiente. La sombra NO
+// cambia: sigue midiendo todas las bandas para la revisión de la regla; esto es un perímetro del dinero.
+// La banda la calcula el motor (leagueEfficiency, con el prior por liga y la medición por Brier) y llega
+// desde el llamador: este módulo no tiene la base y no debe adivinarla. Sin banda conocida NO se veta —
+// las filas de CS2 no tienen liga— y se anota tal cual.
+// `GP_REAL_BANDAS_VETADAS` (por defecto 'eficiente'; vacío = sin veto) permite ajustar sin tocar código.
+function bandasVetadas() {
+  const v = process.env.GP_REAL_BANDAS_VETADAS;
+  const txt = v == null ? 'eficiente' : String(v);
+  return new Set(txt.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+const bandaVetada = (banda) => !!banda && bandasVetadas().has(String(banda).toLowerCase());
+
+function filaNueva(sb, pick, banda = null) {
   return {
     ref_id: refIdDe(sb.pick_id, 0), envios: 0, pick_id: sb.pick_id, shadow_id: sb.id || null,
-    match: sb.match, league: sb.league, line: sb.line, side: LADO,
+    match: sb.match, league: sb.league, banda: banda || null, line: sb.line, side: LADO,
     kickoff_at: sb.kickoff_at || null,
     ceid: (pick && pick.event && pick.event.canonical_event_id) || null,
     odds_sombra: sb.odds, model_prob: sb.model_prob,
@@ -361,7 +381,7 @@ function resolverDiag(fila, slate) {
 }
 
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
-async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0 } = {}) {
+async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } = {}) {
   const C = CFG(), L = load();
   // cinturón además del filtro de reintentar: una fila de otra familia (CS2 manual) apostaría al mercado
   // de tarjetas del partido equivocado. Jamás pasa de aquí.
@@ -369,6 +389,9 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0 } = {}) {
   fila.intentos = (fila.intentos || 0) + 1;
   fila.ultimo_intento_at = new Date().toISOString();
   fila.dry = C.dry;
+  // la banda de la liga viaja con la fila; si el llamador la trae fresca, manda la fresca (la medición
+  // por Brier puede mover una liga de banda entre dos barridos, y el veto tiene que ver la actual).
+  if (banda) fila.banda = banda;
 
   // se para porque no da tiempo, no porque el intento fallara: la distinción importa para el informe.
   const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
@@ -380,6 +403,12 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0 } = {}) {
     fila.status = DEFINITIVOS.has(motivo) ? 'DESCARTADA' : 'PENDIENTE';
     save(); return fila;
   };
+
+  // 0) EL VETO A LA BANDA EFICIENTE va antes que nada: ni stake, ni frenos, ni una sola petición a la casa.
+  //    Es un corte de PERÍMETRO, no de calidad de la señal — da igual la cuota o la ventaja que traiga.
+  if (bandaVetada(fila.banda)) {
+    return parar('banda_eficiente', { detalle: `${fila.league || 'liga desconocida'} está en banda ${fila.banda}: el dinero real no entra ahí (orden 5-sep)` });
+  }
 
   // 1) LA VENTAJA: SE MIDE, PERO NO SE FILTRA (25-ago, decisión de Alexis).
   //    Este ejecutor rechazaba las señales cuyo `prob × cuota ≤ 1` —el modelo diciendo que a ese precio
@@ -591,7 +620,9 @@ async function confirmar() {
 }
 
 // LA PUERTA DE ENTRADA: una señal nueva del sombra. Crea la fila y hace el primer intento.
-async function intentar(sb, pick, { cbIdx = {}, slate = null } = {}) {
+// `banda` es la banda de eficiencia de la liga según el motor ('eficiente' | 'intermedia' | 'blanda'); la
+// fila nace con ella y `colocar` la veta si toca. Sin banda (CS2, o un llamador antiguo) no se veta.
+async function intentar(sb, pick, { cbIdx = {}, slate = null, banda = null } = {}) {
   const L = load();
 
   // 0) el perímetro. Cinco condiciones, y ninguna es configurable.
@@ -605,15 +636,17 @@ async function intentar(sb, pick, { cbIdx = {}, slate = null } = {}) {
   // buscar por ella crearía una fila nueva para la misma apuesta y podría duplicarla.
   if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro; de reintentarla
                                                                    // se encarga `reintentar`, no esta puerta
-  const fila = filaNueva(sb, pick);
+  const fila = filaNueva(sb, pick, banda);
   L.bets.push(fila);
-  return colocar(fila, { cbIdx, slate });
+  return colocar(fila, { cbIdx, slate, banda });
 }
 
 // LOS REINTENTOS. Se llama una vez por barrido, después de la puerta de entrada. Recorre lo pendiente cuyo
 // partido no ha empezado y lo vuelve a intentar. Es lo que convierte un fallo pasajero en un retraso en vez
 // de en una apuesta perdida.
-async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
+// `bandaDe(liga)` → banda actual según el motor. Las filas PENDIENTES de antes del veto también pasan por
+// él: una que estaba esperando saldo o el id del partido no se cuela por haber nacido antes.
+async function reintentar({ cbIdx = {}, slate = null, max = 25, bandaDe = null } = {}) {
   const L = load();
   const ahora = Date.now();
   // el veto por aviso_manual protegía del doble-colocado cuando el correo invitaba a Alexis a apostar a
@@ -628,7 +661,9 @@ async function reintentar({ cbIdx = {}, slate = null, max = 25 } = {}) {
     .slice(0, max);
   let colocadas = 0;
   for (const fila of cola) {
-    const r = await colocar(fila, { cbIdx, slate }).catch(() => null);
+    let banda = null;
+    if (typeof bandaDe === 'function' && fila.league) { try { banda = bandaDe(fila.league) || null; } catch { banda = null; } }
+    const r = await colocar(fila, { cbIdx, slate, banda }).catch(() => null);
     if (r && r.status === 'PLACED') colocadas++;
   }
   // y las que se quedaron sin tiempo: se cierran para que no se reintenten eternamente ni figuren como
@@ -1092,6 +1127,7 @@ function board({ limit = 40 } = {}) {
       perimetro: { segmento: SEGMENTO, familia: FAMILIA, lado: LADO, casa: CASA },
       // el corte de saque, visible: un freno que no se ve en el panel es un freno del que nadie se acuerda
       ventana_saque: (() => { const m = ventanaMax(); return m == null ? null : new Date(m).toISOString(); })(),
+      bandas_vetadas: [...bandasVetadas()],
       nocional_inicial: L.nocional_inicial, nocional_vivo: L.nocional,
       stake_tope_pct: +(C.stakePct * 100).toFixed(2), stake_max: C.stakeMax, stake_min: C.stakeMin,
       stake_plano: C.stakeFlat > 0 ? C.stakeFlat : null, stake_cs2: CS2_STAKE_TOPE(),

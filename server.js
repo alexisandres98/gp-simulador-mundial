@@ -13226,7 +13226,8 @@ async function shadowSweep() {
       try {
         const RE = require('./real-executor/store');
         await cbResolveEvent(p).catch(() => null);   // rellena el índice si el barrido no llegó a este partido
-        const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null });
+        // la banda de la liga viaja con la señal: el dinero real no entra en la eficiente (orden 5-sep).
+        const r = await RE.intentar(sb, p, { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null, banda: leagueEfficiency(sb.league || p.league).band });
         if (r) { realIntentos++; if (r.status === 'PLACED') realColocadas++; }
       } catch (e) { console.error('[real] intento fallido:', e.message); }
     }
@@ -13337,7 +13338,7 @@ async function shadowSweep() {
       // REINTENTAR ANTES DE LIQUIDAR. Lo pendiente de barridos anteriores —el reenviador que se reinició, el
       // saldo que estaba corto, el id que aún no se había resuelto— tiene su segunda oportunidad aquí, y por
       // eso el ejecutor real no pierde una señal por un tropiezo de treinta segundos.
-      const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }).catch((e) => ({ error: e.message }));
+      const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null, bandaDe: (lg) => leagueEfficiency(lg).band }).catch((e) => ({ error: e.message }));
       // lo que quedó en el aire —la casa evaluando, o una respuesta que no supimos leer— se pregunta por su
       // referencia. Nunca se reenvía: reenviar sin saber qué pasó es la única forma de apostar dos veces.
       const conf = await RE.confirmar().catch((e) => ({ error: e.message }));
@@ -22081,7 +22082,7 @@ async function anotar(pid){
             && x.kickoff_at && Date.parse(x.kickoff_at) > ahora3 && byPick3[x.pick_id]);
           const out2 = [];
           for (const sb of cand) {
-            const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
+            const r2 = await RE.intentar(sb, byPick3[sb.pick_id], { cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null, banda: leagueEfficiency(sb.league || (byPick3[sb.pick_id] || {}).league).band }).catch((e) => ({ status: 'ERROR', motivo: e.message }));
             if (r2) out2.push({ match: sb.match, linea: sb.line, estado: r2.status, motivo: r2.motivo || null, stake: r2.stake || null, cuota: r2.odds_real || r2.precio_vivo || null });
           }
           return json(res, 200, { reabiertas, candidatas: cand.length, resultado: out2 });

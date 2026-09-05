@@ -6,7 +6,7 @@ v2 (mismo día, pedido de Alexis): marketing directo. Foto de campaña (Higgsfie
 Sin tecnicismos (nada de simulaciones ni de casas que cobran de más). Se conservan 18+ y el aviso de que
 son estimaciones, no garantías: es lo único que no se negocia en ninguna pieza de la casa.
 
-El QR apunta a gpsimulador.com/landing?ref=<code>&lang=en → cada registro y cada pago queda atribuido al
+El QR apunta a gpsimulador.com/r/<code> (→ /landing?ref=<code>&lang=en) → cada registro y cada pago queda atribuido al
 vendedor (atribución first-touch que ya usa la plataforma; si el código es de un usuario, comisión de afiliado).
 
   python3 scripts/flyer-gambia.py <code> [--img ruta.png]
@@ -50,9 +50,9 @@ h1 span { color: #1FE3A4; }
 .chips { display: flex; flex-wrap: nowrap; gap: 10px; margin-bottom: 24px; }
 .chip { background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.16); border-radius: 99px; padding: 11px 18px; font-size: 20px; font-weight: 700; color: #EAF1F2; white-space: nowrap; }
 .chip b { color: #1FE3A4; }
-.scan { display: flex; gap: 34px; align-items: center; background: #0E1A14; border: 3px solid #1FE3A4; border-radius: 30px; padding: 34px 36px; }
-.qr { flex: 0 0 350px; width: 350px; height: 350px; background: #fff; border-radius: 22px; padding: 20px; }
-.qr svg { width: 100%; height: 100%; display: block; }
+.scan { display: flex; gap: 32px; align-items: center; background: #0E1A14; border: 3px solid #1FE3A4; border-radius: 30px; padding: 26px 30px; }
+.qr { flex: 0 0 400px; width: 400px; height: 400px; background: #fff; border-radius: 22px; padding: 0; overflow: hidden; }
+.qr img { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .scan-t { flex: 1; }
 .scan-t .big { font-size: 46px; font-weight: 900; color: #fff; line-height: 1.02; letter-spacing: -1.5px; margin-bottom: 14px; }
 .scan-t .big span { color: #1FE3A4; }
@@ -98,9 +98,20 @@ h1 span { color: #1FE3A4; }
 
 
 def build(code: str, img: str) -> tuple:
-    url = f"https://gpsimulador.com/landing?ref={code}&lang=en"
-    qr = segno.make(url, error='h')   # corrección alta: papel doblado, luz mala
-    svg = qr.svg_inline(scale=10, border=0, dark='#061009', light=None)
+    # enlace CORTO (/r/<code> redirige a /landing?ref=<code>&lang=en): 35 caracteres → QR versión 3 (29
+    # módulos) en vez de versión 6 (49). Módulos casi el doble de grandes en el mismo hueco: escanea de lejos.
+    url = f"https://gpsimulador.com/r/{code}"
+    # corrección alta: papel doblado, luz mala. ZONA DE SILENCIO de 4 módulos (border=4) y negro puro sobre
+    # blanco: la primera versión iba sin margen propio y el relleno del recuadro no llegaba a los 4 módulos
+    # que exige el estándar → el volante impreso NO escaneaba (comprobado con un decodificador). Ahora el
+    # PNG final se decodifica antes de darlo por bueno.
+    # …y como PNG incrustado, no como SVG: Chromium pintaba el SVG con módulos irregulares (antialiasing
+    # sobre trazos escalados) y el decodificador no lo leía. Un PNG a 12 px por módulo, con `image-rendering:
+    # pixelated`, llega al papel exactamente como sale de segno.
+    import io
+    qr = segno.make(url, error='h')
+    buf = io.BytesIO(); qr.save(buf, kind='png', scale=12, border=4, dark='#000000', light='#ffffff')
+    svg = '<img alt="QR" src="data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii') + '">'
     with open(img, 'rb') as f:
         b64 = base64.b64encode(f.read()).decode('ascii')
     mime = 'image/jpeg' if img.lower().endswith(('.jpg', '.jpeg')) else 'image/png'

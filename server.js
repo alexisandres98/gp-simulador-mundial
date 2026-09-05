@@ -25820,6 +25820,18 @@ async function anotar(pid){
       } catch { json(res, 404, { error: 'No encontrado' }); return; }
     }
     // Landing standalone (página de marketing dedicada, sin el shell de la app). Cache-busting de landing.js/css por mtime.
+    // ENLACE CORTO PARA QR IMPRESO (5-sep): /r/<codigo> → /landing?ref=<codigo>&lang=en. Un QR con
+    // 35 caracteres cabe en versión 3 (29 módulos) en vez de versión 6 (49): módulos el doble de grandes en
+    // el mismo espacio, que es la diferencia entre un volante que escanea de lejos con mala luz y uno que no.
+    // Misma atribución que ?ref= (la landing guarda el código en localStorage y lo manda al registrarse).
+    {
+      const mR = p.match(/^\/r\/([A-Za-z0-9_-]{2,24})\/?$/);
+      if (mR) {
+        const lg = url.searchParams.get('lang') === 'es' ? 'es' : 'en';
+        res.writeHead(302, { Location: `/landing?ref=${encodeURIComponent(mR[1])}&lang=${lg}`, 'Cache-Control': 'no-cache' });
+        return res.end();
+      }
+    }
     if (p === '/landing' || p === '/landing/') {
       try {
         const lf = path.join(__dirname, 'public', 'landing.html');

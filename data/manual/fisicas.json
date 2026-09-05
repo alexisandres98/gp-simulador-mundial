@@ -1,0 +1,149 @@
+{
+  "descripcion": "Apuestas colocadas A MANO en casas de apuestas físicas de Gambia (experimento de captación, 5-sep-2026). Se liquidan con el total real de tarjetas del partido, igual que la sombra. Dinero en dalasis.",
+  "tickets": [
+    {
+      "ticket": "742218058",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Charlotte FC vs Houston Dynamo",
+      "league": "mls",
+      "family": "CARDS",
+      "side": "under",
+      "line": 4.5,
+      "odds": 1.64,
+      "stake": 1000,
+      "kickoff_at": "2026-09-05T23:30:00Z",
+      "event": {
+        "home_team_id": "tm_8670388",
+        "away_team_id": "tm_89986",
+        "kickoff_at": "2026-09-05T23:30:00Z",
+        "home": "Charlotte FC",
+        "away": "Houston Dynamo"
+      },
+      "pick_ref": "cdp_a94e9c5c5f2386d9",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    },
+    {
+      "ticket": "742217171",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Athletic Bilbao vs Atlético Madrid",
+      "league": "laliga",
+      "family": "CARDS",
+      "side": "under",
+      "line": 4.5,
+      "odds": 1.7,
+      "stake": 1000,
+      "kickoff_at": "2026-09-05T14:15:00Z",
+      "event": {
+        "home_team_id": "tm_46224",
+        "away_team_id": "tm_64681",
+        "kickoff_at": "2026-09-05T14:15:00Z",
+        "home": "Athletic Bilbao",
+        "away": "Atlético Madrid"
+      },
+      "pick_ref": "cdp_27e06b09b47fc4a9",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    },
+    {
+      "ticket": "742218591",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Deportivo Alavés vs CA Osasuna",
+      "league": "laliga",
+      "family": "CARDS",
+      "side": "under",
+      "line": 5.5,
+      "odds": 1.68,
+      "stake": 1000,
+      "kickoff_at": "2026-09-06T16:30:00Z",
+      "event": {
+        "home_team_id": "tm_46488",
+        "away_team_id": "tm_15885",
+        "kickoff_at": "2026-09-06T16:30:00Z",
+        "home": "Alavés",
+        "away": "CA Osasuna"
+      },
+      "pick_ref": "cdp_19ba5985b79ec58c",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    },
+    {
+      "ticket": "742217710",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Villarreal CF vs RC Deportivo de A Coruña",
+      "league": "laliga",
+      "family": "CARDS",
+      "side": "under",
+      "line": 4.5,
+      "odds": 1.77,
+      "stake": 1000,
+      "kickoff_at": "2026-09-05T19:00:00Z",
+      "event": {
+        "home_team_id": "tm_73664",
+        "away_team_id": "tm_98394",
+        "kickoff_at": "2026-09-05T19:00:00Z",
+        "home": "Villarreal",
+        "away": "Deportivo La Coruña"
+      },
+      "pick_ref": "cdp_c97e4efea553db7f",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    },
+    {
+      "ticket": "742217476",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Rayo Vallecano vs Racing Santander",
+      "league": "laliga",
+      "family": "CARDS",
+      "side": "under",
+      "line": 5.5,
+      "odds": 1.63,
+      "stake": 1000,
+      "kickoff_at": "2026-09-05T16:30:00Z",
+      "event": {
+        "home_team_id": "tm_89774",
+        "away_team_id": "tm_46499",
+        "kickoff_at": "2026-09-05T16:30:00Z",
+        "home": "Rayo Vallecano",
+        "away": "Real Racing Club de Santander"
+      },
+      "pick_ref": "cdp_bf1b4c4f771a97f1",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    },
+    {
+      "ticket": "742218311",
+      "casa": "PrimaBet",
+      "local": "Senegambia, Kerr Serign (Gambia)",
+      "colocada_at": "2026-09-05T12:29:00Z",
+      "moneda": "GMD",
+      "match": "Columbus Crew vs Colorado Rapids",
+      "league": "mls",
+      "family": "CARDS",
+      "side": "under",
+      "line": 4.5,
+      "odds": 1.96,
+      "stake": 1000,
+      "kickoff_at": "2026-09-05T23:30:00+00:00",
+      "event": {
+        "home_team_id": "tm_02201",
+        "away_team_id": "tm_15511",
+        "kickoff_at": "2026-09-05T23:30:00+00:00",
+        "home": "Columbus Crew SC",
+        "away": "Colorado Rapids"
+      },
+      "pick_ref": "cdp_f34aa024bbb1f24b",
+      "nota": "línea de la casa física; puede diferir de la pick del sistema"
+    }
+  ]
+}

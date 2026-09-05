@@ -13030,6 +13030,65 @@ async function shadowUnexecDiag(p) {
   } catch (e) { return { reason: 'diag_error', error: String(e.message || e).slice(0, 80) }; }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// APUESTAS FÍSICAS (5-sep): boletos que Alexis coloca A MANO en casas de apuestas de Gambia, en dalasis.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// Son parte del experimento de captación en Gambia: apostar en la casa física donde se va a repartir el
+// volante, con la pick del sistema pero a la LÍNEA que la casa tenga (que puede no ser la nuestra). No pasan
+// por el ejecutor ni por la sombra: la casa no tiene API y la línea difiere. Se liquidan con el MISMO total
+// real de tarjetas que cierra la sombra (clubPropTotal), contra su propia línea, y el resultado vive en
+// db.fisicas (copiado con la base). El boleto es la verdad: los datos salen de data/manual/fisicas.json.
+const FISICAS_FILE = path.join(__dirname, 'data', 'manual', 'fisicas.json');
+function fisicasTickets() {
+  try { return (JSON.parse(fs.readFileSync(FISICAS_FILE, 'utf8')).tickets || []).filter((t) => t && t.ticket); }
+  catch { return []; }
+}
+function fisicasSettle() {
+  const tk = fisicasTickets();
+  if (!tk.length) return { settled: 0 };
+  if (!db.fisicas || typeof db.fisicas !== 'object') db.fisicas = {};
+  let settled = 0;
+  for (const t of tk) {
+    const r = db.fisicas[t.ticket];
+    if (r && r.result) continue;
+    const ko = Date.parse(t.kickoff_at || (t.event && t.event.kickoff_at) || '');
+    if (!Number.isFinite(ko) || ko > Date.now()) continue;              // no ha empezado
+    const total = clubPropTotal(t.league, t.event || {}, t.family || 'CARDS');
+    let result = null;
+    if (total != null) result = ((String(t.side).toLowerCase() === 'over') === (total > Number(t.line))) ? 'WIN' : 'LOSS';
+    else if (Date.now() - ko > 72 * 3600e3) result = 'VOID';           // sin dato a las 72 h: anulada, no inventada
+    if (!result) continue;
+    const stake = Number(t.stake) || 0, odds = Number(t.odds) || 1;
+    const pnl = result === 'WIN' ? +(stake * (odds - 1)).toFixed(2) : result === 'LOSS' ? -stake : 0;
+    db.fisicas[t.ticket] = { result, total, pnl, settled_at: new Date().toISOString(), fuente: total != null ? 'total_real_linea_propia' : 'sin_dato_72h' };
+    settled++;
+    opsLog('fisica_liquidada', { ticket: t.ticket, match: t.match, line: t.line, result, total, pnl });
+  }
+  if (settled) save();
+  return { settled };
+}
+function fisicasBoard() {
+  const tk = fisicasTickets();
+  const R = db.fisicas || {};
+  const filas = tk.map((t) => ({ ...t, ...(R[t.ticket] || { result: null, total: null, pnl: null, settled_at: null }) }))
+    .sort((a, b) => Date.parse(a.kickoff_at) - Date.parse(b.kickoff_at));
+  const liq = filas.filter((f) => f.result && f.result !== 'VOID');
+  const w = liq.filter((f) => f.result === 'WIN').length;
+  const stakeLiq = liq.reduce((a, f) => a + (Number(f.stake) || 0), 0);
+  const pnl = liq.reduce((a, f) => a + (Number(f.pnl) || 0), 0);
+  const moneda = (tk[0] && tk[0].moneda) || 'GMD';
+  return {
+    moneda, boletos: tk.length, liquidados: liq.length, ganados: w, perdidos: liq.length - w,
+    anulados: filas.filter((f) => f.result === 'VOID').length, pendientes: filas.filter((f) => !f.result).length,
+    apostado_total: tk.reduce((a, t) => a + (Number(t.stake) || 0), 0), apostado_liquidado: stakeLiq,
+    pnl: +pnl.toFixed(2), roi_pct: stakeLiq ? +(100 * pnl / stakeLiq).toFixed(1) : null,
+    en_juego: filas.filter((f) => !f.result).reduce((a, f) => a + (Number(f.stake) || 0), 0),
+    boletos_detalle: filas.map((f) => ({ ticket: f.ticket, casa: f.casa, match: f.match, league: f.league, kickoff_at: f.kickoff_at,
+      pick: `${f.side} ${f.line} ${String(f.family || 'CARDS').toLowerCase()}`, odds: f.odds, stake: f.stake,
+      result: f.result, total_real: f.total, pnl: f.pnl, settled_at: f.settled_at, pick_ref: f.pick_ref || null })),
+  };
+}
+
 async function shadowSweep() {
   const S = shadowInit();
   S.unexec = S.unexec || []; S.unexec_count = S.unexec_count || 0;
@@ -13339,6 +13398,8 @@ async function shadowSweep() {
   }
   if (backCl) save();
   if (placed || settled) save();
+  // apuestas FÍSICAS de Alexis (casas de apuestas de Gambia): mismo total real de tarjetas, otro libro
+  try { fisicasSettle(); } catch (e) { opsLog('fisicas_error', { error: e.message }); }
   // liquidar el dinero real contra la casa en la misma pasada. Va al final y protegido: si Cloudbet no
   // contesta, el ejecutor en la sombra ya terminó su trabajo y no se entera.
   let real = null;
@@ -21906,6 +21967,15 @@ async function anotar(pid){
         aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false',
         // la sombra de ejecución de Polymarket (1-sep): banco simulado, fills contra el CLOB
         poly_sombra: (() => { try { return require('./propfirm/polyshadow').estado(); } catch (e) { return { error: e.message }; } })() });
+    }
+    // APUESTAS FÍSICAS de Gambia (5-sep): libro en dalasis, liquidado con el total real de tarjetas.
+    // GET = tablero · POST = fuerza una pasada de liquidación.
+    if (p === '/api/internal/fisicas') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      let liq = null;
+      if (req.method === 'POST') { try { liq = fisicasSettle(); } catch (e) { liq = { error: e.message }; } }
+      return json(res, 200, { ...fisicasBoard(), liquidacion: liq });
     }
     if (p === '/api/internal/real') {
       const xk = process.env.GP_EXPORT_KEY || '';

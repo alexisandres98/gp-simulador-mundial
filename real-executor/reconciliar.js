@@ -186,9 +186,13 @@ const lineaDe = (marketUrl) => {
 //   · las de las picks recientes que NO están en nuestro libro → si la casa sí la tiene, es huérfana
 // Lo que este modo no puede ver son apuestas ajenas a nuestras picks (las que Alexis coloque por la web):
 // para eso hace falta el listado, y se dice en el resultado en vez de fingir que se miró.
-async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true } = {}) {
+// `soloPicks` (5-sep): reconciliación DIRIGIDA a unas picks concretas — solo sus referencias, sin candidatas.
+// Existe porque la pasada completa son ~400 preguntas a una casa que hoy contesta una de cada cinco, y para
+// registrar dos duplicadas ya confirmadas no hace falta volver a preguntar por todo el libro.
+async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true, soloPicks = null } = {}) {
   const L = S.load();
-  const filas = Array.isArray(L.bets) ? L.bets : [];
+  const soloSet = Array.isArray(soloPicks) && soloPicks.length ? new Set(soloPicks) : null;
+  const filas = (Array.isArray(L.bets) ? L.bets : []).filter((f) => !soloSet || soloSet.has(f.pick_id));
   const porPick = new Map(sombra.filter((s) => s.pick_id).map((s) => [s.pick_id, s]));
   const enElLibro = new Set(filas.map((f) => f.pick_id));
   const corte = Date.now() - dias * 864e5;
@@ -225,7 +229,8 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
     if (sb.book && String(sb.book).toLowerCase() !== S.CASA) return false;
     return true;
   };
-  const universo = sombra.length ? sombra.filter(enPerimetro).map((s) => s.pick_id) : pickIds;
+  // dirigida a unas picks: sin candidatas — solo se pregunta por las referencias de esas filas
+  const universo = soloSet ? [] : (sombra.length ? sombra.filter(enPerimetro).map((s) => s.pick_id) : pickIds);
   const candidatas = [...new Set(universo)]
     .filter((pid) => pid && !enElLibro.has(pid))
     .filter((pid) => {
@@ -405,13 +410,13 @@ async function comparar({ pickIds = [], sombra = [], casa = null, limit = 100, m
 // Solo inserta huérfanas, y solo las que se pudieron atribuir a una pick. Nunca borra ni modifica una fila
 // existente: lo único que este módulo puede hacerle al libro es AÑADIR lo que la casa demuestra que existe.
 async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100, maxPaginas = 30,
-  modo = 'referencias', dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true } = {}) {
+  modo = 'referencias', dias = 7, cap = 400, concurrencia = 1, pausaMs = 350, esperar = true, soloPicks = null } = {}) {
   // POR DEFECTO SE PREGUNTA POR REFERENCIA: es el camino que la casa contesta hoy. El listado queda como
   // segundo modo porque ve una cosa que el otro no —las apuestas ajenas a nuestras picks— y volverá a ser
   // útil el día que la casa arregle su resolver.
   const cmp = modo === 'listado'
     ? await comparar({ pickIds, sombra, limit, maxPaginas })
-    : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia, pausaMs, esperar });
+    : await compararPorReferencia({ pickIds, sombra, dias, cap, concurrencia, pausaMs, esperar, soloPicks });
   if (!cmp.ok) return cmp;
   // no se toca el libro con una comparación que no vio lo suficiente
   if (aplicar && cmp.concluyente === false) {

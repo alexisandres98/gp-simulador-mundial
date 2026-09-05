@@ -135,6 +135,12 @@ const enLaCasa = (match, line) => [...casa.apuestas.values()].filter((b) => b.ma
   t('la comparación devuelve UNA duplicada, la de Roma', cmp.ok && cmp.duplicadas.length === 1 && cmp.duplicadas[0].pick_id === 'cdp_roma', cmp.duplicadas);
   t('con la referencia de más y su precio', cmp.duplicadas[0].de_mas.length === 1 && cmp.duplicadas[0].de_mas[0].precio === 1.39, cmp.duplicadas[0].de_mas);
   t('y por eso NO cuadra', cmp.cuadra === false, cmp.cuadra);
+  // dirigida: solo las referencias de esa fila, sin candidatas — pocas preguntas y concluyente
+  casa.preguntas = 0;
+  const cmpDir = await Rc.compararPorReferencia({ sombra: [], dias: 30, esperar: false, pausaMs: 0, soloPicks: ['cdp_roma'] });
+  t('la comparación DIRIGIDA a Roma ve la misma duplicada', cmpDir.ok && cmpDir.duplicadas.length === 1 && cmpDir.duplicadas[0].pick_id === 'cdp_roma', cmpDir.duplicadas);
+  t('y solo preguntó por las referencias de esa fila', cmpDir.casa.preguntadas <= 5, cmpDir.casa.preguntadas);
+  t('con una casa que contesta, es concluyente', cmpDir.concluyente === true, cmpDir.concluyente);
   const rep = await Rc.reparar({ sombra: [], dias: 30, aplicar: true, esperar: false, pausaMs: 0 });
   t('reparar inserta la apuesta de más como fila propia', rep.insertadas === 1, rep);
   const dup = S.load().bets.find((x) => x.duplicada_de === 'cdp_roma');

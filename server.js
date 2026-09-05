@@ -21964,7 +21964,10 @@ async function anotar(pid){
           // `modo=listado` pide el libro entero a la casa (hoy su resolver da error); por defecto se
           // pregunta POR REFERENCIA, que es el camino que contesta y el que ya usa la liquidación.
           const modo = url.searchParams.get('modo') === 'listado' ? 'listado' : 'referencias';
-          const opts = { pickIds, sombra, aplicar, modo,
+          // `&picks=cdp_a,cdp_b`: reconciliación DIRIGIDA a esas filas (solo sus referencias, sin candidatas);
+          // rápida y concluyente aun cuando la casa contesta poco, que es como se registra una duplicada ya vista.
+          const soloPicks = String(url.searchParams.get('picks') || '').split(',').map((s) => s.trim()).filter(Boolean);
+          const opts = { pickIds, sombra, aplicar, modo, soloPicks: soloPicks.length ? soloPicks : null,
             dias: Math.min(60, Math.max(1, parseInt(url.searchParams.get('dias'), 10) || 7)),
             cap: Math.min(2000, Math.max(10, parseInt(url.searchParams.get('cap'), 10) || 600)),
             maxPaginas: Math.min(60, Math.max(1, parseInt(url.searchParams.get('paginas'), 10) || 30)) };

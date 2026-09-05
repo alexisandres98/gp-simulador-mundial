@@ -42,9 +42,12 @@ const S = require('./store');
 let ok = 0, ko = 0;
 const t = (n, c, extra) => { if (c) { ok++; console.log('  ✓ ' + n); } else { ko++; console.log('  ✗ ' + n + (extra !== undefined ? '  → ' + JSON.stringify(extra) : '')); } };
 
+// cada señal a una LÍNEA distinta: desde el 5-sep una posición (partido+línea+lado) solo admite una apuesta,
+// y estas auditorías reutilizan el mismo partido de mentira para todas sus señales.
+let nLinea = 0;
 const senal = (id, league, extra = {}) => ({
   id: 'sh_' + id, pick_id: 'cdp_' + id, segment: 'cards_under_v1', family: 'CARDS', side: 'under',
-  book: 'cloudbet', line: 4.5, odds: 1.9, model_prob: 0.62, match: 'Equipo A vs Equipo B',
+  book: 'cloudbet', line: 0.5 + (++nLinea), odds: 1.9, model_prob: 0.62, match: 'Equipo A vs Equipo B',
   league, kickoff_at: '2026-09-06T12:00:00Z', ...extra,
 });
 const idx = { ceid1: { cb_id: 'cb1' } };
@@ -79,10 +82,10 @@ const bandaDe = (lg) => BANDA[lg] || 'blanda';
   // una fila de Premier que nació antes del veto, sin banda, esperando saldo: la coge reintentar
   const L = S.load();
   L.bets.push({ ref_id: 'ref-vieja', envios: 0, pick_id: 'cdp_vieja', shadow_id: 'sh_vieja', match: 'Equipo A vs Equipo B',
-    league: 'premier', line: 4.5, side: 'under', kickoff_at: '2026-09-06T12:00:00Z', odds_sombra: 1.9, model_prob: 0.62,
+    league: 'premier', line: 40.5, side: 'under', kickoff_at: '2026-09-06T12:00:00Z', odds_sombra: 1.9, model_prob: 0.62,
     ceid: 'ceid1', at: '2026-09-04T10:00:00Z', status: 'PENDIENTE', intentos: 3, motivo: 'sin_fondos' });
   L.bets.push({ ref_id: 'ref-vieja2', envios: 0, pick_id: 'cdp_vieja2', shadow_id: 'sh_vieja2', match: 'Equipo A vs Equipo B',
-    league: 'argentina', line: 4.5, side: 'under', kickoff_at: '2026-09-06T12:00:00Z', odds_sombra: 1.9, model_prob: 0.62,
+    league: 'argentina', line: 41.5, side: 'under', kickoff_at: '2026-09-06T12:00:00Z', odds_sombra: 1.9, model_prob: 0.62,
     ceid: 'ceid1', at: '2026-09-04T10:00:00Z', status: 'PENDIENTE', intentos: 3, motivo: 'sin_fondos' });
   S.save();
   const antes = colocadas.length;

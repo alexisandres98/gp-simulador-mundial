@@ -198,7 +198,10 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   // preguntarle por ellas solo puede producir fantasmas falsos. `via: 'manual'` marca las de tarjetas y
   // `motivo: 'solo_manual'` las de CS2, cuyo mercado la API ni siquiera cotiza.
   const esManual = (f) => f.via === 'manual' || f.motivo === 'solo_manual';
-  const nuestras = filas.filter((f) => (f.status === 'PLACED' || f.status === 'EN_ACEPTACION') && !esManual(f) && f.pick_id);
+  // también las LIQUIDADAS recientes: una duplicada de la casa no desaparece porque nuestra fila ya cerrara
+  const nuestras = filas.filter((f) => f.pick_id && !esManual(f)
+    && (f.status === 'PLACED' || f.status === 'EN_ACEPTACION'
+      || (f.status === 'SETTLED' && Date.parse(f.settled_at || f.placed_at || f.at || 0) >= corte)));
   const refsNuestras = new Map();     // ref → fila
   for (const f of nuestras) {
     if (f.ref_id) refsNuestras.set(f.ref_id, f);
@@ -251,10 +254,28 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
     }
   }
   // una fila es fantasma solo si la casa CONTESTÓ que no tiene NINGUNA de sus referencias
+  // DUPLICADAS (5-sep, tras Parma–Monza under 4,5): una fila con DOS O MÁS referencias que la casa tiene
+  // como apuestas vivas o resueltas. Pasa cuando se quemó una referencia sin que la casa hubiera rechazado
+  // de verdad el envío: cada referencia es una apuesta distinta en la casa y el libro solo cuenta una. Es
+  // la categoría más cara de todas —dinero real puesto dos veces en la misma posición— y hasta hoy el
+  // reconciliador no la veía, porque las dos referencias "pertenecían" a la misma fila y con que una
+  // existiera daba la fila por cuadrada.
+  const duplicadas = [];
+  const RESUELTAS_O_VIVAS = new Set(['ACCEPTED', 'PENDING_ACCEPTANCE', 'WIN', 'LOSS', 'PUSH', 'HALF_WIN', 'HALF_LOSS', 'PARTIAL']);
   for (const f of nuestras) {
     const suyas = [f.ref_id, ...Array.from({ length: Math.min(3, (Number(f.envios) || 0) + 1) }, (_, e) => S.refIdDe(f.pick_id, e))].filter(Boolean);
     const contestadas = suyas.filter((r) => q.respuestas.has(r));
     if (!contestadas.length) { sin_respuesta.push({ pick_id: f.pick_id, match: f.match }); continue; }
+    const vivas = [...new Set(contestadas)].filter((r) => { const b = q.respuestas.get(r); return b && RESUELTAS_O_VIVAS.has(String(b.betStatus || '').toUpperCase()); });
+    if (vivas.length >= 2) {
+      // la referencia que el libro conoce es la "oficial"; las demás son las apuestas de más
+      const extra = vivas.filter((r) => r !== f.ref_id);
+      duplicadas.push({
+        pick_id: f.pick_id, match: f.match, line: f.line, side: f.side, ref_oficial: f.ref_id, stake_libro: f.stake,
+        referencias_en_la_casa: vivas.length,
+        de_mas: extra.map((r) => { const b = q.respuestas.get(r); return { ref_id: r, envio: suyas.indexOf(r) >= 1 ? suyas.indexOf(r) - 1 : null, precio: Number(b.price) || null, stake: Number(b.stake) || null, estado_casa: String(b.betStatus || '').toUpperCase(), retorno: b.returnAmount != null && b.returnAmount !== '' ? Number(b.returnAmount) : null, event_id: b.eventId || null, market_url: b.marketUrl || null, moneda: b.currency || null }; }),
+      });
+    }
     if (contestadas.some((r) => q.respuestas.get(r))) continue;      // la casa sí la tiene
     fantasmas.push({ ref_id: f.ref_id, pick_id: f.pick_id, match: f.match, stake: f.stake, status: f.status, placed_at: f.placed_at || f.at });
   }
@@ -278,13 +299,13 @@ async function compararPorReferencia({ pickIds = [], sombra = [], dias = 7, cap 
   // vale null y se dice por qué.
   const tasa = q.preguntadas ? q.contestadas / q.preguntadas : 1;
   const concluyente = tasa >= 0.8;
-  const limpio = huerfanas.length === 0 && fantasmas.length === 0 && descuadres.length === 0;
+  const limpio = huerfanas.length === 0 && fantasmas.length === 0 && descuadres.length === 0 && duplicadas.length === 0;
   return {
     ok: true, modo: 'referencias',
     casa: { preguntadas: q.preguntadas, contestadas: q.contestadas, fallos: q.fallos, truncado: q.truncado,
       limitados_por_la_casa: q.limitados_por_la_casa || 0, tasa_respuesta: +(100 * tasa).toFixed(1) + '%', dudosas: q.dudosas || [] },
     libro: { filas: filas.length, colocadas: filas.filter((f) => f.status === 'PLACED').length },
-    huerfanas, fantasmas, descuadres, desconocidas: [], sin_respuesta,
+    huerfanas, fantasmas, descuadres, duplicadas, desconocidas: [], sin_respuesta,
     cuadra: concluyente ? limpio : null,
     concluyente,
     por_que_no_concluyente: concluyente ? null
@@ -431,15 +452,47 @@ async function reparar({ pickIds = [], sombra = [], aplicar = false, limit = 100
     };
   });
 
+  // LAS DUPLICADAS TAMBIÉN ENTRAN AL LIBRO (5-sep): la apuesta de más existe en la casa con su dinero y su
+  // resultado, y el libro tiene que verla para que la exposición, el P&L y la parada diaria sean verdad.
+  // Entra como fila propia, hermana de la oficial: mismo partido, misma línea, la referencia quemada, el
+  // precio y el stake que dice la casa, y marcada `duplicada_de` para que el informe la separe y para que
+  // nadie la lea como una decisión del modelo. `liquidar()` la cierra contra la casa como a cualquier otra.
+  // El pick_id lleva sufijo para no chocar con la puerta "una fila por pick" del ejecutor.
+  const filasLibro = S.load().bets || [];
+  const porPickLibro = new Map(filasLibro.map((f) => [f.pick_id, f]));
+  const nuevasDup = [];
+  for (const d of (cmp.duplicadas || [])) {
+    const oficial = porPickLibro.get(d.pick_id) || null;
+    for (const x of d.de_mas) {
+      nuevasDup.push({
+        ref_id: x.ref_id, envios: x.envio != null ? x.envio : 0, pick_id: `${d.pick_id}~dup${x.envio != null ? x.envio : 'x'}`,
+        shadow_id: (oficial && oficial.shadow_id) || null,
+        match: d.match || null, league: (oficial && oficial.league) || null, banda: (oficial && oficial.banda) || null,
+        line: d.line != null ? d.line : lineaDe(x.market_url), side: d.side || S.LADO,
+        kickoff_at: (oficial && oficial.kickoff_at) || null, ceid: (oficial && oficial.ceid) || null,
+        cb_event_id: x.event_id || (oficial && oficial.cb_event_id) || null,
+        odds_sombra: (oficial && oficial.odds_sombra) || null, model_prob: (oficial && oficial.model_prob) || null,
+        at: new Date().toISOString(), status: 'PLACED', intentos: 0,
+        odds_real: x.precio, stake: x.stake, placed_at: null,
+        slippage_pct: (oficial && oficial.odds_sombra > 0 && x.precio > 0) ? +(100 * (x.precio / oficial.odds_sombra - 1)).toFixed(2) : null,
+        moneda: x.moneda || null, via: (oficial && oficial.via) || null,
+        origen: 'reconciliacion', duplicada_de: d.pick_id, reconciliado_at: new Date().toISOString(),
+        estado_casa_al_reconciliar: x.estado_casa || null,
+        detalle: `apuesta DE MÁS en la casa: la fila ${d.pick_id} tenía ${d.referencias_en_la_casa} referencias aceptadas`,
+      });
+    }
+  }
+
   if (!aplicar) {
-    return { ...cmp, aplicado: false, insertaria: nuevas.length,
-      muestra: nuevas.slice(0, 10).map((n) => ({ pick_id: n.pick_id, match: n.match, stake: n.stake, odds_real: n.odds_real, estado_casa: n.estado_casa_al_reconciliar })) };
+    return { ...cmp, aplicado: false, insertaria: nuevas.length, insertaria_duplicadas: nuevasDup.length,
+      muestra: nuevas.slice(0, 10).map((n) => ({ pick_id: n.pick_id, match: n.match, stake: n.stake, odds_real: n.odds_real, estado_casa: n.estado_casa_al_reconciliar })),
+      muestra_duplicadas: nuevasDup.slice(0, 10).map((n) => ({ pick_id: n.pick_id, match: n.match, line: n.line, stake: n.stake, odds_real: n.odds_real, ref_id: n.ref_id })) };
   }
 
   const L = S.load();
   let insertadas = 0;
   const saltadas = [];
-  for (const n of nuevas) {
+  for (const n of nuevas.concat(nuevasDup)) {
     // SEGUNDA PUERTA, y a propósito redundante con la comparación: nunca dos filas para la misma referencia
     // ni para la misma pick. La comparación ya debería haberlas descartado; si aquí salta alguna es que algo
     // no cuadra en el razonamiento de arriba, y eso se anota en vez de tragárselo.

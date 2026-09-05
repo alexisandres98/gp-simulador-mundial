@@ -1,5 +1,23 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔴 DOBLE COLOCACIÓN EN LA CASA — cerrada por código el 5-sep (Alexis la vio en la app de Cloudbet)
+**Dos apuestas reales duplicadas**: Parma–Monza under 4,5 (refs envío 0 @1,63 y envío 1 @1,62, 40 USDT cada
+una) y Roma–Atalanta under 4,5 (envío 0 @1,39 y envío 3 @1,38). Causa: `colocar()` quemaba la referencia con
+cualquier "no ok" que trajera código HTTP ≥ 200 ("con código la casa nos habló" → rechazo). La casa había
+ACEPTADO el primer envío y contestado algo ilegible; se estrenó otra referencia y se reenvió.
+**Tres cierres, todos en `real-executor/store.js`:**
+1. La referencia solo se quema con `betStatus: REJECTED` **explícito** de la casa. Cualquier otro no-ok con
+   HTTP → `EN_ACEPTACION` (`respuesta_no_reconocida`) con la MISMA referencia; `confirmar()` pregunta.
+2. `confirmar()` distingue "no la tengo" de "no sé" (`leerApuesta` del reconciliador): tres "no la tengo"
+   seguidos → vuelve a PENDIENTE con la MISMA referencia (si llegó, la casa dirá DUPLICATE_REQUEST).
+3. **Una posición, una apuesta** (regla de Alexis: dos líneas del mismo partido sí, la misma línea dos veces
+   no): `posicionOcupada()` descarta (`linea_ya_apostada`) cualquier fila cuyo partido+línea+lado ya tenga
+   dinero (PLACED/EN_ACEPTACION/SETTLED), con el partido reconocido por id de la casa, ceid o nombre+saque.
+**Reconciliador:** nueva categoría `duplicadas` (fila con ≥2 referencias aceptadas en la casa) y `reparar`
+(aplicar) inserta la apuesta de más como fila propia `duplicada_de` para que exposición y P&L sean verdad.
+Auditoría: `node real-executor/auditoria-duplicados.js` (30 en verde). Las dos duplicadas reales quedan
+registradas en el libro vía reconciliación; no se pueden cancelar en la casa.
+
 ## 💸 LIBRO REAL: las filas MANUALES ya se liquidan aunque la pick quede SUPERSEDED (corregido 5-sep)
 Hallazgo al revisar el rendimiento: **27 apuestas manuales de fútbol (761 USDT) llevaban una semana
 "esperando"** con el partido acabado. `liquidar()` cerraba una fila manual SOLO con el `result_code` de su

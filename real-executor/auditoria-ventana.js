@@ -38,9 +38,12 @@ const S = require('./store');
 let ok = 0, ko = 0;
 const t = (n, c, extra) => { if (c) { ok++; console.log('  ✓ ' + n); } else { ko++; console.log('  ✗ ' + n + (extra !== undefined ? '  → ' + JSON.stringify(extra) : '')); } };
 
+// cada señal a una LÍNEA distinta: desde el 5-sep una posición (partido+línea+lado) solo admite una apuesta,
+// y estas auditorías reutilizan el mismo partido de mentira para todas sus señales.
+let nLinea = 0;
 const senal = (id, kickoff, extra = {}) => ({
   id: 'sh_' + id, pick_id: 'cdp_' + id, segment: 'cards_under_v1', family: 'CARDS', side: 'under',
-  book: 'cloudbet', line: 4.5, odds: 1.9, model_prob: 0.62, match: 'Equipo A vs Equipo B',
+  book: 'cloudbet', line: 0.5 + (++nLinea), odds: 1.9, model_prob: 0.62, match: 'Equipo A vs Equipo B',
   league: 'seriea', kickoff_at: kickoff, ...extra,
 });
 const idx = { ceid1: { cb_id: 'cb1' } };

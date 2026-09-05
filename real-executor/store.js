@@ -272,7 +272,34 @@ const REINTENTOS_MAX = 80;                 // freno de bucle, no de política: 8
 // `fuera_de_ventana` es DEFINITIVO: el tiempo solo va hacia adelante, así que un partido que ya cae
 // fuera del corte no va a volver a entrar. Reintentarlo 80 veces sería ruido con dinero al lado.
 // `banda_eficiente` también es DEFINITIVO: la banda de una liga no cambia entre dos barridos.
-const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro', 'fuera_de_ventana', 'banda_eficiente']);
+// `linea_ya_apostada` igual: la posición ya está tomada y no se va a destomar.
+const DEFINITIVOS = new Set(['sin_ventaja', 'fuera_de_perimetro', 'fuera_de_ventana', 'banda_eficiente', 'linea_ya_apostada']);
+
+// ── UNA POSICIÓN, UNA APUESTA (5-sep, orden de Alexis) ──────────────────────────────────────────────────
+// "Se puede apostar dos veces a un mismo partido pero no a la misma línea": under 3,5 y under 4,5 del mismo
+// partido está bien; dos under 4,5 duplicando el monto, no. Dos filas son la MISMA POSICIÓN si son el
+// mismo partido, la misma línea y el mismo lado. El partido se reconoce por cualquiera de sus tres
+// identidades —el id de la casa, el id canónico nuestro, o nombre+saque—, porque una fila recién nacida
+// aún no tiene el de la casa y una rescatada de la casa no tiene el nuestro.
+// Cuentan las filas con dinero puesto o posiblemente puesto: PLACED, EN_ACEPTACION y SETTLED. Una PENDIENTE
+// no cuenta (todavía no hay dinero) y una DESCARTADA/CADUCADA tampoco.
+const CON_DINERO = new Set(['PLACED', 'EN_ACEPTACION', 'SETTLED']);
+function mismoPartido(a, b) {
+  if (a.cb_event_id && b.cb_event_id && String(a.cb_event_id) === String(b.cb_event_id)) return true;
+  if (a.ceid && b.ceid && a.ceid === b.ceid) return true;
+  return !!(a.match && b.match && a.match === b.match && a.kickoff_at && b.kickoff_at
+    && Date.parse(a.kickoff_at) === Date.parse(b.kickoff_at));
+}
+function mismaPosicion(a, b) {
+  if (!a || !b || a === b) return false;
+  if (String(a.side || '').toLowerCase() !== String(b.side || '').toLowerCase()) return false;
+  if (a.line == null || b.line == null || Number(a.line) !== Number(b.line)) return false;
+  return mismoPartido(a, b);
+}
+// la fila con dinero que ya ocupa la misma posición que `fila`, o null
+function posicionOcupada(L, fila) {
+  return (L.bets || []).find((b) => b !== fila && b.pick_id !== fila.pick_id && CON_DINERO.has(b.status) && mismaPosicion(b, fila)) || null;
+}
 
 // ── EL VETO A LAS LIGAS EFICIENTES (5-sep, orden de Alexis tras la revisión del rendimiento) ────────────
 // El edge de tarjetas-under está en las ligas intermedias y blandas, y el motor ya lo sabe: en las
@@ -435,6 +462,13 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   const f = frenos(stake, fila.kickoff_at);
   if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
 
+  // 1b) UNA POSICIÓN, UNA APUESTA. Si otra fila con dinero ya ocupa este partido+línea+lado, esta no sale.
+  //     Cubre la re-emisión de la señal con otro pick_id (misma línea, otra pick) y cualquier camino que
+  //     llegue aquí dos veces para la misma posición. Se mira antes de tocar a la casa y otra vez después
+  //     de resolver el id del partido, que es la identidad más fiable.
+  const ocupada1 = posicionOcupada(L, fila);
+  if (ocupada1) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada1.status} a ${fila.side} ${fila.line} en este partido (pick ${ocupada1.pick_id}, ref ${ocupada1.ref_id || 's/r'})`, ocupada_por: ocupada1.pick_id });
+
   // 2) el id del partido en la casa
   let idx = fila.ceid ? (cbIdx || {})[fila.ceid] : null;
   if (!idx || !idx.cb_id) {
@@ -447,6 +481,8 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
     idx = porNombre; fila.id_resuelto_por = 'nombre';
   }
   fila.cb_event_id = idx.cb_id;
+  const ocupada2 = posicionOcupada(L, fila);
+  if (ocupada2) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada2.status} a ${fila.side} ${fila.line} en el evento ${idx.cb_id} (pick ${ocupada2.pick_id})`, ocupada_por: ocupada2.pick_id });
 
   // 3) el precio VIVO y sus coordenadas de colocación
   const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);
@@ -508,6 +544,30 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   const est = String(r.betStatus || cuerpo.betStatus || '').toUpperCase();
   const cod = String(r.betError || cuerpo.betErrorCode || '').toUpperCase();
   fila.error_casa = cod || null;
+
+  // LA REFERENCIA SOLO SE QUEMA CON UN RECHAZO EXPLÍCITO DE LA CASA (5-sep, tras una doble colocación real).
+  // Parma–Monza under 4,5: la primera respuesta no fue un JSON legible con `REJECTED`, sino un "no ok" con
+  // código HTTP ≥ 200 (la casa o su pasarela contestando algo que no era su cuerpo normal). El código de
+  // abajo lo trataba como rechazo: quemó la referencia, estrenó otra y volvió a enviar. La casa había
+  // aceptado la primera. Resultado: dos apuestas de 40 USDT a la misma línea, una por referencia. La regla
+  // "sin código de estado nadie nos contestó" era verdad; su inversa —"con código de estado la casa nos
+  // rechazó"— NO lo era, y con dinero esa inversa vale una apuesta doble.
+  // Ahora hay una sola forma de quemar la referencia en este punto: `betStatus: REJECTED` con cuerpo de la
+  // casa. Cualquier otro "no ok" con respuesta HTTP deja la fila EN_ACEPTACION con la MISMA referencia y
+  // `confirmar()` le pregunta a la casa qué pasó con ella. Si la casa la tiene, era nuestra; si la casa
+  // dice que no la tiene varias veces seguidas, se reintenta con la misma referencia — y si resultara que
+  // sí llegó, la casa contesta DUPLICATE_REQUEST, que ya se sabe leer. Así no hay ningún camino por el que
+  // dos referencias distintas de la misma fila lleguen a la casa sin que ella haya rechazado la primera.
+  const rechazoExplicito = est === 'REJECTED' && !!(r.body || cuerpo.betStatus);
+  if (!r.ok && !rechazoExplicito && Number(r.status) >= 200) {
+    fila.status = 'EN_ACEPTACION';
+    fila.motivo = 'respuesta_no_reconocida';
+    fila.stake_comprometido = stakeFinal;
+    fila.detalle = `la casa contestó HTTP ${r.status} sin un veredicto legible: se pregunta por la referencia antes de mover nada`;
+    fila.confirmaciones_sin_rastro = 0;
+    save();
+    return fila;
+  }
 
   if (!r.ok || est === 'REJECTED') {
     // LA CASA AHORA DICE POR QUÉ, Y NO TODOS LOS "NO" SON IGUALES. Con la API vieja un rechazo era una
@@ -589,9 +649,49 @@ async function confirmar() {
   const L = load();
   const enAire = L.bets.filter((b) => b.status === 'EN_ACEPTACION');
   let aceptadas = 0, rechazadas = 0, siguen = 0;
+  let liberadas = 0;
   for (const fila of enAire) {
     const st = await CB.betByReference(process.env.CLOUDBET_API_KEY || '', fila.ref_id).catch(() => null);
-    if (!st) { siguen++; continue; }
+    if (!st) {
+      // "NO LA TENGO" NO ES LO MISMO QUE "NO SÉ" (5-sep). `betByReference` devuelve null en los dos casos.
+      // Para una fila en el aire por una respuesta no reconocida, la diferencia es la que decide si el
+      // envío llegó: si la casa CONTESTA que no tiene la referencia tres veces seguidas, el envío no llegó
+      // y la fila vuelve a PENDIENTE con la MISMA referencia (si llegó y no lo vimos, el reenvío chocará con
+      // DUPLICATE_REQUEST y se leerá como tal). Si la casa no contesta, no se concluye nada: se espera.
+      let veredicto = null;
+      try { veredicto = await require('./reconciliar').leerApuesta(process.env.CLOUDBET_API_KEY || '', fila.ref_id, { reintentos: 1, esperar: true }); }
+      catch { veredicto = null; }
+      if (veredicto && veredicto.estado === 'existe' && veredicto.bet) {
+        // la lectura fina sí la vio: se sigue abajo con ese cuerpo
+        const rawX = veredicto.bet;
+        const estX = String(rawX.betStatus || rawX.status || '').toUpperCase();
+        if (estX === 'ACCEPTED' || CB.ESTADOS_LIQUIDADOS.has(estX)) {
+          fila.status = 'PLACED'; fila.motivo = null;
+          fila.odds_real = Number(rawX.price) || fila.precio_vivo || fila.odds_sombra;
+          fila.stake = Number(rawX.stake) || fila.stake;
+          fila.placed_at = fila.placed_at || new Date().toISOString();
+          fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
+          const d = dia(String(fila.placed_at).slice(0, 10)); d.apostado += fila.stake; d.n += 1;
+          aceptadas++; continue;
+        }
+        if (estX === 'REJECTED') {
+          fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+          fila.status = 'PENDIENTE'; fila.motivo = 'rechazada_por_la_casa'; fila.error_casa = rawX.betErrorCode || rawX.error || null;
+          rechazadas++; continue;
+        }
+        siguen++; continue;
+      }
+      if (veredicto && veredicto.estado === 'no_existe') {
+        fila.confirmaciones_sin_rastro = (fila.confirmaciones_sin_rastro || 0) + 1;
+        if (fila.confirmaciones_sin_rastro >= 3) {
+          fila.status = 'PENDIENTE'; fila.motivo = 'no_llego_a_la_casa';
+          fila.detalle = `la casa dijo ${fila.confirmaciones_sin_rastro} veces que no tiene la referencia: el envío no llegó; se reintenta con la MISMA referencia`;
+          delete fila.stake_comprometido;
+          liberadas++; continue;
+        }
+      }
+      siguen++; continue;
+    }
     // `betStatus`, no `status`: la API GraphQL nombra así el campo, y leer el nombre de la API vieja dejaba
     // toda apuesta en el aire atascada ahí para siempre —ni se confirmaba ni se liberaba— con el dinero
     // comprometido contando contra el tope de exposición. Lo cazó la auditoría, no la producción.
@@ -615,8 +715,8 @@ async function confirmar() {
       rechazadas++;
     } else siguen++;
   }
-  if (aceptadas || rechazadas) save();
-  return { en_aire: enAire.length, aceptadas, rechazadas, siguen };
+  if (aceptadas || rechazadas || liberadas) save();
+  return { en_aire: enAire.length, aceptadas, rechazadas, liberadas, siguen };
 }
 
 // LA PUERTA DE ENTRADA: una señal nueva del sombra. Crea la fila y hace el primer intento.

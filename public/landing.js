@@ -264,7 +264,9 @@
       d_sub_v4: 'It compares dozens of books in real time — on matches and on fights — and flags the price that fell behind before it gets corrected.',
     }
   };
-  var lang = (function () { try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})(); })();
+  // `?lang=en|es` en la URL manda sobre todo lo demás y se recuerda (5-sep): los volantes impresos en Gambia
+  // apuntan a /landing?ref=<code>&lang=en, y un teléfono configurado en francés o wolof no debe caer en español.
+  var lang = (function () { try { var q = new URLSearchParams(location.search).get('lang'); if (q === 'es' || q === 'en') { try { localStorage.setItem('gp_lang', q); } catch (e) {} return q; } } catch (e) {} try { var p = localStorage.getItem('gp_lang'); if (p === 'es' || p === 'en') return p; } catch (e) {} return (function(){var d=(typeof window!=='undefined'&&window.__GPDL)||'en';if(d==='es'||d==='en')return d;return (navigator.language||'es').slice(0,2)==='en'?'en':'es';})(); })();
   // LANDING v3 (clubes): el server inyecta __GPL3 (flag) y ?landing3=1 la fuerza (preview). Con v3, T()
   // prefiere la variante `<k>_v3` del copy → un solo diccionario, cero bifurcación de markup estático.
   var V3 = /[?&]landing3=1/.test(location.search) || !!window.__GPL3;

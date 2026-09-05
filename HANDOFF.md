@@ -1,5 +1,18 @@
 # HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
 
+## 💸 EJECUTOR REAL — lo que cambió el 5-sep (detalle y cifras al principio de TODO_NEXT.md)
+1. **Liquidación de filas manuales** aunque la pick quede SUPERSEDED (27 apuestas / 761 USDT estaban
+   atascadas una semana): toman el veredicto de su apuesta en la sombra, misma línea y lado.
+2. **Veto a la banda eficiente** (`banda_eficiente`, `GP_REAL_BANDAS_VETADAS`): el dinero real no entra en
+   Premier/Championship/Bundesliga/Serie A/Ligue 1/MLS… La sombra NO cambia.
+3. **Bandas con memoria** (`lib/bandas.js`, `db.leagueBand`): el margen de 0,005 protege la banda ACTUAL,
+   no la del prior. Sembrado sin mover ninguna banda. `/api/internal/ops` → `bandas_liga`.
+4. **Doble colocación cerrada**: la referencia solo se quema con REJECTED explícito; `confirmar()` distingue
+   "no la tengo" de "no sé"; **una posición, una apuesta** (`linea_ya_apostada`). Reconciliador con categoría
+   `duplicadas` + reparación que las registra. Dos duplicadas reales (Parma–Monza y Roma–Atalanta u4,5).
+Auditorías: `node real-executor/auditoria-{ventana,banda,liquidar-manual,duplicados,reconciliar}.js` y
+`node scripts/smoke/bandas-smoke.js` — todas en verde el 5-sep.
+
 ## 🔧 RECONCILIADOR DEL EJECUTOR REAL (4-sep) — `real-executor/reconciliar.js`
 Cuadra NUESTRO libro contra el de Cloudbet leyendo `/historial` por el reenviador. Clasifica en **huérfanas**
 (en la casa y no en nuestro libro: dinero comprometido sin contar), **fantasmas** (nosotros sí, la casa no),

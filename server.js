@@ -21911,6 +21911,8 @@ async function anotar(pid){
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const RE = require('./real-executor/store');
+      // estado/resultado de la reconciliación lanzada en segundo plano (POST run=reconciliar&bg=1)
+      if (url.searchParams.get('reconciliacion')) return json(res, 200, OPS.reconciliacion || { estado: 'nunca_lanzada' });
       if (req.method === 'POST') {
         const run = url.searchParams.get('run') || '';
         if (run === 'saldo') return json(res, 200, { saldo: await RE.refrescarSaldo() });
@@ -21962,11 +21964,26 @@ async function anotar(pid){
           // `modo=listado` pide el libro entero a la casa (hoy su resolver da error); por defecto se
           // pregunta POR REFERENCIA, que es el camino que contesta y el que ya usa la liquidación.
           const modo = url.searchParams.get('modo') === 'listado' ? 'listado' : 'referencias';
-          const out = await RC.reparar({ pickIds, sombra, aplicar, modo,
+          const opts = { pickIds, sombra, aplicar, modo,
             dias: Math.min(60, Math.max(1, parseInt(url.searchParams.get('dias'), 10) || 7)),
             cap: Math.min(2000, Math.max(10, parseInt(url.searchParams.get('cap'), 10) || 600)),
-            maxPaginas: Math.min(60, Math.max(1, parseInt(url.searchParams.get('paginas'), 10) || 30)) })
-            .catch((e) => ({ ok: false, why: e.message }));
+            maxPaginas: Math.min(60, Math.max(1, parseInt(url.searchParams.get('paginas'), 10) || 30)) };
+          // EN SEGUNDO PLANO (`&bg=1`, 5-sep): con ~250 referencias a 350 ms la pasada dura más que lo que
+          // la red deja vivir a una petición (~100 s: la de hoy murió con la conexión cortada y sin cuerpo).
+          // El trabajo corre dentro del proceso y el resultado se consulta con GET `?reconciliacion=1`.
+          // Solo un trabajo a la vez: dos reconciliaciones simultáneas contra la casa serían el doble de
+          // peticiones para la misma respuesta, y con `aplicar` podrían insertar la misma fila dos veces.
+          if (url.searchParams.get('bg') === '1') {
+            const J = OPS.reconciliacion;
+            if (J && J.estado === 'corriendo') return json(res, 200, { ok: false, why: 'ya hay una reconciliación corriendo', empezada: J.empezada, aplicar: J.aplicar });
+            const job = { estado: 'corriendo', empezada: new Date().toISOString(), terminada: null, aplicar, dias: opts.dias, cap: opts.cap, resultado: null };
+            OPS.reconciliacion = job;
+            RC.reparar(opts).then((out) => { job.resultado = out; job.estado = 'terminada'; job.terminada = new Date().toISOString();
+              opsLog('reconciliacion', { aplicar, cuadra: out && out.cuadra, duplicadas: (out && out.duplicadas || []).length, huerfanas: (out && out.huerfanas || []).length, insertadas: out && out.insertadas }); })
+              .catch((e) => { job.resultado = { ok: false, why: e.message }; job.estado = 'fallida'; job.terminada = new Date().toISOString(); });
+            return json(res, 200, { ok: true, lanzada: true, empezada: job.empezada, aplicar, consultar: '/api/internal/real?key=…&reconciliacion=1' });
+          }
+          const out = await RC.reparar(opts).catch((e) => ({ ok: false, why: e.message }));
           return json(res, 200, out);
         }
         if (run === 'aviso_manual') { await realAvisoApuestaManual(); return json(res, 200, { ok: true }); }

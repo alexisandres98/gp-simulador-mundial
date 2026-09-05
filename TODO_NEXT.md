@@ -1,5 +1,21 @@
 # TODO_NEXT.md — GP Simulador
 
+## ⏱️ PARADA DIARIA DEL EJECUTOR DESACTIVADA HASTA EL LUNES 7 08:00 UTC — **TEMPORAL, hay que volverla a poner**
+Orden de Alexis (5-sep, 20:00 UTC): "si nacen intermedias/blandas entre ahora y el lunes 8am UTC quiero que el
+sistema las coloque". El día iba en −97 con el tope de parada en −117 (6 % del nocional): una pérdida más y el
+freno habría bloqueado TODAS las apuestas nuevas del sábado, y otra racha el domingo. `GP_REAL_DAY_STOP_PCT=100`
+en Render (antes no existía → defecto 6). **El lunes: borrar la variable (vuelve al 6 %) y desplegar.** Los
+demás frenos siguen: veto a eficientes, ventana de saque (lunes 08:00, coincide con el plazo), suelo de saldo
+(5 USDT, con 469 en cuenta caben ~11 apuestas de 40; si falta saldo la fila queda PENDIENTE y reintenta hasta
+el saque), deslizamiento 3 %, una posición por partido.
+
+## 🎟️ APUESTAS FÍSICAS (Gambia, PrimaBet) — libro en dalasis (5-sep)
+Seis boletos de D1.000 colocados a mano por Alexis (experimento de captación). `data/manual/fisicas.json` es la
+verdad (línea y cuota de la casa física, distintas a las del sistema en 4 de 6). Se liquidan en cada barrido
+con `clubPropTotal` contra su línea; mientras el total no llega, valen la pick liquidada o una fila del libro
+real pagada por la casa en la MISMA posición; a 72 h sin dato, VOID. Tablero: `/api/internal/fisicas?key=`
+(POST fuerza pasada). Al 5-sep 20:00: Athletic u4,5 ganado (+700), Rayo u5,5 perdido (−1.000), 4 pendientes.
+
 ## 🔴 DOBLE COLOCACIÓN EN LA CASA — cerrada por código el 5-sep (Alexis la vio en la app de Cloudbet)
 **Dos apuestas reales duplicadas**: Parma–Monza under 4,5 (refs envío 0 @1,63 y envío 1 @1,62, 40 USDT cada
 una) y Roma–Atalanta under 4,5 (envío 0 @1,39 y envío 3 @1,38). Causa: `colocar()` quemaba la referencia con

@@ -13053,14 +13053,35 @@ function fisicasSettle() {
     if (r && r.result) continue;
     const ko = Date.parse(t.kickoff_at || (t.event && t.event.kickoff_at) || '');
     if (!Number.isFinite(ko) || ko > Date.now()) continue;              // no ha empezado
-    const total = clubPropTotal(t.league, t.event || {}, t.family || 'CARDS');
-    let result = null;
-    if (total != null) result = ((String(t.side).toLowerCase() === 'over') === (total > Number(t.line))) ? 'WIN' : 'LOSS';
-    else if (Date.now() - ko > 72 * 3600e3) result = 'VOID';           // sin dato a las 72 h: anulada, no inventada
+    const ev = t.event || {};
+    const lado = String(t.side || 'under').toLowerCase();
+    const total = clubPropTotal(t.league, ev, t.family || 'CARDS');
+    let result = null, fuente = null;
+    if (total != null) { result = ((lado === 'over') === (total > Number(t.line))) ? 'WIN' : 'LOSS'; fuente = 'total_real_linea_propia'; }
+    // el total tarda en llegar al histórico (cosecha diaria). Mientras, valen dos testigos de la MISMA
+    // posición (mismo partido, misma línea, mismo lado): la pick del motor ya liquidada, o una apuesta del
+    // libro real que la casa ya pagó. Ninguno inventa nada: los dos vieron el partido.
+    const mismoPartido = (e2) => e2 && ((e2.home_team_id === ev.home_team_id && e2.away_team_id === ev.away_team_id)
+      || (e2.home_team_id === ev.away_team_id && e2.away_team_id === ev.home_team_id))
+      && Math.abs(Date.parse(e2.kickoff_at || 0) - ko) < 6 * 3600e3;
+    if (!result) {
+      const q = (db.clubDailyPicks || []).find((p) => p.family === (t.family || 'CARDS') && String(p.side || '').toLowerCase() === lado
+        && Number(p.line) === Number(t.line) && p.status === 'SETTLED' && /^(WIN|LOSS)$/.test(String(p.result_code || '')) && mismoPartido(p.event));
+      if (q) { result = q.result_code; fuente = 'pick_liquidada:' + q.pick_id; }
+    }
+    if (!result) {
+      try {
+        const byPick = {}; for (const p of (db.clubDailyPicks || [])) byPick[p.pick_id] = p;
+        const fila = require('./real-executor/store').load().bets.find((b) => b.status === 'SETTLED' && /^(WIN|LOSS)$/.test(String(b.casa_estado || b.resultado || ''))
+          && Number(b.line) === Number(t.line) && String(b.side || '').toLowerCase() === lado && byPick[b.pick_id] && mismoPartido(byPick[b.pick_id].event));
+        if (fila) { result = String(fila.casa_estado || fila.resultado).toUpperCase(); fuente = 'libro_real:' + fila.pick_id; }
+      } catch { /* sin libro real no pasa nada */ }
+    }
+    if (!result && Date.now() - ko > 72 * 3600e3) { result = 'VOID'; fuente = 'sin_dato_72h'; }   // anulada, no inventada
     if (!result) continue;
     const stake = Number(t.stake) || 0, odds = Number(t.odds) || 1;
     const pnl = result === 'WIN' ? +(stake * (odds - 1)).toFixed(2) : result === 'LOSS' ? -stake : 0;
-    db.fisicas[t.ticket] = { result, total, pnl, settled_at: new Date().toISOString(), fuente: total != null ? 'total_real_linea_propia' : 'sin_dato_72h' };
+    db.fisicas[t.ticket] = { result, total, pnl, settled_at: new Date().toISOString(), fuente };
     settled++;
     opsLog('fisica_liquidada', { ticket: t.ticket, match: t.match, line: t.line, result, total, pnl });
   }

@@ -1,5 +1,26 @@
 # TODO_NEXT.md — GP Simulador
 
+## 💸 LIBRO REAL: las filas MANUALES ya se liquidan aunque la pick quede SUPERSEDED (corregido 5-sep)
+Hallazgo al revisar el rendimiento: **27 apuestas manuales de fútbol (761 USDT) llevaban una semana
+"esperando"** con el partido acabado. `liquidar()` cerraba una fila manual SOLO con el `result_code` de su
+pick; cuando el motor re-emite la señal la pick queda SUPERSEDED y el código no es WIN/LOSS → la fila no
+cerraba jamás. Es el mismo fallo que la sombra corrigió el 19-ago; el camino manual (25-ago) lo heredó.
+Ahora, si la pick no sirve, la fila toma el veredicto de **su apuesta de la sombra** (misma línea y mismo
+lado, obligatorio; `fuente_resultado: 'sombra_linea_propia'`), que ya se resolvió contra el total real.
+Las automáticas no cambian: la casa sigue mandando. Auditoría: `node real-executor/auditoria-liquidar-manual.js`
+(23 en verde). El barrido siguiente al deploy debería cerrar las 27 y mover `realizado` unos +126 USDT.
+**Sigue abierto:** 9 manuales de CS2 del 26-31 ago cuya apuesta de la sombra sigue OPEN (la liquidación de
+esports no las cerró) y 13 automáticas de CS2 que la casa aún no marca liquidadas — mirar el lunes.
+
+## 📊 LO QUE EL EJECUTOR APUESTA vs LO QUE VE EL USUARIO (analizado 5-sep, decisión pendiente de Alexis)
+La sombra y el ejecutor toman **toda** CARDS under ACTIVA del motor; la plataforma solo muestra
+`published && regime !== 'monitor'`. Cards-under solo publica en ligas intermedias/blandas (`SEGMENT_BANDS`),
+así que **todo lo que el ejecutor apuesta en Premier/Championship/Bundesliga/Serie A/Ligue 1/MLS es
+`monitor`**: nadie lo ve y el modelo ahí no bate al precio (sombra: 47 liquidadas en eficientes, ROI +0,4 %;
+publicadas +55,8 %; monitor −6,7 %). Ver el desglose completo en el hilo del 5-sep. Opciones: (a) restringir
+sombra+ejecutor a publicadas (cambia la muestra congelada → hacerlo como segmento NUEVO), (b) al menos vetar
+la banda eficiente en el ejecutor real, (c) dejar y documentar. **No tocar antes de que Alexis decida.**
+
 ## ⏱️ VENTANA DE SAQUE DEL EJECUTOR — **MEDIDA TEMPORAL**, hay que quitarla (4-sep, orden de Alexis)
 > **Esto no es política permanente.** Alexis lo dijo explícitamente: *"Esta medida es temporal, luego la
 > quitamos pero por ahora mantenla."* Mientras siga puesta, el ejecutor NO apuesta nada del lunes 7 en

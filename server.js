@@ -13348,7 +13348,9 @@ async function shadowSweep() {
       for (const [pid, q] of Object.entries(byPick)) {
         if (q && q.status === 'SETTLED' && q.result_code) resultados[pid] = { result_code: q.result_code };
       }
-      const liq = await RE.liquidar(resultados).catch((e) => ({ error: e.message }));
+      // y las apuestas de la sombra viajan también: una fila MANUAL cuya pick quedó SUPERSEDED se cierra con
+      // el veredicto que la sombra ya dio a esa misma posición (misma línea, mismo lado) — ver liquidar().
+      const liq = await RE.liquidar(resultados, { sombra: S.bets }).catch((e) => ({ error: e.message }));
       real = { nuevas: realIntentos, colocadas_nuevas: realColocadas, reintentos: rei, confirmadas: conf, ...liq };
       // CS2 A MANO (25-ago, pedido de Alexis tras colocar las primeras cuatro): cada señal nueva de
       // cs2_rounds_v1 con mejor cuota en Cloudbet entra al libro real como fila de canal manual; el correo
@@ -22031,7 +22033,13 @@ async function anotar(pid){
           RE.save();
           return json(res, 200, { rechazos_antes: antes, ahora: 0 });
         }
-        if (run === 'liquidar') return json(res, 200, await RE.liquidar());
+        if (run === 'liquidar') {
+          // la misma llamada que hace el barrido, con los mismos insumos: sin las picks y la sombra, las filas
+          // manuales figurarían todas como "esperando" y la lectura a mano engañaría.
+          const resL = {};
+          for (const q of (db.clubDailyPicks || []).concat(db.combatPicks || [])) if (q && q.status === 'SETTLED' && q.result_code) resL[q.pick_id] = { result_code: q.result_code };
+          return json(res, 200, await RE.liquidar(resL, { sombra: shadowInit().bets }));
+        }
         // `run=reliquidar&ref=`: corrige el DINERO de una apuesta ya liquidada con la aritmética de su estado
         // (1-sep: la primera liquidación por el brazo restó el stake dos veces). Ajusta el libro por la diferencia.
         if (run === 'reliquidar') return json(res, 200, RE.reliquidar(String(url.searchParams.get('ref') || '')));

@@ -748,11 +748,15 @@ function reliquidar(refId) {
 }
 
 // `resultados` es un mapa pick_id → { result_code, } que el llamador saca de sus propias picks liquidadas.
-async function liquidar(resultados = {}) {
+// `sombra` son las apuestas del ejecutor en la sombra (db.shadow.bets): la posición de papel de la que nació
+// cada fila, con su liquidación propia. Solo la usan las filas manuales, y solo cuando la pick no sirve.
+async function liquidar(resultados = {}, { sombra = [] } = {}) {
   const C = CFG();
   if (!process.env.CLOUDBET_API_KEY) return { settled: 0, why: 'sin_api_key' };
   const L = load();
   const pend = L.bets.filter((b) => b.status === 'PLACED');
+  const sombraPorId = {};
+  for (const sb of (Array.isArray(sombra) ? sombra : [])) if (sb && sb.id) sombraPorId[sb.id] = sb;
   let settled = 0, esperando = 0, descuadres = 0;
   for (const b of pend) {
     // APUESTAS COLOCADAS A MANO (25-ago). Mientras la cuenta no pueda apostar por API, Alexis coloca por la
@@ -762,7 +766,25 @@ async function liquidar(resultados = {}) {
     // informe nunca las confunda con las verificadas contra el dinero de la casa. El saldo real de la
     // cartera, que sí es legible, sirve de contraste grueso al final del día.
     if (b.via === 'manual') {
-      const mio = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
+      let mio = String((resultados[b.pick_id] || {}).result_code || '').toUpperCase();
+      let fuente = 'pick';
+      // UNA APUESTA COLOCADA NO SE DES-COLOCA (5-sep; el mismo fallo que la sombra corrigió el 19-ago y que
+      // este camino, escrito el 25-ago, heredó sin la corrección). Cuando el motor re-emite la señal (u4,5 →
+      // u5,5, o el prune la saca del feed) la pick queda SUPERSEDED, y eso es un hecho sobre la SEÑAL, no sobre
+      // el dinero: la apuesta está puesta en esa línea a ese precio y el partido la resuelve igual. Con solo el
+      // código de la pick, 27 apuestas manuales de fútbol —761 USDT— llevaban una semana "esperando" un
+      // WIN/LOSS que jamás iba a llegar: la exposición abierta se inflaba y el P&L real las omitía. La sombra
+      // ya resolvió esa misma posición contra el total real del partido y contra SU propia línea, así que
+      // cuando la pick no sirve se toma ese veredicto — exigiendo mismo lado y misma línea, para no heredar
+      // nunca el resultado de una posición distinta.
+      if (!/^(WIN|LOSS|VOID|PUSH|CANCEL)/.test(mio)) {
+        const sb = sombraPorId[b.shadow_id];
+        const mismoLado = sb && String(sb.side || '').toLowerCase() === String(b.side || '').toLowerCase();
+        const mismaLinea = sb && (sb.line == null || b.line == null || Number(sb.line) === Number(b.line));
+        if (sb && sb.status === 'SETTLED' && /^(WIN|LOSS|VOID)$/.test(String(sb.result || '')) && mismoLado && mismaLinea) {
+          mio = String(sb.result).toUpperCase(); fuente = 'sombra_linea_propia';
+        }
+      }
       if (!mio) { esperando++; continue; }
       const stakeM = Number(b.stake) || 0;
       if (mio === 'WIN') { b.pnl = +(stakeM * ((b.odds_real || b.odds_sombra) - 1)).toFixed(2); b.resultado = 'WIN'; }
@@ -770,7 +792,7 @@ async function liquidar(resultados = {}) {
       else if (/VOID|PUSH|CANCEL/.test(mio)) { b.pnl = 0; b.resultado = 'VOID'; }
       else { esperando++; continue; }
       b.status = 'SETTLED'; b.settled_at = new Date().toISOString();
-      b.resultado_nuestro = mio; b.verificacion = 'resultado_propio';
+      b.resultado_nuestro = mio; b.verificacion = 'resultado_propio'; b.fuente_resultado = fuente;
       L.realizado = +((L.realizado || 0) + b.pnl).toFixed(2);
       L.nocional = +((L.nocional || C.nocional) + b.pnl).toFixed(2);
       const dM = dia(String(b.settled_at).slice(0, 10)); dM.pnl = +(dM.pnl + b.pnl).toFixed(2);

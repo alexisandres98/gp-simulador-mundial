@@ -6964,16 +6964,26 @@ const LEAGUE_EFF_PRIOR = {
   league1: 'intermedia', league2: 'intermedia', serieb: 'intermedia', laliga2: 'intermedia',
   portugal: 'intermedia', belgica: 'intermedia', turquia: 'intermedia', grecia: 'intermedia',
 };
+// 5-sep (orden de Alexis, "no esperes el domingo"): la histéresis protege la banda ACTUAL, no la del prior.
+// La decisión pura vive en lib/bandas.js (auditable sin base); aquí solo se mide el Brier y se guarda la
+// memoria de dónde está cada liga en db.leagueBand. La primera evaluación con muestra se siembra con la
+// regla antigua → el despliegue no cambia ninguna banda de hoy. Cada cambio posterior queda en la ficha
+// (`cambios`) y en el log de ops, porque mueve picks y dinero real.
+const BANDAS = require('./lib/bandas');
 function leagueEfficiency(league) {
   const lg = league || 'mundial';
   const prior = LEAGUE_EFF_PRIOR[lg] || 'blanda';
   const rows = (db.clubDailyPicks || []).filter(p => p.league === lg && p.status === 'SETTLED'
     && (p.result_code === 'WIN' || p.result_code === 'LOSS') && p.market_prob > 0 && p.market_prob < 1);
-  if (rows.length < 40) return { band: prior, source: 'prior', n: rows.length };
-  const brier = rows.reduce((s, p) => s + Math.pow(p.market_prob - (p.result_code === 'WIN' ? 1 : 0), 2), 0) / rows.length;
-  // histéresis: la medición solo mueve la banda si cruza el umbral con margen
-  const band = brier < 0.230 ? 'eficiente' : brier > 0.260 ? 'blanda' : brier < 0.235 && prior === 'eficiente' ? 'eficiente' : brier > 0.255 && prior === 'blanda' ? 'blanda' : 'intermedia';
-  return { band, source: 'measured', brier: +brier.toFixed(4), n: rows.length };
+  const n = rows.length;
+  const brier = n ? rows.reduce((s, p) => s + Math.pow(p.market_prob - (p.result_code === 'WIN' ? 1 : 0), 2), 0) / n : NaN;
+  if (!db.leagueBand || typeof db.leagueBand !== 'object') db.leagueBand = {};
+  const memoria = db.leagueBand[lg] || null;
+  const r = BANDAS.evaluarBanda({ brier, n, prior, memoria });
+  if (r.source === 'prior') return { band: r.band, source: 'prior', n, prior };
+  if (!memoria || r.cambio || r.memoria.brier !== memoria.brier || r.memoria.n !== memoria.n) db.leagueBand[lg] = r.memoria;
+  if (r.cambio) opsLog('banda_liga_cambia', { liga: lg, de: memoria.band, a: r.band, brier: r.memoria.brier, n });
+  return { band: r.band, source: 'measured', brier: r.memoria.brier, n, prior, desde: memoria ? memoria.at : r.memoria.at, cambios: (r.memoria.cambios || []).length };
 }
 // Bandas donde cada segmento público está VALIDADO para publicar. Cards-under se validó en intermedias
 // (n=76, +21.6%) y su racional (público over + líneas perezosas) aplica AÚN MÁS en blandas; en ligas
@@ -20478,6 +20488,8 @@ const server = http.createServer(async (req, res) => {
         // ORIGEN DE LA BASE (4-sep): de dónde salió db en este arranque y cuántos usuarios tiene. Sin esto,
         // "¿arrancó con la base buena?" solo se podía responder esperando al correo diario del CSV.
         db_origen: { ...dbOrigen, usuarios_ahora: Object.keys(db.users || {}).length },
+        // bandas de eficiencia con memoria (5-sep): dónde está cada liga medida, desde cuándo y qué cambios tuvo
+        bandas_liga: Object.fromEntries(Object.entries(db.leagueBand || {}).map(([lg, m]) => [lg, { banda: m.band, brier: m.brier, n: m.n, prior: m.prior, desde: m.at, cambios: m.cambios || [] }])),
         rosters, amf_skips: db.ops.amf_skips || 0,
         cs2_auto_enabled: cs2AutoOn(),
         boxing_env: /^(1|true|yes|on)$/i.test(String(process.env.GP_BOXING_BACKFILL || '').trim()),

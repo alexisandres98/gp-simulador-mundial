@@ -12,6 +12,20 @@ Las automáticas no cambian: la casa sigue mandando. Auditoría: `node real-exec
 **Sigue abierto:** 9 manuales de CS2 del 26-31 ago cuya apuesta de la sombra sigue OPEN (la liquidación de
 esports no las cerró) y 13 automáticas de CS2 que la casa aún no marca liquidadas — mirar el lunes.
 
+## 🎚️ BANDAS DE EFICIENCIA CON MEMORIA: el margen protege la banda ACTUAL (5-sep, orden de Alexis)
+La histéresis de 0,005 protegía solo la banda del prior: MLS (prior intermedia, Brier 0,2292 medido en 231
+eventos) había subido a eficiente el 29-ago y volvía a intermedia en cuanto tocaba 0,2300 — abriendo
+cards-under y el dinero real un fin de semana sí y otro no. Ahora la decisión pura vive en `lib/bandas.js`
+y la memoria en `db.leagueBand`: para salir de una banda hay que cruzar el umbral con 0,005 de margen, sea
+cual sea el prior (intermedia→eficiente < 0,225; eficiente→intermedia > 0,235; intermedia→blanda > 0,265;
+blanda→intermedia < 0,255). **La primera evaluación se siembra con la regla antigua**, así que el deploy no
+movió ninguna banda (comprobado con las 9 ligas medidas del 5-sep). Cada cambio posterior queda en la ficha
+y en `opsLog('banda_liga_cambia')`. Visible en `/api/internal/ops` → `bandas_liga`. Humo:
+`scripts/smoke/bandas-smoke.js` (28 en verde). **Vigilar el domingo:** LaLiga (medida intermedia, cards-under
+8/15 y −16,5 % en papel, 8 apuestas reales vivas → candidata a prior forzado eficiente), Serie A (0,2275,
+subiendo hacia intermedia; con el margen no cruza hasta 0,235), Dinamarca (prior blanda, Brier 0,214 con n=31:
+saltará a eficiente al llegar a 40).
+
 ## 🚫 EJECUTOR REAL: VETADA LA BANDA EFICIENTE (5-sep, orden de Alexis tras la revisión del rendimiento)
 La sombra y el ejecutor tomaban **toda** CARDS under ACTIVA del motor; la plataforma solo muestra
 `published && regime !== 'monitor'`, y cards-under solo publica en intermedias/blandas (`SEGMENT_BANDS`).

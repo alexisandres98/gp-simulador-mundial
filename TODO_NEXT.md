@@ -1,5 +1,18 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🥊 COMBATE: agenda de UFC/PFL ampliada de 21 a 90 días (6-sep) — y lo que sigue faltando
+Alexis no veía carteleras UFC confirmadas. Medido con la ruta nueva `/api/internal/combat?key=&org=&dias=`:
+a 21 días el pool tenía 6 eventos / 44 peleas; ESPN a 90 días trae 16 / 84 (fuera quedaban UFC 332, UFC 333,
+Fight Night Buckley–Malott y Allen–Duncan). Ahora `GP_COMBAT_UPCOMING_DAYS` (defecto 90, tope 180) y
+`limit=100`. El vigilante de cartelera solo mira 30 días (a dos meses las peleas entran y salen por diseño);
+el observador de prensa ya miraba 10; el monitor no genera picks a más de 120.
+**Sigue abierto — PFL:** ESPN casi no cubre PFL (a 90 días: 2 eventos, 4 peleas, 3 sin nombres). El pool de
+`mma` está VACÍO. Opción realista: sembrar la agenda de PFL desde el feed de cuotas de The Odds API
+(`mma_mixed_martial_arts` ya se paga y trae PFL con nombres) igual que hace boxeo con `combatBoxingUpcoming`.
+**Boxeo:** solo entra lo que tiene cuotas en The Odds API (14 carteleras hasta diciembre); las peleas
+anunciadas sin mercado no aparecen. Si Alexis quiere ver anuncios sin cuota, hace falta otra fuente (BoxRec
+es de pago; Wikipedia por evento es viable pero manual).
+
 ## ⏱️ PARADA DIARIA DEL EJECUTOR DESACTIVADA HASTA EL LUNES 7 08:00 UTC — **TEMPORAL, hay que volverla a poner**
 Orden de Alexis (5-sep, 20:00 UTC): "si nacen intermedias/blandas entre ahora y el lunes 8am UTC quiero que el
 sistema las coloque". El día iba en −97 con el tope de parada en −117 (6 % del nocional): una pérdida más y el

@@ -14731,9 +14731,17 @@ async function combatDoRefresh(C) {
     return;
   }
   try {
-    const now = new Date(); const to = new Date(Date.now() + 21 * 24 * 3600e3);
+    // VENTANA DE 90 DÍAS (6-sep; antes 21). Alexis veía carteleras de UFC ya confirmadas que no aparecían:
+    // medido con /api/internal/combat, a 21 días el pool tenía 6 eventos / 44 peleas y ESPN a 90 días traía
+    // 16 / 84 — fuera quedaban UFC 332, UFC 333 y dos Fight Nights completas con nombres. Boxeo ya miraba
+    // hasta diciembre por su propia fuente; MMA era la única agenda corta. El resto de piezas tiene su propio
+    // horizonte y no se dispara con esto: el observador de prensa mira 10 días, el monitor no genera picks
+    // a más de 120 (PLACEHOLDER_MAX_DAYS) y las cuotas salen de un único feed. `limit=100` porque ESPN
+    // cuenta como evento cada semana del Contender Series.
+    const diasUp = Math.min(180, Math.max(7, parseInt(process.env.GP_COMBAT_UPCOMING_DAYS, 10) || 90));
+    const now = new Date(); const to = new Date(Date.now() + diasUp * 24 * 3600e3);
     const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
-    const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/${C.upLeague || 'ufc'}/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=50`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+    const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/${C.upLeague || 'ufc'}/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=100`, { signal: AbortSignal.timeout(15000) }).then(r => r.json());
     C.upcoming = (sb.events || []).map(e => ({
       id: e.id, name: e.name, date: e.date,
       // main event: la pelea cuyos apellidos aparecen en el nombre del evento ("X vs. Y")
@@ -14773,6 +14781,9 @@ function combatCardWatch(C) {
   const now = Date.now();
   const cur = { at: new Date().toISOString(), events: {} };
   for (const ev of (C.upcoming || [])) {
+    // con la agenda a 90 días (6-sep) el vigilante solo mira las carteleras de los próximos 30: a dos meses
+    // las peleas entran y salen por diseño (anuncios, cambios de cartel) y eso no es "una pelea que se cae".
+    if (Date.parse(ev.date || 0) - now > 30 * 86400e3) continue;
     const e = cur.events[ev.id] = { name: ev.name, date: ev.date, comps: {} };
     for (const ft of (ev.fights || [])) if (ft.comp_id) {
       // se guarda la hora PROPIA de la pelea: en boxeo la "cartelera" es un grupo por día y cada pelea tiene

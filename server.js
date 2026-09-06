@@ -23200,6 +23200,38 @@ async function anotar(pid){
       return json(res, 404, { error: 'No encontrado' });
     }
     // OBSERVER DE COMBATE interno (R2b): GET = estado; POST = sweep ya
+    // DIAGNÓSTICO DE CALENDARIO DE COMBATE (6-sep): qué carteleras tiene el pool ahora mismo y qué hay en la
+    // fuente a más días. `?org=ufc|mma|boxing&dias=90`. Solo lectura; compara nuestro `upcoming` (21 días)
+    // contra el scoreboard de ESPN a N días para ver cuánto queda fuera.
+    if (p === '/api/internal/combat') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const org = ['ufc', 'mma', 'boxing'].includes(url.searchParams.get('org')) ? url.searchParams.get('org') : 'ufc';
+      const dias = Math.min(180, Math.max(7, parseInt(url.searchParams.get('dias'), 10) || 90));
+      const C = combatLoad(org);
+      try { await combatRefreshUpcoming(C); } catch (e) { /* se informa abajo */ }
+      const resumen = (evs) => (evs || []).map((e) => ({ id: e.id, date: String(e.date || '').slice(0, 10), name: e.name,
+        peleas: (e.fights || []).length,
+        con_nombres: (e.fights || []).filter((f) => !/\bTBA\b/i.test(`${(f.f1 || {}).name} ${(f.f2 || {}).name}`)).length }));
+      const out = { org, liga_espn: C.upLeague || (COMBAT_ORGS[org] || {}).upcoming, ventana_actual_dias: org === 'boxing' ? 'odds-api' : 21,
+        up_at: C.upAt ? new Date(C.upAt).toISOString() : null, pool: resumen(C.upcoming), pool_eventos: (C.upcoming || []).length,
+        pool_peleas: (C.upcoming || []).reduce((a, e) => a + (e.fights || []).length, 0) };
+      if (org !== 'boxing') {
+        try {
+          const lg = C.upLeague || (COMBAT_ORGS[org] || {}).upcoming || 'ufc';
+          const now = new Date(); const to = new Date(Date.now() + dias * 86400e3);
+          const fmt = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+          const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/${lg}/scoreboard?dates=${fmt(now)}-${fmt(to)}&limit=100`, { signal: AbortSignal.timeout(15000) }).then((r) => r.json());
+          const evs = (sb.events || []).map((e) => ({ id: e.id, name: e.name, date: e.date,
+            fights: (e.competitions || []).map((c) => { const a = (c.competitors || [])[0] || {}, b = (c.competitors || [])[1] || {};
+              return { f1: { name: (a.athlete || {}).displayName }, f2: { name: (b.athlete || {}).displayName } }; }) }));
+          const enPool = new Set((C.upcoming || []).map((e) => String(e.id)));
+          out.espn = { dias, eventos: evs.length, peleas: evs.reduce((a, e) => a + e.fights.length, 0), lista: resumen(evs),
+            fuera_del_pool: resumen(evs.filter((e) => !enPool.has(String(e.id)))) };
+        } catch (e) { out.espn = { error: e.message }; }
+      }
+      return json(res, 200, out);
+    }
     if (p === '/api/internal/combat-observer') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

@@ -1,4 +1,12 @@
-# HANDOFF — estado al 6-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
+# HANDOFF — estado al 7-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
+
+## 🔧 7-sep — liquidación de CS2 desatascada (ver TODO_NEXT "CS2: por qué 43 apuestas reales…")
+Las 43 apuestas reales de CS2 (271 USDT) no se liquidaban por tres motivos encadenados: `ref_id` vacío en las
+filas del brazo (la casa las tenía resueltas), picks de "mapa no jugado" que nunca se anulaban, y nombres de la
+fuente que no resolvían igual. Arreglados en `real-executor/store.js`, `esports-engine/store.js` y
+`esports-engine/cs2-data.js` (además: "MOUZ" ya no resuelve a MOUZ NXT). Ejecutor: sin ventana de saque, parada
+diaria 6 %, stake plano 30, veto a ligas eficientes y una posición por (partido, lado, línea) — sin tope de
+exposición. Los retiros de Alexis (1.235 + 150) explican el hueco entre libro y saldo.
 
 ## 🎯 DARDOS (6-sep, blueprint 8.0 de Alexis) — construido de punta a punta, admin-only, TODO en sombra
 **Qué hay (todo en `darts-engine/`, `data-providers/darts/`, `scripts/darts-*.js`, `data/darts/`):**

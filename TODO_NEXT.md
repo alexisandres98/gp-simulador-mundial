@@ -43,6 +43,23 @@ el observador de prensa ya miraba 10; el monitor no genera picks a más de 120.
 anunciadas sin mercado no aparecen. Si Alexis quiere ver anuncios sin cuota, hace falta otra fuente (BoxRec
 es de pago; Wikipedia por evento es viable pero manual).
 
+## ✅ 7-sep — CS2: por qué 43 apuestas reales (271 USDT) no se liquidaban, y qué se arregló
+Tres roturas encadenadas, ninguna era "la casa no ha resuelto" (la casa las tenía TODAS resueltas):
+1. **Ejecutor real**: las filas de CS2 colocadas por el brazo (desde el 1-sep, `via: relay-rest`) guardaban la
+   referencia en `referencia`; `liquidar()` preguntaba por `ref_id` (vacío) → 34 apuestas "esperando" con la casa
+   diciendo WIN/LOSS/PUSH. Ahora el campo se unifica al vuelo y al colocar.
+2. **Liquidador esports**: una pick de "mapa 3" en un BO3 que acabó 2-0 se quedaba ACTIVE para siempre (154
+   "inliquidables"); ahora se anula (VOID, `anuladas_mapa_no_jugado`) cuando la serie está terminada según `bo`.
+   Y **casado aproximado** con candidato único (`casado_por: 'aproximado'`) para "Vivo Keyd Stars"/"Keyd Stars"
+   o "Spirit"/"Spirit Academy". Las 9 filas manuales (26-31 ago) dependían de esto.
+3. **Catálogo CS2** (`cs2-data.js`): "MOUZ" resolvía a **MOUZ NXT** (el alias de primera palabra ganaba al nombre
+   exacto por tener más mapas) → la final de BLAST Open Porto se modeló con el rating de la academia. Ahora el
+   exacto manda y la contención exige la misma marca de filial en ambos lados. **Impacto en el modelo**: las
+   picks de CS2 de equipos con filial homónima (MOUZ, y "Spirit Academy" cuando faltaba "Spirit") se calcularon
+   con el historial equivocado; la muestra de `cs2_rounds_v1` hasta hoy lleva ese ruido. No se tocó la regla.
+- Pendiente: `run=cb_historial` sigue en INTERNAL_SERVER_ERROR (listado de la casa); por referencia sí contesta.
+- Pendiente: la sonda de esports muestra `sin_casar` solo 12 ejemplos y los más viejos; hacerla muestrear por fecha.
+
 ## ✅ 7-sep 04:10 UTC — ejecutor de vuelta a "normal": sin ventana de saque (`GP_REAL_KICKOFF_MAX` borrada), parada diaria al 6 % (`GP_REAL_DAY_STOP_PCT` borrada) y **stake plano 30** (`GP_REAL_STAKE_FLAT=30`, antes 40), por orden de Alexis. Comprobado en `/api/internal/real` tras el deploy. Fin de semana por día de juego: vie −65,2 · sáb −5,6 · dom −190,0 (9W/13L) · lun madrugada +18,4 = −242,4 con Udinese–Lazio u5,5 pendiente. Saldo 308 USDT con 271 atados en 43 apuestas de CS2 **sin liquidar desde el 1-sep** (el liquidador de CS2 está atascado; misma cola en la sombra) — arreglarlo antes de decidir sobre CS2. Faltan ~1.260 USDT no explicados por apuestas (saldo 83,6 el sábado 17:46): pendiente de que Alexis confirme el retiro.
 ## (histórico) ⏱️ PARADA DIARIA DEL EJECUTOR DESACTIVADA HASTA EL LUNES 7 08:00 UTC — **TEMPORAL, hay que volverla a poner**
 Orden de Alexis (5-sep, 20:00 UTC): "si nacen intermedias/blandas entre ahora y el lunes 8am UTC quiero que el

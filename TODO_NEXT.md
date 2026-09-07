@@ -11,6 +11,15 @@ lleva `circuit` y el track agrega por circuito (`by_circuit`, `open_by_circuit`)
 Primera pasada en prod: 9 partidos, 6 con modelo, 35 candidatas, 1 tesis (33 mueren en `edge`: el mercado de MODUS
 es más ajustado de lo que parece). (b) La puerta `freshness` pasa a **informativa** (la incertidumbre ya descuenta
 al jugador frío). (c) El tablero devuelve `proximo_pdc` para que el vacío diga cuándo vuelve el cuadro.
+**IU rehecha (7-sep, orden de Alexis: "no una réplica de tenis; formato de fútbol; premium")**: partidos como la
+tabla de fútbol (hora+torneo, retratos apilados con país, estado con legs, probabilidad GP a dos columnas, señal,
+filtros, agrupado por día, chip PDC/MODUS, frío); oportunidades con tesis del día + tesis por partido + cockpit
+lateral; cockpit de partido con hero, tira de secciones, decision memo, probabilidad GP (Elo → compilador →
+mezcla), tabla de mercados con ventaja, forma reciente, proyección de legs interactiva, medidor en vivo (arco de
+diana) y las superficies propias (river, loom, ladder, prism); rendimiento por circuito. Identidad: anillo de
+sectores de diana en retratos, tipografía de marcador, badge 180. 137 claves `dt_*` ES/EN. Verificado con el
+arnés (64 capturas, 0 errores) y con datos reales (`scratchpad/ui/local.js`: renderiza el repo con la API de prod
+cacheada). Backend afinado: el ganador (benchmark) ya no sale como card de tesis; la ficha MODUS marca `available`.
 Lo que hay y lo que falta, en orden de importancia:
 1. **Liquidar los 180s fuera del Players Championship.** Orakel solo publica partido a partido el PC; en el
    Euro Tour y los majors (donde Bovada cotiza most/total/jugador 180s) la tesis se anota `unsettleable` y a los

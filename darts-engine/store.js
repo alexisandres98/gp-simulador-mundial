@@ -386,8 +386,11 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
       row.gp = { p_a: model.p_a, p_a_compiled: model.p_a_compiled, p_a_elo: model.p_a_elo, exp_legs: model.match.legs ? r2(model.match.legs.exp_total) : null, exp_sets: model.match.sets ? r2(model.match.sets.exp_total) : null, exp_180_a: r2(model.match.x180.exp_a), exp_180_b: r2(model.match.x180.exp_b), hold_a: r3(model.match.leg.hold_a), hold_b: r3(model.match.leg.hold_b), unc_pp: model.unc_pp, avg_a: r2(model.skills.a.avg), avg_b: r2(model.skills.b.avg), cold: !!(model.skills.a.cold || model.skills.b.cold), elo_a: model.skills.a.elo, elo_b: model.skills.b.elo };
       // tesis SOLO prematch: un partido jugado o en juego no tiene precio de apertura que comparar
       row.candidates = fx.status === 'Result' || t < now ? [] : evaluateEdges(model, mk);
-      row.shadow_n = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').length;
-      row.picks = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').map((c) => pickCard(c, row, model));
+      // el GANADOR es familia de referencia (benchmark): se registra en la sombra para medirlo, pero JAMÁS
+      // sale como card de tesis (7-sep: la primera pasada de MODUS lo publicaba como pick)
+      const tesis = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark);
+      row.shadow_n = tesis.length;
+      row.picks = tesis.map((c) => pickCard(c, row, model));
     } else row.why = model.why;
     rows.push(row);
   }
@@ -679,7 +682,7 @@ async function tournamentBoard(id) {
     const fxs = MODUS.fixturesFromOdds(odds);
     const summary = MODUS.summary(fxs);
     if (!summary) return { available: false, why: 'sin partidos MODUS en las casas ahora mismo' };
-    const fixtures = fxs.map((fx) => { const row = rowOf(fx); row.format = formatOf(fx); if (fx.a.id && fx.b.id) { const m = eventModel(fx); if (m.available) row.gp = { p_a: m.p_a, exp_legs: m.match.legs ? r2(m.match.legs.exp_total) : null, exp_sets: null }; const mk = marketFor(fx, odds); row.market = { ml_p_a: mk.consensus.ml_p_a, n_books: mk.n_books }; } else row.why = 'jugador fuera de la base propia: ' + (fx.unresolved || []).join(', '); return row; });
+    const fixtures = fxs.map((fx) => { const row = rowOf(fx); row.format = formatOf(fx); if (fx.a.id && fx.b.id) { const m = eventModel(fx); row.available = m.available; if (m.available) row.gp = { p_a: m.p_a, exp_legs: m.match.legs ? r2(m.match.legs.exp_total) : null, exp_sets: null }; else row.why = m.why; const mk = marketFor(fx, odds); row.market = { ml_p_a: mk.consensus.ml_p_a, n_books: mk.n_books }; } else { row.available = false; row.why = 'jugador fuera de la base propia: ' + (fx.unresolved || []).join(', '); } return row; });
     return { available: true, ...summary, stages: [{ stage: 'Liga', sets: 1, legs: MODUS.BEST_OF, two_clear: false, fixtures }], title: null, outrights: [], attribution: ATTRIB + ' Circuito MODUS: fixtures de las casas, resultado por Flashscore.', doctrine: DOCTRINE };
   }
   let t = sl.details.find((x) => String(x.id || x.tournamentID) === String(id));

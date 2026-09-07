@@ -51,6 +51,13 @@ const FAMILIES = {
 
 const G = { season: null, slate: null, odds: null, flash: null };
 
+// EL CIRCUITO MODUS COMO SEGUNDA AGENDA (7-sep). La PDC deja días enteros sin cuadro definido; MODUS juega a
+// diario y las casas lo cotizan. Sus fixtures nacen de los eventos de las casas ya descargados (G.odds) y se
+// suman a la agenda de la PDC en TODOS los sitios que la leen, con su etiqueta `circuit: 'modus'`.
+const MODUS = require('./modus');
+const fixturesAll = (sl) => (sl && sl.fixtures ? sl.fixtures : []).concat(MODUS.fixturesFromOdds(G.odds));
+const toursAll = (sl) => { const m = MODUS.summary(MODUS.fixturesFromOdds(G.odds)); return (sl && sl.tournaments ? sl.tournaments : []).concat(m ? [m] : []); };
+
 // ══ 1. AGENDA (PDC) ═════════════════════════════════════════════════════════════════════════════════════
 const SEASON = () => new Date().getUTCFullYear();
 const SEASON_TTL = 6 * 3600e3, SLATE_TTL = 8 * 60e3;
@@ -107,7 +114,7 @@ function formatOf(fx) {
     // el Matchplay y el último set del Mundial llevan extensión: la plantilla la conoce, el stage solo dice "dos legs de diferencia"
     if (fx.format.two_clear && f.kind === 'legs') f.max_legs = f.best_of + 6;
     if (f.kind === 'sets' && /world championship/i.test(String(fx.tournament || '')) && /final/i.test(String(fx.stage || '')) && !/semi|quarter/i.test(String(fx.stage || ''))) { f.final_set_two_clear = true; f.final_set_max_legs = 11; }
-    return { ...f, double_in: dbl, certified: true, source: 'stage oficial de la PDC' };
+    return { ...f, double_in: dbl, certified: true, source: fx.circuit === 'modus' ? 'reglamento MODUS Super Series (primero a 4 legs)' : 'stage oficial de la PDC' };
   }
   const t = R.formatFor(fx.tournament, fx.stage);
   return { ...t.format, double_in: dbl, certified: false, source: t.source };
@@ -252,7 +259,10 @@ function gate(c) {
   gates.push({ gate: 'orthogonality', pass: true, detail: 'modelo market-blind por construcción: el precio objetivo jamás es input' });
   gates.push({ gate: 'push', pass: (c.push_p || 0) < 0.08, detail: `push ${(100 * (c.push_p || 0)).toFixed(1)} %` });
   gates.push({ gate: 'format', pass: !!c.format_certified, detail: c.format_certified ? 'formato certificado por el brief oficial de la ronda' : 'formato de plantilla, no certificado para esta edición: sin tesis' });
-  gates.push({ gate: 'freshness', pass: !(c.cold_a || c.cold_b), detail: c.cold_a || c.cold_b ? 'jugador con poca exposición medida: la habilidad es un prior de población' : 'los dos con exposición suficiente' });
+  // FRESHNESS PASA A INFORMATIVA (7-sep). La incertidumbre epistémica ya castiga al jugador frío (+1,5 pp cada
+  // uno y hasta +6 pp por poca exposición) y la puerta `noise` la aplica; una segunda puerta que además
+  // vetaba la tesis dejaba a cero circuitos enteros (MODUS) y no añadía información: la fila lleva la marca.
+  gates.push({ gate: 'freshness', pass: !(c.cold_a || c.cold_b), informativo: true, detail: c.cold_a || c.cold_b ? 'jugador con poca exposición medida: la habilidad es un prior de población (la incertidumbre ya lo descuenta)' : 'los dos con exposición suficiente' });
   gates.push({ gate: 'settleable', pass: !c.unsettleable, informativo: true, detail: c.unsettleable ? 'sin fuente de liquidación fiable para esta familia fuera del Players Championship: se anota y se liquidará cuando exista' : 'liquidable con el resultado oficial' });
   const pass = gates.filter((g) => !g.informativo).every((x) => x.pass);
   return {
@@ -354,7 +364,7 @@ function pickCard(c, row, model) {
 function photoOf(id) { const p = D.playerOf(id); return p && p.photo ? p.photo : null; }
 
 // ══ 5. EL TABLERO ═══════════════════════════════════════════════════════════════════════════════════════
-const rowOf = (fx) => ({ id: fx.id, tournament: fx.tournament, tournament_id: fx.tournament_id, stage: fx.stage, start_at: fx.start_at, status: fx.status, board: fx.board, tv: fx.televised,
+const rowOf = (fx) => ({ id: fx.id, tournament: fx.tournament, tournament_id: fx.tournament_id, stage: fx.stage, start_at: fx.start_at, status: fx.status, board: fx.board, tv: fx.televised, circuit: fx.circuit || 'pdc', unresolved: fx.unresolved || undefined,
   a: fx.a.name, b: fx.b.name, a_id: fx.a.id, b_id: fx.b.id, a_country: fx.a.country, b_country: fx.b.country, photo_a: photoOf(fx.a.id), photo_b: photoOf(fx.b.id),
   score_a: fx.score_a, score_b: fx.score_b, winner_id: fx.winner_id });
 
@@ -362,7 +372,7 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
   const [sl, odds] = await Promise.all([slate(), refreshOdds().catch(() => null)]);
   const now = Date.now();
   const rows = [];
-  for (const fx of sl.fixtures) {
+  for (const fx of fixturesAll(sl)) {
     const t = Date.parse(fx.start_at || 0);
     if (!(t > now - hoursBack * 3600e3 && t < now + daysAhead * 864e5)) continue;
     const row = rowOf(fx);
@@ -373,7 +383,7 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
     row.available = model.available;
     if (model.available) {
       model.tournament = fx.tournament;
-      row.gp = { p_a: model.p_a, p_a_compiled: model.p_a_compiled, p_a_elo: model.p_a_elo, exp_legs: model.match.legs ? r2(model.match.legs.exp_total) : null, exp_sets: model.match.sets ? r2(model.match.sets.exp_total) : null, exp_180_a: r2(model.match.x180.exp_a), exp_180_b: r2(model.match.x180.exp_b), hold_a: r3(model.match.leg.hold_a), hold_b: r3(model.match.leg.hold_b), unc_pp: model.unc_pp, avg_a: r2(model.skills.a.avg), avg_b: r2(model.skills.b.avg) };
+      row.gp = { p_a: model.p_a, p_a_compiled: model.p_a_compiled, p_a_elo: model.p_a_elo, exp_legs: model.match.legs ? r2(model.match.legs.exp_total) : null, exp_sets: model.match.sets ? r2(model.match.sets.exp_total) : null, exp_180_a: r2(model.match.x180.exp_a), exp_180_b: r2(model.match.x180.exp_b), hold_a: r3(model.match.leg.hold_a), hold_b: r3(model.match.leg.hold_b), unc_pp: model.unc_pp, avg_a: r2(model.skills.a.avg), avg_b: r2(model.skills.b.avg), cold: !!(model.skills.a.cold || model.skills.b.cold), elo_a: model.skills.a.elo, elo_b: model.skills.b.elo };
       // tesis SOLO prematch: un partido jugado o en juego no tiene precio de apertura que comparar
       row.candidates = fx.status === 'Result' || t < now ? [] : evaluateEdges(model, mk);
       row.shadow_n = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK').length;
@@ -389,14 +399,18 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
       if (hit && hit.state !== 'scheduled') r.live = { state: hit.state, legs_a: hit.swapped ? hit.legs_b : hit.legs_a, legs_b: hit.swapped ? hit.legs_a : hit.legs_b, best_of: hit.best_of, source: 'flashscore' };
     }
   } catch { }
-  return { rows, tournaments: sl.tournaments, refreshed_at: new Date(sl.at).toISOString(), odds_at: odds ? new Date(odds.at).toISOString() : null, books: odds ? odds.books : null, doctrine: DOCTRINE, attribution: ATTRIB, note: rows.length ? null : 'sin partidos de la PDC en la ventana (la agenda se abre sola con el siguiente torneo)' };
+  // el siguiente torneo de la PDC con fecha, para que el tablero vacío diga cuándo vuelve a haber cuadro
+  const proximo = (sl.tournaments || []).filter((t) => Date.parse(t.start || 0) > now).sort((x, y) => Date.parse(x.start) - Date.parse(y.start))[0] || null;
+  return { rows, tournaments: toursAll(sl), refreshed_at: new Date(sl.at).toISOString(), odds_at: odds ? new Date(odds.at).toISOString() : null, books: odds ? odds.books : null, doctrine: DOCTRINE, attribution: ATTRIB,
+    proximo_pdc: proximo ? { id: proximo.id, name: proximo.name, start: proximo.start, end: proximo.end, tv: proximo.tv } : null,
+    note: rows.length ? null : 'sin partidos con cuadro definido en la ventana (la agenda se abre sola con el siguiente torneo)' };
 }
 
 // ══ 6. LA FICHA DE UN PARTIDO ═══════════════════════════════════════════════════════════════════════════
 async function matchDetail(fixtureId) {
   const [sl, odds] = await Promise.all([slate(), refreshOdds().catch(() => null)]);
-  const fx = sl.fixtures.find((f) => String(f.id) === String(fixtureId));
-  if (!fx) return { available: false, why: 'ese partido ya no está en la agenda de la PDC' };
+  const fx = fixturesAll(sl).find((f) => String(f.id) === String(fixtureId));
+  if (!fx) return { available: false, why: 'ese partido ya no está en la agenda' };
   const row = rowOf(fx);
   const mk = marketFor(fx, odds);
   const model = eventModel(fx);
@@ -470,7 +484,7 @@ async function recordShadow() {
   for (const row of b.rows) {
     if (!row.available) continue;
     const start = Date.parse(row.start_at);
-    const fx = (G.slate.fixtures || []).find((f) => String(f.id) === String(row.id));
+    const fx = fixturesAll(G.slate).find((f) => String(f.id) === String(row.id));
     const mk = fx ? marketFor(fx, odds) : { rows: [] };
     forClose.push({ ...row, _mk_rows: mk.rows.filter((r) => !r.live_quote) });
     if (!(start > Date.now() && start - Date.now() < 6 * 864e5)) continue;
@@ -481,7 +495,9 @@ async function recordShadow() {
       have.add(key); n++;
       st.picks.push({ key, event_id: row.id, tournament: row.tournament, tournament_id: row.tournament_id, stage: row.stage, format: row.format, a: row.a, b: row.b, a_id: row.a_id, b_id: row.b_id,
         family: c.family, side: c.side, line: c.line, participant: c.participant || null, odds: c.odds, book: c.book, p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, unc_pp: c.unc_pp, benchmark: !!c.benchmark, unsettleable: !!c.unsettleable,
-        start_at: row.start_at, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow', era: process.env.GP_PICKS_ERA || 'darts-v1-2026-09-06' });
+        start_at: row.start_at, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow', era: process.env.GP_PICKS_ERA || 'darts-v1-2026-09-06',
+        // el circuito viaja en la pick: MODUS y PDC se miden por separado, jamás en la misma media
+        circuit: row.circuit || 'pdc', cold: !!(row.gp && row.gp.cold) || undefined });
     }
   }
   snapshotCloses(forClose);
@@ -501,7 +517,14 @@ async function settleShadow({ voidDays = 12 } = {}) {
   for (const p of open) {
     try {
       if (Date.parse(p.start_at) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = p.unsettleable ? 'familia sin fuente de liquidación fuera del Players Championship' : `sin resultado casado en ${voidDays} días`; p.settled_at = new Date().toISOString(); settled++; diag.void_tiempo++; continue; }
-      const fx = (sl && sl.fixtures || []).find((f) => String(f.id) === String(p.event_id));
+      let fx;
+      if (p.circuit === 'modus') {
+        // MODUS: el marcador lo da Flashscore (la PDC no lo publica); la fila se construye con la misma forma
+        const r = await MODUS.result(p);
+        if (!r) { diag.sin_resultado++; continue; }
+        if (r.pending) { diag.no_final++; continue; }
+        fx = { id: p.event_id, status: 'Result', score_a: r.score_a, score_b: r.score_b, winner_id: null, a: { id: p.a_id }, b: { id: p.b_id }, start_at: p.start_at, _src: r.source };
+      } else fx = (sl && sl.fixtures || []).find((f) => String(f.id) === String(p.event_id));
       if (!fx) { diag.sin_resultado++; continue; }
       if (fx.status !== 'Result') { diag.no_final++; continue; }
       const sa = +fx.score_a, sb = +fx.score_b;
@@ -526,7 +549,7 @@ async function settleShadow({ voidDays = 12 } = {}) {
         p.final_180 = { a: xa, b: xb };
       } else { diag.sin_stats++; continue; }
       p.status = 'SETTLED'; p.result = win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
-      p.final = { score_a: sa, score_b: sb, winner: aWon ? 'a' : 'b' };
+      p.final = { score_a: sa, score_b: sb, winner: aWon ? 'a' : 'b', source: fx._src || 'pdc' };
       p.units = win == null ? 0 : win ? +(p.odds - 1).toFixed(3) : -1;
       const cl = closes.closes[p.event_id];
       if (cl) {
@@ -552,10 +575,14 @@ function track({ limit = 40 } = {}) {
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
-  const byFam = {}, byFB = {};
+  const byFam = {}, byFB = {}, byCirc = {};
   for (const p of done) {
     const Fm = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [] };
     Fm.n++; if (p.result === 'WIN') Fm.w++; Fm.units += p.units || 0; if (p.clv_pct != null) Fm.clv.push(p.clv_pct);
+    // por circuito × familia: MODUS y PDC nunca en la misma media
+    const ck = (p.circuit || 'pdc') + ' · ' + p.family;
+    const Cc = byCirc[ck] = byCirc[ck] || { n: 0, w: 0, units: 0, clv: [], book: null, family: p.family, circuit: p.circuit || 'pdc' };
+    Cc.n++; if (p.result === 'WIN') Cc.w++; Cc.units += p.units || 0; if (p.clv_pct != null) Cc.clv.push(p.clv_pct);
     const bk = p.book || 'sin_casa';
     const B = byFB[p.family + ' · ' + bk] = byFB[p.family + ' · ' + bk] || { n: 0, w: 0, units: 0, clv: [], book: bk, family: p.family };
     B.n++; if (p.result === 'WIN') B.w++; B.units += p.units || 0; if (p.clv_pct != null) B.clv.push(p.clv_pct);
@@ -569,6 +596,8 @@ function track({ limit = 40 } = {}) {
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: fam(byFam), by_family_book: fam(byFB),
+    by_circuit: Object.fromEntries(Object.entries(byCirc).map(([k, Cc]) => [k, { circuit: Cc.circuit, family: Cc.family, n: Cc.n, hit_pct: Cc.n ? r2(100 * Cc.w / Cc.n) : null, units: r2(Cc.units), clv_avg_pct: Cc.clv.length ? r2(Cc.clv.reduce((a, b) => a + b, 0) / Cc.clv.length) : null, clv_n: Cc.clv.length, clv_sd: sd(Cc.clv) }])),
+    open_by_circuit: mine.filter((p) => p.status === 'OPEN').reduce((m, p) => { const c = p.circuit || 'pdc'; m[c] = (m[c] || 0) + 1; return m; }, {}),
     recent: done.slice(-limit).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
     settle_diag: settleDiag,
@@ -644,6 +673,15 @@ function h2h(idA, idB) {
 // ══ 9. TORNEOS: cuadro y probabilidades de título ══════════════════════════════════════════════════════
 async function tournamentBoard(id) {
   const sl = await slate();
+  // MODUS: no hay cuadro de la PDC; la ficha es la lista del día con el modelo y el mercado de cada cruce
+  if (String(id) === MODUS.TID) {
+    const odds = await refreshOdds().catch(() => null);
+    const fxs = MODUS.fixturesFromOdds(odds);
+    const summary = MODUS.summary(fxs);
+    if (!summary) return { available: false, why: 'sin partidos MODUS en las casas ahora mismo' };
+    const fixtures = fxs.map((fx) => { const row = rowOf(fx); row.format = formatOf(fx); if (fx.a.id && fx.b.id) { const m = eventModel(fx); if (m.available) row.gp = { p_a: m.p_a, exp_legs: m.match.legs ? r2(m.match.legs.exp_total) : null, exp_sets: null }; const mk = marketFor(fx, odds); row.market = { ml_p_a: mk.consensus.ml_p_a, n_books: mk.n_books }; } else row.why = 'jugador fuera de la base propia: ' + (fx.unresolved || []).join(', '); return row; });
+    return { available: true, ...summary, stages: [{ stage: 'Liga', sets: 1, legs: MODUS.BEST_OF, two_clear: false, fixtures }], title: null, outrights: [], attribution: ATTRIB + ' Circuito MODUS: fixtures de las casas, resultado por Flashscore.', doctrine: DOCTRINE };
+  }
   let t = sl.details.find((x) => String(x.id || x.tournamentID) === String(id));
   if (!t) { try { t = await PDC.tournament(id); } catch { return { available: false, why: 'torneo no encontrado' }; } }
   const summary = tourSummary(t);
@@ -699,8 +737,11 @@ function outrightsFor(name, odds) {
 async function tournamentsList() {
   const tours = await seasonTournaments();
   const now = Date.now();
-  return { rows: tours.filter((t) => !isSecondary(t) && Date.parse(t.endDate || t.startDate) > now - 30 * 864e5).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).slice(0, 40)
-    .map((t) => ({ id: String(t.id || t.tournamentID), name: t.name, venue: t.venue, city: t.city, start: t.startDate, end: t.endDate, tv: !!t.isTelevised, ranked: !!t.isRanked, logo: PDC.IMG(t.tournamentLogo), fixtures: t.fixtureCount || null, double_in: /grand prix/i.test(String(t.name || '')), state: Date.parse(t.startDate) > now ? 'upcoming' : Date.parse(t.endDate || t.startDate) + 864e5 > now ? 'live' : 'done' })), attribution: ATTRIB };
+  const rows = tours.filter((t) => !isSecondary(t) && Date.parse(t.endDate || t.startDate) > now - 30 * 864e5).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate)).slice(0, 40)
+    .map((t) => ({ id: String(t.id || t.tournamentID), name: t.name, venue: t.venue, city: t.city, start: t.startDate, end: t.endDate, tv: !!t.isTelevised, ranked: !!t.isRanked, logo: PDC.IMG(t.tournamentLogo), fixtures: t.fixtureCount || null, double_in: /grand prix/i.test(String(t.name || '')), state: Date.parse(t.startDate) > now ? 'upcoming' : Date.parse(t.endDate || t.startDate) + 864e5 > now ? 'live' : 'done', circuit: 'pdc' }));
+  const m = MODUS.summary(MODUS.fixturesFromOdds(G.odds));
+  if (m) rows.unshift({ ...m, state: 'live' });
+  return { rows, attribution: ATTRIB };
 }
 
 // ══ 10. SIMULADOR ═══════════════════════════════════════════════════════════════════════════════════════
@@ -744,14 +785,14 @@ function parseFormat(s) {
 async function agenda() {
   const sl = await slate();
   const now = Date.now();
-  const rows = sl.fixtures.filter((f) => Math.abs(Date.parse(f.start_at || 0) - now) < 30 * 3600e3).map(rowOf);
+  const rows = fixturesAll(sl).filter((f) => Math.abs(Date.parse(f.start_at || 0) - now) < 30 * 3600e3).map(rowOf);
   try { const live = await FLASH.feed(); for (const r of rows) { const hit = FLASH.matchByNames(live, r.a, r.b); if (hit && hit.state !== 'scheduled') r.live = { state: hit.state, legs_a: hit.swapped ? hit.legs_b : hit.legs_a, legs_b: hit.swapped ? hit.legs_a : hit.legs_b, best_of: hit.best_of }; } } catch { }
   return { rows, at: new Date(sl.at).toISOString(), attribution: ATTRIB };
 }
 // probabilidad EN VIVO desde un marcador de legs (formato de legs): la misma carrera compilada desde el estado
 function liveProb(fixtureId, { legs_a, legs_b, starter_next = null } = {}) {
   const sl = G.slate; if (!sl) return null;
-  const fx = sl.fixtures.find((f) => String(f.id) === String(fixtureId)); if (!fx) return null;
+  const fx = fixturesAll(sl).find((f) => String(f.id) === String(fixtureId)); if (!fx) return null;
   const model = eventModel(fx); if (!model.available || model.format.kind !== 'legs') return null;
   const cA = kernelOf(model.skills.a, model.format.double_in), cB = kernelOf(model.skills.b, model.format.double_in);
   const race = C.legRace(cA.leg, cB.leg);

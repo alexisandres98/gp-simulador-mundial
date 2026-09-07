@@ -396,7 +396,7 @@ function snapshotCloses(lg, rows) {
         }
       }
       // la escalera de Cloudbet al cierre: para la línea exacta de la pick cuando no coincide con la principal
-      if (bk.key === 'cloudbet' && bk._cb && bk._cb.alts) B.alts = { s: bk._cb.alts.spreads.map((x) => [x.hcp_home, x.home, x.away]), t: bk._cb.alts.totals.map((x) => [x.line, x.over, x.under]) };
+      if (bk.key === 'cloudbet' && bk._cb && bk._cb.alts) B.alts = { s: bk._cb.alts.spreads.map((x) => [x.line, x.home, x.away]), t: bk._cb.alts.totals.map((x) => [x.line, x.over, x.under]) };
     }
     st.closes[ev.id] = {
       home: ev.home_team, away: ev.away_team, commence: ev.commence_time, at: new Date().toISOString(),

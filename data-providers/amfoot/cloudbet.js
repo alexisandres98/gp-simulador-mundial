@@ -70,7 +70,8 @@ async function markets(ev, { key = process.env.CLOUDBET_API_KEY || '' } = {}) {
     for (const [subKey, sub] of Object.entries(m.submarkets || {})) {
       const subP = parseParams(subKey);
       // solo el partido entero (con prórroga); mitades y cuartos llevan su propio mercado y no entran aquí
-      if (subP.period && !/^(ot|default|full|regular)$/i.test(String(subP.period))) continue;
+      // la clave viene como `period=ot&period=ft` (el parseador se queda con el último): ft/ot es el partido entero
+      if (subP.period && !/^(ot|ft|default|full|regular)$/i.test(String(subP.period))) continue;
       const sels = (sub.selections || []).filter((s) => s.price > 1 && String(s.status || 'SELECTION_ENABLED') === 'SELECTION_ENABLED');
       const side = (s) => String(s.outcome || '').toLowerCase().replace(/^.*=/, '');
       if (bare === 'moneyline') {
@@ -84,10 +85,12 @@ async function markets(ev, { key = process.env.CLOUDBET_API_KEY || '' } = {}) {
           const p = { ...subP, ...parseParams(s.params) };
           if (p.handicap == null || !Number.isFinite(Number(p.handicap))) continue;
           const sd = side(s);
-          // la clave de la escalera es el hándicap del LOCAL (perspectiva de The Odds API: `-h.point` = línea)
-          const hcpHome = sd === 'home' ? Number(p.handicap) : -Number(p.handicap);
-          const k = String(hcpHome);
-          byLine[k] = byLine[k] || { hcp_home: hcpHome };
+          // COMPROBADO EN PROD (7-sep): `handicap=3` viene IGUAL en las dos selecciones y es el hándicap del
+          // LOCAL (home +3 / away −3: con +3 el local cotiza más barato que con +1, y el moneyline lo confirma).
+          // La escalera se indexa en la convención de The Odds API: `line = −punto del local`.
+          const line = -Number(p.handicap);
+          const k = String(line);
+          byLine[k] = byLine[k] || { line };
           byLine[k][sd] = +s.price;
           if (s.maxStake != null) maxStake = Math.max(maxStake || 0, +s.maxStake);
         }
@@ -145,8 +148,8 @@ async function merge(lg, rows, resolve, { key = process.env.CLOUDBET_API_KEY || 
     const mkts = [];
     if (q.ml) mkts.push({ key: 'h2h', last_update: q.at, outcomes: [{ name: ev.home_team, price: q.ml.home }, { name: ev.away_team, price: q.ml.away }] });
     if (q.spread_main) mkts.push({ key: 'spreads', last_update: q.at, outcomes: [
-      { name: ev.home_team, point: q.spread_main.hcp_home, price: q.spread_main.home },
-      { name: ev.away_team, point: -q.spread_main.hcp_home, price: q.spread_main.away }] });
+      { name: ev.home_team, point: -q.spread_main.line, price: q.spread_main.home },
+      { name: ev.away_team, point: q.spread_main.line, price: q.spread_main.away }] });
     if (q.total_main) mkts.push({ key: 'totals', last_update: q.at, outcomes: [
       { name: 'Over', point: q.total_main.line, price: q.total_main.over }, { name: 'Under', point: q.total_main.line, price: q.total_main.under }] });
     if (!mkts.length) continue;
@@ -177,9 +180,9 @@ function quoteFor(mk, c) {
     if (!row) return null;
     out.line = row.line; out.price = row[c.side]; out.misma_linea = row.line === c.line;
   } else if (c.family === 'SPREAD') {
-    const ex = alts.spreads.find((x) => x.hcp_home === c.line);
+    const ex = alts.spreads.find((x) => x.line === c.line);
     const main = bk && bk.spread;
-    const row = ex ? { line: ex.hcp_home, home: ex.home, away: ex.away } : main;
+    const row = ex || main;
     if (!row) return null;
     out.line = row.line; out.price = row[c.side]; out.misma_linea = row.line === c.line;
   } else if (c.family === 'MONEYLINE') {

@@ -674,15 +674,26 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       // fuente conteste (o a que resettleShadow, con su propio plazo largo, decida)
       if (!p.resettled_from && Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = `sin resultado casado en ${voidDays} días (walkover/cambio de agenda probable)`; settled++; diag.void_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
-      const j = await espnDay(p.tour, day);
+      // EL DÍA DE ESPN NO ES EL DÍA UTC DE LA PICK (7-sep). ESPN agrupa el marcador por fecha LOCAL del
+      // torneo (US Open: hora de Nueva York) y la pick guarda el saque en UTC: un partido de la sesión
+      // nocturna de Flushing Meadows (01:00Z del día 31) cuelga en ESPN bajo el día 30. Con un solo día,
+      // 28 picks vencidas del US Open figuraban "sin cruce" con los dos jugadores en la fuente... del día
+      // de al lado. Se piden el día y sus dos vecinos; si el vecino falla, no bloquea (el propio sí).
+      const dias = [day];
+      for (const off of [-1, 1]) { const d2 = new Date(Date.parse(p.commence) + off * 864e5); if (!Number.isNaN(d2.getTime())) dias.push(d2.toISOString().slice(0, 10).replace(/-/g, '')); }
+      const jj = [];
+      for (const dd of dias) { try { jj.push(await espnDay(p.tour, dd)); } catch (e) { if (dd === day) throw e; } }
+      const j = jj[0];
       // ESPN NO SIEMPRE CUELGA LOS EVENTOS EN LA RAÍZ (19-ago). El parte de la pasada anterior lo dejó
       // claro: `eventos: 0` con la fuente respondiendo bien. En tenis el marcador los anida bajo
       // sports[].leagues[].events —la misma forma que ya usa su endpoint de equipos— mientras que el
       // código solo miraba `j.events`. Se aceptan las dos formas y se anota cuál vino.
       const evs = [];
       const roots = [];
-      if (j && Array.isArray(j.events)) roots.push(...j.events);
-      for (const sp of (j && j.sports) || []) for (const lg of sp.leagues || []) if (Array.isArray(lg.events)) roots.push(...lg.events);
+      for (const jx of jj) {
+        if (jx && Array.isArray(jx.events)) roots.push(...jx.events);
+        for (const sp of (jx && jx.sports) || []) for (const lg of sp.leagues || []) if (Array.isArray(lg.events)) roots.push(...lg.events);
+      }
       for (const e of roots) {
         const comps = e.competitions || e.groupings || [];
         for (const comp of comps) {
@@ -705,10 +716,28 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
         || (Array.isArray(x.roster) ? x.roster.map((r) => ((r && r.athlete) || {}).displayName || '').join(' ') : '')
         || ''
       );
-      const hit = evs.find(({ comp }) => {
+      const casa = ({ comp }) => {
         const names = (comp.competitors || []).map(nameOf);
         return names.some((n) => n.endsWith(la) || n.includes(la)) && names.some((n) => n.endsWith(lb) || n.includes(lb));
-      });
+      };
+      let cands = evs.filter(casa);
+      // con tres días en la ventana, dos apellidos cortos pueden casar más de un partido (un "lee" contra un
+      // "kim" en dos torneos): si hay varios, desempata la inicial del nombre; si sigue habiendo varios,
+      // se prefiere el del día propio de la pick
+      if (cands.length > 1) {
+        const ini = (s) => (D.norm(s).split(' ')[0] || '').slice(0, 1);
+        const ia = ini(p.a), ib = ini(p.b);
+        const porInicial = cands.filter(({ comp }) => {
+          const names = (comp.competitors || []).map(nameOf);
+          return names.some((n) => (n.endsWith(la) || n.includes(la)) && n.startsWith(ia)) && names.some((n) => (n.endsWith(lb) || n.includes(lb)) && n.startsWith(ib));
+        });
+        if (porInicial.length) cands = porInicial;
+        if (cands.length > 1) {
+          const mismoDia = cands.filter(({ e }) => String(e.date || '').slice(0, 10) === p.commence.slice(0, 10));
+          if (mismoDia.length) cands = mismoDia;
+        }
+      }
+      const hit = cands[0];
       if (!hit) {
         diag.sin_cruce++;
         diag.eventos_vistos = (diag.eventos_vistos || 0) + evs.length;

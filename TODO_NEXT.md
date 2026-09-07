@@ -43,7 +43,8 @@ el observador de prensa ya miraba 10; el monitor no genera picks a más de 120.
 anunciadas sin mercado no aparecen. Si Alexis quiere ver anuncios sin cuota, hace falta otra fuente (BoxRec
 es de pago; Wikipedia por evento es viable pero manual).
 
-## ⏱️ PARADA DIARIA DEL EJECUTOR DESACTIVADA HASTA EL LUNES 7 08:00 UTC — **TEMPORAL, hay que volverla a poner**
+## ✅ 7-sep 04:10 UTC — ejecutor de vuelta a "normal": sin ventana de saque (`GP_REAL_KICKOFF_MAX` borrada), parada diaria al 6 % (`GP_REAL_DAY_STOP_PCT` borrada) y **stake plano 30** (`GP_REAL_STAKE_FLAT=30`, antes 40), por orden de Alexis. Comprobado en `/api/internal/real` tras el deploy. Fin de semana por día de juego: vie −65,2 · sáb −5,6 · dom −190,0 (9W/13L) · lun madrugada +18,4 = −242,4 con Udinese–Lazio u5,5 pendiente. Saldo 308 USDT con 271 atados en 43 apuestas de CS2 **sin liquidar desde el 1-sep** (el liquidador de CS2 está atascado; misma cola en la sombra) — arreglarlo antes de decidir sobre CS2. Faltan ~1.260 USDT no explicados por apuestas (saldo 83,6 el sábado 17:46): pendiente de que Alexis confirme el retiro.
+## (histórico) ⏱️ PARADA DIARIA DEL EJECUTOR DESACTIVADA HASTA EL LUNES 7 08:00 UTC — **TEMPORAL, hay que volverla a poner**
 Orden de Alexis (5-sep, 20:00 UTC): "si nacen intermedias/blandas entre ahora y el lunes 8am UTC quiero que el
 sistema las coloque". El día iba en −97 con el tope de parada en −117 (6 % del nocional): una pérdida más y el
 freno habría bloqueado TODAS las apuestas nuevas del sábado, y otra racha el domingo. `GP_REAL_DAY_STOP_PCT=100`

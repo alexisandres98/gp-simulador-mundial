@@ -20689,6 +20689,22 @@ const server = http.createServer(async (req, res) => {
       await step('track', async () => { const t = NFL.track(); return { open: t.open, settled: t.settled }; });
       // las otras dos ligas de fútbol americano, en la misma sonda: un solo curl responde por la pestaña entera
       const AF = require('./amfoot-engine/store');
+      // `?cbprobe=ncaaf` (7-sep): lo que Cloudbet cotiza de esa liga, parseado, y cómo casa con The Odds API.
+      // Es la prueba de que la casa ejecutable entró de verdad en la sombra antes de fiarse de sus números.
+      const cbp = String(url.searchParams.get('cbprobe') || '').toLowerCase();
+      if (cbp && AF.LEAGUES[cbp]) {
+        await step('cloudbet:' + cbp, async () => {
+          const CBAF = require('./data-providers/amfoot/cloudbet');
+          const evs = await CBAF.events(cbp);
+          const muestra = [];
+          for (const ev of evs.slice(0, 2)) muestra.push(await CBAF.markets(ev));
+          const odds = await AF.refreshOdds(cbp, { force: true }).catch(() => null);
+          const conCb = odds ? odds.rows.filter((e) => (e.bookmakers || []).some((b) => b.key === 'cloudbet')).length : null;
+          return { enabled: CBAF.enabled(), eventos_cloudbet: evs.length, muestra, fusion: (global._amfoot.cb || {})[cbp] || null, eventos_odds_api: odds ? odds.rows.length : null, con_cloudbet: conCb };
+        });
+        out.ok = out.steps.every((x) => x.ok);
+        return json(res, 200, out);
+      }
       for (const lgP of Object.keys(AF.LEAGUES)) {
         await step('amfoot:' + lgP, async () => {
           await AF.refreshResults(lgP).catch(() => null);

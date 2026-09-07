@@ -357,11 +357,16 @@ async function refreshOdds(lg, { force = false } = {}) {
     try { if (global._oddsCredits) { const v = Number(r.headers.get('x-requests-remaining')); if (Number.isFinite(v)) { global._oddsCredits.remaining = v; global._oddsCredits.at = Date.now(); } } } catch { }
     const j = await r.json();
     if (!Array.isArray(j)) return c || null;
+    // CLOUDBET ENTRA COMO UNA CASA MÁS (7-sep): sus tres mercados se funden en cada evento con la forma de
+    // The Odds API, así que el mejor precio, el consenso y los cierres la ven sin trato especial. Si falla,
+    // la sombra sigue con las casas de siempre; el parte queda en G.cb[lg] para la sonda.
+    try { G.cb = G.cb || {}; G.cb[lg] = await CBAF.merge(lg, j, (n) => resolveOddsName(lg, n)); } catch (e) { G.cb = G.cb || {}; G.cb[lg] = { error: e.message }; }
     G.odds[lg] = { at: Date.now(), rows: j };
     snapshotCloses(lg, j);
     return G.odds[lg];
   } catch { return c || null; }
 }
+const CBAF = require('../data-providers/amfoot/cloudbet');
 function snapshotCloses(lg, rows) {
   const st = rdD(`${lg}-closes.json`) || { closes: {} };
   const now = Date.now();
@@ -369,16 +374,36 @@ function snapshotCloses(lg, rows) {
     const t = Date.parse(ev.commence_time || 0);
     if (!(t > now - 3600e3)) continue;
     const sp = [], tt = [], mlh = [], mla = [];
-    for (const bk of ev.bookmakers || []) for (const mk of bk.markets || []) {
-      if (mk.key === 'spreads') { const h = (mk.outcomes || []).find((o) => o.name === ev.home_team); if (h && h.point != null) sp.push({ line: -h.point, price: h.price }); }
-      if (mk.key === 'totals') { const o = (mk.outcomes || []).find((x) => x.name === 'Over'); if (o && o.point != null) tt.push({ line: o.point, price: o.price }); }
-      if (mk.key === 'h2h') { const h = (mk.outcomes || []).find((o) => o.name === ev.home_team), a = (mk.outcomes || []).find((o) => o.name === ev.away_team); if (h) mlh.push(h.price); if (a) mla.push(a.price); }
+    // EL CIERRE POR CASA (7-sep). El cierre que había era la MEDIANA de precios de todas las casas en la
+    // línea de consenso, y el CLV comparaba contra eso el MEJOR precio de 26 casas: por construcción sale
+    // positivo (+6 % en spreads de College con ROI negativo). Un CLV honesto compara la pick con el cierre
+    // de SU casa en SU línea. Se guarda cada casa para poder hacer esa resta al liquidar.
+    const books = {};
+    for (const bk of ev.bookmakers || []) {
+      const B = books[bk.key] = books[bk.key] || {};
+      for (const mk of bk.markets || []) {
+        if (mk.key === 'spreads') {
+          const h = (mk.outcomes || []).find((o) => o.name === ev.home_team), a = (mk.outcomes || []).find((o) => o.name === ev.away_team);
+          if (h && h.point != null) { sp.push({ line: -h.point, price: h.price }); B.sl = -h.point; B.sh = h.price; B.sa = a ? a.price : null; }
+        }
+        if (mk.key === 'totals') {
+          const o = (mk.outcomes || []).find((x) => x.name === 'Over'), u = (mk.outcomes || []).find((x) => x.name === 'Under');
+          if (o && o.point != null) { tt.push({ line: o.point, price: o.price }); B.tl = o.point; B.to = o.price; B.tu = u ? u.price : null; }
+        }
+        if (mk.key === 'h2h') {
+          const h = (mk.outcomes || []).find((o) => o.name === ev.home_team), a = (mk.outcomes || []).find((o) => o.name === ev.away_team);
+          if (h) { mlh.push(h.price); B.mh = h.price; } if (a) { mla.push(a.price); B.ma = a.price; }
+        }
+      }
+      // la escalera de Cloudbet al cierre: para la línea exacta de la pick cuando no coincide con la principal
+      if (bk.key === 'cloudbet' && bk._cb && bk._cb.alts) B.alts = { s: bk._cb.alts.spreads.map((x) => [x.hcp_home, x.home, x.away]), t: bk._cb.alts.totals.map((x) => [x.line, x.over, x.under]) };
     }
     st.closes[ev.id] = {
       home: ev.home_team, away: ev.away_team, commence: ev.commence_time, at: new Date().toISOString(),
       spread_line: med(sp.map((x) => x.line)), spread_price: med(sp.map((x) => x.price)),
       total_line: med(tt.map((x) => x.line)), total_price: med(tt.map((x) => x.price)),
       ml_home: med(mlh), ml_away: med(mla),
+      books,
     };
   }
   st.at = new Date().toISOString();
@@ -406,6 +431,7 @@ function marketFor(lg, g, odds) {
       }
     }
     out.books.push(row);
+    if (bk.key === 'cloudbet' && bk._cb) out._cb = bk._cb;   // escalera y tope de stake de la casa ejecutable
   }
   const novig2 = (pa, pb) => { const ia = 1 / pa, ib = 1 / pb; return ia / (ia + ib); };
   const sp = Object.values(out.spread), tt = Object.values(out.total), mls = Object.values(out.ml);
@@ -564,6 +590,10 @@ async function recordShadow(lg) {
         // si la familia se abrió con prior en contra, eso forma parte del registro: la revisión tiene que
         // poder separar las que entraron con historia mala de las que entraron limpias
         prior_contra: c.prior_contra || null,
+        // LA COTIZACIÓN DE CLOUDBET EN EL MOMENTO DE LA PICK (7-sep): línea exacta si la casa la tiene en su
+        // escalera, si no la principal marcada `misma_linea:false`. Es el dato que decide si esta familia se
+        // puede colocar donde tenemos cuenta o si hay que seguir mirándola desde fuera.
+        cb: CBAF.quoteFor(mk, c),
       });
     }
   }
@@ -605,7 +635,26 @@ async function settleShadow(lg) {
       if (p.family === 'SPREAD' && cl.spread_line != null) p.close = { line: cl.spread_line, price: cl.spread_price };
       if (p.family === 'TOTAL' && cl.total_line != null) p.close = { line: cl.total_line, price: cl.total_price };
       if (p.close && p.close.price) p.clv_pct = +((p.odds / p.close.price - 1) * 100).toFixed(2);
+      // CLV HONESTO (7-sep): la misma casa de la pick, en la MISMA línea. Sin la misma línea no hay medida
+      // (comparar precios de líneas distintas no mide nada); se anota el motivo para que el parte lo diga.
+      const precioEn = (B, fam, side, line) => {
+        if (!B) return null;
+        if (fam === 'SPREAD') { if (B.sl === line) return side === 'home' ? B.sh : B.sa; const a = (B.alts && B.alts.s || []).find((x) => x[0] === line); return a ? (side === 'home' ? a[1] : a[2]) : null; }
+        if (fam === 'TOTAL') { if (B.tl === line) return side === 'over' ? B.to : B.tu; const a = (B.alts && B.alts.t || []).find((x) => x[0] === line); return a ? (side === 'over' ? a[1] : a[2]) : null; }
+        if (fam === 'MONEYLINE') return side === 'home' ? B.mh : B.ma;
+        return null;
+      };
+      const libro = cl.books && cl.books[p.book];
+      const cierreLibro = precioEn(libro, p.family, p.side, p.line);
+      if (cierreLibro > 1) { p.close_libro = { book: p.book, price: cierreLibro }; p.clv_libro_pct = +((p.odds / cierreLibro - 1) * 100).toFixed(2); }
+      else p.clv_libro_falta = !libro ? 'la casa de la pick no está en el cierre' : 'la casa no cotizaba esa línea al cierre';
+      // Y CLOUDBET: cierre de Cloudbet en la línea de la pick, y el resultado que habría tenido la apuesta
+      // colocada allí (solo cuando la línea de Cloudbet al nacer era la misma; con otra línea el resultado
+      // no es comparable y se deja fuera a propósito).
+      const cbClose = precioEn(cl.books && cl.books.cloudbet, p.family, p.side, p.line);
+      if (p.cb && p.cb.price > 1 && cbClose > 1) p.clv_cb_pct = +((p.cb.price / cbClose - 1) * 100).toFixed(2);
     }
+    if (p.cb && p.cb.misma_linea && p.cb.price > 1) p.units_cb = win == null ? 0 : win ? +(p.cb.price - 1).toFixed(3) : -1;
     p.settled_at = new Date().toISOString();
     settled++;
   }
@@ -629,9 +678,15 @@ function track(lg) {
   const byFB = {};
   const byFam = {};
   for (const p of done) {
-    const F = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [] };
+    const F = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [], clvLibro: [], cb: { cotizadas: 0, misma_linea: 0, n: 0, w: 0, units: 0, clv: [] } };
     F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0;
     if (p.clv_pct != null) F.clv.push(p.clv_pct);
+    if (p.clv_libro_pct != null) F.clvLibro.push(p.clv_libro_pct);
+    // Cloudbet, en su propio renglón: cuántas picks cotizó, en cuántas con la misma línea, y qué habría
+    // dado el dinero colocado allí (ROI a su precio) y su CLV contra su propio cierre
+    if (p.cb) { F.cb.cotizadas++; if (p.cb.misma_linea) F.cb.misma_linea++; }
+    if (p.units_cb != null) { F.cb.n++; if (p.result === 'WIN') F.cb.w++; F.cb.units += p.units_cb; }
+    if (p.clv_cb_pct != null) F.cb.clv.push(p.clv_cb_pct);
     const bk = p.book || p.best_book || 'sin_casa';
     const B = byFB[p.family + ' · ' + bk] = byFB[p.family + ' · ' + bk] || { n: 0, w: 0, units: 0, clv: [], book: bk, family: p.family };
     B.n++; if (p.result === 'WIN') B.w++; B.units += p.units || 0;
@@ -649,7 +704,15 @@ function track(lg) {
       // la media del CLV sin su dispersión no se puede juzgar: +0,5 % sobre 30 picks con sd 8 es ruido y
       // sobre 300 con sd 2 es ventaja. El tablero de familias necesita las dos para calcular el estadístico.
       clv_n: F.clv.length, clv_sd: clvSd(F.clv),
+      // el CLV contra la MISMA casa en la MISMA línea (7-sep): el de arriba compara el mejor precio de 26
+      // casas con la mediana y sale positivo por construcción; este es el que decide
+      clv_libro_avg_pct: F.clvLibro.length ? r2(F.clvLibro.reduce((a, b) => a + b, 0) / F.clvLibro.length) : null,
+      clv_libro_n: F.clvLibro.length, clv_libro_sd: clvSd(F.clvLibro),
+      cloudbet: { cotizadas: F.cb.cotizadas, misma_linea: F.cb.misma_linea, n: F.cb.n,
+        hit_pct: F.cb.n ? r2(100 * F.cb.w / F.cb.n) : null, units: r2(F.cb.units), roi_pct: F.cb.n ? r2(100 * F.cb.units / F.cb.n) : null,
+        clv_avg_pct: F.cb.clv.length ? r2(F.cb.clv.reduce((a, b) => a + b, 0) / F.cb.clv.length) : null, clv_n: F.cb.clv.length, clv_sd: clvSd(F.cb.clv) },
     }])),
+    cloudbet_fuente: (G.cb && G.cb[lg]) || null,
     by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, F]) => [k, {
       family: F.family, book: F.book, n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units),
       clv_avg_pct: F.clv.length ? r2(F.clv.reduce((a, b) => a + b, 0) / F.clv.length) : null,

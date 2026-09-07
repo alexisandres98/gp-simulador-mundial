@@ -59,11 +59,20 @@ cada deporte, Polymarket por deporte y familia, prop firm, físicas, afiliados, 
   todavía casi no hay medidas (2). Seguir hasta 60 sin tocar; arreglar la captura del cierre de Pinnacle en TOTAL.
   Pendiente aguas arriba: el slate de tenis crea picks de cruces provisionales del feed de cuotas; comprobar el
   cuadro (ESPN) antes de emitir.
-- **Cloudbet cotiza fútbol americano** (sonda `cloudbet-probe?sport=american_football&liga=ncaa&raw=2`): NCAAF con
-  `american_football.totals` (una línea), `handicap`, `moneyline`, `team_totals`, mitades y cuartos; NFL solo
-  outrights a 7-sep (los partidos aparecen cerca del kickoff). Para saber si los totales de College conservan la
-  ventaja al precio de Cloudbet hay que **registrar el precio de Cloudbet en la sombra de amfoot** (hoy solo entran
-  las casas de The Odds API) y medir CLV contra su propio cierre dos semanas. No hay dato aún.
+- **Cloudbet YA ES CASA EJECUTABLE EN LA SOMBRA DE FÚTBOL AMERICANO (7-sep, orden de Alexis)**:
+  `data-providers/amfoot/cloudbet.js` funde moneyline/hándicap/totales de NCAAF, NFL y CFL en cada evento de The
+  Odds API (49 de 66 partidos de NCAAF casados en la primera pasada; los 17 sin par son rivales de FCS fuera del
+  catálogo). Cada pick nueva guarda `cb` (precio de Cloudbet en la línea exacta si está en su escalera, si no la
+  principal con `misma_linea:false`, y `max_stake` ≈ 290–580 USD por línea); al liquidar, `clv_cb_pct` (contra el
+  cierre de Cloudbet) y `units_cb` (resultado a su precio). El track trae por familia `cloudbet: {cotizadas,
+  misma_linea, n, roi_pct, clv_avg_pct}`. **Lectura en dos semanas**: si `cloudbet.roi_pct` y `clv_avg_pct` de
+  TOTAL siguen positivos con n ≥ 40, se puede colocar por API; si no, seguir manual en otra casa. Forma real de
+  la API: `period=ot&period=ft`; `handicap=3` viene IGUAL en las dos selecciones y es el del LOCAL. Sonda:
+  `/api/internal/nfl?key=&cbprobe=ncaaf[&dump=1]`. `GP_AMFOOT_CLOUDBET=false` lo apaga.
+- **El CLV de College estaba inflado por construcción**: comparaba el MEJOR precio de 26 casas con la MEDIANA del
+  cierre (por eso spreads daba +6 % de CLV con ROI −9 %). Desde hoy el cierre guarda cada casa y el track trae
+  `clv_libro_avg_pct` (misma casa, misma línea); las 175 liquidadas anteriores no tienen cierre por casa. La
+  familia NO está confirmada hasta que `clv_libro` lo diga con muestra nueva.
 - `/api/internal/cloudbet-probe?key=&sport=<clave>[&liga=][&raw=3]` lista competiciones y mercados de otro deporte.
 - **Revisión de familias (7-sep, pedido de Alexis)**: CS2 RONDAS total vive también en Pinnacle (252, ROI +4,5 %, CLV
   +0,88 t 3,99); en Bovada −7,5 % y en Cloudbet 20 picks a −23 % con CLV +13 (línea de apertura blanda, mismo patrón que

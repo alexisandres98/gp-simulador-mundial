@@ -1712,16 +1712,40 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   const porCompeticion = {};
   const equiposEnFuente = new Set();
   for (const x of idx) { equiposEnFuente.add(x.ka); equiposEnFuente.add(x.kb); }
-  let settled = 0, unmatched = 0, unsettleable = 0, voided = 0, caducadas = 0;
+  let settled = 0, unmatched = 0, unsettleable = 0, voided = 0, caducadas = 0, mapaNoJugado = 0;
   // POR QUÉ NO CASA, NO SOLO CUÁNTAS (21-ago). El resumen decía `unmatched: 82` y ahí se acababa la
   // historia: con ese número no se puede distinguir "la fuente no trae esa serie" de "la trae con otro
   // nombre" de "la trae con otra fecha". Son tres fallos distintos con tres arreglos distintos, y sin
   // saber cuál es hay que adivinar. Valorant llevaba 94 picks abiertas y CERO liquidadas por esto.
   const sinCasar = [];
+  // CASADO APROXIMADO (7-sep). Con la clave exacta se quedaban fuera dos casos reales y frecuentes: la fuente
+  // escribe "Vivo Keyd Stars" donde la casa dijo "Keyd Stars" (el resolutor no conoce el patrocinador y la
+  // forma normalizada no coincide), y la casa listó la final de BLAST Porto como "Spirit Academy" cuando la
+  // fuente —y la realidad— dicen "Spirit" (dos ids del catálogo, uno prefijo del otro). Nueve apuestas
+  // reales de CS2 dependían de esto. Se admite un segundo intento MÁS LAXO, con dos candados: (1) por cada
+  // lado, o la clave coincide, o los nombres normalizados se contienen (mínimo 5 letras), o un id del
+  // catálogo es prefijo del otro ("gp:spirit" / "gp:spirit-academy"); y (2) tiene que haber UNA sola serie
+  // candidata en la ventana — con dos, no se elige: mejor sin liquidar que liquidada con el partido ajeno.
+  // Queda anotado en la pick (`casado_por: 'aproximado'` y los nombres de la fuente) para poder auditarlo.
+  const plano = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  const ladoAprox = (kPick, nPick, kSrc, nSrc) => {
+    if (kPick === kSrc) return true;
+    const a = plano(nPick), b = plano(nSrc);
+    if (a.length >= 5 && b.length >= 5 && (a.includes(b) || b.includes(a))) return true;
+    if (/^gp:/.test(kPick) && /^gp:/.test(kSrc) && (kPick.startsWith(kSrc + '-') || kSrc.startsWith(kPick + '-'))) return true;
+    return false;
+  };
   for (const pk of pend) {
     const kh = key(pk.home), ka = key(pk.away), t = Date.parse(pk.start_at || 0);
-    const hit = idx.find((x) => Math.abs(x.t - t) < ventana(x)
+    let hit = idx.find((x) => Math.abs(x.t - t) < ventana(x)
       && ((x.ka === kh && x.kb === ka) || (x.ka === ka && x.kb === kh)));
+    let aprox = false;
+    if (!hit) {
+      const cands = idx.filter((x) => Math.abs(x.t - t) < ventana(x) && !x.r.parse_rejected
+        && ((ladoAprox(kh, pk.home, x.ka, x.r.a) && ladoAprox(ka, pk.away, x.kb, x.r.b))
+          || (ladoAprox(kh, pk.home, x.kb, x.r.b) && ladoAprox(ka, pk.away, x.ka, x.r.a))));
+      if (cands.length === 1) { hit = cands[0]; aprox = true; }
+    }
     if (!hit) {
       // CADUCIDAD (23-ago). Una pick que sigue sin aparecer en la fuente semanas después no va a aparecer
       // nunca: bo3 parsea en ~2 días y descarta el ~19 % de los partidos para siempre, y la ventana más
@@ -1758,7 +1782,10 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       }
       continue;
     }
-    const flip = hit.ka !== kh;
+    // con casado aproximado la orientación se decide con la misma prueba laxa que lo encontró: comparar
+    // claves exactas aquí diría "volteado" para "Keyd Stars" contra "Vivo Keyd Stars" aunque el orden sea el mismo
+    const flip = aprox ? !(ladoAprox(kh, pk.home, hit.ka, hit.r.a) && ladoAprox(ka, pk.away, hit.kb, hit.r.b)) : hit.ka !== kh;
+    if (aprox) { pk.casado_por = 'aproximado'; pk.fuente_nombres = `${hit.r.a} vs ${hit.r.b}`; }
     // AL VOLTEAR SE VOLTEA TODO LO QUE TIENE LADO (2-sep). Hasta hoy solo se intercambiaban score_a/score_b:
     // kills_a/kills_b y winner se quedaban en la orientación de la FUENTE, así que en toda serie que la
     // fuente listara al revés, KILLS_HANDICAP / KILLS_EQUIPO / KILLS_DNB se liquidaban con los kills del
@@ -1784,6 +1811,23 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       voided++; continue;
     }
     const verdict = settleOne(pk, r);
+    if (!verdict && pk.map && Array.isArray(r.maps) && Number.isFinite(r.maps_a) && Number.isFinite(r.maps_b)) {
+      // EL MAPA QUE NO SE JUGÓ SE ANULA, NO SE ESPERA (7-sep). Una pick de "mapa 3" en una serie que acabó
+      // 2-0 quedaba ACTIVE para siempre bajo la etiqueta "todavía podría resolverse": no podía. Así se
+      // apilaron 154 picks de CS2 "inliquidables" y, con ellas, ocho apuestas reales que la casa ya había
+      // devuelto (PUSH). La serie está terminada cuando alguno alcanzó los mapas que pide su formato
+      // (`bo` viaja en la pick: 2 en un BO3, 3 en un BO5); si la fuente aún la trae a medias (1-1), se espera.
+      const jugados = r.maps_a + r.maps_b;
+      const paraGanar = Math.ceil((Number(pk.bo) || 3) / 2);
+      const terminada = Math.max(r.maps_a, r.maps_b) >= paraGanar;
+      if (terminada && pk.map > jugados && !r.maps.some((m) => m.n === pk.map)) {
+        pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
+        pk.settled_at = new Date().toISOString(); pk.result_source = r.source;
+        pk.final = { maps: `${r.maps_a}-${r.maps_b}`, detail: (r.maps || []).map((m) => `${m.map || 'g' + m.n} ${m.score_a}-${m.score_b}${m.ot ? ' OT' : ''}`).join(' · ') };
+        pk.unsettleable_why = `el mapa ${pk.map} no se jugó: la serie terminó ${r.maps_a}-${r.maps_b}`;
+        mapaNoJugado++; continue;
+      }
+    }
     if (!verdict) {
       // LA FUENTE DIJO QUE NO VA A HABER DATO (22-ago). bo3 marca ~19 % de los partidos como `rejected`:
       // no hay demo o no la pudieron leer, y el detalle por mapa no va a existir nunca. Una pick de mapa
@@ -1805,7 +1849,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   }
   st.at = new Date().toISOString();
   const fechas = idx.map((x) => x.t).filter(Boolean).sort((a, b) => a - b);
-  const resumen = { at: st.at, settled, unmatched, unsettleable, anuladas_sin_parseo: voided, caducadas, pending: pend.length, source: rs.source, resolver: !!resolve,
+  const resumen = { at: st.at, settled, unmatched, unsettleable, anuladas_sin_parseo: voided, anuladas_mapa_no_jugado: mapaNoJugado, caducadas, pending: pend.length, source: rs.source, resolver: !!resolve,
     // el estado de la FUENTE va en el mismo parte: sin esto no se sabe si el problema es nuestro o suyo
     // la ventana pedida viaja en el parte: sin esto, un `fuente_desde` corto no distingue "la fuente no
     // tiene más" de "no se le pidió más", que es exactamente el fallo que esto viene a cerrar

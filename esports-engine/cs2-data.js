@@ -64,16 +64,24 @@ function load() {
   // el mínimo es DOS caracteres, no tres: "G2", "C9" y "NIP" son nombres reales de equipos de élite, y con
   // el guardia en tres se quedaban fuera del índice exacto — con lo que "G2" acababa resolviendo por
   // contención a "G2 Ares", que es su filial.
-  const put = (k, t) => {
+  // EL NOMBRE EXACTO MANDA SOBRE EL ALIAS (7-sep). El índice mezclaba en la misma tabla el nombre completo
+  // ("MOUZ" → mousesports) y el alias de primera palabra ("MOUZ NXT" → "mouz" → mouz-nxt), y desempataba por
+  // historial: la filial tiene MÁS mapas en la base (1.034 contra 946), así que "MOUZ" resolvía a MOUZ NXT.
+  // Consecuencia medida: la final de BLAST Open Porto se modeló con el rating de la academia. Ahora un alias
+  // jamás pisa una clave que ya tiene nombre exacto; entre exactos, y entre alias, sigue mandando el historial.
+  const exactos = new Set();
+  const put = (k, t, { alias = false } = {}) => {
     if (!k || k.length < 2) return;
+    if (alias && exactos.has(k)) return;
     const cur = data.byName[k];
-    if (!cur || (data.teams[cur] && (t.n || 0) > (data.teams[cur].n || 0))) data.byName[k] = t.id;
+    if (!cur || (!alias && !exactos.has(k)) || (data.teams[cur] && (t.n || 0) > (data.teams[cur].n || 0))) data.byName[k] = t.id;
+    if (!alias) exactos.add(k);
   };
+  for (const t of Object.values(data.teams)) put(norm(t.name), t);
   for (const t of Object.values(data.teams)) {
-    put(norm(t.name), t);
     // alias corto por la primera palabra: "FaZe Clan" → "faze". No se aplica a filiales, que es justo
-    // donde el alias corto haría el daño ("Spirit Academy" → "spirit").
-    if (!/\b(academy|junior|youth|jr)\b/i.test(t.name || '')) put(norm(String(t.name).split(/\s+/)[0]), t);
+    // donde el alias corto haría el daño ("Spirit Academy" → "spirit", "MOUZ NXT" → "mouz").
+    if (!esFilial(t.name)) put(norm(String(t.name).split(/\s+/)[0]), t, { alias: true });
   }
   data.pool = poolOf(data.maps);
   G.data = data; G.stamp = s; G.at = Date.now();
@@ -107,19 +115,35 @@ function poolOf(maps) {
 // ---- resolución de equipo: del nombre que da el mercado al id propio -------------------------------------
 // Devuelve null antes que un equipo equivocado. Asignarle a un equipo el histórico de otro es peor que no
 // tener histórico: el modelo se vuelve confiado sobre una mentira.
+// Una FILIAL es un equipo cuyo nombre lleva marca de segundo equipo. La lista es de vocabulario real de CS2:
+// Academy/Junior/Youth/NXT/Prodigy/Force/Reload/Youngsters/Rising/Green/fe. Sirve en dos sitios: para no
+// fabricarle alias corto ("MOUZ NXT" → "mouz") y para que un nombre SIN marca jamás resuelva por contención a
+// un equipo CON marca ("spirit" → "spiritacademy"): antes eso pasaba en cuanto el primer equipo faltaba del
+// índice, y el modelo se quedaba seguro sobre el historial equivocado.
+const FILIAL_RE = /\b(academy|academia|junior|juniors|youth|young|youngsters|jr|nxt|prodigy|prospects|talent|force|reload|rising|green|fe|female|women|javelins)\b/i;
+function esFilial(name) { return FILIAL_RE.test(String(name || '')); }
+// abreviaturas que el mercado usa y que ninguna regla de forma puede deducir del nombre del catálogo
+const ABREVIATURAS = { navi: 'natus-vincere' };
+
 function resolveTeam(name, { data = load() } = {}) {
   const n = norm(name);
   if (!n) return null;
   if (data.byName[n]) return data.byName[n];
+  if (ABREVIATURAS[n] && data.teams[ABREVIATURAS[n]]) return ABREVIATURAS[n];
   // Contención como último recurso. Si casan varios, se queda el de más historial SOLO si le saca una
   // distancia clara al segundo; si están parejos es que son equipos distintos con nombres parecidos y se
   // devuelve null, que es la respuesta honesta.
   // La contención solo se permite con consultas de 4+ caracteres y **por prefijo**: "faze" → "fazeclan" sí,
   // pero "g2" → "g2ares" no. Aceptar contención en cualquier posición es lo que metía a las filiales.
   if (n.length < 4) return null;
+  const consultaFilial = esFilial(name);
   const hits = [];
   for (const [k, id] of Object.entries(data.byName)) {
-    if (k.startsWith(n) || n.startsWith(k)) hits.push(id);
+    if (!(k.startsWith(n) || n.startsWith(k))) continue;
+    // la marca de filial tiene que coincidir en los dos lados: "spirit" nunca es "Spirit Academy", y
+    // "Vitality Academy" nunca es "Vitality" — en las dos direcciones el historial sería el de otro equipo
+    if (data.teams[id] && esFilial(data.teams[id].name) !== consultaFilial) continue;
+    hits.push(id);
   }
   if (!hits.length) return null;
   if (hits.length === 1) return hits[0];

@@ -934,6 +934,13 @@ async function liquidar(resultados = {}, { sombra = [] } = {}) {
       settled++;
       continue;
     }
+    // LA REFERENCIA PUEDE VIVIR EN DOS CAMPOS (7-sep). Las filas de tarjetas la guardan en `ref_id`; las de
+    // CS2 colocadas por el brazo (desde el 1-sep) la guardaban SOLO en `referencia`. Este bucle preguntaba
+    // por `ref_id`, o sea por nada: la casa había resuelto las 34 apuestas de CS2 de la semana (WIN/LOSS/PUSH,
+    // comprobado con run=cb_estado) y aquí seguían "esperando" con 210 USDT de exposición fantasma. Se
+    // unifica el campo al vuelo para que el reconciliador y los informes también las vean.
+    if (!b.ref_id && b.referencia) b.ref_id = b.referencia;
+    if (!b.ref_id) { esperando++; continue; }
     const raw = await CB.betByReference(process.env.CLOUDBET_API_KEY, b.ref_id).catch(() => null);
     if (!raw) { esperando++; continue; }
     const casa = String(raw.betStatus || '').toUpperCase();
@@ -1156,6 +1163,7 @@ async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
       if (cod === 'DUPLICATE_REQUEST') {
         // la casa ya tenía esta referencia: hay dinero posiblemente comprometido — no se reenvía jamás
         fila.status = 'EN_ACEPTACION'; fila.motivo = 'referencia_ya_usada'; fila.stake_comprometido = stake;
+        fila.ref_id = fila.ensayo_payload.referenceId;   // confirmar() pregunta por este campo
         save(); return fila;
       }
       if (r && r.ok && !/REJECTED/i.test(String(r.betStatus || (r.body || {}).status || ''))) {
@@ -1165,6 +1173,8 @@ async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
         fila.placed_at = new Date().toISOString();
         fila.slippage_pct = fila.odds_sombra > 0 ? +(100 * (fila.odds_real / fila.odds_sombra - 1)).toFixed(2) : null;
         fila.referencia = fila.ensayo_payload.referenceId;
+        // y en el MISMO campo que usan tarjetas, que es el que leen liquidar(), confirmar() y el reconciliador
+        fila.ref_id = fila.ensayo_payload.referenceId;
         // el saldo baja YA, como en tarjetas: el suelo de cartera se juzga contra lo real
         if (L.saldo && typeof L.saldo.amount === 'number') L.saldo.amount -= stake;
       } else {

@@ -22358,15 +22358,19 @@ async function anotar(pid){
         if (run === 'filas') {
           const LRf = RE.load();
           const estQ = String(url.searchParams.get('estado') || '').toUpperCase();
-          const rowsF = LRf.bets.filter((b) => !estQ || String(b.status).toUpperCase() === estQ)
-            .map((b) => ({ pick: b.pick_id, match: b.match, linea: b.line, status: b.status,
+          // `&familia=CS2_RONDAS` (7-sep): el libro de una sola familia, para cuadrar la semana de CS2 sin que
+          // las 80 primeras filas de tarjetas se coman el tope
+          const famQ = String(url.searchParams.get('familia') || '').toUpperCase();
+          const rowsF = LRf.bets.filter((b) => (!estQ || String(b.status).toUpperCase() === estQ) && (!famQ || String(b.familia || '').toUpperCase() === famQ))
+            .map((b) => ({ pick: b.pick_id, match: b.match, linea: b.line, status: b.status, pnl: b.pnl != null ? b.pnl : null,
+              resultado: b.resultado || null, casa_estado: b.casa_estado || null, settled_at: b.settled_at || null,
               motivo: b.motivo || null, cuota_sombra: b.odds_sombra, prob: b.model_prob,
               kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null,
               stake: b.stake != null ? b.stake : null, cuota_real: b.odds_real || null,
               placed_at: b.placed_at || null, via: b.via || null, referencia: b.referencia || b.ref_id || null,
               ensayo: b.familia === 'CS2_RONDAS' ? { motivo: b.ensayo_motivo || null, at: b.ensayo_at || null,
                 intentos: b.ensayo_intentos || 0, payload: !!b.ensayo_payload, rechazo: b.ultimo_rechazo || null } : undefined }));
-          return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, 80) });
+          return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, famQ ? 300 : 80) });
         }
         // `run=colocar_una&pick=&stake=` (1-sep): colocar UNA fila concreta con stake fijado por orden
         // humana. Pasa por el MISMO colocar() — id del evento, precio vivo, deslizamiento, frenos —;
@@ -22404,6 +22408,9 @@ async function anotar(pid){
           // manuales figurarían todas como "esperando" y la lectura a mano engañaría.
           const resL = {};
           for (const q of (db.clubDailyPicks || []).concat(db.combatPicks || [])) if (q && q.status === 'SETTLED' && q.result_code) resL[q.pick_id] = { result_code: q.result_code };
+          // y las picks de esports, como hace el barrido: sin ellas una fila manual de CS2 se queda "esperando"
+          // aunque su pick lleve días liquidada (7-sep)
+          try { for (const q of require('./esports-engine/store').picksRaw('cs2')) if (q && q.status === 'SETTLED' && q.result_code) resL[q.pick_id] = { result_code: q.result_code }; } catch { }
           return json(res, 200, await RE.liquidar(resL, { sombra: shadowInit().bets }));
         }
         // `run=reliquidar&ref=`: corrige el DINERO de una apuesta ya liquidada con la aritmética de su estado

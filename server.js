@@ -896,8 +896,8 @@ async function dartsJob() {
 setTimeout(dartsJob, 7 * 60e3);
 // la cola diaria de la base (resultados de la temporada + ventanas de Orakel + partidos PC) en un proceso aparte
 let _dtTailRunning = false;
-async function dartsTailJob() {
-  const proximo = () => setTimeout(dartsTailJob, 24 * 3600e3);
+async function dartsTailJob(once) {
+  const proximo = () => { if (!once) setTimeout(dartsTailJob, 24 * 3600e3); };
   if (_dtTailRunning) return proximo();
   if (typeof opsMemOk === 'function' && !opsMemOk('darts_tail', 200)) { setTimeout(dartsTailJob, 30 * 60e3); return; }
   _dtTailRunning = true;
@@ -21081,6 +21081,24 @@ const server = http.createServer(async (req, res) => {
           muestra: b.rows.slice(0, 6).map((r) => ({ id: r.id, torneo: r.tournament, stage: r.stage, start: r.start_at, a: r.a, b: r.b, disponible: r.available, why: r.why || null, libros: r.market && r.market.n_books, formato: r.format && { kind: r.format.kind, bo: r.format.best_of || r.format.best_of_sets, certified: r.format.certified }, gp: r.gp && { p_a: r.gp.p_a, unc: r.gp.unc_pp, avg_a: r.gp.avg_a, avg_b: r.gp.avg_b }, candidatas: (r.candidates || []).slice(0, 4).map((c) => ({ f: c.family, s: c.side, l: c.line, o: c.odds, e: c.edge_pp, u: c.unc_pp, v: c.verdict, why: c.no_pick_reason })) })) };
       });
       if (url.searchParams.get('settle') === '1') await step('settleShadow', () => DT.settleShadow());
+      // `?fotos=1` / `?photos=N` / `?tail=1` (7-sep, "quiero fotos de todos esos jugadores"): cobertura de
+      // retratos por fuente; lanzar la busca en Wikipedia (N por pasada) o la cola diaria entera en un
+      // proceso aparte sin esperar — al terminar se recarga la base. El estado queda en ops (darts_photos).
+      if (url.searchParams.get('fotos') === '1') await step('fotos', () => {
+        const D = require('./darts-engine/data');
+        const pl = JSON.parse(require('fs').readFileSync(D.archivo('players.json'), 'utf8'));
+        const r = { jugadores: 0, con_foto: 0, pdc: 0, wikipedia: 0, activos_n20: 0, activos_n20_con_foto: 0, archivo: D.archivo('players.json') };
+        for (const p of Object.values(pl)) { r.jugadores++; if (p.photo) { r.con_foto++; r[p.photo_src === 'wikipedia' ? 'wikipedia' : 'pdc']++; } if (p.n >= 20) { r.activos_n20++; if (p.photo) r.activos_n20_con_foto++; } }
+        return r;
+      });
+      const nFotos = +(url.searchParams.get('photos') || 0);
+      if (nFotos > 0) {
+        out.photos = 'lanzada (' + nFotos + ')';
+        opsSpawn('darts_photos', ['scripts/darts-harvest.js', `--photos=${Math.min(3000, nFotos)}`], { heapMb: 200, timeoutMin: 55 })
+          .then((o) => { opsLog('darts_photos', { code: o.code != null ? o.code : o.error }); if (o.code === 0) { try { require('./darts-engine/data').reset(); } catch { /* sin recarga */ } } })
+          .catch((e) => opsLog('darts_photos', { error: e.message }));
+      }
+      if (url.searchParams.get('tail') === '1') { out.tail = _dtTailRunning ? 'ya corriendo' : 'lanzada'; if (!_dtTailRunning) dartsTailJob(true); }
       await step('snapshot', () => DT.modelSnapshot());
       out.ok = out.steps.every((x) => x.ok);
       return json(res, 200, out);

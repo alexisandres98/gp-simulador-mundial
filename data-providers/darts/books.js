@@ -149,10 +149,14 @@ async function cloudbetFixtures({ days = 8, key = process.env.CLOUDBET_API_KEY |
   return { book: 'cloudbet', events, available: true, at: new Date().toISOString() };
 }
 // mercados de un evento de Cloudbet: se leen TODAS las claves y se mapean por nombre (la sonda dirá cuáles)
+// CLAVES REALES DE CLOUDBET (sonda en prod, 7-sep): darts.winner · darts.total_legs · darts.handicap_legs ·
+// darts.most_180s · darts.total_180s · darts.180s_handicap · darts.set_correct_score_in_legs. El orden importa:
+// el hándicap de 180s tiene que casar ANTES que el patrón genérico de hándicap, o entraría como legs.
 const CB_FAMILY = [
-  [/match_odds|^darts\.winner$|moneyline/, 'ML'], [/total_legs|totals?$/, 'LEGS_TOTAL'], [/handicap/, 'LEGS_HCP'],
+  [/180s?_handicap|handicap_180/, 'X180_HCP'],
+  [/match_odds|^darts\.winner$|moneyline/, 'ML'], [/total_legs|totals?$/, 'LEGS_TOTAL'], [/set_handicap|handicap_sets/, 'SETS_HCP'], [/handicap/, 'LEGS_HCP'],
   [/correct_score/, 'CORRECT_SCORE'], [/most_180|most_one_hundred_and_eighty/, 'X180_MOST'], [/total_180|180s?_total|one_hundred_and_eighties/, 'X180_TOTAL'],
-  [/player.*180|180.*player/, 'X180_PLAYER'], [/highest_checkout|checkout/, 'HIGHEST_CHECKOUT'], [/total_sets/, 'SETS_TOTAL'], [/set_handicap/, 'SETS_HCP'],
+  [/player.*180|180.*player/, 'X180_PLAYER'], [/highest_checkout|checkout/, 'HIGHEST_CHECKOUT'], [/total_sets/, 'SETS_TOTAL'],
 ];
 async function cloudbetMarkets(providerId, { key = process.env.CLOUDBET_API_KEY || '' } = {}) {
   if (!key) return { rows: [], raw_keys: [] };

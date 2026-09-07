@@ -42,6 +42,7 @@ const FAMILIES = {
   X180_TOTAL: { label: 'Total de 180s', card: 'TOTAL' },
   X180_MOST: { label: 'Más 180s', card: 'SOLID' },
   X180_PLAYER: { label: '180s del jugador', card: 'PLAYER' },
+  X180_HCP: { label: 'Hándicap de 180s', card: 'SPREAD', display_only: true },
   CORRECT_SCORE: { label: 'Marcador exacto', card: 'COMBO', display_only: true },
   HIGHEST_CHECKOUT: { label: 'Checkout más alto', card: 'TOTAL', display_only: true },
   SETS_TOTAL: { label: 'Total de sets', card: 'TOTAL' },
@@ -775,7 +776,9 @@ function modelCard() {
 }
 async function modelSnapshot() {
   const d = D.build();
-  return { base: { rows: d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, orakel_as_of: orakel().latest }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => t.name) } : null, odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, cloudbet_keys: G.odds.cloudbet_keys } : null, calib_cache: CALIB.size, track: track({ limit: 5 }), disk: DISK_DIR };
+  // muestra cruda de Cloudbet (dos eventos con sus filas): la respuesta a "¿no cotiza o no leemos?"
+  const cbSample = G.odds ? G.odds.events.filter((e) => e.book === 'cloudbet' && (e.rows || []).length).slice(0, 2).map((e) => ({ a: e.a, b: e.b, start_at: e.start_at, competition: e.competition, raw_keys: e.raw_keys, rows: (e.rows || []).slice(0, 24).map((r) => ({ family: r.family, side: r.side, line: r.line, odds: r.odds, participant: r.participant, market_key: r.market_key, params: r.params })) })) : null;
+  return { base: { rows: d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, orakel_as_of: orakel().latest }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => t.name) } : null, odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, cloudbet_keys: G.odds.cloudbet_keys, cloudbet_sample: cbSample } : null, calib_cache: CALIB.size, track: track({ limit: 5 }), disk: DISK_DIR };
 }
 
 module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, resetOrakel, slate, seasonTournaments, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentBoard, tournamentsList, simMatch, agenda, liveProb, modelCard, modelSnapshot, skillOf, formatOf, parseFormat };

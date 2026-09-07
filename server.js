@@ -26381,6 +26381,17 @@ async function anotar(pid){
       res.writeHead(200, hdrsOut);
       return fs.createReadStream(full).pipe(res);
     }
+    // CÓDIGO A PELO EN LA URL (7-sep): una tanda de volantes salió con el QR ilegible y solo el texto
+    // "gpsimulador.com · Your code: GPSIBA92". Quien teclea gpsimulador.com/GPSIBA92 (en cualquier caja)
+    // cae en el mismo enlace corto que el QR, con la misma atribución. Solo códigos que existen.
+    {
+      const mC = p.match(/^\/([A-Za-z0-9_-]{4,24})\/?$/);
+      if (mC && db.refCodes) {
+        const q = mC[1].toLowerCase();
+        const code = db.refCodes[mC[1]] ? mC[1] : Object.keys(db.refCodes).find((k) => k.toLowerCase() === q);
+        if (code) { res.writeHead(302, { Location: `/r/${encodeURIComponent(code)}${url.search || ''}`, 'Cache-Control': 'no-cache' }); return res.end(); }
+      }
+    }
     json(res, 404, { error: 'No encontrado' });
   } catch (e) {
     console.error(e);

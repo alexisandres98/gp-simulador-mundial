@@ -43,6 +43,15 @@ el observador de prensa ya miraba 10; el monitor no genera picks a más de 120.
 anunciadas sin mercado no aparecen. Si Alexis quiere ver anuncios sin cuota, hace falta otra fuente (BoxRec
 es de pago; Wikipedia por evento es viable pero manual).
 
+## 📅 REPORTE SEMANAL CADA LUNES (7-sep, orden de Alexis)
+Rutina `trig_01PM23qE8VEsn2gPNRsPzY5X` (lunes 08:30 UTC, dispara en la sesión de Claude) que produce el reporte con
+el formato de `docs/reportes/semana-37.html`: dinero real, banco simulado por segmento, tablero por familia (CLV/t),
+cada deporte, Polymarket por deporte y familia, prop firm, físicas, afiliados, costes + feedback. Necesita
+`GP_EXPORT_KEY` (si no está en el scratchpad, pedirla). Solo mide y propone; no toca reglas ni ejecutor.
+- Tenis (7-sep): el liquidador busca el marcador en el día UTC y en sus dos vecinos (ESPN agrupa por fecha local);
+  `/api/internal/tennis?key=&settle=1` dispara la liquidación a mano. Medir el preregistro de totales (≥8 pp).
+- `/api/internal/cloudbet-probe?key=&sport=<clave>[&raw=3]` lista competiciones de otro deporte en Cloudbet.
+
 ## ✅ 7-sep — CS2: por qué 43 apuestas reales (271 USDT) no se liquidaban, y qué se arregló
 Tres roturas encadenadas, ninguna era "la casa no ha resuelto" (la casa las tenía TODAS resueltas):
 1. **Ejecutor real**: las filas de CS2 colocadas por el brazo (desde el 1-sep, `via: relay-rest`) guardaban la

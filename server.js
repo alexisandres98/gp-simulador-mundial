@@ -20980,6 +20980,13 @@ const server = http.createServer(async (req, res) => {
         const rs = await TEN.resettleShadow().catch((e) => ({ error: e.message }));
         return json(res, 200, { resettle: rs, track: TEN.track(null) });
       }
+      // ?settle=1 → dispara la liquidación de la sombra a mano (7-sep): sin esto, tras arreglar el casador
+      // hay que esperar al trabajo de fondo para ver si las vencidas cierran, y el lunes no se espera.
+      if (url.searchParams.get('settle') === '1') {
+        const set = await TEN.settleShadow().catch((e) => ({ error: e.message }));
+        const tr = TEN.track(null);
+        return json(res, 200, { settle: set, open: tr.open, settled: tr.settled, por_evento: tr.por_evento, settle_diag: tr.settle_diag });
+      }
       const snap = await TEN.modelSnapshot().catch((e) => ({ error: e.message }));
       return json(res, 200, snap);
     }
@@ -21052,6 +21059,26 @@ const server = http.createServer(async (req, res) => {
       const out = {};
       const raw = Math.min(6, Math.max(0, +(url.searchParams.get('raw') || 0)));
       const liga = String(url.searchParams.get('liga') || '');
+      // ?sport=<clave> (7-sep): ¿qué competiciones de OTRO deporte cotiza la casa? Alexis preguntó si los
+      // totales de College se pueden colocar en Cloudbet; sin esto la respuesta sería una conjetura.
+      const sportQ = String(url.searchParams.get('sport') || '').replace(/[^a-z0-9_-]/gi, '');
+      if (sportQ) {
+        const js = await fetch(`${CB.HOST}/pub/v2/odds/sports/${encodeURIComponent(sportQ)}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+          .then((r) => r.json()).catch((e) => ({ error: e.message }));
+        const cats = (js && js.categories) || [];
+        const comps = cats.flatMap((c) => (c.competitions || []).map((k) => ({ categoria: c.key, key: k.key, name: k.name, eventos: k.eventCount != null ? k.eventCount : null })));
+        out.sport = sportQ; out.categorias = cats.length; out.competiciones = comps.length; out.lista = comps.slice(0, 80);
+        if (js && js.error) out.error = js.error;
+        // muestra de mercados del primer evento de la primera competición con eventos, para ver las claves
+        const c0 = comps.find((c) => (c.eventos || 0) > 0) || comps[0];
+        if (c0 && raw) {
+          const fromS = Math.floor(Date.now() / 1000);
+          const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c0.key)}?limit=${raw}&from=${fromS}&to=${fromS + 240 * 3600}`,
+            { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
+          out.muestra = ((j && j.events) || []).slice(0, raw).map((e) => ({ id: e.id, partido: `${e.home && e.home.name} v ${e.away && e.away.name}`, cutoff: e.cutoffTime, mercados: Object.keys(e.markets || {}) }));
+        }
+        return json(res, 200, out);
+      }
       try {
         const comps = await CB.soccerCompetitions(apiKey, 12000);
         out.competiciones = comps.length;

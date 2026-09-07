@@ -48,9 +48,34 @@ Rutina `trig_01PM23qE8VEsn2gPNRsPzY5X` (lunes 08:30 UTC, dispara en la sesión d
 el formato de `docs/reportes/semana-37.html`: dinero real, banco simulado por segmento, tablero por familia (CLV/t),
 cada deporte, Polymarket por deporte y familia, prop firm, físicas, afiliados, costes + feedback. Necesita
 `GP_EXPORT_KEY` (si no está en el scratchpad, pedirla). Solo mide y propone; no toca reglas ni ejecutor.
-- Tenis (7-sep): el liquidador busca el marcador en el día UTC y en sus dos vecinos (ESPN agrupa por fecha local);
-  `/api/internal/tennis?key=&settle=1` dispara la liquidación a mano. Medir el preregistro de totales (≥8 pp).
-- `/api/internal/cloudbet-probe?key=&sport=<clave>[&raw=3]` lista competiciones de otro deporte en Cloudbet.
+- **Tenis, casador arreglado (7-sep)**: ESPN devuelve el torneo ENTERO sea cual sea `dates=` (el `dates` se ignora);
+  los fallos eran (a) apellidos compuestos ("Daniel Merida Aguilar" vs "Daniel Merida": ahora casa cualquier token del
+  apellido) y (b) partidos que NUNCA se jugaron (Cerúndolo–Ruud, Cilic–Rublev, Jodar–Kokkinakis: el feed de cuotas
+  los listó y hubo retirada / lucky loser) → ahora se anulan con motivo `cuadro cambiado` cuando uno de los dos jugó
+  ese día contra otro. Pasada del 7-sep: 10 liquidadas + 10 anuladas; quedan 9 sin cruce (vencen a los 10 días) y 10
+  con marcador incompleto. `/api/internal/tennis?key=&settle=1` dispara la liquidación a mano.
+  **Preregistro TOTAL ≥ 8 pp**: 8 de 60 eventos (ROI +20,9 %, t 0,59, CLV n=1); la regla ampliada a toda la historia
+  va 41 eventos, ROI +23 %, t 1,56, pero CLV −5,5 % sobre 9: la vara del preregistro es el CLV contra Pinnacle y
+  todavía casi no hay medidas (2). Seguir hasta 60 sin tocar; arreglar la captura del cierre de Pinnacle en TOTAL.
+  Pendiente aguas arriba: el slate de tenis crea picks de cruces provisionales del feed de cuotas; comprobar el
+  cuadro (ESPN) antes de emitir.
+- **Cloudbet cotiza fútbol americano** (sonda `cloudbet-probe?sport=american_football&liga=ncaa&raw=2`): NCAAF con
+  `american_football.totals` (una línea), `handicap`, `moneyline`, `team_totals`, mitades y cuartos; NFL solo
+  outrights a 7-sep (los partidos aparecen cerca del kickoff). Para saber si los totales de College conservan la
+  ventaja al precio de Cloudbet hay que **registrar el precio de Cloudbet en la sombra de amfoot** (hoy solo entran
+  las casas de The Odds API) y medir CLV contra su propio cierre dos semanas. No hay dato aún.
+- `/api/internal/cloudbet-probe?key=&sport=<clave>[&liga=][&raw=3]` lista competiciones y mercados de otro deporte.
+- **Revisión de familias (7-sep, pedido de Alexis)**: CS2 RONDAS total vive también en Pinnacle (252, ROI +4,5 %, CLV
+  +0,88 t 3,99); en Bovada −7,5 % y en Cloudbet 20 picks a −23 % con CLV +13 (línea de apertura blanda, mismo patrón que
+  el hándicap). SOLID blanda: CLV +1,03 (t 1,8) medido contra EXCHANGES (Betfair UK +1,92 t 2,14, Smarkets, Matchbook);
+  Cloudbet nunca fue la mejor casa en 454 picks; en Polymarket 41 picks ROI +2,7 % CLV +2,2 (promete). GOALS over: CLV
+  −1,83 (t −5,1), Matchbook 50 → EN_CONTRA; no colocar. COMBO over eficiente: 34 picks, ROI +47 %, SIN CLV (nadie cotiza
+  la combinada): no se puede juzgar; medir con las piernas.
+- **Polymarket por familia (sombra $2.000, 150 decididas)**: fútbol "No gana X" 52 → +449,6 (+30 %); fútbol "Sí gana X"
+  22 → +50,8 (+8 %); fútbol empate 3 → −11,6; CS2 ganador de mapa 34 → −109 (−14 %); CS2 ganador de serie 19 → −169
+  (−31 %); CS2 total de mapas 6 → −10; CS2 hándicap 5 → +13; LoL total de mapas 8 → −138 (−70 %); LoL serie 4 → +85.
+  Por precio: <0,35 +7,6 %, 0,35–0,65 −0,9 %, ≥0,65 +35 % (11). Slippage medio 1,9 pp; 47 tesis sin fill / nunca entraron
+  (36 en CS2).
 
 ## ✅ 7-sep — CS2: por qué 43 apuestas reales (271 USDT) no se liquidaban, y qué se arregló
 Tres roturas encadenadas, ninguna era "la casa no ha resuelto" (la casa las tenía TODAS resueltas):

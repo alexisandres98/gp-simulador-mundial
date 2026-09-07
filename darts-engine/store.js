@@ -431,6 +431,7 @@ async function matchDetail(fixtureId) {
     scoring_visit: (() => { const pol = K.policyFor(kk.sk); const t = K.visitKernel(400, kk.sk, pol); const acc = new Map(); for (const x of t) acc.set(400 - x.to, (acc.get(400 - x.to) || 0) + x.p); return [...acc.entries()].sort((p, q) => p[0] - q[0]).filter(([, p]) => p > 0.003).map(([s, p]) => [s, r3(p)]); })(),
   });
   const cA = kernelOf(model.skills.a, model.format.double_in), cB = kernelOf(model.skills.b, model.format.double_in);
+  const cands = evaluateEdges(model, mk);
   return {
     ...base, available: true,
     a: { id: model.a.id, name: model.a.name, photo: row.photo_a, country: row.a_country }, b: { id: model.b.id, name: model.b.name, photo: row.photo_b, country: row.b_country },
@@ -446,8 +447,9 @@ async function matchDetail(fixtureId) {
     format_prism: formatPrism(cA.leg, cB.leg, model.format),
     h2h: h2h(model.a.id, model.b.id),
     profiles: { a: playerProfile(model.a.id), b: playerProfile(model.b.id) },
-    candidates: evaluateEdges(model, mk),
-    picks: evaluateEdges(model, mk).filter((c) => c.verdict === 'SHADOW_PICK').map((c) => pickCard(c, row, model)),
+    candidates: cands,
+    // las mismas cards que el tablero: el GANADOR es referencia (benchmark) y no sale como tesis (7-sep)
+    picks: cands.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark).map((c) => pickCard(c, row, model)),
     model_version: model.model_version,
   };
 }

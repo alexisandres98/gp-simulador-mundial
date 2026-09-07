@@ -902,7 +902,7 @@ async function dartsTailJob() {
   if (typeof opsMemOk === 'function' && !opsMemOk('darts_tail', 200)) { setTimeout(dartsTailJob, 30 * 60e3); return; }
   _dtTailRunning = true;
   try {
-    const out = await opsSpawn('darts_tail', ['scripts/darts-harvest.js', '--pdc', `--seasons=${new Date().getUTCFullYear()}`, '--refresh', '--orakel', '--maxPlayers=250', '--build'], { heapMb: 400, timeoutMin: 50 });
+    const out = await opsSpawn('darts_tail', ['scripts/darts-harvest.js', '--pdc', `--seasons=${new Date().getUTCFullYear()}`, '--refresh', '--orakel', '--maxPlayers=250', '--photos=150', '--build'], { heapMb: 400, timeoutMin: 50 });
     opsLog('darts_tail', { code: out.code != null ? out.code : out.error });
     if (out.code === 0) { try { require('./darts-engine/data').reset(); require('./darts-engine/store').resetOrakel(); opsLog('darts_tail', { recargada: true }); } catch (e) { opsLog('darts_tail', { reset_err: e.message }); } }
   } catch (e) { opsLog('darts_tail', { error: e.message }); }

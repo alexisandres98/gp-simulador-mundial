@@ -4,6 +4,7 @@
 //   node scripts/darts-harvest.js --pdc [--seasons=2023,2024,2025,2026]   torneos + stages + fixtures (crudo)
 //   node scripts/darts-harvest.js --orakel                                  leaderboards por ventana + partidos PC
 //   node scripts/darts-harvest.js --build                                   crudo → data/darts/{matches,players,meta,orakel}.json
+//   node scripts/darts-harvest.js --photos[=N]                              retratos que la PDC no tiene, desde Wikipedia (N por pasada)
 //
 // Lo crudo va a un directorio fuera del repo (GP_DARTS_RAW, o /data/darts-raw en Render, o el scratchpad
 // local); lo compacto se versiona. Escritura atómica. Reanudable: lo ya bajado no se vuelve a pedir salvo
@@ -29,6 +30,69 @@ const wr = (f, obj) => { fs.mkdirSync(path.dirname(f), { recursive: true }); con
 const wrBig = (f, obj) => { fs.mkdirSync(path.dirname(f), { recursive: true }); const gz = f + '.gz', tmp = gz + '.tmp'; fs.writeFileSync(tmp, zlib.gzipSync(Buffer.from(JSON.stringify(obj)), { level: 9 })); fs.renameSync(tmp, gz); try { fs.unlinkSync(f); } catch { } };
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { try { return JSON.parse(zlib.gunzipSync(fs.readFileSync(f + '.gz')).toString('utf8')); } catch { return null; } } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ── FOTOS (7-sep, pedido de Alexis: "quiero fotos de todos esos jugadores") ──────────────────────────────
+// La PDC solo tiene retrato para 318 de 4.942 jugadores (los de tarjeta y poco más). El resto se busca en
+// WIKIPEDIA por nombre: el resumen REST de la página trae descripción y miniatura, y solo se acepta si la
+// descripción dice "darts player" — así "James Hubbard" (el actor) no se cuela como el tirador. Primero
+// el nombre tal cual; si eso no es un tirador, "Nombre (darts player)". Negativos cacheados 60 días. Va
+// despacio a propósito (Wikimedia pide ≤1 req/s con User-Agent identificado) y es reanudable.
+const WIKI_F = () => path.join(RAW, 'wiki', 'photos.json');
+const WIKI_UA = 'GPSimulador/1.0 (https://gpsimulador.com; contacto@gpsimulador.com)';
+const WIKI_TTL_NEG = 60 * 864e5;
+async function wikiSummary(title) {
+  const u = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g, '_'));
+  for (let intento = 0; intento < 3; intento++) {
+    const r = await fetch(u, { headers: { 'User-Agent': WIKI_UA, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
+    if (r.status === 404) return null;
+    if (r.status === 429 || r.status >= 500) { await sleep(20000 * (intento + 1)); continue; }
+    if (!r.ok) return null;
+    return r.json();
+  }
+  return null;
+}
+function wikiPhotoOf(j) {
+  if (!j || j.type !== 'standard' || !/darts?\b/i.test(String(j.description || ''))) return null;
+  const src = (j.thumbnail && j.thumbnail.source) || (j.originalimage && j.originalimage.source) || null;
+  if (!src) return { title: j.title, url: null };
+  return { title: j.title, url: src.replace(/\/\d+px-/, '/400px-') };
+}
+async function harvestPhotos(max) {
+  const players = rd(path.join(OUT, 'players.json')) || rd(path.join(REPO_OUT, 'players.json')) || {};
+  const cache = rd(WIKI_F()) || {};
+  const now = Date.now();
+  const cands = Object.entries(players)
+    .filter(([id, p]) => !p.photo && p.name && !(cache[id] && (cache[id].url || now - Date.parse(cache[id].at || 0) < WIKI_TTL_NEG)))
+    .sort((a, b) => b[1].n - a[1].n).slice(0, max);
+  log(`fotos: ${cands.length} jugadores sin retrato a buscar en Wikipedia (tope ${max})`);
+  let hits = 0, done = 0;
+  for (const [id, p] of cands) {
+    let hit = null;
+    try {
+      hit = wikiPhotoOf(await wikiSummary(p.name));
+      if (!hit) { await sleep(900); hit = wikiPhotoOf(await wikiSummary(`${p.name} (darts player)`)); }
+    } catch (e) { log(`  foto ${p.name}: ${e.message}`); }
+    cache[id] = { url: hit && hit.url ? hit.url : null, title: hit ? hit.title : null, at: new Date().toISOString() };
+    if (hit && hit.url) hits++;
+    if (++done % 25 === 0) { wr(WIKI_F(), cache); log(`  fotos ${done}/${cands.length} · ${hits} encontradas`); }
+    await sleep(900);
+  }
+  wr(WIKI_F(), cache);
+  log(`fotos: ${hits} nuevas de ${done} buscadas`);
+  // sin --build también se aplica al compacto, para que la foto llegue sin reconstruir la base entera
+  if (!args.build && Object.keys(players).length) { mergeWikiPhotos(players); wr(path.join(OUT, 'players.json'), players); log('fotos aplicadas a players.json'); }
+}
+function mergeWikiPhotos(players) {
+  const cache = rd(WIKI_F()) || {};
+  let n = 0;
+  for (const [id, p] of Object.entries(players)) {
+    if (p.photo) { if (!p.photo_src) p.photo_src = 'pdc'; continue; }
+    const c = cache[id];
+    if (c && c.url) { p.photo = c.url; p.photo_src = 'wikipedia'; n++; }
+  }
+  if (n) log(`fotos de Wikipedia aplicadas: ${n}`);
+  return n;
+}
 
 // ── PDC ──────────────────────────────────────────────────────────────────────────────────────────────────
 async function harvestPdc() {
@@ -199,8 +263,11 @@ function build() {
     const id = String(p.id || p.participantID);
     if (!players[id]) continue;
     const prof = (p.media || []).find((m) => m.type === 'profile');
-    Object.assign(players[id], { dob: p.dob || null, nickname: p.nickname || null, slug: p.participantSlug || null, photo: prof ? PDC.IMG(prof.image) : null, tour_card: !!p.isCurrentTourCardHolder, oom_rank: p.ranking || null, prize: p.prizeMoney || null, hometown: (p.meta || {}).homeTown || null, darts: (p.meta || {}).makeOfDart || null, dart_weight: (p.meta || {}).weightOfDart || null, started: (p.meta || {}).startedPlayingYear || null, nine_darters: (p.statistics || {}).nineDartCount || null });
+    // la foto de la PDC manda; si la PDC no la tiene, se conserva la de Wikipedia que ya hubiera (7-sep)
+    const keep = players[id].photo_src === 'wikipedia' ? players[id].photo : null;
+    Object.assign(players[id], { dob: p.dob || null, nickname: p.nickname || null, slug: p.participantSlug || null, photo: prof ? PDC.IMG(prof.image) : keep, photo_src: prof ? 'pdc' : (keep ? 'wikipedia' : null), tour_card: !!p.isCurrentTourCardHolder, oom_rank: p.ranking || null, prize: p.prizeMoney || null, hometown: (p.meta || {}).homeTown || null, darts: (p.meta || {}).makeOfDart || null, dart_weight: (p.meta || {}).weightOfDart || null, started: (p.meta || {}).startedPlayingYear || null, nine_darters: (p.statistics || {}).nineDartCount || null });
   }
+  mergeWikiPhotos(players);
   // ORAKEL → estadística por partido (Players Championship) casada por nombres + fecha + marcador
   const F = {}; SCHEMA.forEach((k, i) => { F[k] = i; });
   const byName = new Map(); for (const [id, p] of Object.entries(players)) byName.set(normName(p.name), id);
@@ -285,6 +352,7 @@ function build() {
     log(`participantes a bajar: ${ids.length}`);
     await harvestParticipants(ids);
   }
+  if (args.photos) await harvestPhotos(+args.photos > 1 ? +args.photos : +(args.maxPhotos || 300));
   if (args.build) build();
   log('fin');
 })().catch((e) => { console.error(e); process.exit(1); });

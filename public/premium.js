@@ -2368,6 +2368,8 @@
   }
   function pickTeam(p, code) { return code === 'home' ? teamName(p.home_team_id, p.home) : teamName(p.away_team_id, p.away); }
   function pickRecText(p) {
+    // dardos: la selección se redacta en el cliente en los dos idiomas (la card del server viene en español)
+    if (p.dt_hash) return dtTicket(p);
     if (p.family === 'SOLID') {
       // DOBLE CHANCE (27-jul, modelo-líder en blandas): selection not_home/not_away = "el rival o empate"
       if (String(p.selection_code || '').indexOf('not_') === 0) return t('pf_dc', { team: pickTeam(p, p.selection_code === 'not_home' ? 'away' : 'home') });
@@ -2466,9 +2468,11 @@
           '<b>' + esc(p.subject) + '</b>' +
           (p.subject_sub ? '<span class="gx-pick-subsub">' + esc(p.subject_sub) + '</span>' : '') + '</div>'
         : '<div class="gx-pick-match">' +
-        (avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
+        // dardos (7-sep): el retrato de la casa de dardos —foto o iniciales sobre el anillo de sectores—,
+        // nunca un círculo vacío cuando el tirador no tiene foto
+        (p.dt_avas ? dtFace({ name: hh, photo: avas.h }, 'ra pk') : avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b>' +
-        (avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>')) +
+        (p.dt_avas ? dtFace({ name: aa, photo: avas.a }, 'rb pk') : avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>')) +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
@@ -13915,6 +13919,66 @@
       default: return String(c.family || '—');
     }
   }
+  // ── LA CARD DE LA CASA PARA DARDOS (7-sep, pedido de Alexis: "el mismo formato que los otros deportes") ──
+  // El server ya emite las tesis en la forma de `pickCard()`; aquí se completa lo que le faltaba para que la
+  // card se lea como la de fútbol: etiqueta de familia y texto de ticket en los dos idiomas, retratos con
+  // iniciales cuando no hay foto, y una card construida al vuelo para cualquier candidata SHADOW_PICK que
+  // el server no haya compilado — así nunca sale una fila compacta donde los otros deportes enseñan una card.
+  var DT_CARD_FAM = { ML: 'SOLID', LEGS_TOTAL: 'TOTAL', LEGS_HCP: 'SPREAD', X180_TOTAL: 'TOTAL', X180_MOST: 'SOLID', X180_PLAYER: 'PLAYER', X180_HCP: 'SPREAD', CORRECT_SCORE: 'COMBO', HIGHEST_CHECKOUT: 'TOTAL', SETS_TOTAL: 'TOTAL', SETS_HCP: 'SPREAD' };
+  function dtTicket(p) {
+    var f = p.family_raw || p.family, who = p.side === 'a' ? p.home : p.side === 'b' ? p.away : null, pl = p.participant === 'a' ? p.home : p.participant === 'b' ? p.away : null;
+    var ln = p.line != null ? p.line : '', over = p.side === 'over';
+    switch (f) {
+      case 'ML': return who ? t('pf_wins', { team: who }) : (p.selection_name || '');
+      case 'LEGS_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' legs', (over ? 'Over ' : 'Under ') + ln + ' legs');
+      case 'SETS_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' sets', (over ? 'Over ' : 'Under ') + ln + ' sets');
+      case 'LEGS_HCP': return (who || '') + ' ' + (ln > 0 ? '+' : '') + ln + ' legs';
+      case 'SETS_HCP': return (who || '') + ' ' + (ln > 0 ? '+' : '') + ln + ' sets';
+      case 'X180_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' 180s en el partido', (over ? 'Over ' : 'Under ') + ln + ' 180s in the match');
+      case 'X180_MOST': return p.side === 'tie' ? esT('Empate en 180s', '180s tie') : esT((who || '') + ' tira más 180s', (who || '') + ' hits more 180s');
+      case 'X180_PLAYER': return (pl || '') + ': ' + esT((over ? 'más de ' : 'menos de ') + ln + ' 180s', (over ? 'over ' : 'under ') + ln + ' 180s');
+      case 'HIGHEST_CHECKOUT': return esT('Checkout más alto ' + (over ? 'por encima' : 'por debajo') + ' de ' + ln, 'Highest checkout ' + (over ? 'over' : 'under') + ' ' + ln);
+      case 'CORRECT_SCORE': return esT('Marcador exacto ', 'Correct score ') + ln;
+      default: return p.selection_name || dtFamLabel({ family: f, side: p.side, line: p.line, participant: p.participant }, { a: p.home, b: p.away });
+    }
+  }
+  // la card del server, normalizada: familia bilingüe y retratos/hash por si vino sin ellos
+  function dtCard(pk, r) {
+    var o = Object.assign({}, pk);
+    o.fam_label = dtFamName(pk.family_raw || pk.family);
+    if (!o.dt_avas) o.dt_avas = { h: (r && r.photo_a) || null, a: (r && r.photo_b) || null };
+    if (!o.dt_hash && r && r.id) o.dt_hash = 'dtmatch/' + r.id;
+    return o;
+  }
+  // card al vuelo desde una candidata (la misma forma que compila el server en `pickCard()`)
+  function dtCandCard(r, c) {
+    var p = Number(c.p_model), odds = Number(c.odds), st = null;
+    if (p > 0 && odds > 1) { var b = odds - 1, k = (p * b - (1 - p)) / b; if (k > 0) { var raw = Math.round(10000 * k / 4) / 100; st = { pct: Math.min(2, raw), raw: raw, capped: raw > 2 }; } }
+    var cold = !!(r.gp && r.gp.cold), pc = function (x) { return (100 * (x || 0)).toFixed(1) + ' %'; };
+    var why = esT('El compilador da ' + pc(c.p_model) + ' a esta línea contra el ' + pc(c.p_implied) + ' que implica la cuota. Modelo market-blind por construcción: el precio no entra nunca al cálculo. EN SOMBRA: se anota y se liquida para acumular muestra, no se publica como pick.',
+      'The compiler gives this line ' + pc(c.p_model) + ' against the ' + pc(c.p_implied) + ' the price implies. Market-blind by construction: the price never enters the calculation. IN SHADOW: logged and settled to build the sample, not published as a pick.');
+    // en la ficha del partido `a`/`b` son objetos ({name, photo}); en el tablero, cadenas
+    var nm = function (x) { return typeof x === 'string' ? x : (x && x.name) || ''; };
+    return dtCard(Object.assign({}, c, {
+      family: DT_CARD_FAM[c.family] || 'TOTAL', family_raw: c.family,
+      home: nm(r.a), away: nm(r.b), home_team_id: null, away_team_id: null,
+      competition_name: r.tournament || null, kickoff: r.start_at || null,
+      confidence: c.p_model, model_prob: c.p_model, market_prob: c.p_implied,
+      pick_id: 'dt_' + r.id + '_' + c.family + '_' + (c.participant || '') + c.side + '_' + (c.line != null ? c.line : 'x'),
+      why_es: c.why_es || why, why_en: c.why_en || why, stake_pct: st ? st.pct : null, stake_raw_pct: st ? st.raw : null, stake_capped: !!(st && st.capped), shadow: true,
+      signals: { win_prob: c.p_model, edge_pp: c.edge_pp, data_confidence: cold ? 'low' : 'med', pick_quality: c.edge_pp >= 6 ? 'strong' : c.edge_pp >= 4 ? 'moderate' : 'marginal', regime: 'monitor' }
+    }), r);
+  }
+  function dtSameThesis(pk, c) { return pk.family_raw === c.family && String(pk.side) === String(c.side) && String(pk.line) === String(c.line) && String(pk.participant || '') === String(c.participant || ''); }
+  // todas las tesis de un partido como cards: la del server si la compiló, al vuelo si no. El GANADOR es
+  // referencia (benchmark) y nunca sale como card.
+  function dtCardsOf(r) {
+    var pks = r.picks || [];
+    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).map(function (c) {
+      var pk = pks.filter(function (x) { return dtSameThesis(x, c); })[0];
+      return pk ? dtCard(pk, r) : dtCandCard(r, c);
+    });
+  }
   // par de retratos (A a la izquierda, B a la derecha) con los nombres apilados: el "escudo + dos equipos" del fútbol
   function dtPairCell(r, opt) {
     opt = opt || {};
@@ -13965,7 +14029,7 @@
     var filt = S.dt.oFilt || 'all';
     var vis = rows.filter(function (r) { var b = dtBucket(r); return filt === 'all' ? b !== 'fin' : filt === b; });
     var theses = [];
-    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK') theses.push({ r: r, c: c }); }); });
+    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && !c.benchmark) theses.push({ r: r, c: c }); }); });
     theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
     var lockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f']];
@@ -13975,23 +14039,23 @@
     var main = '';
     // tesis del día: la card de la casa de la mayor ventaja
     var top = theses[0];
-    var topCard = top && (top.r.picks || []).filter(function (pk) { return pk.family_raw === top.c.family && String(pk.odds) === String(top.c.odds); })[0] || (top && (top.r.picks || [])[0]);
+    // LA MISMA CARD QUE FÚTBOL, COMBATE Y BALONCESTO: `pickCard()` tal cual, nunca una fila compacta (7-sep)
+    var topCard = top ? (dtCardsOf(top.r).filter(function (pk) { return dtSameThesis(pk, top.c); })[0] || dtCandCard(top.r, top.c)) : null;
     if (topCard) main += '<div class="gx-dt-potd"><div class="gx-dt-sech">' + dtRing('sm', 16) + '<span class="gx-label">' + esc(t('dt_thesis_day')) + '</span><span class="gx-dim">' + esc(dtFamLabel(top.c, top.r)) + ' · ' + esc(top.r.tournament || '') + '</span></div><div class="gx-picks-feed one">' + pickCard(topCard, {}) + '</div></div>';
-    else if (top) main += '<div class="gx-dt-potd"><div class="gx-dt-sech">' + dtRing('sm', 16) + '<span class="gx-label">' + esc(t('dt_thesis_day')) + '</span></div><div class="gx-panel">' + dtThesisRow(top.r, top.c) + '</div></div>';
     else if (lockedN) main += '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de dardos son para suscriptores', 'Darts theses are for subscribers'), esT('El registro por familia —ganador, legs, 180, checkout— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — winner, legs, 180s, checkout — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
     else main += '<div class="gx-panel gx-dt-none">' + dtRing('lg', 56) + '<div><b>' + esc(t('dt_no_thesis')) + '</b><span class="gx-dim">' + esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. ', 'The engine valued the open lines and none beats its own noise. ') + esc(t('dt_no_is_result')) + '</span></div></div>';
     // tesis por partido
-    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK'; }); });
+    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }); });
     if (withT.length) {
       main += '<div class="gx-dt-sech"><span class="gx-label">' + esc(t('dt_by_match')) + '</span><span class="gx-dim">' + withT.length + ' ' + esc(t(withT.length === 1 ? 'dt_match_1' : 'dt_matches')) + '</span></div>';
       withT.sort(function (x, y) { return (Date.parse(x.start_at || 0) || 0) - (Date.parse(y.start_at || 0) || 0); });
       main += withT.map(function (r) {
-        var cs = (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK'; });
-        var pk = visiblePicks(r.picks || []);
-        var body = pk.length ? '<div class="gx-picks-feed' + (pk.length === 1 ? ' one' : '') + '">' + pk.map(function (x) { return pickCard(x, {}); }).join('') + '</div>' : '<div class="gx-panel">' + cs.map(function (c) { return dtThesisRow(r, c); }).join('') + '</div>';
-        return '<div class="gx-dt-mgroup">' + dtMatchHead(r, cs.length) + (cs.length > 1 ? '<div class="gx-dt-corr">' + ic('alert-triangle') + '<span>' + esT('Mismo partido: liquidan juntas. Para el stake, trátalas como una sola.', 'Same match: they settle together. For your stake, treat them as one.') + '</span></div>' : '') + body + '</div>';
+        var cards = dtCardsOf(r);
+        var pk = visiblePicks(cards);
+        var body = pk.length ? '<div class="gx-picks-feed' + (pk.length === 1 ? ' one' : '') + '">' + pk.map(function (x) { return pickCard(x, {}); }).join('') + '</div>' : '';
+        return '<div class="gx-dt-mgroup">' + dtMatchHead(r, cards.length) + (cards.length > 1 ? '<div class="gx-dt-corr">' + ic('alert-triangle') + '<span>' + esT('Mismo partido: liquidan juntas. Para el stake, trátalas como una sola.', 'Same match: they settle together. For your stake, treat them as one.') + '</span></div>' : '') + body + '</div>';
       }).join('');
-      var all = []; withT.forEach(function (r) { (r.picks || []).forEach(function (pk) { all.push(pk); }); });
+      var all = []; withT.forEach(function (r) { dtCardsOf(r).forEach(function (pk) { all.push(pk); }); });
       main += hiddenNote(all) + dtDisc();
     }
     main += dtRadar(vis);
@@ -14001,14 +14065,6 @@
       dtShadowNote(d));
     var ck = $('#gx-dt-ck'); if (ck) ck.addEventListener('change', function () { S.dt.ckSel = ck.value; renderDtOpps(); var a = $('.gx-dt-aside'); if (window.innerWidth <= 1180 && a) a.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   }
-  // fila de tesis (cuando el servidor manda candidatos SHADOW_PICK pero aún no ha compilado la card)
-  function dtThesisRow(r, c) {
-    return '<div class="gx-dt-cand" data-dtmatch="' + esc(r.id) + '"><span class="gx-chip">' + esc(dtFamLabel(c, r)) + '</span>' + dtCirc(r.circuit) + (r.gp && r.gp.cold ? dtCold(true) : '') +
-      '<span class="gx-dt-cand-m">' + esc(r.a || '') + ' vs ' + esc(r.b || '') + '</span>' +
-      '<span class="gx-mono">' + dtPct1(c.p_model) + ' <i class="gx-dim">GP</i></span><span class="gx-mono gx-dim">' + dtPct1(c.p_implied) + ' <i>mkt</i></span>' +
-      '<span class="gx-dt-pp pos">+' + Number(c.edge_pp || 0).toFixed(1) + ' pp</span><span class="gx-mono">' + odd(c.odds) + '</span><span class="gx-dim">' + esc(prettyBook(c.book || '') || c.book || '') + '</span></div>';
-  }
-
   // ── PARTIDOS (el formato de fútbol de la casa: agrupado por día, tabla en escritorio, cards en móvil) ──
   function dtBucket(r) { if (dtIsLive(r)) return 'live'; if (dtIsFinal(r)) return 'fin'; var ko = Date.parse(r.start_at || 0); return ko && ko <= Date.now() - 20 * 60e3 ? 'live' : 'up'; }
   function dtStateCell(r) {
@@ -14174,8 +14230,9 @@
   }
   // DECISION MEMO: la tesis en sombra o el NO razonado; confianza desde las señales de la card
   function dtMemo(d, A, B) {
-    var pk = (d.picks || [])[0], cs = Array.isArray(d.candidates) ? d.candidates : [];
-    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK'; }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
+    var cs = Array.isArray(d.candidates) ? d.candidates : [];
+    var pk = dtCardsOf(d)[0] || null;
+    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
     var top = sh[0] || null;
     var K = d.kernels || {}, f = d.format || {};
     var conf = pk && pk.signals ? pk.signals.data_confidence : null;
@@ -14457,7 +14514,7 @@
   }
   // (f) LAS TESIS con la card de la casa
   function dtPicksPanel(d) {
-    var pk = d.picks || [];
+    var pk = dtCardsOf(d);
     if (!pk.length && d.picks_locked) return '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de este partido son para suscriptores', 'The theses for this match are for subscribers'), esT('El motor valoró las líneas abiertas y marcó ' + d.picks_locked + ' tesis — verlas con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The engine valued the open lines and flagged ' + d.picks_locked + (d.picks_locked === 1 ? ' thesis' : ' theses') + ' — seeing them with reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
     if (!pk.length) {
       return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +

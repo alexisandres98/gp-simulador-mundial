@@ -22447,6 +22447,12 @@ async function anotar(pid){
             error_casa: rc.error_casa || null, http: rc.http || null,
             respuesta: rc.respuesta || null });
         }
+        // `run=movimiento&tipo=deposito|retiro&monto=&at=&nota=` (7-sep): anotar caja para que la conciliación
+        // saldo-libro sea una resta y no una estimación (Alexis recordó tres retiros de memoria).
+        if (run === 'movimiento') {
+          return json(res, 200, RE.movimiento({ tipo: url.searchParams.get('tipo'), monto: url.searchParams.get('monto'),
+            at: url.searchParams.get('at') || null, nota: url.searchParams.get('nota') || null }));
+        }
         if (run === 'reset_rechazos') {
           const L5 = RE.load();
           const antes = (L5.rechazos_cuenta && L5.rechazos_cuenta.seguidos) || 0;

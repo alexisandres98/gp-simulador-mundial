@@ -1223,6 +1223,50 @@ function anotarManual(pickId, { odds, stake }) {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // EL TABLERO
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// MOVIMIENTOS DE CAJA (7-sep). El libro sabía de apuestas pero no de depósitos ni retiros, así que cuadrar el
+// saldo de la casa contra el libro era una estimación hecha con fotos del saldo entre colocaciones — y Alexis
+// tuvo que recordar de memoria tres retiros (1.235, 150 y 100). Con los movimientos anotados la conciliación es
+// una resta: saldo esperado = depósitos − retiros + P&L realizado − expuesto. Cualquier diferencia que quede
+// es una apuesta que la casa tiene y el libro no (o al revés), y eso es lo que el lunes hay que mirar.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+function movimiento({ tipo, monto, at = null, nota = null }) {
+  const L = load();
+  const t = String(tipo || '').toLowerCase();
+  if (!/^(deposito|retiro)$/.test(t)) return { error: 'tipo debe ser deposito o retiro' };
+  const m = Number(monto);
+  if (!(m > 0)) return { error: 'monto debe ser > 0' };
+  L.movimientos = L.movimientos || [];
+  const fila = { tipo: t, monto: +m.toFixed(2), at: at || new Date().toISOString(), nota: nota || null, anotado_at: new Date().toISOString() };
+  L.movimientos.push(fila);
+  save();
+  return { anotado: fila, resumen: movimientosResumen() };
+}
+function movimientosResumen() {
+  const L = load();
+  const ms = L.movimientos || [];
+  const dep = ms.filter((x) => x.tipo === 'deposito').reduce((a, x) => a + x.monto, 0);
+  const ret = ms.filter((x) => x.tipo === 'retiro').reduce((a, x) => a + x.monto, 0);
+  return { n: ms.length, depositos: +dep.toFixed(2), retiros: +ret.toFixed(2), lista: ms.slice(-12) };
+}
+function conciliacion() {
+  const L = load();
+  const mv = movimientosResumen();
+  const realizado = +(L.bets.filter((b) => b.status === 'SETTLED').reduce((a, b) => a + (b.pnl || 0), 0)).toFixed(2);
+  const exp = expuesto();
+  const saldoReal = L.saldo && typeof L.saldo.amount === 'number' ? +L.saldo.amount.toFixed(2) : null;
+  const hayDep = mv.depositos > 0;
+  const esperado = hayDep ? +(mv.depositos - mv.retiros + realizado - exp).toFixed(2) : null;
+  return {
+    formula: 'saldo esperado = depósitos − retiros + P&L realizado − expuesto',
+    depositos: mv.depositos, retiros: mv.retiros, realizado, expuesto: exp,
+    saldo_esperado: esperado, saldo_real: saldoReal, saldo_at: L.saldo && L.saldo.at,
+    diferencia: esperado != null && saldoReal != null ? +(saldoReal - esperado).toFixed(2) : null,
+    lectura: !hayDep ? 'sin depósitos anotados: falta el total depositado para cerrar la ecuación (run=movimiento&tipo=deposito&monto=)'
+      : saldoReal == null ? 'sin saldo de la casa' : null,
+  };
+}
+
 function board({ limit = 40 } = {}) {
   const C = CFG(), L = load();
   const colocadas = L.bets.filter((b) => b.status === 'PLACED' || b.status === 'SETTLED');
@@ -1252,6 +1296,8 @@ function board({ limit = 40 } = {}) {
       cs2_real: cs2RealOn() ? (String(process.env.GP_REAL_CS2_AUTO) === 'true' ? 'auto' : 'manual') : 'pausado',
     },
     saldo: L.saldo,
+    movimientos: movimientosResumen(),
+    conciliacion: conciliacion(),
     cortafuegos: L.cortafuegos || null,
     rechazos_cuenta: L.rechazos_cuenta || null,
     exposicion_abierta: expuesto(),
@@ -1295,4 +1341,4 @@ function board({ limit = 40 } = {}) {
 }
 
 module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
-  SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn };
+  SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion };

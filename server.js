@@ -22361,16 +22361,23 @@ async function anotar(pid){
           // `&familia=CS2_RONDAS` (7-sep): el libro de una sola familia, para cuadrar la semana de CS2 sin que
           // las 80 primeras filas de tarjetas se coman el tope
           const famQ = String(url.searchParams.get('familia') || '').toUpperCase();
-          const rowsF = LRf.bets.filter((b) => (!estQ || String(b.status).toUpperCase() === estQ) && (!famQ || String(b.familia || '').toUpperCase() === famQ))
+          // `&desde=YYYY-MM-DD` (7-sep): solo filas con saque desde esa fecha — la autopsia de una semana necesita
+          // TODAS sus filas, y el tope de 80 se comía la mitad. `&cap=` sube el tope hasta 600.
+          const desdeQ = String(url.searchParams.get('desde') || '');
+          const capQ = Math.min(600, Math.max(1, parseInt(url.searchParams.get('cap'), 10) || (famQ || desdeQ ? 300 : 80)));
+          const rowsF = LRf.bets.filter((b) => (!estQ || String(b.status).toUpperCase() === estQ) && (!famQ || String(b.familia || '').toUpperCase() === famQ)
+              && (!desdeQ || String(b.kickoff_at || '') >= desdeQ))
             .map((b) => ({ pick: b.pick_id, match: b.match, linea: b.line, status: b.status, pnl: b.pnl != null ? b.pnl : null,
               resultado: b.resultado || null, casa_estado: b.casa_estado || null, settled_at: b.settled_at || null,
+              banda: b.banda || null, side: b.side || null, league: b.league || null, ev_modelo_pct: b.ev_modelo_pct != null ? b.ev_modelo_pct : null,
+              precio_vivo: b.precio_vivo || null, motivo_cierre: b.motivo || null,
               motivo: b.motivo || null, cuota_sombra: b.odds_sombra, prob: b.model_prob,
               kickoff: b.kickoff_at, aviso: b.aviso_manual || null, familia: b.familia || null,
               stake: b.stake != null ? b.stake : null, cuota_real: b.odds_real || null,
               placed_at: b.placed_at || null, via: b.via || null, referencia: b.referencia || b.ref_id || null,
               ensayo: b.familia === 'CS2_RONDAS' ? { motivo: b.ensayo_motivo || null, at: b.ensayo_at || null,
                 intentos: b.ensayo_intentos || 0, payload: !!b.ensayo_payload, rechazo: b.ultimo_rechazo || null } : undefined }));
-          return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, famQ ? 300 : 80) });
+          return json(res, 200, { n: rowsF.length, filas: rowsF.slice(0, capQ) });
         }
         // `run=colocar_una&pick=&stake=` (1-sep): colocar UNA fila concreta con stake fijado por orden
         // humana. Pasa por el MISMO colocar() — id del evento, precio vivo, deslizamiento, frenos —;

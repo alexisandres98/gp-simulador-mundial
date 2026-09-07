@@ -20698,6 +20698,9 @@ const server = http.createServer(async (req, res) => {
           const evs = await CBAF.events(cbp);
           const muestra = [];
           for (const ev of evs.slice(0, 2)) muestra.push(await CBAF.markets(ev));
+          // `&dump=1`: el crudo del primer evento, para ver la forma real de submercados y selecciones
+          const crudo = url.searchParams.get('dump') === '1' && evs[0] ? await CBAF.rawEvent(evs[0].id) : null;
+          if (crudo) muestra.push({ crudo });
           const odds = await AF.refreshOdds(cbp, { force: true }).catch(() => null);
           const conCb = odds ? odds.rows.filter((e) => (e.bookmakers || []).some((b) => b.key === 'cloudbet')).length : null;
           return { enabled: CBAF.enabled(), eventos_cloudbet: evs.length, muestra, fusion: (global._amfoot.cb || {})[cbp] || null, eventos_odds_api: odds ? odds.rows.length : null, con_cloudbet: conCb };

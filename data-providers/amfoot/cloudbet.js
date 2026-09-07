@@ -190,4 +190,16 @@ function quoteFor(mk, c) {
   return out.price > 1 ? out : null;
 }
 
-module.exports = { COMP, enabled, events, markets, merge, quoteFor };
+// el crudo de un evento, recortado: claves de mercado, claves de submercado y dos selecciones por cada uno.
+// Solo para la sonda: es lo que hace falta ver cuando el parseador devuelve vacío.
+async function rawEvent(id, { key = process.env.CLOUDBET_API_KEY || '' } = {}) {
+  const j = await cbFetch(`${BASE}/events/${id}`, key);
+  if (!j) return null;
+  const out = { id, status: j.status, mercados: {} };
+  for (const [mk, m] of Object.entries(j.markets || {})) {
+    out.mercados[mk] = Object.fromEntries(Object.entries(m.submarkets || {}).slice(0, 3).map(([sk, sub]) => [sk, (sub.selections || []).slice(0, 4).map((s) => ({ outcome: s.outcome, params: s.params, price: s.price, status: s.status, maxStake: s.maxStake }))]));
+  }
+  return out;
+}
+
+module.exports = { COMP, enabled, events, markets, merge, quoteFor, rawEvent };

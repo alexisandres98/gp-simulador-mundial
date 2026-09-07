@@ -21064,6 +21064,22 @@ const server = http.createServer(async (req, res) => {
       const step = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; } catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; } };
       if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await DT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, cloudbet_keys: o.cloudbet_keys }; });
       if (url.searchParams.get('rec') === '1') await step('recordShadow', () => DT.recordShadow());
+      // `?board=1` (7-sep): por qué el tablero no produce tesis — cuántos partidos hay en la ventana, cuántos
+      // tienen los dos jugadores definidos, cuántos tienen mercado y en qué puerta muere cada candidata.
+      if (url.searchParams.get('board') === '1') await step('board', async () => {
+        const b = await DT.board({ daysAhead: 10, hoursBack: 8 });
+        const motivos = {}, porTorneo = {};
+        let cands = 0, picks = 0, conMercado = 0, disponibles = 0;
+        for (const r of b.rows) {
+          const T = porTorneo[r.tournament] = porTorneo[r.tournament] || { partidos: 0, disponibles: 0, con_mercado: 0, picks: 0 };
+          T.partidos++;
+          if (r.available) { disponibles++; T.disponibles++; } else motivos[r.why || 'no disponible'] = (motivos[r.why || 'no disponible'] || 0) + 1;
+          if (r.market && r.market.n_books > 0) { conMercado++; T.con_mercado++; }
+          for (const c of r.candidates || []) { cands++; if (c.verdict === 'SHADOW_PICK') { picks++; T.picks++; } else motivos[c.no_pick_reason || 'sin_motivo'] = (motivos[c.no_pick_reason || 'sin_motivo'] || 0) + 1; }
+        }
+        return { partidos: b.rows.length, disponibles, con_mercado: conMercado, candidatas: cands, picks, motivos, por_torneo: porTorneo,
+          muestra: b.rows.slice(0, 6).map((r) => ({ id: r.id, torneo: r.tournament, stage: r.stage, start: r.start_at, a: r.a, b: r.b, disponible: r.available, why: r.why || null, libros: r.market && r.market.n_books, formato: r.format && { kind: r.format.kind, bo: r.format.best_of || r.format.best_of_sets, certified: r.format.certified }, gp: r.gp && { p_a: r.gp.p_a, unc: r.gp.unc_pp, avg_a: r.gp.avg_a, avg_b: r.gp.avg_b }, candidatas: (r.candidates || []).slice(0, 4).map((c) => ({ f: c.family, s: c.side, l: c.line, o: c.odds, e: c.edge_pp, u: c.unc_pp, v: c.verdict, why: c.no_pick_reason })) })) };
+      });
       if (url.searchParams.get('settle') === '1') await step('settleShadow', () => DT.settleShadow());
       await step('snapshot', () => DT.modelSnapshot());
       out.ok = out.steps.every((x) => x.ok);

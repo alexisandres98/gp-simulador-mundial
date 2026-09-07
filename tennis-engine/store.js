@@ -703,7 +703,14 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
           else evs.push({ e, comp });
         }
       }
-      const la = lastName(p.a), lb = lastName(p.b);
+      // APELLIDOS COMPUESTOS (7-sep). El feed de cuotas escribe "Daniel Merida Aguilar" y ESPN "Daniel Merida":
+      // con el ÚLTIMO token ("aguilar") no casaba nunca, y así se quedaron sin liquidar Merida–Rublev y
+      // Cerúndolo–Ruud entre otras. Ahora cualquier token del apellido (todo lo que sigue al nombre de pila,
+      // mínimo 3 letras) vale para casar; con un solo token se usa ese.
+      const apellidos = (s) => { const t = D.norm(s).split(' ').filter((x) => x.length >= 3); return t.length > 1 ? t.slice(1) : t; };
+      const A = apellidos(p.a), B = apellidos(p.b);
+      const casaCon = (n, toks) => toks.some((t) => n.endsWith(t) || n.includes(t));
+      const la = A[A.length - 1] || '', lb = B[B.length - 1] || '';   // se conservan para el parte
       // NOMBRES DEL MARCADOR: ESPN no siempre cuelga al jugador de `competitor.athlete`. Se recogen todas
       // las formas conocidas para que el cruce no dependa de una sola, y se guarda una muestra en el parte:
       // "sin_cruce" a secas no distingue entre "el día vino vacío" y "los nombres no casan".
@@ -718,7 +725,7 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       );
       const casa = ({ comp }) => {
         const names = (comp.competitors || []).map(nameOf);
-        return names.some((n) => n.endsWith(la) || n.includes(la)) && names.some((n) => n.endsWith(lb) || n.includes(lb));
+        return names.some((n) => casaCon(n, A)) && names.some((n) => casaCon(n, B));
       };
       let cands = evs.filter(casa);
       // con tres días en la ventana, dos apellidos cortos pueden casar más de un partido (un "lee" contra un
@@ -729,11 +736,13 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
         const ia = ini(p.a), ib = ini(p.b);
         const porInicial = cands.filter(({ comp }) => {
           const names = (comp.competitors || []).map(nameOf);
-          return names.some((n) => (n.endsWith(la) || n.includes(la)) && n.startsWith(ia)) && names.some((n) => (n.endsWith(lb) || n.includes(lb)) && n.startsWith(ib));
+          return names.some((n) => casaCon(n, A) && n.startsWith(ia)) && names.some((n) => casaCon(n, B) && n.startsWith(ib));
         });
         if (porInicial.length) cands = porInicial;
         if (cands.length > 1) {
-          const mismoDia = cands.filter(({ e }) => String(e.date || '').slice(0, 10) === p.commence.slice(0, 10));
+          // la fecha que distingue partidos es la de la COMPETICIÓN (el evento es el torneo entero: ESPN
+          // devuelve el cuadro completo sea cual sea el `dates=` pedido)
+          const mismoDia = cands.filter(({ comp }) => String(comp.date || '').slice(0, 10) === p.commence.slice(0, 10));
           if (mismoDia.length) cands = mismoDia;
         }
       }
@@ -756,8 +765,8 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       const status = ((hit.e.status || {}).type || {}).name || ((hit.comp.status || {}).type || {}).name || '';
       if (!/FINAL|RETIRED|WALKOVER/i.test(status)) { diag.no_final++; continue; }
       const cs = hit.comp.competitors || [];
-      const ca = cs.find((x) => { const n = nameOf(x); return n.endsWith(la) || n.includes(la); });
-      const cb = cs.find((x) => { const n = nameOf(x); return n.endsWith(lb) || n.includes(lb); });
+      const ca = cs.find((x) => casaCon(nameOf(x), A));
+      const cb = cs.find((x) => x !== ca && casaCon(nameOf(x), B));
       if (!ca || !cb) { diag.sin_marcador++; continue; }
       const setsA = (ca.linescores || []).map((x) => +x.value), setsB = (cb.linescores || []).map((x) => +x.value);
       const retired = /RETIRED|WALKOVER/i.test(status);

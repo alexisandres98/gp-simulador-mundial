@@ -21073,9 +21073,19 @@ const server = http.createServer(async (req, res) => {
         const c0 = comps.find((c) => (c.eventos || 0) > 0) || comps[0];
         if (c0 && raw) {
           const fromS = Math.floor(Date.now() / 1000);
-          const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c0.key)}?limit=${raw}&from=${fromS}&to=${fromS + 240 * 3600}`,
+          const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c0.key)}?limit=60&from=${fromS}&to=${fromS + 240 * 3600}`,
             { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
-          out.muestra = ((j && j.events) || []).slice(0, raw).map((e) => ({ id: e.id, partido: `${e.home && e.home.name} v ${e.away && e.away.name}`, cutoff: e.cutoffTime, mercados: Object.keys(e.markets || {}) }));
+          // solo PARTIDOS (los outrights salen sin equipos y sin mercados de juego); las claves de mercado
+          // vienen en el detalle del evento, no en el listado
+          const partidos = ((j && j.events) || []).filter((e) => e.type === 'EVENT_TYPE_EVENT' && e.id).slice(0, raw);
+          out.muestra = [];
+          for (const e of partidos) {
+            const ev = await fetch(`${CB.HOST}/pub/v2/odds/events/${e.id}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+              .then((r) => r.json()).catch(() => null);
+            const mk = (ev && ev.markets) || {};
+            out.muestra.push({ id: e.id, partido: `${e.home && e.home.name} v ${e.away && e.away.name}`, cutoff: e.cutoffTime,
+              mercados: Object.keys(mk).map((k) => ({ clave: k, lineas: Object.keys(mk[k].submarkets || {}).length })) });
+          }
         }
         return json(res, 200, out);
       }

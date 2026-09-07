@@ -1,0 +1,121 @@
+{
+ "model_version": "darts-l1-1",
+ "fitted_at": "2026-09-06T23:30:00Z",
+ "constants": {
+  "kScale": 1.0,
+  "ensembleU": 0.5,
+  "halfLifeMatches": 12,
+  "shrinkK": 8,
+  "formatK": 1
+ },
+ "development": {
+  "from": 20240301,
+  "to": 20260101,
+  "best": {
+   "n": 13922,
+   "logloss": 0.6111,
+   "skill_pct": 11.84,
+   "brier": 0.2119,
+   "auc": 0.724
+  },
+  "grid": "kScale \u2208 {0,7; 1; 1,4} \u00d7 u \u2208 {0; 0,25; 0,5; 0,75; 1}",
+  "protocol": "Elo cronol\u00f3gico + compilador con habilidades point-in-time (ventana de Orakel cerrada antes del mes del partido); rejilla kScale\u00d7u elegida por log-loss en desarrollo (13.922 partidos)"
+ },
+ "holdout": {
+  "from": 20260101,
+  "elo": {
+   "n": 7688,
+   "logloss": 0.6167,
+   "skill_pct": 11.03,
+   "brier": 0.2146,
+   "auc": 0.714
+  },
+  "compiled": {
+   "n": 6688,
+   "logloss": 0.6071,
+   "skill_pct": 12.41,
+   "brier": 0.2106,
+   "auc": 0.726
+  },
+  "ensemble": {
+   "n": 6688,
+   "logloss": 0.6045,
+   "skill_pct": 12.79,
+   "brier": 0.2096,
+   "auc": 0.729
+  },
+  "elo_on_compiled_subset": {
+   "n": 6688,
+   "logloss": 0.6174,
+   "skill_pct": 10.92,
+   "brier": 0.2149,
+   "auc": 0.713
+  },
+  "legs": {
+   "9": {
+    "n": 6,
+    "mae": 1.462,
+    "maeNaive": 1.333,
+    "sum": 42,
+    "mean_legs": 7
+   },
+   "11": {
+    "n": 6458,
+    "mae": 1.245,
+    "maeNaive": 1.25,
+    "sum": 58326,
+    "mean_legs": 9.03
+   },
+   "13": {
+    "n": 87,
+    "mae": 1.25,
+    "maeNaive": 1.254,
+    "sum": 943,
+    "mean_legs": 10.84
+   },
+   "15": {
+    "n": 43,
+    "mae": 1.368,
+    "maeNaive": 1.423,
+    "sum": 540,
+    "mean_legs": 12.56
+   },
+   "19": {
+    "n": 76,
+    "mae": 1.902,
+    "maeNaive": 1.96,
+    "sum": 1228,
+    "mean_legs": 16.16
+   },
+   "21": {
+    "n": 11,
+    "mae": 2.452,
+    "maeNaive": 2.43,
+    "sum": 219,
+    "mean_legs": 19.91
+   },
+   "31": {
+    "n": 4,
+    "mae": 1.776,
+    "maeNaive": 2.125,
+    "sum": 109,
+    "mean_legs": 27.25
+   },
+   "33": {
+    "n": 2,
+    "mae": 4.726,
+    "maeNaive": 2.5,
+    "sum": 49,
+    "mean_legs": 24.5
+   },
+   "35": {
+    "n": 1,
+    "mae": 4.582,
+    "maeNaive": 0,
+    "sum": 27,
+    "mean_legs": 27
+   }
+  },
+  "note": "skill = mejora del log-loss sobre la moneda; una sola lectura del holdout (2026, 7.688 partidos del circuito principal, formatos de legs \u2265 BO7). El compilador aporta +1,5 pp de skill sobre el Elo en el mismo subconjunto (12,4 vs 10,9) y la mezcla llega a 12,8 (AUC 0,729 vs 0,713)."
+ }
+}

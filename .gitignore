@@ -68,3 +68,7 @@ data/propfirm/
 
 # scripts de investigación del 2-sep viajan aunque se llamen backtest.js
 !research/backtests-2026-09-02/**/backtest.js
+
+# Dardos: caché de disco local (en Render vive en /data/darts) y crudo de la cosecha
+/darts/
+/darts-raw/

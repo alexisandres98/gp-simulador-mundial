@@ -1,4 +1,44 @@
-# HANDOFF — estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
+# HANDOFF — estado al 6-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
+
+## 🎯 DARDOS (6-sep, blueprint 8.0 de Alexis) — construido de punta a punta, admin-only, TODO en sombra
+**Qué hay (todo en `darts-engine/`, `data-providers/darts/`, `scripts/darts-*.js`, `data/darts/`):**
+1. **Motor exacto del 501** (`rules.js`, `kernel.js`, `compiler.js`; humo `scripts/smoke/darts-smoke.js`, 48 en
+   verde): alfabeto de 63 resultados, bust con vuelta al inicio de la visita, double-in del Grand Prix, checkouts
+   por enumeración (159/162/163/165/166/168/169 no salen en tres), política de cierre resuelta por DP (mínimo de
+   dardos), kernel por dardo calibrado a **media + 180s por visita + % de dobles** (la media identifica la precisión
+   al triple; los 180s el arrastre dentro de la visita), carrera del leg P(A gana|A sale)=ΣP(T_A=k)P(T_B≥k) con 180s
+   y checkout conjuntos, compilador de legs/sets con saque alterno, dos de diferencia y muerte súbita. Un BO11
+   entre iguales: 6-5 el 25,7 %; salir primero vale 63,6 % del leg a 95 de media. Format Prism (BO7→BO35, sets).
+2. **Base propia**: API pública de la PDC (`*.darts.web.gc.pdcservices.co.uk/v2/`, sin clave): 896 torneos y
+   **103.908 resultados 2023→hoy** con el formato POR RONDA certificado (sets, legs por set, dos de diferencia),
+   4.942 jugadores, ~2.000 fichas (dob, tarjeta, marca de dardos, retrato en `images.gc.pdcservices.co.uk`).
+   Darts Orakel: ventanas de 365/90 d a fin de mes desde dic-2023 (media, 180s, dobles, checkout máximo,
+   first-9) y partidos del Players Championship con estadística (34k campos casados). Compactos en gz (4,7 MB).
+3. **Mercado**: Pinnacle invitado (deporte 10: ganador + total de legs), **Bovada** (marcador exacto, most 180s
+   con empate, total 180s y por jugador), Polymarket (serie PDC 12754), Kalshi (campeón del Mundial), Cloudbet
+   (clave en Render; claves de mercado a confirmar con la sonda). Flashscore para legs en vivo (display).
+4. **Store** (`store.js`): agenda viva de la PDC (torneos ±10 días con stages), modelo por fixture (Elo ⊕ compilador
+   en logit), puertas, pick cards con la card de la casa (`dt_hash`/`dt_avas`), sombra con cierres y CLV (mejor
+   cuota y Pinnacle), liquidación con el resultado oficial (180s solo PC), fichas, ranking GP, cuadro de torneo con
+   **probabilidades de título** (simula el cuadro que queda), simulador con leg de muestra, probabilidad en vivo
+   desde el marcador de legs.
+5. **Servidor**: `/api/darts/*` (contrato en `docs/impl/DARTS_API_CONTRACT.md`), `/api/me.dartsPublic`, Ask GP con
+   seis herramientas, brief diario, lecturas (`writeDartsRead` + verificador), observador de prensa (`darts`),
+   `dartsJob` cada 10 min, `dartsTailJob` diario en proceso aparte (escribe en `/data/darts`, conserva el repo como
+   línea de base), copia diaria de `/data/darts`, sonda `/api/internal/darts?key=`.
+6. **Pestaña** en `/x` (`premium.js`): oportunidades, partidos con vivo, panel del partido con tres lentes (el
+   partido · la diana · contexto), jugadores, ranking, torneos con cuadro, simulador, sombra, brief, ask, motor.
+**Validación** (`scripts/darts-fit.js`, desarrollo mar-2024→dic-2025 con 13.922 partidos, holdout 2026 con 7.688
+leído UNA vez, circuito principal, legs ≥ BO7): Elo 11,0 % de skill sobre la moneda (AUC 0,714); compilador con
+habilidades point-in-time 12,4 % (0,726); **mezcla 12,8 % (AUC 0,729, Brier 0,2096)** — el compilador aporta
++1,9 pp sobre el Elo en el mismo subconjunto (10,9 %). Total de legs en BO11: MAE 1,245 vs 1,250 del ingenuo (la
+media del formato): la duración casi no se distingue del promedio → la familia de legs nace con esa humildad.
+Congelado en `data/darts/model-priors.json` (`kScale 1, ensembleU 0,5`). Skill ≠ rentabilidad: contra el mercado
+decide la sombra (preregistro en `docs/PREREGISTRO_DARDOS.md`).
+**Lo que falta y en qué orden:** al principio de TODO_NEXT.md (liquidar 180s fuera del PC, claves de Cloudbet,
+cola en Render, derechos). Preregistro congelado: `docs/PREREGISTRO_DARDOS.md`.
+
+# (histórico) estado al 2-sep-2026 (mejoras implementadas + autopsia + backtests + LoL cerrado)
 
 ## 💸 EJECUTOR REAL — lo que cambió el 5-sep (detalle y cifras al principio de TODO_NEXT.md)
 1. **Liquidación de filas manuales** aunque la pick quede SUPERSEDED (27 apuestas / 761 USDT estaban

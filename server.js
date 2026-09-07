@@ -324,6 +324,7 @@ const STORE_BACKUP_GLOBS = [
   { dir: 'nfl', re: /^(picks|closes|shadow|odds)[-.][a-z0-9-]*\.json$|^model-priors\.json$/ },
   { dir: 'amfoot', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
   { dir: 'tennis', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
+  { dir: 'darts', re: /^(picks|closes|settle-diag|rank-snap)\.json$/ },
   { dir: '.', re: /^real-ledger\.json$/ },
 ];
 function backupStoresDaily() {
@@ -874,6 +875,40 @@ async function tennisJob() {
   setTimeout(tennisJob, 30 * 60e3);
 }
 setTimeout(tennisJob, 5 * 60e3);
+
+// ── DARDOS: agenda PDC + cuotas + sombra cada 10 min (6-sep, blueprint 8.0). La agenda se refresca sola
+// desde la API pública de la PDC; la liquidación usa el resultado oficial (legs/sets) y, para 180s, la
+// estadística de Orakel que la cola diaria pega a la base. Sin torneo en la ventana la pasada no cuesta nada.
+async function dartsJob() {
+  try {
+    const DT = require('./darts-engine/store');
+    await DT.refreshOdds().catch(() => null);
+    const rec = await DT.recordShadow().catch((e) => ({ error: e.message }));
+    const set = await DT.settleShadow().catch((e) => ({ error: e.message }));
+    DT.snapshotRanks();
+    const venc = (set && set.diag && set.diag.vencidas) || 0;
+    if ((rec && rec.recorded) || (set && set.settled) || venc || (rec && rec.error) || (set && set.error)) {
+      opsLog('darts_job', { recorded: (rec && rec.recorded) || 0, settled: (set && set.settled) || 0, vencidas: venc, diag: (set && set.diag) || null, err: (rec && rec.error) || (set && set.error) || null });
+    }
+  } catch (e) { opsLog('darts_job', { error: e.message }); }
+  setTimeout(dartsJob, 10 * 60e3);
+}
+setTimeout(dartsJob, 7 * 60e3);
+// la cola diaria de la base (resultados de la temporada + ventanas de Orakel + partidos PC) en un proceso aparte
+let _dtTailRunning = false;
+async function dartsTailJob() {
+  const proximo = () => setTimeout(dartsTailJob, 24 * 3600e3);
+  if (_dtTailRunning) return proximo();
+  if (typeof opsMemOk === 'function' && !opsMemOk('darts_tail', 200)) { setTimeout(dartsTailJob, 30 * 60e3); return; }
+  _dtTailRunning = true;
+  try {
+    const out = await opsSpawn('darts_tail', ['scripts/darts-harvest.js', '--pdc', `--seasons=${new Date().getUTCFullYear()}`, '--refresh', '--orakel', '--maxPlayers=250', '--build'], { heapMb: 400, timeoutMin: 50 });
+    opsLog('darts_tail', { code: out.code != null ? out.code : out.error });
+    if (out.code === 0) { try { require('./darts-engine/data').reset(); require('./darts-engine/store').resetOrakel(); opsLog('darts_tail', { recargada: true }); } catch (e) { opsLog('darts_tail', { reset_err: e.message }); } }
+  } catch (e) { opsLog('darts_tail', { error: e.message }); }
+  finally { _dtTailRunning = false; proximo(); }
+}
+if (String(process.env.GP_DARTS_TAIL || 'true') !== 'false') setTimeout(dartsTailJob, 40 * 60e3);
 
 // ── LA COLA DE LA BASE DE TENIS, UNA VEZ AL DÍA (20-ago) ─────────────────────────────────────────────────
 // La base salía entera de los repos de Jeff Sackmann, y esos repos fueron RETIRADOS de GitHub: el espejo
@@ -11240,6 +11275,51 @@ function askToolsFor(sport, { u, lang, org }) {
     };
     return { tools, runTool, sportLabel: 'TENIS (ATP · WTA). Base propia validada fuera de muestra; TODAS las familias en sombra — si preguntan por picks, decí con naturalidad que el monitor es privado y ofrecé la proyección del modelo (probabilidad, juegos esperados, tiebreak). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
   }
+  // ── DARDOS (6-sep, blueprint 8.0): agenda, cruce, jugador, simulador, torneo, ranking GP y sombra ─────
+  if (sport === 'darts') {
+    const DT = require('./darts-engine/store');
+    const DD = require('./darts-engine/data');
+    const tools = [
+      { name: 'agenda_dardos', description: 'Los partidos de la PDC en la ventana (torneo, ronda, formato, hora UTC) con la probabilidad del modelo GP, los legs y 180s esperados y el consenso de mercado. Úsala para "hoy", "mañana" o "qué se juega".', input_schema: { type: 'object', properties: {} } },
+      { name: 'jugador_dardos', description: 'Ficha de un jugador: Nivel GP (Elo), media de tres dardos, 180s por visita, % de dobles, exposición, forma por meses y últimos partidos con marcador.', input_schema: { type: 'object', properties: { jugador: { type: 'string' } }, required: ['jugador'] } },
+      { name: 'simular_cruce_dardos', description: 'Enfrenta a DOS jugadores con el modelo propio en un formato dado (bo11, bo19 con dos de diferencia, sets7, wgp5 double-in…): probabilidad, salir/romper, legs esperados, 180s, checkout máximo y cara a cara real.', input_schema: { type: 'object', properties: { jugador_a: { type: 'string' }, jugador_b: { type: 'string' }, formato: { type: 'string' } }, required: ['jugador_a', 'jugador_b'] } },
+      { name: 'torneo_dardos', description: 'El cuadro de un torneo en juego o próximo con las probabilidades de título del modelo.', input_schema: { type: 'object', properties: { nombre: { type: 'string' } }, required: ['nombre'] } },
+      { name: 'ranking_gp_dardos', description: 'El top del ranking por Elo propio de GP (no es el Order of Merit).', input_schema: { type: 'object', properties: {} } },
+      { name: 'sombra_dardos', description: 'El monitor en sombra de dardos: tesis registradas y el registro privado. Las familias de dardos NO publican picks.', input_schema: { type: 'object', properties: {} } },
+    ];
+    const runTool = async (name, input) => {
+      if (name === 'agenda_dardos') {
+        const b = await DT.board().catch(() => null);
+        return { partidos: ((b && b.rows) || []).slice(0, 24).map((r) => ({ partido: `${r.a} vs ${r.b}`, torneo: r.tournament, ronda: r.stage, comienza: r.start_at, formato: r.format ? (r.format.kind === 'sets' ? `al mejor de ${r.format.best_of_sets} sets` : `al mejor de ${r.format.best_of} legs`) + (r.format.double_in ? ' (double-in)' : '') : null,
+          gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), legs_esperados: r.gp.exp_legs, sets_esperados: r.gp.exp_sets, x180_esperados: { [r.a]: r.gp.exp_180_a, [r.b]: r.gp.exp_180_b } } : null,
+          mercado: r.market ? { prob_a_pct: r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null, casas: r.market.n_books } : null, en_vivo: r.live || null })) };
+      }
+      if (name === 'jugador_dardos') {
+        const pl = DD.resolvePlayer(String(input.jugador || ''));
+        if (!pl) return { error: 'jugador fuera de la base propia' };
+        const pf = DT.playerProfile(pl.id);
+        if (!pf.available) return { error: pf.why };
+        return { jugador: pf.name, pais: pf.country, edad: pf.age, apodo: pf.nickname, nivel_gp: pf.elo, order_of_merit: pf.oom_rank, balance: pf.wl, habilidad: pf.skill, kernel: pf.kernel.fitted, forma_por_mes: pf.form.slice(-6), ultimos: pf.recent.slice(0, 8), nota: pf.inactive_note || undefined };
+      }
+      if (name === 'simular_cruce_dardos') {
+        const out = DT.simMatch(String(input.jugador_a || ''), String(input.jugador_b || ''), { format: String(input.formato || 'bo11') });
+        if (!out.available) return { error: out.why };
+        return { cruce: `${out.a.name} vs ${out.b.name} (${out.format.label})`, prob_a_pct: Math.round(100 * out.p_a), leg: out.leg, legs: out.legs ? { esperados: out.legs.exp_total, marcadores: out.legs.score.slice(0, 6) } : null, sets: out.sets ? { esperados: out.sets.exp_total } : null, x180: out.x180, checkout_max: out.checkout_max, h2h: { [out.a.name]: out.h2h.w_a, [out.b.name]: out.h2h.w_b }, nota: 'modelo propio market-blind; estimaciones estadísticas, no consejo financiero' };
+      }
+      if (name === 'torneo_dardos') {
+        const tl = await DT.tournamentsList().catch(() => ({ rows: [] }));
+        const q = DD.norm(input.nombre); const hit = tl.rows.find((t) => DD.norm(t.name).includes(q)) || tl.rows.find((t) => t.state === 'live');
+        if (!hit) return { error: 'torneo no encontrado en la temporada' };
+        const tb = await DT.tournamentBoard(hit.id).catch(() => null);
+        if (!tb || !tb.available) return { error: 'sin cuadro' };
+        return { torneo: tb.name, sede: tb.venue, fechas: `${tb.start} → ${tb.end}`, formatos: tb.formats, titulo: (tb.title || []).slice(0, 8).map((x) => ({ jugador: x.name, prob_pct: Math.round(100 * x.p) })), rondas: tb.stages.map((s) => ({ ronda: s.stage, partidos: s.fixtures.slice(0, 16).map((f) => `${f.a || '?'} vs ${f.b || '?'}` + (f.status === 'Result' ? ` ${f.score_a}-${f.score_b}` : f.gp ? ` (GP ${Math.round(100 * f.gp.p_a)} %)` : '')) })) };
+      }
+      if (name === 'ranking_gp_dardos') { const rk = DT.rankingBoard(); return { top: rk.rows.slice(0, 20).map((r) => ({ pos: r.pos, jugador: r.name, nivel_gp: r.elo, media: r.avg, order_of_merit: r.oom_rank })) }; }
+      if (name === 'sombra_dardos') return { sombra: DT.track({ limit: 10 }), doctrina: DT.DOCTRINE };
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'DARDOS (PDC). Motor propio que compila el 501 visita a visita; TODAS las familias en sombra — si preguntan por picks, decí con naturalidad que el monitor es privado y ofrecé la proyección del modelo (probabilidad, legs esperados, 180s, salir/romper). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
   if (sport !== 'combat') {
     const tools = [
       { name: 'agenda_futbol', description: 'Próximos partidos cargados en la plataforma (todas las ligas), con fecha UTC y día de la semana. Úsala para preguntas de "hoy", "mañana", "el sábado" o la jornada.', input_schema: { type: 'object', properties: { dias: { type: 'number', description: 'ventana en días (default 7, máx 14)' }, liga: { type: 'string', description: 'filtrar por nombre de liga o país (opcional)' } } } },
@@ -11745,6 +11825,34 @@ async function tennisBrief(tour, { force = false } = {}) {
     refreshed_at: new Date().toISOString(),
     note: 'todas las familias de tenis corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
   global._tenBriefMemo[tour] = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── Brief diario de DARDOS (6-sep, blueprint 8.0): apertura narrada 1/día + el tablero ──────────────
+async function dartsBrief({ force = false } = {}) {
+  global._dtBriefMemo = global._dtBriefMemo || {};
+  const memo = global._dtBriefMemo.x;
+  if (memo && !force && Date.now() - memo.at < 10 * 60e3) return memo.data;
+  const DT = require('./darts-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  const b = await DT.board().catch(() => ({ rows: [] }));
+  const games = (b.rows || []).filter((r) => r.status !== 'Result').slice(0, 16);
+  db.dtBrief = db.dtBrief || {};
+  let intro = db.dtBrief[day] || null;
+  let introErr = null;
+  if (!intro && games.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({ partidos: games.slice(0, 10).map((r) => ({ partido: `${r.a} vs ${r.b}`, torneo: r.tournament, ronda: r.stage, gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), legs_esperados: r.gp.exp_legs, x180_esperados: +(r.gp.exp_180_a + r.gp.exp_180_b).toFixed(1) } : null, mercado_prob_a_pct: r.market && r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null })), sombra: DT.track({ limit: 5 }) }, 'darts');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.dtBrief[day] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { day, games, tournaments: b.tournaments || [], intro, intro_error: introErr, refreshed_at: new Date().toISOString(), note: 'todas las familias de dardos corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
+  global._dtBriefMemo.x = { at: Date.now(), data: out };
   return out;
 }
 
@@ -12663,6 +12771,34 @@ async function tennisMatchRead(matchId, { force = false } = {}) {
   } catch (e) { console.error('[tennis-read]', e.message); }
   return db.tennisReads[k] || null;
 }
+// DARDOS (6-sep): mismo contrato. El dossier sale del panel del partido; el LLM solo narra; una vez y persistida.
+async function dartsMatchRead(matchId, { force = false } = {}) {
+  db.dartsReads = db.dartsReads || {};
+  const k = String(matchId);
+  if (db.dartsReads[k] && !force && db.dartsReads[k].es) return db.dartsReads[k];
+  if (!llm.enabled() || !llm.budgetOk()) return db.dartsReads[k] || null;
+  const DT = require('./darts-engine/store');
+  const d = await DT.matchDetail(k).catch(() => null);
+  if (!d || !d.available || !d.a || !d.b) return db.dartsReads[k] || null;
+  const pct = (x) => (x == null ? null : +(100 * x).toFixed(1));
+  const fmtTxt = d.format ? (d.format.kind === 'sets' ? `al mejor de ${d.format.best_of_sets} sets` : `al mejor de ${d.format.best_of} legs`) + (d.format.two_clear ? ' con dos de diferencia' : '') + (d.format.double_in ? ', double-in' : '') : null;
+  const dossier = {
+    partido: `${d.a.name} vs ${d.b.name}`, torneo: d.tournament, ronda: d.stage, formato: fmtTxt,
+    favorito_gp: { nombre: d.p_a >= 0.5 ? d.a.name : d.b.name, probabilidad_pct: pct(d.p_a >= 0.5 ? d.p_a : 1 - d.p_a) },
+    salir_y_romper: d.leg ? { conserva_su_leg_pct: { [d.a.name]: pct(d.leg.hold_a), [d.b.name]: pct(d.leg.hold_b) }, rompe_pct: { [d.a.name]: pct(d.leg.break_a), [d.b.name]: pct(d.leg.break_b) } } : null,
+    legs_esperados: d.legs ? d.legs.exp_total : null, sets_esperados: d.sets ? d.sets.exp_total : null,
+    x180_esperados: { [d.a.name]: d.x180.exp_a, [d.b.name]: d.x180.exp_b, mas_180s_pct: { [d.a.name]: pct(d.x180.most_a), [d.b.name]: pct(d.x180.most_b), empate: pct(d.x180.tie) } },
+    habilidad: { [d.a.name]: { media: d.kernels.a.avg, x180_por_visita: d.kernels.a.per180_visit, dobles_pct: pct(d.kernels.a.checkout_pct), nivel_gp: d.kernels.a.elo }, [d.b.name]: { media: d.kernels.b.avg, x180_por_visita: d.kernels.b.per180_visit, dobles_pct: pct(d.kernels.b.checkout_pct), nivel_gp: d.kernels.b.elo } },
+    historial_directo: d.h2h && (d.h2h.w_a + d.h2h.w_b) ? { partidos: d.h2h.w_a + d.h2h.w_b, gana_a: d.h2h.w_a, gana_b: d.h2h.w_b } : null,
+    prensa: (() => { const x = obsParaDossier('darts', [obsClave(d.a.name)]), y = obsParaDossier('darts', [obsClave(d.b.name)]); return (x || y) ? { [d.a.name]: x, [d.b.name]: y } : null; })(),
+    mercado: d.market && d.market.ml_p_a != null ? { prob_a_pct: pct(d.market.ml_p_a), casas: d.market.n_books } : null,
+  };
+  try {
+    const w = await llm.escribirVerificado((pl, av) => llm.writeDartsRead(pl, av), dossier, { etiqueta: 'dardos:' + k });
+    if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), match_id: k }; db.dartsReads[k] = out; save(); return out; }
+  } catch (e) { console.error('[darts-read]', e.message); }
+  return db.dartsReads[k] || null;
+}
 async function f1RaceRead(round, { force = false, key = null } = {}) {
   db.f1Reads = db.f1Reads || {};
   const k = String(key || round || 'next');
@@ -12899,6 +13035,16 @@ async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) }
       }
     }
   } catch { /* amfoot sin agenda */ }
+  try {
+    const DT = require('./darts-engine/store');
+    const b = await DT.board().catch(() => null);
+    for (const it of ((b && b.rows) || []).filter((r) => r.available && r.status !== 'Result' && Date.parse(r.start_at || 0) > Date.now() - 3600e3).slice(0, 12)) {
+      if (cuota('darts') <= 0) break;
+      if (db.dartsReads && db.dartsReads[it.id]) continue;
+      const r = await dartsMatchRead(it.id).catch(() => null);
+      if (r && r.es) { done++; anota('darts'); }
+    }
+  } catch { /* dardos sin agenda */ }
   return { written: done };
 }
 
@@ -15848,14 +15994,32 @@ async function obsSujetosHoops() {
   return filas.filter((x) => Number.isFinite(x.t) && x.t > Date.now() - 6 * 3600e3).sort((a, b) => a.t - b.t);
 }
 
+// DARDOS (6-sep): los jugadores con partido en la agenda de la PDC en las próximas 72 h. Deporte individual
+// como el tenis: la baja ES el evento (una retirada del cuadro no es contexto, es que el partido no existe).
+async function obsSujetosDarts() {
+  const DT = require('./darts-engine/store');
+  const sl = await DT.slate().catch(() => null);
+  const vistos = new Set(); const filas = [];
+  for (const f of ((sl && sl.fixtures) || [])) {
+    const t = Date.parse(f.start_at || 0);
+    if (!(t > Date.now() - 3 * 3600e3 && t < Date.now() + 3 * 864e5) || f.status === 'Result') continue;
+    for (const lado of ['a', 'b']) {
+      const nm = f[lado] && f[lado].name; if (!nm) continue;
+      const id = obsClave(nm); if (vistos.has(id)) continue; vistos.add(id);
+      filas.push({ id, name: nm, t, langs: ['en'], meta: { tournament: f.tournament }, q: `"${nm}" darts` });
+    }
+  }
+  return filas.sort((a, b) => a.t - b.t);
+}
 async function runObsDeporte(dominio) {
   if (!obsDeportesOn()) return { skipped: 'disabled' };
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts' }[dominio];
   if (!SLOT) return { skipped: 'dominio' };
   db[SLOT] = db[SLOT] || {};
   const sujetos = dominio === 'esports' ? await obsSujetosEsports()
     : dominio === 'tennis' ? await obsSujetosTenis()
-      : dominio === 'hoops' ? await obsSujetosHoops() : await obsSujetosAmfoot();
+      : dominio === 'hoops' ? await obsSujetosHoops()
+        : dominio === 'darts' ? await obsSujetosDarts() : await obsSujetosAmfoot();
   const r = await OBSD.barrer({
     dominio, sujetos, store: db[SLOT], llm,
     // College puede meter 130 equipos en una jornada: el tope y el orden por hora de inicio son lo que
@@ -15877,7 +16041,7 @@ async function runObsDeporte(dominio) {
 // por el otro habría dado cero señales siempre, y en silencio — el peor tipo de fallo, porque parece que
 // la capa funciona y simplemente no hay noticias. Se prueban las dos.
 const obsSenales = (dominio, ids, opts) => {
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts' }[dominio];
   const lista = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
   for (const id of lista) {
     try { const f = OBSD.banderas(dominio, db[SLOT] || {}, id, opts || {}); if (f.length) return f; } catch { /* sigue */ }
@@ -15894,7 +16058,7 @@ const obsParaDossier = (dominio, ids) => {
 if (obsDeportesOn()) {
   // escalonados para no salir los tres a la vez ni chocar con los dos que ya existían (150 s y 200 s)
   const arranca = (dom, ms) => { setTimeout(() => runObsDeporte(dom).catch(() => { }), ms); setInterval(() => runObsDeporte(dom).catch(() => { }), 3 * 3600 * 1000); };
-  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000);
+  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000); arranca('darts', 500 * 1000);
 }
 // ── PROP FIRM (31-ago, Elite 10K de FundingPredicts comprado por Alexis) ────────────────────────────────
 // Barrido cada 10 min: consenso sharp de la casa vs precio de Polymarket (que la firm espeja en vivo),
@@ -16852,7 +17016,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', dartsPublic: String(process.env.GP_DARTS_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -18055,7 +18219,7 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis', 'f1'].includes(b.sport) ? b.sport : 'futbol';
+      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis', 'f1', 'darts'].includes(b.sport) ? b.sport : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'hoops') {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
@@ -18077,6 +18241,10 @@ const server = http.createServer(async (req, res) => {
       } else if (sport === 'f1') {
         const f1Pub = /^(1|true|yes|on)$/i.test(String(process.env.GP_F1_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || f1Pub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      } else if (sport === 'darts') {
+        const dtPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_DARTS_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || dtPub)) return json(res, 404, { error: 'No encontrado' });
         if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
@@ -19928,6 +20096,54 @@ const server = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'ruta de tenis desconocida' });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
+    // ── DARDOS (6-sep, blueprint 8.0): admin-only hasta que haya fuente licenciada; tiers como tenis ──────
+    if (p.startsWith('/api/darts/')) {
+      const uD = getUser(req);
+      const dtPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_DARTS_PUBLIC_ENABLED || '').trim());
+      if (!uD || !(uD.isAdmin || dtPublic)) return json(res, 404, { error: 'No encontrado' });
+      const nsD = nsPlanCtx(uD, url);
+      if (['/api/darts/sim', '/api/darts/read', '/api/darts/brief', '/api/darts/track'].indexOf(p) >= 0 && !nsD.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      const dtStrip = (row) => { if (!row || nsD.pro) return row; const n = (row.picks || []).length; delete row.picks; delete row.candidates; if (n || row.shadow_n) { row.picks_locked = n || row.shadow_n || 0; row.shadow_n = 0; } return row; };
+      const DT = require('./darts-engine/store');
+      try {
+        if (p === '/api/darts/board') {
+          const out = await DT.board();
+          if (out && out.rows && !nsD.pro) out.rows = out.rows.map(dtStrip);
+          return json(res, 200, out);
+        }
+        if (p === '/api/darts/agenda') return json(res, 200, await DT.agenda());
+        if (p === '/api/darts/match') {
+          const out = await DT.matchDetail(url.searchParams.get('id') || '');
+          if (out && out.a && out.b) out.senales = [...obsSenales('darts', [obsClave(out.a.name)], { lado: 'a' }), ...obsSenales('darts', [obsClave(out.b.name)], { lado: 'b' })];
+          return json(res, 200, dtStrip(out));
+        }
+        if (p === '/api/darts/live') {
+          const out = DT.liveProb(url.searchParams.get('id') || '', { legs_a: +(url.searchParams.get('legs_a') || 0), legs_b: +(url.searchParams.get('legs_b') || 0), starter_next: ['a', 'b'].includes(url.searchParams.get('starter')) ? url.searchParams.get('starter') : null });
+          return json(res, 200, out || { available: false, why: 'sin estado o formato no soportado en vivo' });
+        }
+        if (p === '/api/darts/read') {
+          const id = String(url.searchParams.get('id') || '');
+          if (!id) return json(res, 400, { error: 'falta id' });
+          const r = await dartsMatchRead(id).catch(() => null);
+          return json(res, 200, r || { pending: true, why: llm.enabled() ? 'la lectura se escribirá en la pasada de fondo.' : 'redactor apagado.' });
+        }
+        if (p === '/api/darts/players') return json(res, 200, DT.playersDirectory({ q: url.searchParams.get('q') || '', limit: Math.min(200, +(url.searchParams.get('limit') || 80)) }));
+        if (p === '/api/darts/player') { const idD = url.searchParams.get('id'); if (!idD) return json(res, 400, { error: 'falta id' }); return json(res, 200, DT.playerProfile(idD)); }
+        if (p === '/api/darts/ranking') return json(res, 200, DT.rankingBoard());
+        if (p === '/api/darts/tournaments') return json(res, 200, await DT.tournamentsList());
+        if (p === '/api/darts/tournament') { const idT = url.searchParams.get('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, await DT.tournamentBoard(idT)); }
+        if (p === '/api/darts/sim') {
+          const a = String(url.searchParams.get('a') || ''), b2 = String(url.searchParams.get('b') || '');
+          if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });
+          return json(res, 200, DT.simMatch(a, b2, { format: String(url.searchParams.get('format') || 'bo11'), starter: ['a', 'b'].includes(url.searchParams.get('starter')) ? url.searchParams.get('starter') : null }));
+        }
+        if (p === '/api/darts/track') return json(res, 200, DT.track({ limit: Math.max(1, Math.min(5000, Number(url.searchParams.get('limit')) || 40)) }));
+        if (p === '/api/darts/model') return json(res, 200, DT.modelCard());
+        if (p === '/api/darts/brief') return json(res, 200, await dartsBrief({ force: url.searchParams.get('force') === '1' }));
+        if (p === '/api/darts/search') { const DD = require('./darts-engine/data'); const pl = DD.resolvePlayer(String(url.searchParams.get('q') || '')); return json(res, 200, { hit: pl ? { id: pl.id, name: pl.name } : null }); }
+        return json(res, 404, { error: 'ruta de dardos desconocida' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p.startsWith('/api/esports/')) {
       const uE = getUser(req);
       const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
@@ -20809,6 +21025,21 @@ const server = http.createServer(async (req, res) => {
     // de otra forma, el array sale vacío y desde fuera parece "no cotiza tarjetas" cuando es "no la leemos".
     // `?raw=<n>` devuelve las CLAVES DE MERCADO crudas de los primeros n partidos, que es lo único que
     // distingue las dos cosas.
+    // ── DARDOS: sonda (6-sep). Estado de agenda, cuotas (con las claves crudas de Cloudbet), base, caché y
+    // sombra; ?rec=1 fuerza la anotación, ?settle=1 la liquidación, ?odds=1 refresca cuotas ──────────────
+    if (p === '/api/internal/darts') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const DT = require('./darts-engine/store');
+      const out = { steps: [] };
+      const step = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; } catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; } };
+      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await DT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, cloudbet_keys: o.cloudbet_keys }; });
+      if (url.searchParams.get('rec') === '1') await step('recordShadow', () => DT.recordShadow());
+      if (url.searchParams.get('settle') === '1') await step('settleShadow', () => DT.settleShadow());
+      await step('snapshot', () => DT.modelSnapshot());
+      out.ok = out.steps.every((x) => x.ok);
+      return json(res, 200, out);
+    }
     if (p === '/api/internal/cloudbet-probe') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

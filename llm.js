@@ -556,7 +556,7 @@ async function writeGameRead(payload, aviso) {
 }
 
 const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol',
-  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1' };
+  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1', darts: 'dardos (PDC)' };
 // EL `aviso` ES EL TERCER ARGUMENTO DE TODO ESCRITOR (21-ago). Cuando entró el verificador, los nueve
 // escritores pasaron a aceptar un aviso final —la lista de números señalados en el intento anterior— y a
 // éste se le añadió al prompt pero NO a la firma. Resultado: `aviso` era un identificador libre y la
@@ -693,6 +693,23 @@ const DOMINIOS = {
       ROSTER: 'fichaje, corte o traspaso que cambia la rotación',
     },
     ruido: 'Ignora clickbait, crónicas del partido de ayer, rumores de mercado y noticias de otro equipo.',
+  },
+  // DARDOS (6-sep, blueprint 8.0 §11.1): deporte individual como el tenis. Una retirada del cuadro no es
+  // contexto, es que el partido no existe; una molestia en el brazo o un cambio de dardos es una atribución
+  // de prensa, jamás un diagnóstico ni un descuento al rating.
+  darts: {
+    que: 'dardos (PDC)',
+    sujeto: 'el jugador indicado (no su rival)',
+    tipos: {
+      OUT: 'se retira del torneo o del cuadro antes de jugar',
+      INJURY: 'lesión o molestia física reportada (brazo, hombro, espalda) sin retirada confirmada',
+      ILLNESS: 'enfermedad, virus o problema físico no traumático',
+      DOUBT: 'duda para jugar, tratamiento médico o declaraciones sobre su estado',
+      EQUIPMENT: 'cambio de dardos, de puntas, de vuelos o de rutina declarado por el jugador',
+      RETURN: 'vuelve a competir tras lesión o parón',
+      WALKOVER: 'pasa de ronda sin jugar porque su rival se retiró',
+    },
+    ruido: 'Ignora clickbait, crónicas del partido de ayer ("beats", "wins", "loses to", "knocked out" describen un partido YA JUGADO), rankings, premios y noticias de otro torneo o de años anteriores.',
   },
 };
 async function extractSignals(items, domain) {
@@ -930,5 +947,19 @@ async function writeCs2Read(payload, game, aviso) {
   return { es: String(j.es).slice(0, 1400), en: String(j.en).slice(0, 1400) };
 }
 
-module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, DOMINIOS, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead,
+// ── Redactor de DARDOS (6-sep, blueprint 8.0) ─────────────────────────────────────────────────────
+// Mismas reglas maestras: el dossier manda, el LLM narra, jamás sale una probabilidad inventada, un
+// mecanismo interno ni una promesa. El objeto del deporte es el LEG —salir y romper— y la cola de 180s.
+async function writeDartsRead(payload, aviso) {
+  const resp = await call({
+    kind: 'writer', json: 'esen',
+    max_tokens: 2000,
+    system: 'Eres el analista de dardos (PDC) de GP Simulador. PROHIBIDO describir el funcionamiento interno del sistema: nada de nombrar métodos, familias de modelo, pesos, constantes ni proveedores de datos. Se narra QUÉ ve el modelo y POR QUÉ importa, nunca CÓMO lo calcula. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el "mercado" del dossier discrepa, esa discrepancia ES parte del análisis. (1) EL PARTIDO — qué decide el duelo en ESTE formato: la media y los 180s por visita de cada uno, quién conserva mejor su leg de salida y quién rompe más (cita "salir_y_romper"), los legs o sets esperados, el historial directo si viene; (2) EL GUION Y EL RIESGO — por dónde gana el otro, cómo pesa el formato (corto = más varianza; double-in si aparece) y qué señal en el escenario diría que la lectura falló; si el dossier trae prensa, menciónala como prensa. PROHIBIDO: inventar datos que no estén en el JSON; picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; hype. Nombra cada métrica como viene en el JSON. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
+}
+
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, DOMINIOS, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead, writeDartsRead,
   verificarLectura, escribirVerificado, numerosTexto, numerosDossier };

@@ -1,5 +1,32 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🎯 DARDOS (6-sep, blueprint 8.0): el 9º deporte nace admin-only y TODO en sombra — lo que bloquea que valga algo
+Construido de punta a punta en un día (motor exacto, base propia 2023→hoy, agenda oficial, cuatro casas, sombra,
+pestaña). Lo que hay y lo que falta, en orden de importancia:
+1. **Liquidar los 180s fuera del Players Championship.** Orakel solo publica partido a partido el PC; en el
+   Euro Tour y los majors (donde Bovada cotiza most/total/jugador 180s) la tesis se anota `unsettleable` y a los
+   12 días queda VOID con motivo. Candidatos: DartConnect (POST `api/event/{id}/matches`, los floor events
+   traen `dartConnectID`), Sportradar Darts v2 (de pago, el `sportRadarID` ya viene en cada fixture). Sin
+   esto, la hipótesis principal del blueprint (A01/A02/A05) no se puede medir.
+2. **Cloudbet: confirmar las claves de mercado de dardos** con la sonda en prod (`/api/internal/darts?key=&odds=1`
+   → `cloudbet_keys`) y ajustar `CB_FAMILY` en `data-providers/darts/books.js`. Hasta entonces la única venue
+   con precio de 180s es Bovada (no ejecutable) y la referencia afilada es Pinnacle (solo ganador y total de legs).
+3. **Validación**: `scripts/darts-fit.js` (Elo vs compilador vs mezcla, holdout 2026 intocable) — resultado en
+   `data/darts/model-priors.json` y en la ficha del motor. Si el compilador no aporta sobre el Elo, `ensembleU`
+   baja y se dice; el laboratorio granular sigue research-only (doctrina del blueprint §34).
+4. **Kernel**: el arrastre dentro de la visita (rho) solo se identifica con la tasa de 180s; el 9-darter sale ~3×
+   la tasa real de élite (no afecta a legs/ganador). El orden de saque del primer leg es desconocido: se publica
+   la mezcla 50/50 y los dos escenarios (Pinnacle SÍ sabe quién sale cuando abre tarde — posible fuga a favor
+   del mercado en first-leg/hándicap corto: no abrir esas familias hasta medirlo).
+5. **Cola diaria en Render** (`dartsTailJob`, 40 min tras el arranque y cada 24 h): refresca la temporada en
+   curso y las ventanas de Orakel, escribe en `/data/darts` y conserva el compacto del repo como línea de base.
+   Vigilar en `/api/internal/ops` (`darts_tail`) las primeras noches; `GP_DARTS_TAIL=false` la apaga.
+6. **Fotos y fichas**: los retratos vienen de la CDN de la PDC (`images.gc.pdcservices.co.uk`, PNG de 2-3 MB sin
+   redimensionar en servidor): si pesa en móvil, cachear una miniatura propia. Las fichas (dob, tarjeta, marca de
+   dardos) se bajaron para los ~2.000 jugadores con ≥15 partidos.
+7. **Derechos**: `data/darts/RIGHTS.md`. Sin uso comercial: `GP_DARTS_PUBLIC_ENABLED` no se pone hasta tener una
+   fuente licenciada de estadística (Sportradar) o acuerdo con Orakel.
+
 ## 🥊 COMBATE: agenda de UFC/PFL ampliada de 21 a 90 días (6-sep) — y lo que sigue faltando
 Alexis no veía carteleras UFC confirmadas. Medido con la ruta nueva `/api/internal/combat?key=&org=&dias=`:
 a 21 días el pool tenía 6 eventos / 44 peleas; ESPN a 90 días trae 16 / 84 (fuera quedaban UFC 332, UFC 333,

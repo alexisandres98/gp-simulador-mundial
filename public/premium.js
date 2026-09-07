@@ -334,7 +334,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', cbet_kicker: 'Casa asociada', cbet_cb_t: 'Patrocinador oficial de la PFL', cbet_cb_s: 'La única casa que cotiza método y rounds de cada pelea — de ahí salen estas picks.', cbet_tn_t: 'ATP y WTA, torneo a torneo', cbet_tn_s: 'Ganador, sets y juegos en los cuadros que sigue el modelo.', cbet_fb_t: 'Las 24 ligas que cubrimos, cotizadas', cbet_fb_s: 'Incluidas las pequeñas que casi ninguna casa lista.', cbet_bb_t: 'Cuotas de la NBA y la WNBA', cbet_bb_s: 'Hándicaps, totales y líneas por cuarto en las cuatro ligas que seguimos.', cbet_es_t: 'La casa de los cuatro juegos', cbet_es_s: 'CS2, League of Legends, Valorant y Dota 2 en un solo sitio, con mercados por mapa.', cbet_offer: 'Paquete de bienvenida hasta $2.500', cbet_cta: 'Abrir cuenta', cbet_18: '18+ · juega con responsabilidad', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', cbet_kicker: 'Casa asociada', cbet_cb_t: 'Patrocinador oficial de la PFL', cbet_cb_s: 'La única casa que cotiza método y rounds de cada pelea — de ahí salen estas picks.', cbet_tn_t: 'ATP y WTA, torneo a torneo', cbet_tn_s: 'Ganador, sets y juegos en los cuadros que sigue el modelo.', cbet_fb_t: 'Las 24 ligas que cubrimos, cotizadas', cbet_fb_s: 'Incluidas las pequeñas que casi ninguna casa lista.', cbet_bb_t: 'Cuotas de la NBA y la WNBA', cbet_bb_s: 'Hándicaps, totales y líneas por cuarto en las cuatro ligas que seguimos.', cbet_es_t: 'La casa de los cuatro juegos', cbet_es_s: 'CS2, League of Legends, Valorant y Dota 2 en un solo sitio, con mercados por mapa.', cbet_offer: 'Paquete de bienvenida hasta $2.500', cbet_cta: 'Abrir cuenta', cbet_18: '18+ · juega con responsabilidad', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_darts: 'Dardos', dt_nav_games: 'Partidos', dt_nav_rank: 'Ranking GP', dt_nav_tours: 'Torneos', dt_nav_model: 'El motor', dt_nav_players: 'Tiradores', sport_f1: 'F1', f1_nav_race: 'La carrera', f1_nav_wdc: 'Campeonato', f1_nav_sim: 'Y si…', f1_nav_drivers: 'Pilotos',
       nav_cb_fights: 'Peleas', nav_cb_fighters: 'Peleadores', nav_cb_orgs: 'Organizaciones',
       cb_title: 'Combate', cb_opps_title: 'Oportunidades', cb_fights_title: 'Peleas', cb_fighters_title: 'Peleadores', cb_sim_title: 'Simulador', cb_perf_title: 'Rendimiento', cb_orgs_title: 'Organizaciones', cb_evo_title: 'Evolución', cb_follow_title: 'Seguidos',
       cb_main_event: 'Evento estelar', cb_card: 'Cartelera', cb_fights_n: 'peleas', cb_rounds: 'rounds', cb_analyze: 'Analizar pelea', cb_reach: 'alcance', cb_loading: 'Cargando…',
@@ -742,7 +742,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', cbet_kicker: 'Partner sportsbook', cbet_cb_t: 'Official PFL sponsor', cbet_cb_s: 'The only book pricing method and rounds on every fight — that is where these picks come from.', cbet_tn_t: 'ATP and WTA, tournament by tournament', cbet_tn_s: 'Winner, sets and games across the draws the model follows.', cbet_fb_t: 'All 24 leagues we cover, priced', cbet_fb_s: 'Including the small ones almost no book lists.', cbet_bb_t: 'NBA and WNBA prices', cbet_bb_s: 'Spreads, totals and quarter lines across the four leagues we cover.', cbet_es_t: 'The book that covers all four games', cbet_es_s: 'CS2, League of Legends, Valorant and Dota 2 in one place, with map-level markets.', cbet_offer: 'Welcome package up to $2,500', cbet_cta: 'Open an account', cbet_18: '18+ · gamble responsibly', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', cbet_kicker: 'Partner sportsbook', cbet_cb_t: 'Official PFL sponsor', cbet_cb_s: 'The only book pricing method and rounds on every fight — that is where these picks come from.', cbet_tn_t: 'ATP and WTA, tournament by tournament', cbet_tn_s: 'Winner, sets and games across the draws the model follows.', cbet_fb_t: 'All 24 leagues we cover, priced', cbet_fb_s: 'Including the small ones almost no book lists.', cbet_bb_t: 'NBA and WNBA prices', cbet_bb_s: 'Spreads, totals and quarter lines across the four leagues we cover.', cbet_es_t: 'The book that covers all four games', cbet_es_s: 'CS2, League of Legends, Valorant and Dota 2 in one place, with map-level markets.', cbet_offer: 'Welcome package up to $2,500', cbet_cta: 'Open an account', cbet_18: '18+ · gamble responsibly', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_darts: 'Darts', dt_nav_games: 'Matches', dt_nav_rank: 'GP Ranking', dt_nav_tours: 'Tournaments', dt_nav_model: 'The engine', dt_nav_players: 'Players', sport_f1: 'F1', f1_nav_race: 'The race', f1_nav_wdc: 'Championship', f1_nav_sim: 'What if…', f1_nav_drivers: 'Drivers',
       nav_cb_fights: 'Fights', nav_cb_fighters: 'Fighters', nav_cb_orgs: 'Organizations',
       cb_title: 'Combat', cb_opps_title: 'Opportunities', cb_fights_title: 'Fights', cb_fighters_title: 'Fighters', cb_sim_title: 'Simulator', cb_perf_title: 'Performance', cb_orgs_title: 'Organizations', cb_evo_title: 'Evolution', cb_follow_title: 'Following',
       cb_main_event: 'Main event', cb_card: 'Fight card', cb_fights_n: 'fights', cb_rounds: 'rounds', cb_analyze: 'Analyze fight', cb_reach: 'reach', cb_loading: 'Loading…',
@@ -1002,7 +1002,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', lang: 'es', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, f1: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', lang: 'es', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, f1: {}, dt: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1122,12 +1122,23 @@
   function tenAllowed() { return !!(S.me && (S.me.isAdmin || S.me.tennisPublic)); }
   var TEN_TOURS = [['atp', 'ATP'], ['wta', 'WTA']];
   function tenTour() { return (S.ten && S.ten.tour) === 'wta' ? 'wta' : 'atp'; }
+  // ── DARDOS (sep-2026): 10º deporte, al lado de Tenis. Kernel del tirador → visita → leg → set → partido;
+  // TODAS las familias en sombra; admin-only de arranque (`GP_DARTS_PUBLIC_ENABLED` abre al público).
+  var DT_VIEWS = ['dtopps', 'dtgames', 'dtmatch', 'dtplayers', 'dtplayer', 'dtrank', 'dttours', 'dttour', 'dtsim', 'dtperf', 'dtbrief', 'dtask', 'dtmodel'];
+  var NAV_DT = [
+    ['dtopps', 'target-arrow', 'nav_opps'], ['dtgames', 'target', 'dt_nav_games'], ['dtrank', 'trophy', 'dt_nav_rank'], ['dttours', 'calendar', 'dt_nav_tours'],
+    ['dtbrief', 'news', 'nav_brief'], ['dtask', 'message-circle', 'nav_cb_ask'], ['dtsim', 'adjustments', 'nav_sim'],
+    ['dtplayers', 'user', 'sr_players'], ['dtmodel', 'book', 'dt_nav_model'],
+    ['alerts', 'bell', 'nav_alerts'], ['dtperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_DT = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  function dtAllowed() { return !!(S.me && (S.me.isAdmin || S.me.dartsPublic)); }
   // ── F1 (18-ago, blueprint 7.0): 8º deporte, al lado de Tenis. Race Intelligence Twin admin-only.
   var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model', 'f1perf'];
   // UNA SOLA TABLA vista→deporte. `sportOf` ya la tenía escrita a mano abajo; tenerla dos veces es
   // exactamente el defecto que este arreglo viene a cerrar, así que se declara aquí y de aquí bebe todo.
   var SPORT_VIEWS = [['combat', CB_VIEWS], ['hoops', BB_VIEWS], ['esports', ES_VIEWS],
-    ['nfl', NFL_VIEWS], ['tennis', TEN_VIEWS], ['f1', F1_VIEWS]];
+    ['nfl', NFL_VIEWS], ['tennis', TEN_VIEWS], ['f1', F1_VIEWS], ['darts', DT_VIEWS]];
   // De una DIRECCIÓN (con su cola: `tenmatch/abc`, `f1driver/x`) al deporte. Devuelve null si la vista no
   // pertenece a ningún deporte con barra propia — así el arranque sabe distinguir "esto es fútbol" de
   // "esto no dice nada, usa lo último que usó el usuario".
@@ -1226,8 +1237,8 @@
   // solo el simulador y Pregúntale a GP — pantallas sin tablero propio. Todo lo demás (oportunidades,
   // briefs, props) se canda DENTRO de su vista, conservando chips, tabs y récord como hace combate,
   // con el mensaje de lo que de verdad está bloqueado en ese deporte.
-  var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim'];
-  var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask'];
+  var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim', 'dtsim'];
+  var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask', 'dtask'];
   // ═══ EN VIVO EN LOS DEPORTES NUEVOS (31-ago, orden de Alexis) ════════════════════════════════════
   // Un solo temporizador: la vista que pintó contenido en vivo se re-renderiza sola cada 30s mientras el
   // usuario siga en ella. `bust` invalida las entradas de caché que alimentan esa vista (por subcadena)
@@ -1295,10 +1306,10 @@
   // El enrutador ya distinguía a los dos, así que aquí basta con no filtrarle la lista.
   // FÚTBOL VUELVE A ENSEÑAR SU RENDIMIENTO (25-ago, orden de Alexis). Es el único deporte con muestra
   // pública que aguanta mirarse: la lista de abajo son los que SIGUEN ocultos. 'perf' sale de ella.
-  var PERF_VIEWS = ['cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf'];
+  var PERF_VIEWS = ['cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf', 'dtperf'];
   // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
   // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
-  var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel'];
+  var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel', 'dtmodel'];
   var PERF_VIEWS_ALL = PERF_VIEWS.concat(MODEL_VIEWS);
   function perfOK() { return !!(S.me && S.me.isAdmin); }
   // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
@@ -1311,7 +1322,7 @@
   }
   // a dónde cae quien pide una de estas sin permiso: la pizarra de SU deporte
   var PERF_HOME = { perf: 'opps', cbperf: 'cbopps', bbperf: 'bbopps', esperf: 'esopps', nflperf: 'nflopps', tenperf: 'tenopps', f1perf: 'f1opps',
-    esmodel: 'esopps', f1model: 'f1opps', tenmodel: 'tenopps', nflmodel: 'nflopps' };
+    esmodel: 'esopps', f1model: 'f1opps', tenmodel: 'tenopps', nflmodel: 'nflopps', dtperf: 'dtopps', dtmodel: 'dtopps' };
 
   function viewNav(v) {
     if (v === 'bbgame') return 'bbgames';
@@ -1326,6 +1337,10 @@
     if (NFL_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'tenplayer') return 'tenplayers';
     if (TEN_VIEWS.indexOf(v) >= 0) return v;
+    if (v === 'dtmatch') return 'dtgames';
+    if (v === 'dtplayer') return 'dtplayers';
+    if (v === 'dttour') return 'dttours';
+    if (DT_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'f1driver') return 'f1drivers';
     if (F1_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
@@ -1395,10 +1410,10 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS).concat(F1_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1';
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS).concat(F1_VIEWS).concat(DT_VIEWS); // vistas implementadas (clickeables)
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1', isDt = S.sport === 'darts';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isDt ? NAV_DT : isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isDt ? NAV2_DT : isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = sinPerf(NAV_A).map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1412,12 +1427,14 @@
     // aparecían por ningún lado en móvil — ni en la barra de abajo ni en el menú de More.
     var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books']
       : isTen ? ['tenbrief', 'tenask', 'tensim', 'tenplayers', 'tenmodel', 'alerts', 'tenperf', 'refer', 'admin', 'bets', 'books']
+      : isDt ? ['dtbrief', 'dtask', 'dtsim', 'dtplayers', 'dttours', 'dtmodel', 'alerts', 'dtperf', 'refer', 'admin', 'bets', 'books']
       : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'f1perf', 'refer', 'admin', 'bets', 'books']
       : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
     moreViews = sinPerf(moreViews);
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isTen ? [['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isDt ? [['dtopps', 'target-arrow', 'nav_opps'], ['dtgames', 'target', 'dt_nav_games'], ['dtrank', 'trophy', 'dt_nav_rank'], ['dtperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isF1 ? [['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1perf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
       ? [['esopps', 'target-arrow', 'nav_opps'], ['esboard', 'device-gamepad', 'es_nav_board'], ['esteams', 'shield', 'es_nav_teams'], ['esmodel', 'book', 'es_nav_model'], ['__more', 'dots', 'more']]
@@ -1462,6 +1479,8 @@
         '<button class="gx-sport' + (S.sport === 'nfl' ? ' on' : '') + (nflAllowed() ? '' : ' dim') + '"' + (nflAllowed() ? ' data-sportgo="nfl"' : ' disabled') + '><span class="gx-sport-ico">\ud83c\udfc8</span>' + esc(t('sport_nfl')) + (nflAllowed() ? '' : '<span class="gx-sport-soon">' + esc(t('sport_soon')) + '</span>') + '</button>' +
         (tenAllowed() ? '<button class="gx-sport' + (S.sport === 'tennis' ? ' on' : '') + '" data-sportgo="tennis"><span class="gx-sport-ico">\ud83c\udfbe</span>' + esc(t('sport_tennis')) + '</button>' : '') +
         (f1Allowed() ? '<button class="gx-sport' + (S.sport === 'f1' ? ' on' : '') + '" data-sportgo="f1"><span class="gx-sport-ico">\ud83c\udfce\ufe0f</span>' + esc(t('sport_f1')) + '</button>' : '') +
+        // DARDOS (sep-2026): mismo idioma que tenis y F1 \u2014 oculto hasta que est\u00e9 permitido, sin teaser
+        (dtAllowed() ? '<button class="gx-sport' + (S.sport === 'darts' ? ' on' : '') + '" data-sportgo="darts"><span class="gx-sport-ico">\ud83c\udfaf</span>' + esc(t('sport_darts')) + '</button>' : '') +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -1798,6 +1817,13 @@
         .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
       : S.sport === 'tennis'
       ? [['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenplayers', 'user', 'sr_players'], ['tenbrief', 'news', 'nav_brief'], ['tenask', 'message-circle', 'nav_cb_ask'], ['tenmodel', 'book', 'ten_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['tenperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
+      // DARDOS (sep-2026): su rama desde el primer día — la lección de baloncesto/esports/tenis
+      : S.sport === 'darts'
+      ? [['dtgames', 'target', 'dt_nav_games'], ['dtrank', 'trophy', 'dt_nav_rank'], ['dttours', 'calendar', 'dt_nav_tours'], ['dtplayers', 'user', 'sr_players'], ['dtbrief', 'news', 'nav_brief'], ['dtask', 'message-circle', 'nav_cb_ask'], ['dtsim', 'adjustments', 'nav_sim'], ['dtmodel', 'book', 'dt_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['dtperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
         .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
         .concat([['refer', 'user-plus', 'nav_refer']])
@@ -2376,8 +2402,8 @@
     // el tenis entra por la MISMA puerta: un hash de apertura y un par de retratos. Ocho deportes con el
     // mismo mecanismo es la señal de que el mecanismo era el correcto.
     // el noveno deporte entra por la MISMA puerta: un hash de apertura y un par de escudos
-    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || p.nfl_hash || null;
-    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || p.nfl_logos || null;
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || p.nfl_hash || p.dt_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || p.nfl_logos || p.dt_avas || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
@@ -4583,6 +4609,16 @@
     if (tnp) { S.ten.tour = tnp[1].toLowerCase(); if (!(S.view === 'tenplayer' && S.ten.playerId === tnp[2])) { S.ten.playerId = tnp[2]; showView('tenplayer'); } return; }
     var tnv = h.match(/^(tenopps|tengames|tenrank|tenplayers|tensim|tenperf|tenbrief|tenask|tenmodel|tenload)(?:\/(atp|wta))?$/i);
     if (tnv) { if (tnv[2]) S.ten.tour = tnv[2].toLowerCase(); showView(tnv[1]); return; }
+    // ── DARDOS ───────────────────────────────────────────────────────────────────────────────────────
+    // el id del partido es el fixtureID de la PDC y el del jugador/torneo su id propio: se aceptan tal cual
+    var dtm = h.match(/^dtmatch\/(.+)$/i);
+    if (dtm) { S.dt = S.dt || {}; var did = decodeURIComponent(dtm[1]); if (!(S.view === 'dtmatch' && S.dt.matchId === did)) { S.dt.matchId = did; S.dt.lens = 'partido'; showView('dtmatch'); } return; }
+    var dtp = h.match(/^dtplayer\/(.+)$/i);
+    if (dtp) { S.dt = S.dt || {}; var dpid = decodeURIComponent(dtp[1]); if (!(S.view === 'dtplayer' && S.dt.playerId === dpid)) { S.dt.playerId = dpid; showView('dtplayer'); } return; }
+    var dtt = h.match(/^dttour\/(.+)$/i);
+    if (dtt) { S.dt = S.dt || {}; var dtid = decodeURIComponent(dtt[1]); if (!(S.view === 'dttour' && S.dt.tourId === dtid)) { S.dt.tourId = dtid; showView('dttour'); } return; }
+    var dtv = h.match(/^(dtopps|dtgames|dtplayers|dtrank|dttours|dtsim|dtperf|dtbrief|dtask|dtmodel)$/i);
+    if (dtv) { showView(dtv[1]); return; }
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
     if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
@@ -4619,7 +4655,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model', f1perf: 'f1perf' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model', f1perf: 'f1perf', dtopps: 'dtopps', dtgames: 'dtgames', dtplayers: 'dtplayers', dtrank: 'dtrank', dttours: 'dttours', dtsim: 'dtsim', dtperf: 'dtperf', dtbrief: 'dtbrief', dtask: 'dtask', dtmodel: 'dtmodel' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4787,11 +4823,12 @@
     if (sport === 'esports' && !esAllowed()) return;
     if (sport === 'tennis' && !tenAllowed()) return;
     if (sport === 'f1' && !f1Allowed()) return;
+    if (sport === 'darts' && !dtAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tenopps' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'darts' ? 'dtopps' : sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tenopps' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4809,7 +4846,7 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(v) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(v) >= 0 && !f1Allowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(v) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(v) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(v) >= 0 && !dtAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
@@ -4817,6 +4854,7 @@
     if (changed) try { window.scrollTo(0, 0); } catch (e) {}
     if (F1_VIEWS.indexOf(v) >= 0) renderF1(v);
     else if (TEN_VIEWS.indexOf(v) >= 0) renderTennis(v);
+    else if (DT_VIEWS.indexOf(v) >= 0) renderDarts(v);
     else if (NFL_VIEWS.indexOf(v) >= 0) renderNfl(v);
     else if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
     else if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
@@ -13395,6 +13433,1061 @@
     if (asug) { tenAskGo(asug.getAttribute('data-tenasksug')); return; }
   }
 
+  // ═══════════════════ DARDOS (sep-2026): el 10º deporte ═══════════════════════════════════════════════
+  // El objeto firma es el KERNEL DEL TIRADOR: de la media, los 180 por visita y el porcentaje en dobles se
+  // compila una visita → un leg → un set → un partido, y de ese MISMO compilador salen el ganador, los legs
+  // totales, el marcador exacto, los 180 del partido y el checkout más alto — no pueden contradecirse. Caja
+  // negra: evidencia sí, receta jamás. TODAS las familias corren en sombra; nada de esto es una pick.
+  // El espacio le pertenece al juego (blueprint): la diana se dibuja, la distribución se pinta, y lo ÚNICO
+  // muestreado que se enseña es un leg de ejemplo etiquetado como tal. Nunca coordenadas inventadas.
+  function dtGet(key, url, ttl) {
+    S.dt = S.dt || {};
+    var e = S.dt[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) dtFetch(key, url);
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function dtFetch(key, url) {
+    S.dt = S.dt || {};
+    var e = S.dt[key] = S.dt[key] || {};
+    e._inflight = true; var done = false;
+    var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'darts') showView(S.view); }, 30000);
+    fetch(url, { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
+      .then(function (j) {
+        if (done) return; done = true; clearTimeout(to);
+        e._inflight = false; e.v = j || { _err: 1 }; e._at = Date.now();
+        if (S.sport === 'darts') showView(S.view);
+      });
+  }
+  function dtShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content gx-dt">' + viewHead(title) + cbetFor(S.view) + inner + '</div></div>';
+    mv.onclick = dtClicks;
+  }
+  var dtLoading = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esT('Leyendo la base propia de dardos…', 'Reading the in-house darts base…') + '</b></div></div>'; };
+  var dtErr = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esT('No se pudo leer el tablero.', 'Could not read the board.') + '</b></div></div>'; };
+  function dtPct(x) { return (x == null || isNaN(x)) ? '—' : Math.round(100 * x) + '%'; }
+  function dtPct1(x) { return (x == null || isNaN(x)) ? '—' : (100 * x).toFixed(1) + '%'; }
+  // porcentajes que pueden llegar como fracción (0.42) o ya en puntos (42): el checkout no baja del 5 %
+  function dtPctAuto(x) { if (x == null || isNaN(x)) return '—'; return (x <= 1 ? Math.round(100 * x) : Math.round(x)) + '%'; }
+  function dtNum(x, d) { if (x == null || isNaN(x)) return '—'; var n = Number(x); return d == null ? String(Math.round(n * 10) / 10) : n.toFixed(d); }
+  function dtInt(x) { return (x == null || isNaN(x)) ? '—' : String(Math.round(Number(x))); }
+  function dtStr(x) { return x == null || x === '' ? '—' : String(x); }
+  function dtLast(name) { return String(name || '—').trim().split(/\s+/).slice(-1)[0]; }
+  function dtCountry(c) { return c ? String(c).split('-').pop() : ''; }
+  function dtWL(wl) { if (!wl) return '—'; if (typeof wl === 'string') return wl; return (wl.w != null ? wl.w : '—') + '-' + (wl.l != null ? wl.l : '—'); }
+  function dtDate8(s) { var m = String(s || '').match(/^(\d{4})-?(\d{2})-?(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1].slice(2) : dtStr(s); }
+  var DT_STAGE_ABBR = { 'Final': 'F', 'Semi-Final': 'SF', 'Semi-Finals': 'SF', 'Quarter-Final': 'QF', 'Quarter-Finals': 'QF', 'Last 16': 'L16', 'Last 32': 'L32', 'Last 64': 'L64', 'Last 96': 'L96', 'First Round': 'R1', 'Second Round': 'R2', 'Third Round': 'R3', 'Round 1': 'R1', 'Round 2': 'R2', 'Round 3': 'R3', 'Group': 'Gr.' };
+  function dtStageAbbr(s) { return DT_STAGE_ABBR[s] || String(s || ''); }
+  // LA CARA DEL TIRADOR: retrato o iniciales de color estable, nunca un hueco gris (misma pieza que tenis)
+  function dtFace(p, cls) {
+    var nm = (p && p.name) || '?';
+    var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
+    return '<span class="gx-ten-face gx-dt-face' + (cls ? ' ' + cls : '') + (p && p.photo ? ' has-photo' : '') + '"' +
+      (p && p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' +
+      (p && p.photo ? faceImg(p.photo) : '') + '<i>' + esc(ini) + '</i></span>';
+  }
+  // el formato, corto ("BO11 · +2") o largo ("BO11 legs · dos de diferencia")
+  function dtFmtLabel(f, long) {
+    if (!f) return '—';
+    var parts = [];
+    if (f.kind === 'sets' || f.best_of_sets) {
+      var bs = f.best_of_sets || f.best_of;
+      parts.push(bs ? 'BO' + bs + ' sets' : 'sets');
+      if (long && f.legs_per_set) parts.push(f.legs_per_set + esT(' legs por set', ' legs per set'));
+      if (long && f.final_set_two_clear) parts.push(esT('set final a dos', 'final set two clear'));
+    } else {
+      parts.push(f.best_of ? 'BO' + f.best_of + (long ? ' legs' : '') : 'legs');
+      if (f.two_clear) parts.push(long ? esT('dos de diferencia', 'two clear') : '+2');
+    }
+    if (f.double_in) parts.push('double-in');
+    return parts.join(' · ');
+  }
+  // `sets: 1` en el stage de la PDC significa formato de LEGS (un solo "set" de N legs), no "BO1 sets"
+  function dtTourFmtChip(x) { return (x.sets > 1 ? 'BO' + x.sets + ' sets' : x.legs ? 'BO' + x.legs : '—') + (x.two_clear ? ' +2' : '') + (x.stage ? ' ' + dtStageAbbr(x.stage) : ''); }
+  function dtShadowNote(d) {
+    return '<div class="gx-dim gx-es-trunc">' + esT('Todas las familias de dardos corren EN SOMBRA: nada de esto es una pick.', 'Every darts family runs IN SHADOW: none of this is a pick.') +
+      (d && d.attribution ? ' ' + esc(d.attribution) : '') + '</div>';
+  }
+  function dtDisc() { return '<div class="gx-dim gx-es-trunc">' + esc(t('disclaimer_short')) + '</div>'; }
+  function dtBack(to, label) { return '<div class="gx-back" data-dtbackto="' + esc(to) + '">' + ic('chevron-left') + '<span>' + esc(label) + '</span></div>'; }
+  function dtTiles(arr, cls) {
+    return '<div class="gx-ten-statgrid' + (cls ? ' ' + cls : '') + '">' + arr.map(function (x) {
+      return '<div class="gx-ten-stat"><span class="gx-dim">' + esc(x[0]) + '</span><b class="gx-mono">' + (x[2] ? x[1] : esc(dtStr(x[1]))) + '</b>' +
+        (x[3] ? '<span class="gx-dim" style="font-size:9.5px">' + esc(x[3]) + '</span>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function dtPairs(arr) {
+    return (Array.isArray(arr) ? arr : []).filter(function (x) { return Array.isArray(x) && x.length >= 2 && x[1] != null && !isNaN(x[1]); });
+  }
+
+  // ── GRAMÁTICA DE DISTRIBUCIONES ─────────────────────────────────────────────────────────────────────
+  // Histograma de barras: `pairs` [[x, p]]. `o.line` = línea de la casa (marcador azul entre barras);
+  // `o.lines` = varias; `o.sign` = colorear por signo (margen, espejo alrededor de 0); `o.every` = etiquetar
+  // una de cada N; `o.hl` = fn(x) → clase extra de la barra; `o.lab` = fn(x) → etiqueta (o null).
+  function dtHist(pairs, o) {
+    o = o || {};
+    var xs = dtPairs(pairs).slice().sort(function (a, b) { return Number(a[0]) - Number(b[0]); });
+    if (!xs.length) return '<div class="gx-dim gx-es-note">' + esT('sin distribución', 'no distribution') + '</div>';
+    var mx = Math.max.apply(null, xs.map(function (x) { return x[1]; }).concat([0.0001]));
+    var n = xs.length, every = o.every || (n > 16 ? 3 : n > 9 ? 2 : 1);
+    var lines = (o.lines || (o.line != null ? [o.line] : [])).filter(function (l) { return l != null && !isNaN(l); });
+    var x0 = Number(xs[0][0]);
+    var marks = lines.map(function (l) {
+      var pos = (Number(l) - x0 + 0.5) / n * 100;
+      if (pos < 0 || pos > 100) return '';
+      return '<em class="gx-dt-mk" style="left:' + pos.toFixed(2) + '%" title="' + esT('línea de la casa ', 'house line ') + esc(String(l)) + '"><span>' + esc(String(l)) + '</span></em>';
+    }).join('');
+    return '<div class="gx-dt-hist' + (o.cls ? ' ' + o.cls : '') + '">' +
+      '<div class="gx-dt-bars' + (o.sign ? ' sign' : '') + '">' + xs.map(function (x, i) {
+        var h = Math.max(2, Math.round(100 * x[1] / mx));
+        var neg = o.sign && Number(x[0]) < 0;
+        var cls = (neg ? ' neg' : '') + (o.hl ? ' ' + (o.hl(x[0]) || '') : '');
+        var lab = o.lab ? o.lab(x[0], i) : (i % every === 0 ? String(x[0]) : null);
+        var sx = o.sign && Number(x[0]) > 0 ? '+' + x[0] : String(x[0]);
+        return '<div class="gx-dt-bar' + cls + '" title="' + esc(sx) + ' · ' + dtPct1(x[1]) + '"><i style="height:' + h + '%"></i>' +
+          '<span>' + (lab != null ? esc(String(lab)) : '') + '</span></div>';
+      }).join('') + marks + (o.sign ? '<em class="gx-dt-zero"></em>' : '') + '</div></div>';
+  }
+  // rejilla de calor del marcador exacto: una fila por ganador, celdas ordenadas por los legs del perdedor
+  function dtHeatGrid(score, aName, bName, unit) {
+    var xs = dtPairs(score);
+    if (!xs.length) return '';
+    var rows = { a: [], b: [] };
+    xs.forEach(function (x) {
+      var m = String(x[0]).match(/^(\d+)\s*[-–:]\s*(\d+)$/); if (!m) return;
+      var wa = Number(m[1]), wb = Number(m[2]);
+      if (wa > wb) rows.a.push({ k: x[0], p: x[1], w: wa, l: wb }); else rows.b.push({ k: x[0], p: x[1], w: wb, l: wa });
+    });
+    var mx = Math.max.apply(null, xs.map(function (x) { return x[1]; }).concat([0.0001]));
+    var srt = function (r) { return r.sort(function (p, q) { return p.l - q.l || p.w - q.w; }); };
+    var line = function (who, arr, sum) {
+      return '<div class="gx-dt-heatrow"><div class="gx-dt-heatwho"><b>' + esc(dtLast(who)) + '</b><span class="gx-mono gx-dim">' + dtPct(sum) + '</span></div>' +
+        '<div class="gx-dt-heatcells">' + arr.map(function (c) {
+          var a = 0.08 + 0.82 * c.p / mx;
+          return '<div class="gx-dt-heat" style="background:rgba(31,227,164,' + a.toFixed(3) + ')" title="' + esc(c.k) + ' · ' + dtPct1(c.p) + '"><b class="gx-mono">' + esc(c.k) + '</b><span class="gx-mono">' + dtPct(c.p) + '</span></div>';
+        }).join('') + '</div></div>';
+    };
+    var sum = function (arr) { return arr.reduce(function (s, c) { return s + c.p; }, 0); };
+    return '<div class="gx-dt-heatgrid">' + line(aName, srt(rows.a), sum(rows.a)) + line(bName, srt(rows.b), sum(rows.b)) + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Marcador exacto en ', 'Exact score in ') + esc(unit || 'legs') + esT(' · del mismo compilador que el ganador, coherente con él por construcción.', ' · from the same compiler as the winner, consistent by construction.') + '</div>';
+  }
+  // escalera del checkout máximo: P(máx ≥ c) para c = 100…170, tres series en escalón
+  function dtLadder(cm, aName, bName) {
+    if (!cm) return '';
+    var series = [['match', esT('partido', 'match'), 'm'], ['a', dtLast(aName), 'a'], ['b', dtLast(bName), 'b']].map(function (s) {
+      return { k: s[0], lab: s[1], cls: s[2], xs: dtPairs(cm[s[0]]).slice().sort(function (p, q) { return p[0] - q[0]; }) };
+    }).filter(function (s) { return s.xs.length; });
+    if (!series.length) return '';
+    var allx = []; series.forEach(function (s) { s.xs.forEach(function (x) { allx.push(Number(x[0])); }); });
+    var xmin = Math.min.apply(null, allx), xmax = Math.max.apply(null, allx);
+    if (!(xmax > xmin)) xmax = xmin + 1;
+    var W = 320, H = 120, L = 30, R = 8, T = 8, B = 20;
+    var X = function (c) { return L + (c - xmin) / (xmax - xmin) * (W - L - R); };
+    var Y = function (p) { return T + (1 - Math.max(0, Math.min(1, p))) * (H - T - B); };
+    var paths = series.map(function (s) {
+      var d = '';
+      s.xs.forEach(function (x, i) {
+        var px = X(Number(x[0])), py = Y(x[1]);
+        if (i === 0) d += 'M' + px.toFixed(1) + ' ' + py.toFixed(1);
+        else d += ' H' + px.toFixed(1) + ' V' + py.toFixed(1);
+      });
+      var lastX = X(Number(s.xs[s.xs.length - 1][0]));
+      d += ' H' + Math.min(W - R, lastX + (W - L - R) / Math.max(1, s.xs.length)).toFixed(1);
+      return '<path class="gx-dt-lad-' + s.cls + '" d="' + d + '"/>';
+    }).join('');
+    var ticks = [];
+    for (var c = Math.ceil(xmin / 10) * 10; c <= xmax; c += 10) ticks.push('<text x="' + X(c).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + c + '</text>');
+    var grid = [0, 0.5, 1].map(function (p) { return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(p).toFixed(1) + '" y2="' + Y(p).toFixed(1) + '"/><text x="' + (L - 4) + '" y="' + (Y(p) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(100 * p) + '%</text>'; }).join('');
+    var legend = series.map(function (s) { return '<span class="gx-dt-lad-leg ' + s.cls + '"><i></i>' + esc(s.lab) + '</span>'; }).join('');
+    return '<div class="gx-dt-ladder"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><g class="gx-dt-lad-grid">' + grid + '</g>' + paths + '<g class="gx-dt-lad-ax">' + ticks.join('') + '</g></svg>' +
+      '<div class="gx-dt-lad-legs">' + legend + '</div></div>';
+  }
+  // sparkline de forma (media por mes): polilínea con último punto marcado
+  function dtSpark(form, key) {
+    var xs = (Array.isArray(form) ? form : []).filter(function (f) { return f && f[key || 'avg'] != null && !isNaN(f[key || 'avg']); });
+    if (xs.length < 2) return '<span class="gx-dim" style="font-size:10.5px">' + esT('sin serie suficiente', 'not enough series') + '</span>';
+    var vs = xs.map(function (f) { return Number(f[key || 'avg']); });
+    var mn = Math.min.apply(null, vs), mxv = Math.max.apply(null, vs); if (!(mxv > mn)) { mxv = mn + 1; mn = mn - 1; }
+    var W = 240, H = 54, P = 6;
+    var pts = vs.map(function (v, i) { return [(P + i / (vs.length - 1) * (W - 2 * P)), (P + (1 - (v - mn) / (mxv - mn)) * (H - 2 * P))]; });
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+    var last = pts[pts.length - 1];
+    return '<div class="gx-dt-spark"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><path d="' + d + '"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.6"/></svg>' +
+      '<div class="gx-dt-spark-ax gx-dim gx-mono"><span>' + esc(String(xs[0].to || '').slice(0, 7)) + ' · ' + dtNum(vs[0], 1) + '</span><span>' + esc(String(xs[xs.length - 1].to || '').slice(0, 7)) + ' · <b>' + dtNum(vs[vs.length - 1], 1) + '</b></span></div></div>';
+  }
+  // ── LA DIANA ────────────────────────────────────────────────────────────────────────────────────────
+  // Veinte sectores en el orden real de la diana, doble, triple y bull. Solo el anillo de DOBLES lleva
+  // color: la probabilidad con la que el kernel espera que este tirador cierre en cada doble. Todo lo demás
+  // queda neutro a propósito — es una diana de PROBABILIDADES, no un mapa de impactos: nunca se pintan
+  // dardos que nadie vio.
+  var DT_BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+  function dtBoard(doubles, o) {
+    o = o || {};
+    var C = 120, R = 100, rD1 = 91, rS1 = 60, rT1 = 52, rS2 = 16, rB = 7;
+    var probs = {}; var mx = 0;
+    dtPairs(doubles).forEach(function (x) {
+      var k = String(x[0]).toUpperCase().replace(/\s+/g, '');
+      var num = k === 'DB' || k === 'BULL' || k === 'D25' || k === 'DBULL' ? 'B' : (k.match(/^D?(\d+)$/) || [])[1];
+      if (!num) return;
+      probs[num] = (probs[num] || 0) + Number(x[1]); if (probs[num] > mx) mx = probs[num];
+    });
+    var pol = function (r, a) { var t2 = a * Math.PI / 180; return [C + r * Math.sin(t2), C - r * Math.cos(t2)]; };
+    var seg = function (rIn, rOut, a0, a1) {
+      var p0 = pol(rOut, a0), p1 = pol(rOut, a1), p2 = pol(rIn, a1), p3 = pol(rIn, a0);
+      return 'M' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) + ' A' + rOut + ' ' + rOut + ' 0 0 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) +
+        ' L' + p2[0].toFixed(2) + ' ' + p2[1].toFixed(2) + ' A' + rIn + ' ' + rIn + ' 0 0 0 ' + p3[0].toFixed(2) + ' ' + p3[1].toFixed(2) + 'Z';
+    };
+    var top = Object.keys(probs).sort(function (a, b) { return probs[b] - probs[a]; }).slice(0, 3);
+    var out = '';
+    DT_BOARD_ORDER.forEach(function (num, i) {
+      var a0 = -9 + 18 * i, a1 = a0 + 18, mid = a0 + 9;
+      var p = probs[String(num)] || 0;
+      var hot = p > 0 && mx > 0;
+      var alpha = hot ? (0.14 + 0.86 * p / mx) : 0;
+      out += '<path class="gx-dt-sg" d="' + seg(rD1, rS1, a0, a1) + '"/>';
+      out += '<path class="gx-dt-sg t" d="' + seg(rT1, rS1, a0, a1) + '"/>';
+      out += '<path class="gx-dt-sg" d="' + seg(rS2, rT1, a0, a1) + '"/>';
+      out += '<path class="gx-dt-sg d' + (hot ? ' hot' : '') + '" d="' + seg(rD1, R, a0, a1) + '"' + (hot ? ' style="fill:rgba(31,227,164,' + alpha.toFixed(3) + ')"' : '') + '><title>D' + num + (hot ? ' · ' + dtPct1(p) : '') + '</title></path>';
+      var lp = pol(R + 9, mid);
+      var isTop = top.indexOf(String(num)) >= 0;
+      out += '<text class="gx-dt-num' + (isTop ? ' top' : '') + '" x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 2.6).toFixed(1) + '" text-anchor="middle">' + num + '</text>';
+    });
+    var pb = probs.B || 0;
+    out += '<circle class="gx-dt-sg" cx="' + C + '" cy="' + C + '" r="' + rS2 + '"/>';
+    out += '<circle class="gx-dt-sg d' + (pb > 0 ? ' hot' : '') + '" cx="' + C + '" cy="' + C + '" r="' + rB + '"' + (pb > 0 && mx > 0 ? ' style="fill:rgba(31,227,164,' + (0.14 + 0.86 * pb / mx).toFixed(3) + ')"' : '') + '><title>Bull' + (pb > 0 ? ' · ' + dtPct1(pb) : '') + '</title></circle>';
+    var legend = top.length ? '<div class="gx-dt-board-top">' + top.map(function (k) {
+      return '<span><b class="gx-mono">' + (k === 'B' ? 'Bull' : 'D' + k) + '</b> ' + dtPct(probs[k]) + '</span>';
+    }).join('') + '</div>' : '<div class="gx-dt-board-top gx-dim">' + esT('sin dobles del kernel', 'no doubles from the kernel') + '</div>';
+    return '<div class="gx-dt-board' + (o.cls ? ' ' + o.cls : '') + '"><svg viewBox="0 0 240 240" aria-label="' + esT('diana: dobles esperados', 'board: expected doubles') + '"><g>' + out + '</g></svg>' + legend + '</div>';
+  }
+  // ADN de puntuación: la visita pura (26, 41, 45, 60, 85, 100, 140, 180…) — solo se etiquetan 60/100/140/180
+  function dtScoringDNA(sv) {
+    var xs = dtPairs(sv).slice().sort(function (a, b) { return a[0] - b[0]; });
+    if (!xs.length) return '<div class="gx-dim gx-es-note">' + esT('sin visita de puntuación en el kernel', 'no scoring visit in the kernel') + '</div>';
+    var mx = Math.max.apply(null, xs.map(function (x) { return x[1]; }).concat([0.0001]));
+    var LAB = { 60: 1, 100: 1, 140: 1, 180: 1 };
+    return '<div class="gx-dt-hist"><div class="gx-dt-bars dna">' + xs.map(function (x) {
+      var v = Number(x[0]);
+      return '<div class="gx-dt-bar' + (v === 180 ? ' hi' : '') + '" title="' + v + ' · ' + dtPct1(x[1]) + '"><i style="height:' + Math.max(2, Math.round(100 * x[1] / mx)) + '%"></i><span>' + (LAB[v] ? v : '') + '</span></div>';
+    }).join('') + '</div></div>';
+  }
+  // PMF del valor del checkout: tira compacta (pueden ser 160 valores) con tres marcas
+  function dtCheckoutStrip(pmf) {
+    var xs = dtPairs(pmf).slice().sort(function (a, b) { return a[0] - b[0]; });
+    if (!xs.length) return '<div class="gx-dim gx-es-note">' + esT('sin PMF de checkout', 'no checkout PMF') + '</div>';
+    var mx = Math.max.apply(null, xs.map(function (x) { return x[1]; }).concat([0.0001]));
+    var n = xs.length, marks = [xs[0][0], xs[Math.floor(n / 2)][0], xs[n - 1][0]];
+    return '<div class="gx-dt-strip">' + xs.map(function (x) {
+      return '<i class="' + (Number(x[0]) >= 100 ? 'hi' : '') + '" style="height:' + Math.max(2, Math.round(100 * x[1] / mx)) + '%" title="' + esc(String(x[0])) + ' · ' + dtPct1(x[1]) + '"></i>';
+    }).join('') + '</div><div class="gx-dt-strip-ax gx-dim gx-mono"><span>' + esc(String(marks[0])) + '</span><span>' + esc(String(marks[1])) + '</span><span>' + esc(String(marks[2])) + '</span></div>';
+  }
+  function dtVisitsPMF(vp) {
+    return dtHist(vp, { every: 1, lab: function (k) { return Number(k) === 3 ? esT('3 (9 dardos)', '3 (9-darter)') : String(k); }, hl: function (k) { return Number(k) === 3 ? 'hi' : ''; } });
+  }
+  // fichas de habilidad del kernel + tendencia 365→90
+  function dtSkillTiles(k, prof) {
+    if (!k) return '';
+    var w = k.windows || (prof && prof.skill && prof.skill.windows) || null;
+    var trend = '';
+    if (w && w.avg_365 != null && w.avg_90 != null) {
+      var dlt = Number(w.avg_90) - Number(w.avg_365);
+      trend = (dlt > 0.3 ? '<span class="gx-up">▲</span>' : dlt < -0.3 ? '<span class="gx-down">▼</span>' : '<span class="gx-dim">=</span>') + ' ' + dtNum(w.avg_365, 1) + ' → ' + dtNum(w.avg_90, 1);
+    }
+    var tiles = [
+      [esT('Media (3 dardos)', 'Average (3 darts)'), dtNum(k.avg, 2)],
+      [esT('180 por visita', '180s per visit'), k.per180_visit != null ? dtNum(k.per180_visit, 3) : '—'],
+      [esT('% dobles', 'Doubles %'), dtPctAuto(k.checkout_pct)],
+      [esT('Exposición (dardos)', 'Exposure (darts)'), dtInt(k.exposure_darts)],
+    ];
+    if (trend) tiles.push([esT('Tendencia 365 → 90 d', 'Trend 365 → 90 d'), trend, true]);
+    if (w && w.x180_365 != null) tiles.push([esT('180 en 365 / 90 d', '180s in 365 / 90 d'), dtInt(w.x180_365) + ' / ' + dtInt(w.x180_90)]);
+    if (w && w.co_365) tiles.push([esT('Dobles 365 d', 'Doubles 365 d'), dtInt(w.co_365.hit) + '/' + dtInt(w.co_365.att) + (w.co_365.pct != null ? ' · ' + dtPctAuto(w.co_365.pct) : '')]);
+    tiles.push([esT('Identificado', 'Identified'), dtStr(k.identified), false, k.cold ? esT('kernel frío: poca muestra', 'cold kernel: thin sample') : '']);
+    tiles.push([esT('Fuente · fecha', 'Source · as of'), [k.source, k.as_of].filter(Boolean).join(' · ') || '—']);
+    return dtTiles(tiles);
+  }
+
+  // ── DESPACHO ────────────────────────────────────────────────────────────────────────────────────────
+  function renderDarts(v) {
+    S.dt = S.dt || {};
+    // igual que tenis: mientras no se sabe quién eres NO se bota a fútbol
+    if (!S.me) { dtShell(t('nav_opps'), dtLoading()); return; }
+    if (!dtAllowed()) { showView('board'); return; }
+    var lk = nsLockHtml(v); if (lk) { dtShell(t('nav_opps'), lk); return; }
+    if (v === 'dtopps') return renderDtOpps();
+    if (v === 'dtgames') return renderDtGames();
+    if (v === 'dtmatch') return renderDtMatch();
+    if (v === 'dtplayers') return renderDtPlayers();
+    if (v === 'dtplayer') return renderDtPlayer();
+    if (v === 'dtrank') return renderDtRank();
+    if (v === 'dttours') return renderDtTours();
+    if (v === 'dttour') return renderDtTour();
+    if (v === 'dtsim') return renderDtSim();
+    if (v === 'dtperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderDtPerf(); }
+    if (v === 'dtbrief') return renderDtBrief();
+    if (v === 'dtask') return renderDtAsk();
+    if (v === 'dtmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderDtModel(); }
+    renderDtGames();
+  }
+
+  // ── OPORTUNIDADES ───────────────────────────────────────────────────────────────────────────────────
+  function dtFamLabel(c, r) {
+    var who = c.side === 'a' || c.participant === 'a' ? (r && r.a) : c.side === 'b' || c.participant === 'b' ? (r && r.b) : null;
+    var ou = c.side === 'over' ? esT('Más de ', 'Over ') : c.side === 'under' ? esT('Menos de ', 'Under ') : '';
+    var ln = c.line != null ? c.line : '';
+    switch (c.family) {
+      case 'ML': return esT('Ganador', 'Winner') + (who ? ': ' + who : '');
+      case 'LEGS_TOTAL': return ou + ln + ' legs';
+      case 'SETS_TOTAL': return ou + ln + ' sets';
+      case 'LEGS_HCP': return esT('Hándicap de legs ', 'Leg handicap ') + (who ? who + ' ' : '') + (ln > 0 ? '+' : '') + ln;
+      case 'SETS_HCP': return esT('Hándicap de sets ', 'Set handicap ') + (who ? who + ' ' : '') + (ln > 0 ? '+' : '') + ln;
+      case 'X180_TOTAL': return ou + ln + ' × 180';
+      case 'X180_MOST': return esT('Más 180', 'Most 180s') + (who ? ': ' + who : '');
+      case 'X180_PLAYER': return (who ? who + ' ' : '') + ou.toLowerCase() + ln + ' × 180';
+      case 'HIGHEST_CHECKOUT': return esT('Checkout más alto', 'Highest checkout') + (who ? ': ' + who : ou ? ' ' + ou.toLowerCase() + ln : '');
+      case 'CORRECT_SCORE': return esT('Marcador exacto ', 'Correct score ') + ln;
+      default: return String(c.family || '—');
+    }
+  }
+  function renderDtOpps() {
+    var d = dtGet('board', '/api/darts/board', 120000);
+    if (!d) { dtShell(t('nav_opps'), dtLoading()); return; }
+    if (d._err) { dtShell(t('nav_opps'), dtErr()); return; }
+    var rows = d.rows || [];
+    var theses = [];
+    rows.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK') theses.push({ r: r, c: c }); }); });
+    theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
+    var top = theses[0];
+    var lockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
+    var strip = '<div class="gx-estop">' +
+      '<div class="gx-panel gx-estop-c' + (top ? ' on' : '') + '"><div class="gx-label">' + ic('target-arrow') + esT('Tesis del día', 'Thesis of the day') + '</div>' +
+      (top ? '<div class="gx-estop-main"><div class="gx-estop-sel">' + esc(dtFamLabel(top.c, top.r)) + '</div>' +
+        '<div class="gx-estop-sub">' + esc(top.r.a || '') + ' vs ' + esc(top.r.b || '') + (top.r.tournament ? ' · ' + esc(top.r.tournament) : '') + '</div></div>' +
+        '<div class="gx-estop-foot"><span class="gx-mono">' + odd(top.c.odds) + '</span>' +
+        '<span class="gx-pp gx-pos">+' + Number(top.c.edge_pp || 0).toFixed(1) + ' pp</span>' + (top.c.book ? '<span class="gx-dim">' + esc(top.c.book) + '</span>' : '') + '</div>'
+        : lockedN ? '<div class="gx-estop-main"><div class="gx-estop-sel">' + ic('lock') + lockedN + esT(' tesis', ' theses') + '</div><div class="gx-estop-sub">' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</div></div>'
+          : '<div class="gx-estop-main"><div class="gx-estop-sel gx-dim">' + esT('Ninguna tesis pasa el listón', 'No thesis clears the bar') + '</div><div class="gx-estop-sub">' + esT('decir NO también es un resultado', 'saying NO is also a result') + '</div></div>') + '</div>' +
+      '<div class="gx-panel gx-estop-c"><div class="gx-label">' + ic('eye') + (perfOK() ? esT('Régimen', 'Regime') : esT('En juego', 'In play')) + '</div>' +
+      '<div class="gx-estop-main"><div class="gx-estop-sel">' + (perfOK() ? esT('Todo en sombra', 'All in shadow') : theses.length + esT(' tesis', theses.length === 1 ? ' thesis' : ' theses')) + '</div>' +
+      '<div class="gx-estop-sub">' + theses.length + esT(' tesis vivas · ', ' live theses · ') + rows.length + esT(' partidos', ' matches') + (d.odds_at ? ' · ' + esT('cuotas ', 'odds ') + esc(fmtDateTime(d.odds_at)) : '') + '</div></div></div></div>';
+    var body;
+    if (!theses.length && lockedN > 0) {
+      body = '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de dardos son para suscriptores', 'Darts theses are for subscribers'),
+        esT('El registro por familia —ganador, legs, 180, checkout— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — winner, legs, 180s, checkout — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
+    } else if (!theses.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>' + (rows.length ? esT('Ninguna línea pasa el listón ahora mismo.', 'No line clears the bar right now.') : esT('Sin torneos con cuotas activas en la ventana.', 'No tournaments with active odds in the window.')) + '</b>' +
+        '<span class="gx-dim">' + esc(rows.length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido.', 'The engine valued the open lines and none beats its own noise.') : (d.note || '')) + '</span></div></div>';
+    } else {
+      var cards = [];
+      rows.forEach(function (r) { (r.picks || []).forEach(function (pk) { cards.push(pk); }); });
+      cards.sort(function (a, b) { return ((b.signals && b.signals.edge_pp) || b.edge_pp || 0) - ((a.signals && a.signals.edge_pp) || a.edge_pp || 0); });
+      body = cards.length ? '<div class="gx-picks-feed">' + visiblePicks(cards).map(function (pk) { return pickCard(pk, {}); }).join('') + '</div>' + hiddenNote(cards)
+        : '<div class="gx-panel">' + theses.map(function (x) { return dtThesisRow(x.r, x.c); }).join('') + '</div>';
+      body += dtDisc();
+    }
+    dtShell(t('nav_opps'), strip + body +
+      soloAdmin('<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>' + esT('Familia en sombra, no picks.', 'Shadow family, not picks.') + '</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>') +
+      dtShadowNote(d));
+  }
+  // fila de tesis (cuando el servidor manda candidatos SHADOW_PICK pero aún no ha compilado la card)
+  function dtThesisRow(r, c) {
+    return '<div class="gx-dt-cand" data-dtmatch="' + esc(r.id) + '"><span class="gx-chip">' + esc(dtFamLabel(c, r)) + '</span>' +
+      '<span class="gx-dt-cand-m">' + esc(r.a || '') + ' vs ' + esc(r.b || '') + '</span>' +
+      '<span class="gx-mono">' + dtPct1(c.p_model) + ' <i class="gx-dim">GP</i></span><span class="gx-mono gx-dim">' + dtPct1(c.p_implied) + ' <i>mkt</i></span>' +
+      '<span class="gx-mono gx-up">+' + Number(c.edge_pp || 0).toFixed(1) + ' pp</span><span class="gx-mono">' + odd(c.odds) + '</span><span class="gx-dim">' + esc(c.book || '') + '</span></div>';
+  }
+
+  // ── PARTIDOS ────────────────────────────────────────────────────────────────────────────────────────
+  function dtTourStrip(tours) {
+    var xs = (tours || []).slice(0, 8);
+    if (!xs.length) return '';
+    return '<div class="gx-dt-tours">' + xs.map(function (tq) {
+      var chips = (tq.formats || []).slice(0, 4).map(function (f) { return '<span class="gx-dt-fchip">' + esc(dtTourFmtChip(f)) + '</span>'; }).join('');
+      if (tq.double_in) chips += '<span class="gx-dt-fchip di">double-in</span>';
+      if (tq.certified_format === false) chips += '<span class="gx-dt-fchip warn" title="' + esc(tq.format_source || '') + '">' + esT('plantilla no certificada', 'uncertified template') + '</span>';
+      return '<div class="gx-panel gx-dt-tour" data-dttour="' + esc(tq.id) + '">' +
+        '<div class="gx-dt-tour-h">' + (tq.logo ? '<img src="' + esc(tq.logo) + '" alt="" loading="lazy" onerror="this.remove()">' : '<span class="gx-cs-crest sm" style="' + crestTint(tq.name) + '"><i style="color:inherit">' + esc(String(tq.name || '?').charAt(0)) + '</i></span>') +
+        '<div class="gx-dt-tour-id"><b>' + esc(tq.name || '—') + '</b><span class="gx-dim">' + esc([tq.venue, tq.city].filter(Boolean).join(', ')) + '</span></div></div>' +
+        '<div class="gx-dim gx-mono gx-dt-tour-d">' + esc([tq.start ? dtDate8(tq.start) : null, tq.end ? dtDate8(tq.end) : null].filter(Boolean).join(' → ')) + (tq.tv ? ' · TV' : '') + '</div>' +
+        '<div class="gx-dt-fchips">' + chips + '</div>' +
+        '<div class="gx-dt-tour-f gx-dim"><span class="gx-mono">' + dtInt(tq.results) + '</span> ' + esT('resultados', 'results') + ' · <span class="gx-mono">' + dtInt(tq.fixtures) + '</span> ' + esT('partidos', 'fixtures') + (tq.ranked ? ' · ranking' : '') + '</div></div>';
+    }).join('') + '</div>';
+  }
+  function renderDtGames() {
+    var d = dtGet('board', '/api/darts/board', 120000);
+    if (!d) { dtShell(t('dt_nav_games'), dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_games'), dtErr()); return; }
+    if ((d.rows || []).some(function (r) { return r.live && r.live.state === 'live'; })) nsLiveAuto(function () { nsBust(S.dt, 'board'); });
+    var q = (S.dt.mQ || '').toLowerCase().trim();
+    var filt = S.dt.mFilt || 'all';
+    var now = Date.now();
+    var items = (d.rows || []).filter(function (r) {
+      if (q && ((r.a || '') + ' ' + (r.b || '') + ' ' + (r.tournament || '') + ' ' + (r.stage || '')).toLowerCase().indexOf(q) < 0) return false;
+      var ko = Date.parse(r.start_at || 0);
+      var bucket = (r.live && r.live.state === 'live') || (ko && ko <= now && r.status !== 'Result') ? 'live' : 'up';
+      if (filt !== 'all' && filt !== bucket) return false;
+      return true;
+    }).sort(function (x, y) { return (Date.parse(x.start_at || 0) || 0) - (Date.parse(y.start_at || 0) || 0); });
+    var tabs = [['all', t('all')], ['live', t('live_f')], ['up', t('upcoming_f')]];
+    var head = '<div class="gx-ohead"><h1>' + esc(t('dt_nav_games')) + '</h1>' +
+      '<div class="gx-seg">' + tabs.map(function (x) { return '<button data-dtmfilt="' + x[0] + '"' + (filt === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>'; }).join('') + '</div>' +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-dtmsearch" placeholder="' + esT('Buscar jugador o torneo…', 'Search player or tournament…') + '" value="' + esc(S.dt.mQ || '') + '" autocomplete="off"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + items.length + esT(' partidos', ' matches') + '</span></div>';
+    var body;
+    if (!items.length) {
+      body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') +
+        '<b>' + ((d.rows || []).length ? esT('Ningún partido con ese filtro.', 'No match with that filter.') : esT('Sin torneos con cuotas activas en la ventana.', 'No tournaments with active odds in the window.')) + '</b>' +
+        '<span class="gx-dim">' + esc((d.rows || []).length ? '' : (d.note || '')) + '</span></div></div>';
+    } else {
+      var groups = [], gmap = {};
+      items.forEach(function (r) {
+        var k = dayKey(r.start_at);
+        if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(r.start_at), rows: [] }; groups.push(gmap[k]); }
+        gmap[k].rows.push(r);
+      });
+      body = groups.map(function (g) {
+        return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.rows.length + '</span></div>' + g.rows.map(dtMatchCard).join('') + '</div>';
+      }).join('');
+    }
+    dtShell(t('dt_nav_games'), dtTourStrip(d.tournaments) + head + body + dtShadowNote(d));
+    var si = $('#gx-dtmsearch');
+    if (si) si.addEventListener('input', function () {
+      S.dt.mQ = si.value; clearTimeout(S._dtmq);
+      S._dtmq = setTimeout(function () { renderDtGames(); var e2 = $('#gx-dtmsearch'); if (e2) { e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }, 260);
+    });
+  }
+  function dtPBar(pA, mkA, big) {
+    if (pA == null || isNaN(pA)) return '';
+    return '<div class="gx-ten-bar' + (big ? ' big' : '') + '"><i style="width:' + Math.round(100 * pA) + '%"></i>' +
+      (mkA != null && !isNaN(mkA) ? '<em style="left:' + Math.round(100 * mkA) + '%" title="' + esT('consenso de mercado ', 'market consensus ') + dtPct(mkA) + '"></em>' : '') + '</div>';
+  }
+  function dtMatchCard(r) {
+    var gp = r.gp || {}, pA = gp.p_a, mk = r.market || {}, mkA = mk.ml_p_a;
+    var isLive = r.live && r.live.state === 'live', isFinal = r.status === 'Result' || (r.live && r.live.state === 'final');
+    var nP = (r.picks || []).length;
+    var scoreA = isLive ? r.live.legs_a : isFinal ? r.score_a : null, scoreB = isLive ? r.live.legs_b : isFinal ? r.score_b : null;
+    var row = function (who, photo, p, sc, win) {
+      return '<div class="gx-ten-mrow">' + dtFace({ name: who, photo: photo }) + '<b class="gx-ten-name">' + esc(who || '—') + (win ? ' <span class="gx-dt-win" title="' + esT('ganó', 'won') + '">✓</span>' : '') + '</b>' +
+        (sc != null ? '<span class="gx-mono gx-ten-p hi">' + esc(String(sc)) + '</span>' : '<span class="gx-mono gx-ten-p' + (p != null && p >= 0.5 ? ' hi' : '') + '">' + dtPct(p) + '</span>') + '</div>';
+    };
+    return '<div class="gx-mcard' + (r.available !== false ? ' clk' : '') + '"' + (r.available !== false ? ' data-dtmatch="' + esc(r.id) + '"' : '') + '>' +
+      '<div class="gx-mcard-top"><span class="gx-time">' + (r.start_at ? esc(fmtTime(r.start_at)) + ' · ' : '') + esc(r.tournament || '') + (r.stage ? ' · ' + esc(r.stage) : '') + '</span>' +
+      '<span class="gx-spacer"></span>' +
+      (isLive ? '<span class="gx-live-pill">' + esT('EN VIVO', 'LIVE') + '</span>' : isFinal ? '<span class="gx-badge">' + esT('final', 'final') + '</span>' : '') +
+      (r.tv ? '<span class="gx-dt-tv">' + esc(r.tv) + '</span>' : '') +
+      '<span class="gx-dim" style="font-size:10.5px">' + esc(dtFmtLabel(r.format, false)) + '</span></div>' +
+      row(r.a, r.photo_a, pA, scoreA, isFinal && r.winner_id != null && r.winner_id === r.a_id) +
+      row(r.b, r.photo_b, pA != null ? 1 - pA : null, scoreB, isFinal && r.winner_id != null && r.winner_id === r.b_id) +
+      (isFinal ? '' : dtPBar(pA, mkA)) +
+      '<div class="gx-mcard-foot"><span class="gx-dim" style="font-size:10.5px">' +
+        (mkA != null ? esT('mercado ', 'market ') + dtPct(mkA) + ' · ' + dtInt(mk.n_books) + esT(' casas', ' books') : (r.available !== false ? esT('sin consenso de mercado', 'no market consensus') : esc(r.why || esT('fuera de la base', 'outside the base')))) +
+        (gp.exp_legs != null ? ' · ' + dtNum(gp.exp_legs, 1) + esT(' legs esp.', ' exp. legs') : gp.exp_sets != null ? ' · ' + dtNum(gp.exp_sets, 1) + esT(' sets esp.', ' exp. sets') : '') +
+        (r.shadow_n ? ' · <b class="gx-ten-shadow">' + r.shadow_n + esT(' en sombra', ' in shadow') + '</b>' : nP ? ' · <b class="gx-ten-shadow">' + nP + esT(' en sombra', ' in shadow') + '</b>' : '') +
+      '</span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div></div>';
+  }
+
+  // ── EL TERMINAL DEL PARTIDO ─────────────────────────────────────────────────────────────────────────
+  function renderDtMatch() {
+    var id = S.dt.matchId;
+    var d = dtGet('m_' + id, '/api/darts/match?id=' + encodeURIComponent(id), 120000);
+    var back = '<a href="#" class="gx-back" data-dtback>' + ic('arrow-left') + ' ' + esc(t('dt_nav_games')) + '</a>';
+    if (!d) { dtShell(esT('Partido', 'Match'), back + dtLoading()); return; }
+    if (d._err) { dtShell(esT('Partido', 'Match'), back + dtErr()); return; }
+    var A = d.a && typeof d.a === 'object' ? d.a : { name: d.a, photo: d.photo_a, id: d.a_id, country: d.a_country };
+    var B = d.b && typeof d.b === 'object' ? d.b : { name: d.b, photo: d.photo_b, id: d.b_id, country: d.b_country };
+    if (d.available === false) {
+      dtShell(esT('Partido', 'Match'), back + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') +
+        '<b>' + esc(d.why || esT('sin lectura', 'no read')) + '</b><span class="gx-dim">' + esc((A.name || '') + ' vs ' + (B.name || '')) + '</span></div></div>' + dtShadowNote(d));
+      return;
+    }
+    var pa = d.p_a != null ? d.p_a : (d.gp && d.gp.p_a);
+    var PR = d.profiles || {}, PA = PR.a || {}, PB = PR.b || {};
+    var mk = d.market || {}, f = d.format || {};
+    var isLive = d.live && d.live.state === 'live';
+    if (isLive) nsLiveAuto(function () { nsBust(S.dt, 'm_'); });
+    var liveB = d.live ? '<div class="gx-panel gx-dt-live">' +
+      '<span class="gx-live-pill">' + (isLive ? esT('EN VIVO', 'LIVE') : esT('FINAL', 'FINAL')) + '</span>' +
+      '<b class="gx-mono">' + esc(dtLast(A.name)) + ' ' + dtInt(d.live.legs_a) + '</b><span class="gx-dim">–</span><b class="gx-mono">' + dtInt(d.live.legs_b) + ' ' + esc(dtLast(B.name)) + '</b>' +
+      '<span class="gx-dim" style="font-size:11px">' + (d.live.best_of ? 'BO' + esc(String(d.live.best_of)) + ' · ' : '') + esc(d.live.source || '') + '</span></div>' : '';
+    var side = function (P, prof, p, cls) {
+      return '<div class="gx-ten-side' + (cls ? ' ' + cls : '') + '" data-dtplayer="' + esc(P.id) + '">' + dtFace(P, 'big') + '<b>' + esc(P.name || '—') + '</b><em class="gx-mono">' + dtPct(p) + '</em>' +
+        '<span class="gx-dim" style="font-size:10px">' + esc([dtCountry(P.country || prof.country), prof.oom_rank ? 'OoM #' + prof.oom_rank : null, prof.nickname ? '“' + prof.nickname + '”' : null].filter(Boolean).join(' · ')) + '</span></div>';
+    };
+    var expUnit = d.legs && d.legs.exp_total != null ? dtNum(d.legs.exp_total, 1) + esT(' legs esperados', ' expected legs') : d.sets && d.sets.exp_total != null ? dtNum(d.sets.exp_total, 1) + esT(' sets esperados', ' expected sets') : null;
+    var x180 = d.x180 || {};
+    var exp180 = x180.exp_a != null && x180.exp_b != null ? dtNum(Number(x180.exp_a) + Number(x180.exp_b), 1) + ' × 180' : null;
+    var hero = '<div class="gx-panel gx-ten-hero gx-dt-hero">' +
+      '<div class="gx-ten-herotop"><span class="gx-dim">' + esc([d.tournament, d.stage, d.board ? esT('mesa ', 'board ') + d.board : null].filter(Boolean).join(' · ')) + '</span>' +
+      (d.start_at ? '<span class="gx-spacer"></span><span class="gx-dim gx-mono" style="font-size:11px">' + esc(fmtDateTime(d.start_at)) + '</span>' : '') + '</div>' +
+      '<div class="gx-ten-vs">' + side(A, PA, pa) + '<span class="gx-ten-vsx">vs</span>' + side(B, PB, pa != null ? 1 - pa : null, 'b') + '</div>' +
+      dtPBar(pa, mk.ml_p_a, true) +
+      '<div class="gx-ten-meta gx-dim">' +
+        '<span class="gx-dt-fmt">' + esc(dtFmtLabel(f, true)) + '</span>' +
+        (f.certified ? '<span class="gx-dt-cert ok" title="' + esc(f.source || '') + '">' + ic('shield-check') + esT('formato certificado', 'certified format') + '</span>' : '<span class="gx-dt-cert" title="' + esc(f.source || '') + '">' + ic('alert-triangle') + esT('plantilla no certificada', 'uncertified template') + '</span>') +
+        (mk.ml_p_a != null ? '<span>' + esT('mercado ', 'market ') + dtPct(mk.ml_p_a) + ' · ' + dtInt(mk.n_books) + esT(' casas', ' books') + '</span>' : '<span>' + esT('sin consenso', 'no consensus') + '</span>') +
+        (expUnit ? '<span>' + expUnit + '</span>' : '') +
+        (exp180 ? '<span>' + exp180 + esT(' esperados', ' expected') + '</span>' : '') +
+        (d.unc_pp != null ? '<span title="' + esT('incertidumbre del modelo sobre la probabilidad', 'model uncertainty on the probability') + '">' + esT('incertidumbre ±', 'uncertainty ±') + dtNum(d.unc_pp, 1) + ' pp</span>' : '') +
+        ((d.picks || []).length ? '<span class="gx-ten-shadow">' + d.picks.length + esT(' tesis', d.picks.length === 1 ? ' thesis' : ' theses') + '</span>'
+          : d.picks_locked ? '<a class="gx-ten-shadow" href="/plans" style="text-decoration:none">' + ic('lock') + d.picks_locked + esT(' tesis — en Pro', ' theses — in Pro') + '</a>' : '') +
+      '</div></div>';
+    var lens = S.dt.lens || 'partido';
+    var LENSES = [
+      ['partido', esT('El partido', 'The match'), function () { return dtLegPanel(d, A, B) + dtRiverPanel(d, A, B) + dtLoomPanel(d, A, B) + dtLadderPanel(d, A, B) + dtPrismPanel(d, A, B) + dtPicksPanel(d); }],
+      ['diana', esT('La diana', 'The board'), function () { return dtOchePanel(d, A, B); }],
+      ['contexto', esT('Contexto', 'Context'), function () { return gpSenales(d.senales) + dtH2HPanel(d, A, B) + dtFormPanel(d, A, B, PA, PB) + dtMarketPanel(d) + dtGatesPanel(d, A, B); }],
+    ];
+    if (!LENSES.some(function (x) { return x[0] === lens; })) lens = 'partido';
+    var bar = '<div class="gx-seg gx-es-lens">' + LENSES.map(function (x) { return '<button data-dtlens="' + x[0] + '"' + (x[0] === lens ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>'; }).join('') + '</div>';
+    var act = LENSES.filter(function (x) { return x[0] === lens; })[0];
+    dtShell(esT('Partido', 'Match'), back + liveB + hero + bar + act[2]() + dtShadowNote(d));
+  }
+  // (a) EL LEG: salir y romper
+  function dtLegPanel(d, A, B) {
+    var lg = d.leg || {}, sc = d.scenarios || null;
+    var starter = d.starter || 'unknown';
+    var startTxt = starter === 'a' ? esT('sale ', 'starts: ') + dtLast(A.name) : starter === 'b' ? esT('sale ', 'starts: ') + dtLast(B.name) : esT('bull-off desconocido: se promedian los dos escenarios', 'bull-off unknown: both scenarios averaged');
+    var scen = sc && sc.a_starts && sc.b_starts
+      ? tenCmp(esT('P(gana ' + dtLast(A.name) + ') según quién sale', 'P(' + dtLast(A.name) + ' wins) by who starts'), sc.a_starts.p_a, sc.b_starts.p_a, tenPctF, esT('izquierda: sale ' + dtLast(A.name) + ' · derecha: sale ' + dtLast(B.name), 'left: ' + dtLast(A.name) + ' starts · right: ' + dtLast(B.name) + ' starts'))
+      : '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('El leg: salir y romper', 'The leg: hold and break') + '</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(startTxt) + '</span></div>' +
+      '<div class="gx-tcmp-head"><b>' + esc(dtLast(A.name)) + '</b><span class="gx-spacer"></span><b>' + esc(dtLast(B.name)) + '</b></div>' +
+      tenCmp(esT('gana el leg saliendo', 'holds throw'), lg.hold_a, lg.hold_b, tenPctF, esT('probabilidad de ganar un leg en el que sale primero', 'probability of winning a leg with the throw')) +
+      tenCmp(esT('rompe el del rival', 'breaks throw'), lg.break_a, lg.break_b, tenPctF, esT('probabilidad de ganar un leg en el que sale el rival', 'probability of winning a leg against the throw')) +
+      (d.first_leg_p_a != null ? tenCmp(esT('primer leg', 'first leg'), d.first_leg_p_a, 1 - d.first_leg_p_a, tenPctF) : '') +
+      scen +
+      (lg.exp_visits != null || d.exp_visits != null ? '<div class="gx-dim gx-es-note">' + esT('Visitas esperadas por leg: ', 'Expected visits per leg: ') + '<b class="gx-mono">' + dtNum(lg.exp_visits != null ? lg.exp_visits : d.exp_visits, 1) + '</b>. ' : '<div class="gx-dim gx-es-note">') +
+      esT('El compilador va visita → leg → set → partido con la alternancia real de la salida. Los porcentajes están ajustados por rival: no son la media del jugador, son lo que le sale CONTRA ESTE.', 'The compiler goes visit → leg → set → match with the real throw alternation. Percentages are opponent-adjusted: not the player\'s average, what comes out AGAINST THIS ONE.') + '</div></div>';
+  }
+  // (b) 501 RIVER: legs/sets totales con la línea de la casa, margen espejado y el marcador exacto
+  function dtRiverPanel(d, A, B) {
+    var L = d.legs, Sx = d.sets, mk = d.market || {};
+    var unit = L ? 'legs' : Sx ? 'sets' : null;
+    if (!unit) return '';
+    var dist = L || Sx;
+    var lines = L ? (mk.lines_legs || []) : [];
+    var tot = dtPairs(dist.total).length ? '<div class="gx-dt-sub"><span class="gx-label">' + esc(unit) + esT(' totales', ' total') + '</span><span class="gx-dim gx-mono">' + esT('media ', 'mean ') + dtNum(dist.exp_total, 1) + (lines.length ? ' · ' + esT('línea', 'line') + ' ' + esc(lines.join(' / ')) : '') + '</span></div>' + dtHist(dist.total, { lines: lines, every: 1 }) : '';
+    var mar = L && dtPairs(L.margin).length ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('margen', 'margin') + '</span><span class="gx-dim">' + esc(dtLast(B.name)) + ' ← 0 → ' + esc(dtLast(A.name)) + '</span></div>' + dtHist(L.margin, { sign: true, every: 1 }) : '';
+    var heat = dtHeatGrid(dist.score, A.name, B.name, unit);
+    return '<div class="gx-panel gx-dt-river"><div class="gx-ph"><span class="gx-label">501 River</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('la curva entera, no las dos líneas de la casa', 'the whole curve, not the house\'s two lines') + '</span></div>' +
+      tot + mar + (heat ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('marcador exacto', 'correct score') + '</span></div>' + heat : '') + '</div>';
+  }
+  // (c) 180 LOOM
+  function dtLoomPanel(d, A, B) {
+    var x = d.x180; if (!x) return '';
+    var seg = (x.most_a != null || x.tie != null || x.most_b != null) ? '<div class="gx-dt-loom3">' +
+      '<i class="a" style="width:' + Math.round(100 * (x.most_a || 0)) + '%"><span>' + esc(dtLast(A.name)) + ' ' + dtPct(x.most_a) + '</span></i>' +
+      '<i class="t" style="width:' + Math.round(100 * (x.tie || 0)) + '%"><span>' + esT('empate', 'tie') + ' ' + dtPct(x.tie) + '</span></i>' +
+      '<i class="b" style="width:' + Math.round(100 * (x.most_b || 0)) + '%"><span>' + esc(dtLast(B.name)) + ' ' + dtPct(x.most_b) + '</span></i></div>' : '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">180 Loom</span>' +
+      '<span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + esc(dtLast(A.name)) + ' ' + dtNum(x.exp_a, 1) + ' · ' + esc(dtLast(B.name)) + ' ' + dtNum(x.exp_b, 1) + '</span></div>' +
+      '<div class="gx-dt-two"><div><div class="gx-dt-sub"><span class="gx-label">' + esc(dtLast(A.name)) + '</span></div>' + dtHist(x.a, { every: 1, cls: 'a' }) + '</div>' +
+      '<div><div class="gx-dt-sub"><span class="gx-label">' + esc(dtLast(B.name)) + '</span></div>' + dtHist(x.b, { every: 1, cls: 'b' }) + '</div></div>' +
+      (dtPairs(x.total).length ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('180 del partido', 'match 180s') + '</span></div>' + dtHist(x.total, { every: 1 }) : '') +
+      (seg ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('quién tira más', 'who hits more') + '</span></div>' + seg : '') + '</div>';
+  }
+  // (d) CHECKOUT EXTREME LADDER
+  function dtLadderPanel(d, A, B) {
+    var lad = dtLadder(d.checkout_max, A.name, B.name);
+    if (!lad) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Checkout Extreme Ladder</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">P(' + esT('checkout máximo ≥ c', 'highest checkout ≥ c') + ')</span></div>' + lad +
+      '<div class="gx-dim gx-es-note">' + esT('Cada escalón es la probabilidad de que el checkout más alto del partido (o de cada tirador) llegue al menos a ese valor. Sale del mismo kernel que el resto.', 'Each step is the probability that the highest checkout of the match (or of each player) reaches at least that value. From the same kernel as everything else.') + '</div></div>';
+  }
+  // (e) FORMAT PRISM
+  function dtPrismPanel(d, A, B) {
+    var fp = Array.isArray(d.format_prism) ? d.format_prism : [];
+    if (!fp.length) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Format Prism</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('el mismo duelo, a otras distancias', 'the same duel at other distances') + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-dt-prism"><thead><tr><th>' + esT('Formato', 'Format') + '</th><th class="r">P(' + esc(dtLast(A.name)) + ')</th><th class="r">P(' + esc(dtLast(B.name)) + ')</th><th class="r">' + esT('Unid. esp.', 'Exp. units') + '</th><th class="r">180 esp.</th></tr></thead><tbody>' +
+      fp.map(function (r) {
+        return '<tr' + (r.current ? ' class="pick"' : '') + '><td><b>' + esc(r.label || '—') + '</b>' + (r.current ? ' <span class="gx-dt-fchip">' + esT('este', 'this') + '</span>' : '') + '</td>' +
+          '<td class="r gx-mono">' + dtPct1(r.p_a) + '</td><td class="r gx-mono gx-dim">' + (r.p_a != null ? dtPct1(1 - r.p_a) : '—') + '</td>' +
+          '<td class="r gx-mono">' + dtNum(r.exp_units, 1) + '</td><td class="r gx-mono">' + dtNum(r.exp_180_total, 1) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Cuanto más largo el formato, más pesa la diferencia de kernel y menos el azar de un leg. Es la misma lectura, no una nueva.', 'The longer the format, the more the kernel gap weighs and the less a single leg\'s luck. Same read, not a new one.') + '</div></div>';
+  }
+  // (f) LAS TESIS con la card de la casa
+  function dtPicksPanel(d) {
+    var pk = d.picks || [];
+    if (!pk.length && d.picks_locked) return '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de este partido son para suscriptores', 'The theses for this match are for subscribers'), esT('El motor valoró las líneas abiertas y marcó ' + d.picks_locked + ' tesis — verlas con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The engine valued the open lines and flagged ' + d.picks_locked + (d.picks_locked === 1 ? ' thesis' : ' theses') + ' — seeing them with reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
+    if (!pk.length) {
+      return '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
+        '<b>' + esT('Ninguna línea de este partido pasa el listón.', 'No line of this match clears the bar.') + '</b>' +
+        '<span class="gx-dim">' + esT('El motor valoró las abiertas y ninguna supera su propio ruido. Decir NO también es un resultado.', 'The engine valued the open ones and none beats its own noise. Saying NO is also a result.') + '</span></div></div>';
+    }
+    return '<div class="gx-picks-feed">' + pk.map(function (x) { return pickCard(x, {}); }).join('') + '</div>' + dtDisc();
+  }
+  // LA DIANA (Oche Field): una diana por tirador con sus dobles, y al lado su ADN
+  function dtOchePanel(d, A, B) {
+    var K = d.kernels || {};
+    var one = function (P, k, prof) {
+      k = k || (prof && prof.kernel) || null;
+      if (!k) return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(P.name || '—') + '</b><span class="gx-dim">' + esT('sin kernel identificado', 'no identified kernel') + '</span></div></div>';
+      return '<div class="gx-panel gx-dt-oche"><div class="gx-ph"><span class="gx-label">' + esc(P.name || '—') + '</span>' +
+        '<span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + (k.elo != null ? esT('Nivel GP ', 'GP level ') + dtInt(k.elo) : '') + '</span></div>' +
+        '<div class="gx-dt-oche-grid">' +
+          '<div class="gx-dt-oche-board">' + dtBoard(k.doubles) + '<div class="gx-dim gx-es-note" style="text-align:center">' + esT('con qué doble cierra', 'which double he finishes on') + '</div></div>' +
+          '<div class="gx-dt-oche-side">' +
+            '<div class="gx-dt-sub"><span class="gx-label">Scoring DNA</span><span class="gx-dim">' + esT('una visita de puntuación pura', 'one pure scoring visit') + '</span></div>' + dtScoringDNA(k.scoring_visit) +
+            '<div class="gx-dt-sub"><span class="gx-label">' + esT('valor del checkout', 'checkout value') + '</span></div>' + dtCheckoutStrip(k.checkout_pmf) +
+            '<div class="gx-dt-sub"><span class="gx-label">' + esT('visitas para cerrar 501', 'visits to finish 501') + '</span><span class="gx-dim">' + esT('jugando solo', 'playing alone') + '</span></div>' + dtVisitsPMF(k.visits_pmf) +
+          '</div></div>' +
+        dtSkillTiles(k, prof) + '</div>';
+    };
+    return '<div class="gx-dt-oche-wrap">' + one(A, K.a, (d.profiles || {}).a) + one(B, K.b, (d.profiles || {}).b) + '</div>' +
+      '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span>' + esT('Distribuciones del kernel calibrado sobre la estadística de partido — no son dardos observados. Ninguna coordenada de esta pantalla fue vista por nadie: es lo que el modelo espera, no lo que pasó.', 'Distributions from the kernel calibrated on match statistics — not observed darts. No coordinate on this screen was seen by anyone: it is what the model expects, not what happened.') + '</span></div>';
+  }
+  // CONTEXTO
+  function dtH2HPanel(d, A, B) {
+    var h = d.h2h || {};
+    var n = (h.w_a || 0) + (h.w_b || 0);
+    if (!n) return '<div class="gx-panel"><div class="gx-empty">' + ic('history-off') + '<b>' + esT('No se han cruzado nunca en la base.', 'They have never met in the base.') + '</b>' +
+      '<span class="gx-dim">' + esT('Sin historial directo, el modelo se apoya entero en el kernel de cada uno.', 'Without head-to-head history the model leans entirely on each kernel.') + '</span></div></div>';
+    var mt = (h.rows || []).slice(0, 8);
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Historial directo', 'Head to head') + '</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + n + esT(' partidos medidos', ' matches measured') + '</span></div>' +
+      '<div class="gx-ten-h2h"><b class="gx-mono">' + dtInt(h.w_a) + '</b><span class="gx-dim">' + esc(A.name || '') + '</span>' +
+      '<span class="gx-spacer"></span><span class="gx-dim">' + esc(B.name || '') + '</span><b class="gx-mono">' + dtInt(h.w_b) + '</b></div>' +
+      (mt.length ? '<div class="gx-ten-h2hlist">' + mt.map(function (m) {
+        var wA = m.winner === 'a' || (A.id != null && m.winner === A.id);
+        return '<div class="gx-ten-h2hrow"><span class="gx-dim gx-mono">' + esc(dtDate8(m.date)) + '</span>' +
+          '<span class="' + (wA ? 'gx-up' : 'gx-down') + '" title="' + esT('ganó ', 'won: ') + esc(wA ? A.name : B.name) + '">' + (wA ? '◀' : '▶') + '</span>' +
+          '<span class="gx-tform-opp">' + esc(m.tourney || '') + '</span><span class="gx-dim">' + esc(m.round || '') + '</span>' +
+          '<span class="gx-spacer"></span><span class="gx-mono">' + esc(m.score || '') + '</span>' +
+          (m.avg_w != null ? '<span class="gx-mono gx-dim" title="' + esT('media ganador / perdedor', 'winner / loser average') + '">' + dtNum(m.avg_w, 1) + ' / ' + dtNum(m.avg_l, 1) + '</span>' : '') + '</div>';
+      }).join('') + '</div>' : '') + '</div>';
+  }
+  function dtFormPanel(d, A, B, PA, PB) {
+    var one = function (who, P) {
+      var rec = (P.recent || []).slice(0, 7);
+      var spark = (P.form || []).length >= 2 ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('media por mes', 'monthly average') + '</span><span class="gx-dim">' + esT('ventanas de 90 días', '90-day windows') + '</span></div>' + dtSpark(P.form, 'avg') : '';
+      if (!rec.length && !spark) return '';
+      var streak = rec.map(function (m) { return '<span class="gx-tform-d ' + (m.won ? 'w' : 'l') + '" title="' + esc((m.opp || '') + ' · ' + (m.score || '')) + '">' + (m.won ? 'V' : 'D') + '</span>'; }).join('');
+      return '<div class="gx-tform-side"><div class="gx-tform-h">' + dtFace(who) + '<b>' + esc(who.name || '—') + '</b><span class="gx-spacer"></span><span class="gx-tform-streak">' + streak + '</span></div>' +
+        (rec.length ? '<div class="gx-tform-list">' + rec.map(function (m) {
+          return '<div class="gx-tform-row"><span class="' + (m.won ? 'gx-up' : 'gx-down') + '">' + (m.won ? '✓' : '✕') + '</span>' +
+            '<span class="gx-tform-opp"' + (m.opp_id != null ? ' data-dtplayer="' + esc(m.opp_id) + '" style="cursor:pointer"' : '') + '>' + esc(m.opp || '') + '</span>' +
+            '<span class="gx-dim" style="font-size:10px">' + esc([m.tourney, m.round].filter(Boolean).join(' · ')) + '</span>' +
+            '<span class="gx-spacer"></span><span class="gx-mono gx-dim">' + esc(m.score || '') + '</span>' +
+            '<span class="gx-mono" title="' + esT('media', 'average') + '">' + dtNum(m.avg, 1) + '</span><span class="gx-mono gx-dim" title="180s">' + dtInt(m.x180) + '×180</span></div>';
+        }).join('') + '</div>' : '') + spark + '</div>';
+    };
+    var body = one(A, PA) + one(B, PB);
+    if (!body) return '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Forma reciente', 'Recent form') + '</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('últimos partidos con media y 180', 'latest matches with average and 180s') + '</span></div>' + body + '</div>';
+  }
+  function dtMarketPanel(d) {
+    var rows = Array.isArray(d.market_rows) ? d.market_rows : [];
+    var pm = d.polymarket || (d.market && d.market.polymarket) || null;
+    if (!rows.length && !pm) return '';
+    var pmB = pm && pm.p_a != null ? '<div class="gx-dt-pm"><b>Polymarket</b> <span class="gx-mono">' + dtPct(pm.p_a) + '</span> ' + esT('a favor de A', 'for A') + (pm.liquidity != null ? ' · <span class="gx-mono">$' + dtInt(pm.liquidity) + '</span> ' + esT('liquidez', 'liquidity') : '') + (pm.url ? ' · <a href="' + esc(pm.url) + '" target="_blank" rel="noopener">' + esT('ver', 'open') + '</a>' : '') + '</div>' : '';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Mercado', 'Market') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + rows.length + esT(' líneas', ' lines') + '</span></div>' + pmB +
+      (rows.length ? '<div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Casa', 'Book') + '</th><th>' + esT('Familia', 'Family') + '</th><th>' + esT('Lado', 'Side') + '</th><th class="r">' + esT('Línea', 'Line') + '</th><th class="r">' + esT('Cuota', 'Odds') + '</th></tr></thead><tbody>' +
+        rows.slice(0, 40).map(function (r) {
+          return '<tr><td>' + esc(prettyBook(r.book || '') || r.book || '—') + '</td><td><b>' + esc(r.family || '—') + '</b></td><td class="gx-dim">' + esc(dtStr(r.side)) + (r.participant ? ' (' + esc(r.participant) + ')' : '') + '</td>' +
+            '<td class="r gx-mono">' + dtStr(r.line) + '</td><td class="r gx-mono">' + odd(r.odds) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '') + '</div>';
+  }
+  // INVALIDATION REGISTER: cada candidato con su veredicto y la primera puerta que no pasó
+  function dtGatesPanel(d, A, B) {
+    var cs = Array.isArray(d.candidates) ? d.candidates : [];
+    if (!cs.length) return '';
+    var fake = { a: A.name, b: B.name };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Invalidation Register</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('qué evaluó el motor y por qué dijo no', 'what the engine evaluated and why it said no') + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-dt-gates"><thead><tr><th>' + esT('Familia', 'Family') + '</th><th>' + esT('Casa', 'Book') + '</th><th class="r">' + esT('Cuota', 'Odds') + '</th><th class="r">GP</th><th class="r">' + esT('Impl.', 'Impl.') + '</th><th class="r">Edge</th><th>' + esT('Veredicto', 'Verdict') + '</th></tr></thead><tbody>' +
+      cs.map(function (c) {
+        var fail = (c.gates || []).filter(function (g) { return g && g.pass === false && !g.informativo; })[0];
+        var ok = c.verdict === 'SHADOW_PICK';
+        return '<tr><td><b>' + esc(dtFamLabel(c, fake)) + '</b></td><td class="gx-dim">' + esc(c.book || '—') + '</td>' +
+          '<td class="r gx-mono">' + odd(c.odds) + '</td><td class="r gx-mono">' + dtPct1(c.p_model) + '</td><td class="r gx-mono gx-dim">' + dtPct1(c.p_implied) + '</td>' +
+          '<td class="r gx-mono ' + ((c.edge_pp || 0) > 0 ? 'gx-up' : 'gx-dim') + '">' + (c.edge_pp != null ? ((c.edge_pp > 0 ? '+' : '') + Number(c.edge_pp).toFixed(1)) : '—') + '</td>' +
+          '<td>' + (ok ? '<span class="gx-clgate sh">' + esT('SOMBRA', 'SHADOW') + '</span>' : '<span class="gx-clgate">NO</span>') +
+          (fail ? '<div class="gx-dim" style="font-size:10px;margin-top:2px">' + esc(fail.gate || '') + (fail.detail ? ' · ' + esc(fail.detail) : '') + '</div>' : c.no_pick_reason ? '<div class="gx-dim" style="font-size:10px;margin-top:2px">' + esc(c.no_pick_reason) + '</div>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Una tesis en sombra no es una pick: es el registro que decidirá si algún día lo es. Estimaciones de un modelo estadístico, no consejo financiero.', 'A shadow thesis is not a pick: it is the record that will decide whether it ever becomes one. Estimates from a statistical model, not financial advice.') + '</div></div>';
+  }
+
+  // ── JUGADORES ───────────────────────────────────────────────────────────────────────────────────────
+  function renderDtPlayers() {
+    var q = S.dt.pQ || '';
+    var d = dtGet('dir_' + q, '/api/darts/players?q=' + encodeURIComponent(q) + '&limit=80', 300000);
+    var head = '<div class="gx-msearch">' + ic('search') + '<input id="gx-dtsearch" placeholder="' + esT('Buscar jugador…', 'Search player…') + '" value="' + esc(q) + '" autocomplete="off"></div>';
+    var body;
+    if (!d) body = dtLoading();
+    else if (d._err) body = dtErr();
+    else {
+      var rows = d.rows || [];
+      body = rows.length ? '<div class="gx-est-grid">' + rows.map(function (p) {
+        return '<div class="gx-panel gx-est-card" data-dtplayer="' + esc(p.id) + '">' +
+          '<div class="gx-est-top">' + dtFace(p, 'big') +
+            '<div class="gx-est-id"><b>' + esc(p.name || '—') + '</b><span>' + esc([p.nickname ? '“' + p.nickname + '”' : null, dtCountry(p.country), p.tour_card ? 'Tour Card' : null].filter(Boolean).join(' · ')) + (p.inactive ? ' · <em style="color:#e5a84d">' + esT('inactivo', 'inactive') + '</em>' : '') + (p.cold ? ' · <em class="gx-dim">' + esT('kernel frío', 'cold kernel') + '</em>' : '') + '</span></div>' +
+            '<span class="gx-spacer"></span>' +
+            '<div class="gx-est-elo"><b>' + dtInt(p.elo) + '</b><span>' + esT('Nivel GP', 'GP level') + '</span></div></div>' +
+          '<div class="gx-est-meta"><span class="gx-mono">' + dtNum(p.avg, 1) + ' <i class="gx-dim">' + esT('media', 'avg') + '</i></span><span class="gx-mono">' + dtPctAuto(p.checkout_pct) + ' <i class="gx-dim">' + esT('dobles', 'doubles') + '</i></span><span class="gx-mono gx-dim">' + esc(dtWL(p.wl)) + '</span><span class="gx-dim">OoM ' + (p.oom_rank != null ? '#' + p.oom_rank : '—') + '</span></div>' +
+        '</div>';
+      }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Ningún jugador con ese nombre.', 'No player by that name.') + '</b></div></div>';
+      body += '<div class="gx-dim gx-es-trunc">' + (d.total != null ? dtInt(d.total) + esT(' en la base · ', ' in the base · ') : '') + esc(d.freshness || '') + ' ' + esc(d.attribution || '') + '</div>';
+    }
+    dtShell(t('sr_players'), head + body);
+    var si = $('#gx-dtsearch');
+    if (si) si.addEventListener('input', function () { S.dt.pQ = si.value; clearTimeout(S._dtq); S._dtq = setTimeout(function () { renderDtPlayers(); var e2 = $('#gx-dtsearch'); if (e2) { e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }, 250); });
+  }
+  function renderDtPlayer() {
+    var id = S.dt.playerId;
+    var bk = dtBack('dtplayers', t('sr_players'));
+    var d = dtGet('pl_' + id, '/api/darts/player?id=' + encodeURIComponent(id), 600000);
+    if (!d) { dtShell(t('sr_players'), bk + dtLoading()); return; }
+    if (d._err) { dtShell(t('sr_players'), bk + dtErr()); return; }
+    if (d.available === false) { dtShell(t('sr_players'), bk + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('Fuera de la base', 'Outside the base')) + '</b></div></div>'); return; }
+    var sk = d.skill || {}, k = d.kernel || {};
+    var kern = Object.assign({}, sk, k);
+    var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + dtFace(d, 'big') +
+      '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name || '—') + (d.nickname ? ' <span class="gx-dim" style="font-weight:500;font-size:13px">“' + esc(d.nickname) + '”</span>' : '') + '</b>' +
+      '<span class="gx-dim">' + esc([dtCountry(d.country), d.age != null ? d.age + esT(' años', ' y/o') : null, d.hometown, d.darts ? d.darts + (d.dart_weight ? ' ' + d.dart_weight + ' g' : '') : (d.dart_weight ? d.dart_weight + ' g' : null), d.tour_card ? 'Tour Card' : null].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + dtInt(d.elo) + '</b><span>' + esT('Nivel GP', 'GP level') + '</span></div>' +
+      '<div class="gx-est-elo"><b>' + (d.oom_rank != null ? '#' + d.oom_rank : '—') + '</b><span>OoM</span></div></div>' +
+      '<div class="gx-est-hero-stats">' +
+        '<div><b class="gx-mono">' + esc(dtWL(d.wl)) + '</b><span>W-L</span></div>' +
+        '<div><b class="gx-mono">' + (d.legs ? dtInt(d.legs.won) + '-' + dtInt(d.legs.lost) : '—') + '</b><span>legs</span></div>' +
+        '<div><b class="gx-mono">' + dtInt(d.titles) + '</b><span>' + esT('títulos', 'titles') + '</span></div>' +
+        '<div><b class="gx-mono">' + dtInt(d.nine_darters) + '</b><span>9-darters</span></div>' +
+        '<div><b class="gx-mono">' + dtNum(d.best_avg, 2) + '</b><span>' + esT('mejor media', 'best avg') + '</span></div>' +
+        '<div><b class="gx-mono">' + dtInt(d.x180_total) + '</b><span>180 total</span></div>' +
+        (d.prize != null ? '<div><b class="gx-mono">' + esc(typeof d.prize === 'number' ? '£' + Math.round(d.prize).toLocaleString('en-GB') : String(d.prize)) + '</b><span>' + esT('premios', 'prize') + '</span></div>' : '') +
+        (d.started ? '<div><b class="gx-mono">' + esc(String(d.started)) + '</b><span>' + esT('desde', 'since') + '</span></div>' : '') +
+      '</div>' +
+      (d.inactive_note ? '<div class="gx-dim" style="margin-top:8px">' + ic('alert-triangle') + ' ' + esc(d.inactive_note) + '</div>' : '') + '</div>';
+    var skill = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('El kernel', 'The kernel') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(k.identified || sk.source || '') + (k.nine_dart_pct != null ? ' · P(9 dardos) ' + dtPct1(k.nine_dart_pct) : '') + '</span></div>' + dtSkillTiles(kern, d) +
+      (d.index_note ? '<div class="gx-dim gx-es-note">' + esc(d.index_note) + '</div>' : '') + '</div>';
+    var oche = '<div class="gx-panel gx-dt-oche"><div class="gx-ph"><span class="gx-label">' + esT('La diana', 'The board') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('dobles esperados · del kernel', 'expected doubles · from the kernel') + '</span></div>' +
+      '<div class="gx-dt-oche-grid"><div class="gx-dt-oche-board">' + dtBoard(k.doubles) + '</div>' +
+      '<div class="gx-dt-oche-side">' +
+        '<div class="gx-dt-sub"><span class="gx-label">Scoring DNA</span></div>' + dtScoringDNA(k.scoring_visit) +
+        '<div class="gx-dt-sub"><span class="gx-label">' + esT('valor del checkout', 'checkout value') + '</span></div>' + dtCheckoutStrip(k.checkout_pmf) +
+        '<div class="gx-dt-sub"><span class="gx-label">' + esT('visitas para cerrar 501', 'visits to finish 501') + '</span></div>' + dtVisitsPMF(k.visits_pmf) +
+      '</div></div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Distribuciones del kernel calibrado sobre la estadística de partido — no son dardos observados.', 'Distributions from the kernel calibrated on match statistics — not observed darts.') + '</div></div>';
+    var form = (d.form || []).length >= 2 ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Forma · 12 meses', 'Form · 12 months') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('media por ventana de 90 días', 'average per 90-day window') + '</span></div>' + dtSpark(d.form, 'avg') +
+      '<div class="gx-dt-formrow gx-dim gx-mono">' + d.form.slice(-6).map(function (f2) { return '<span title="' + esc(String(f2.to || '')) + '">' + esc(String(f2.to || '').slice(5, 7)) + '/' + esc(String(f2.to || '').slice(2, 4)) + ' <b>' + dtNum(f2.avg, 1) + '</b> · ' + dtInt(f2.x180) + '×180</span>'; }).join('') + '</div></div>' : '';
+    var rec = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Últimos partidos', 'Latest matches') + '</span>' + (d.last_date ? '<span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + esc(dtDate8(d.last_date)) + '</span>' : '') + '</div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Fecha', 'Date') + '</th><th></th><th>' + esT('Rival', 'Opponent') + '</th><th>' + esT('Marc.', 'Score') + '</th><th class="r">' + esT('Media', 'Avg') + '</th><th class="r">180</th><th class="r">CO%</th><th class="r">HC</th><th>' + esT('Torneo', 'Event') + '</th></tr></thead><tbody>' +
+      d.recent.slice(0, 15).map(function (m) {
+        return '<tr><td class="gx-mono gx-dim">' + esc(dtDate8(m.date)) + '</td>' +
+          '<td><b style="color:' + (m.won ? 'var(--gx-accent)' : '#e5484d') + '">' + (m.won ? 'W' : 'L') + '</b></td>' +
+          '<td' + (m.opp_id != null ? ' data-dtplayer="' + esc(m.opp_id) + '" style="cursor:pointer"' : '') + '>' + esc(m.opp || '—') + '</td><td class="gx-mono gx-dim">' + esc(m.score || '') + '</td>' +
+          '<td class="r gx-mono">' + dtNum(m.avg, 2) + '</td><td class="r gx-mono">' + dtInt(m.x180) + '</td><td class="r gx-mono gx-dim">' + dtPctAuto(m.co) + '</td><td class="r gx-mono gx-dim">' + dtInt(m.hc) + '</td>' +
+          '<td class="gx-dim">' + esc([m.tourney, m.round].filter(Boolean).join(' · ')) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
+    dtShell(t('sr_players'), bk + hero + skill + oche + form + rec +
+      '<div class="gx-dim gx-es-trunc">' + esc(d.freshness || '') + ' ' + esc(d.attribution || '') + '</div>' + dtShadowNote(null));
+  }
+
+  // ── RANKING GP ──────────────────────────────────────────────────────────────────────────────────────
+  function renderDtRank() {
+    var d = dtGet('rank', '/api/darts/ranking', 600000);
+    if (!d) { dtShell(t('dt_nav_rank'), dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_rank'), dtErr()); return; }
+    var rows = d.rows || [];
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+      '<th class="r">#</th><th></th><th>' + esT('Jugador', 'Player') + '</th><th class="r">' + esT('Nivel GP', 'GP level') + '</th><th class="r">' + esT('Media', 'Avg') + '</th><th class="r">180/vis.</th><th class="r">' + esT('% dobles', 'Doubles') + '</th><th class="r">W-L</th><th class="r">OoM</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var mv = r.move == null ? '<span class="gx-dim">·</span>' : r.move > 0 ? '<span class="gx-up">▲' + r.move + '</span>' : r.move < 0 ? '<span style="color:#e5484d">▼' + (-r.move) + '</span>' : '<span class="gx-dim">=</span>';
+        return '<tr data-dtplayer="' + esc(r.id) + '"><td class="r gx-mono gx-esr-rank">' + dtInt(r.pos) + '</td>' +
+          '<td style="font-size:10.5px">' + mv + '</td>' +
+          '<td><div class="gx-esr-team">' + dtFace(r) + '<b>' + esc(r.name || '—') + '</b>' + (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(dtCountry(r.country)) + '</span>' : '') + (r.cold ? ' <span class="gx-dim" style="font-size:9.5px" title="' + esT('kernel frío: poca muestra', 'cold kernel') + '">❄</span>' : '') + '</div></td>' +
+          '<td class="r gx-mono"><b>' + dtInt(r.elo) + '</b></td>' +
+          '<td class="r gx-mono">' + dtNum(r.avg, 1) + '</td>' +
+          '<td class="r gx-mono gx-dim">' + (r.per180_visit != null ? dtNum(r.per180_visit, 3) : '—') + '</td>' +
+          '<td class="r gx-mono gx-dim">' + dtPctAuto(r.checkout_pct) + '</td>' +
+          '<td class="r gx-mono gx-dim">' + esc(dtWL(r.wl)) + '</td>' +
+          '<td class="r gx-mono gx-dim">' + (r.oom_rank != null ? r.oom_rank : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esc(d.note || '') + (d.snapshot_at ? ' · ' + esc(fmtDateTime(d.snapshot_at)) : '') + ' ' + esc(d.attribution || '') + '</div></div>';
+    dtShell(t('dt_nav_rank'), body + dtShadowNote(null));
+  }
+
+  // ── TORNEOS ─────────────────────────────────────────────────────────────────────────────────────────
+  function dtStateChip(st) {
+    var m = { live: [esT('en juego', 'live'), 'live'], upcoming: [esT('próximo', 'upcoming'), 'up'], done: [esT('terminado', 'done'), 'done'] }[st] || [dtStr(st), ''];
+    return '<span class="gx-dt-state ' + m[1] + '">' + esc(m[0]) + '</span>';
+  }
+  function renderDtTours() {
+    var d = dtGet('tours', '/api/darts/tournaments', 300000);
+    if (!d) { dtShell(t('dt_nav_tours'), dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_tours'), dtErr()); return; }
+    var rows = (d.rows || []).slice().sort(function (x, y) { var o = { live: 0, upcoming: 1, done: 2 }; return (o[x.state] != null ? o[x.state] : 3) - (o[y.state] != null ? o[y.state] : 3) || String(x.start || '').localeCompare(String(y.start || '')); });
+    var body = rows.length ? '<div class="gx-est-grid">' + rows.map(function (tq) {
+      return '<div class="gx-panel gx-est-card gx-dt-tourcard" data-dttour="' + esc(tq.id) + '">' +
+        '<div class="gx-est-top">' + (tq.logo ? '<span class="gx-cs-crest big"><img src="' + esc(tq.logo) + '" alt="" loading="lazy" onload="this.parentNode.classList.add(\'ok\')" onerror="this.remove()"><i>' + esc(String(tq.name || '?').charAt(0)) + '</i></span>' : '<span class="gx-cs-crest big" style="' + crestTint(tq.name) + '"><i style="color:inherit">' + esc(String(tq.name || '?').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 3).toUpperCase() || '?') + '</i></span>') +
+          '<div class="gx-est-id"><b>' + esc(tq.name || '—') + '</b><span>' + esc([tq.venue, tq.city].filter(Boolean).join(', ')) + '</span></div><span class="gx-spacer"></span>' + dtStateChip(tq.state) + '</div>' +
+        '<div class="gx-est-meta"><span class="gx-mono">' + esc([tq.start ? dtDate8(tq.start) : null, tq.end ? dtDate8(tq.end) : null].filter(Boolean).join(' → ')) + '</span>' + (tq.tv ? '<span class="gx-dt-tv">' + esc(tq.tv) + '</span>' : '') + (tq.ranked ? '<span class="gx-dim">ranking</span>' : '') + (tq.double_in ? '<span class="gx-dt-fchip di">double-in</span>' : '') + '<span class="gx-spacer"></span><span class="gx-dim"><span class="gx-mono">' + dtInt(tq.fixtures) + '</span> ' + esT('partidos', 'fixtures') + '</span></div></div>';
+    }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Sin torneos en la base.', 'No tournaments in the base.') + '</b></div></div>';
+    dtShell(t('dt_nav_tours'), body + dtShadowNote(d));
+  }
+  function renderDtTour() {
+    var id = S.dt.tourId;
+    var bk = dtBack('dttours', t('dt_nav_tours'));
+    var d = dtGet('tour_' + id, '/api/darts/tournament?id=' + encodeURIComponent(id), 300000);
+    if (!d) { dtShell(t('dt_nav_tours'), bk + dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_tours'), bk + dtErr()); return; }
+    if (d.available === false) { dtShell(t('dt_nav_tours'), bk + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('Torneo fuera de la base', 'Tournament outside the base')) + '</b></div></div>'); return; }
+    var chips = (d.formats || []).map(function (f) { return '<span class="gx-dt-fchip">' + esc(dtTourFmtChip(f)) + '</span>'; }).join('') + (d.double_in ? '<span class="gx-dt-fchip di">double-in</span>' : '') +
+      (d.certified_format === false ? '<span class="gx-dt-fchip warn">' + esT('plantilla no certificada', 'uncertified template') + '</span>' : d.certified_format ? '<span class="gx-dt-fchip ok">' + esT('formato certificado', 'certified format') + '</span>' : '');
+    var hero = '<div class="gx-es-hero"><div>' + (d.logo ? '<img class="gx-dt-tour-logo" src="' + esc(d.logo) + '" alt="" onerror="this.remove()">' : '') + '<b>' + esc(d.name || '—') + '</b>' +
+      '<span class="gx-dim">' + esc([d.venue, d.city].filter(Boolean).join(', ')) + (d.start ? ' · ' + esc(dtDate8(d.start)) + (d.end ? ' → ' + esc(dtDate8(d.end)) : '') : '') + (d.tv ? ' · TV' : '') + '</span>' +
+      '<div class="gx-dt-fchips" style="margin-top:6px">' + chips + '</div></div><span class="gx-spacer"></span>' +
+      '<div class="gx-es-hero-n"><b>' + dtInt(d.results) + '</b><span>' + esT('resultados', 'results') + '</span></div><div class="gx-es-hero-n"><b>' + dtInt(d.fixtures) + '</b><span>' + esT('partidos', 'fixtures') + '</span></div></div>';
+    var title = Array.isArray(d.title) ? d.title.slice().sort(function (x, y) { return (y.p || 0) - (x.p || 0); }).slice(0, 12) : [];
+    var mxT = Math.max.apply(null, title.map(function (x) { return x.p || 0; }).concat([0.0001]));
+    var titleP = title.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Probabilidad de título', 'Title probability') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('GP · desde el cuadro que queda', 'GP · from the remaining draw') + '</span></div>' +
+      title.map(function (x) {
+        return '<div class="gx-dt-title" data-dtplayer="' + esc(x.id) + '">' + dtFace(x) + '<b>' + esc(x.name || '—') + (d.winner_id != null && x.id === d.winner_id ? ' <span class="gx-dt-win">✓ ' + esT('campeón', 'champion') + '</span>' : '') + '</b>' +
+          '<div class="gx-dt-title-bar"><i style="width:' + Math.round(100 * (x.p || 0) / mxT) + '%"></i></div><span class="gx-mono">' + dtPct1(x.p) + '</span></div>';
+      }).join('') + '</div>' : '';
+    var outr = Array.isArray(d.outrights) && d.outrights.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Ganador · mercado', 'Outright · market') + '</span></div><div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Jugador', 'Player') + '</th><th>' + esT('Casa', 'Book') + '</th><th class="r">' + esT('Cuota', 'Odds') + '</th><th class="r">' + esT('Impl.', 'Impl.') + '</th></tr></thead><tbody>' +
+      d.outrights.slice(0, 30).map(function (o) { return '<tr><td><b>' + esc(o.participant || '—') + '</b></td><td class="gx-dim">' + esc(o.book || '—') + '</td><td class="r gx-mono">' + odd(o.odds) + '</td><td class="r gx-mono gx-dim">' + (o.odds > 1 ? dtPct1(1 / o.odds) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div></div>' : '';
+    var stages = Array.isArray(d.stages) ? d.stages : [];
+    var bracket = stages.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('El cuadro', 'The draw') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('por ronda · resultado o P(GP)', 'by round · result or P(GP)') + '</span></div>' +
+      '<div class="gx-dt-bracket">' + stages.map(function (st) {
+        var fx = st.fixtures || [];
+        var fmt = dtTourFmtChip({ sets: st.sets, legs: st.legs, two_clear: st.two_clear });
+        return '<div class="gx-dt-stage"><div class="gx-dt-stage-h"><b>' + esc(st.stage || '—') + '</b><span class="gx-dt-fchip">' + esc(fmt) + '</span><span class="gx-dim gx-mono">' + fx.length + '</span></div>' +
+          fx.map(function (r) {
+            var res = r.status === 'Result' || (r.score_a != null && r.score_b != null && r.winner_id != null);
+            var gp = r.gp || {}, p = gp.p_a;
+            var line = function (who, id2, sc, pp) {
+              var win = res && r.winner_id != null && r.winner_id === id2;
+              return '<div class="gx-dt-bm-row' + (win ? ' win' : '') + '"><span class="gx-dt-bm-n">' + esc(who || (res ? '—' : 'TBD')) + '</span><span class="gx-mono">' + (res ? dtInt(sc) : dtPct(pp)) + '</span></div>';
+            };
+            return '<div class="gx-dt-bm' + (r.available !== false && r.id != null ? ' clk' : '') + '"' + (r.id != null ? ' data-dtmatch="' + esc(r.id) + '"' : '') + '>' +
+              line(r.a, r.a_id, r.score_a, p) + line(r.b, r.b_id, r.score_b, p != null ? 1 - p : null) +
+              '<div class="gx-dt-bm-f gx-dim">' + (r.start_at ? esc(fmtDateTime(r.start_at)) : '') + (r.live && r.live.state === 'live' ? ' <span class="gx-live-pill">' + dtInt(r.live.legs_a) + '–' + dtInt(r.live.legs_b) + '</span>' : '') + (r.market && r.market.ml_p_a != null && !res ? ' · mkt ' + dtPct(r.market.ml_p_a) : '') + '</div></div>';
+          }).join('') + '</div>';
+      }).join('') + '</div></div>' : '';
+    dtShell(t('dt_nav_tours'), bk + hero + titleP + bracket + outr + dtShadowNote(d));
+  }
+
+  // ── SIMULADOR ───────────────────────────────────────────────────────────────────────────────────────
+  var DT_SIM_FORMATS = [['bo7', 'BO7 legs'], ['bo11', 'BO11 legs'], ['bo19', 'BO19 legs'], ['matchplay19', 'BO19 · dos de diferencia (Matchplay)'], ['matchplay35', 'BO35 · dos de diferencia (final Matchplay)'], ['sets7', 'BO7 sets'], ['sets13', 'BO13 sets (final)'], ['wgp5', 'WGP · BO5 sets · double-in']];
+  function renderDtSim() {
+    var st = S.dt.sim || {};
+    var form = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Enfrenta a dos tiradores cualesquiera', 'Face off any two players') + '</span></div>' +
+      '<div class="gx-tensim-f">' +
+      '<input id="gx-dtsim-a" placeholder="Littler" value="' + esc(st.a || '') + '" autocomplete="off">' +
+      '<span class="gx-dim">vs</span>' +
+      '<input id="gx-dtsim-b" placeholder="Humphries" value="' + esc(st.b || '') + '" autocomplete="off">' +
+      '<select id="gx-dtsim-fmt">' + DT_SIM_FORMATS.map(function (x) { return '<option value="' + x[0] + '"' + ((st.fmt || 'bo11') === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>' +
+      '<select id="gx-dtsim-st">' + [['', esT('bull-off desconocido', 'bull-off unknown')], ['a', esT('sale A', 'A starts')], ['b', esT('sale B', 'B starts')]].map(function (x) { return '<option value="' + x[0] + '"' + ((st.starter || '') === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>' +
+      '<button class="gx-btn" data-dtsimgo>' + esT('Simular', 'Simulate') + '</button></div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Modelo propio, sin cuotas: visita → leg → set → partido con las reglas reales del formato.', 'Own model, market-blind: visit → leg → set → match with the real rules of the format.') + '</div></div>';
+    var res = '';
+    var r = st.result;
+    if (st.loading) res = dtLoading();
+    else if (r && r._locked) res = '<div class="gx-panel">' + lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'), esT('Cruzar dos tiradores cualesquiera con el motor real es parte de los planes Pro y Sharp.', 'Crossing any two players with the real engine is part of the Pro and Sharp plans.')) + '</div>';
+    else if (r && r.available === false) res = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(r.why || esT('sin respuesta', 'no answer')) + '</b></div></div>';
+    else if (r) {
+      var A = r.a || { name: st.a }, B = r.b || { name: st.b };
+      var lg = r.leg || {}, sk = r.skills || {};
+      var fmtLab = (DT_SIM_FORMATS.filter(function (x) { return x[0] === r.format; })[0] || [])[1] || dtStr(r.format);
+      var head = '<div class="gx-panel gx-ten-duel"><div class="gx-ten-duelhead">' +
+        '<div class="gx-ten-duelside" data-dtplayer="' + esc(A.id) + '">' + dtFace(A) + '<b>' + esc(A.name || '—') + '</b><span class="gx-ten-bigp">' + dtPct(r.p_a) + '</span></div>' +
+        '<span class="gx-ten-vs gx-dim">' + esc(fmtLab) + (r.starter && r.starter !== 'unknown' ? ' · ' + esT('sale ', 'starts ') + esc(r.starter === 'a' ? dtLast(A.name) : dtLast(B.name)) : '') + '</span>' +
+        '<div class="gx-ten-duelside r" data-dtplayer="' + esc(B.id) + '">' + dtFace(B) + '<b>' + esc(B.name || '—') + '</b><span class="gx-ten-bigp">' + (r.p_a != null ? dtPct(1 - r.p_a) : '—') + '</span></div></div>' +
+        dtPBar(r.p_a, null, true) +
+        dtTiles([
+          [esT('Gana el leg saliendo · ', 'Holds throw · ') + dtLast(A.name), dtPct(lg.hold_a)], [esT('Gana el leg saliendo · ', 'Holds throw · ') + dtLast(B.name), dtPct(lg.hold_b)],
+          [esT('Rompe · ', 'Breaks · ') + dtLast(A.name), dtPct(lg.break_a)], [esT('Rompe · ', 'Breaks · ') + dtLast(B.name), dtPct(lg.break_b)],
+          [esT('Incertidumbre', 'Uncertainty'), r.unc_pp != null ? '±' + dtNum(r.unc_pp, 1) + ' pp' : '—'],
+          [esT('Elo puro / compilado', 'Pure Elo / compiled'), dtPct(r.p_a_elo) + ' / ' + dtPct(r.p_a_compiled)],
+        ]) +
+        (sk.a || sk.b ? '<div class="gx-tcmp-head" style="margin-top:12px"><b>' + esc(dtLast(A.name)) + '</b><span class="gx-spacer"></span><b>' + esc(dtLast(B.name)) + '</b></div>' +
+          tenCmp(esT('media', 'average'), sk.a && sk.a.avg, sk.b && sk.b.avg, function (v) { return dtNum(v, 1); }) +
+          tenCmp(esT('180 por visita', '180s per visit'), sk.a && sk.a.per180_visit, sk.b && sk.b.per180_visit, function (v) { return v == null ? '—' : dtNum(v, 3); }) +
+          tenCmp(esT('% dobles', 'doubles %'), sk.a && sk.a.checkout_pct, sk.b && sk.b.checkout_pct, dtPctAuto) +
+          tenCmp(esT('Nivel GP', 'GP level'), sk.a && sk.a.elo, sk.b && sk.b.elo, dtInt) : '') + '</div>';
+      var d2 = { legs: r.legs, sets: r.sets, market: {}, x180: r.x180, checkout_max: r.checkout_max, format_prism: r.format_prism, h2h: r.h2h };
+      res = head + dtRiverPanel(d2, A, B) + dtLoomPanel(d2, A, B) + dtLadderPanel(d2, A, B) + dtPrismPanel(d2, A, B) + dtSampleLeg(r.sample_leg, A, B) + dtH2HPanel(d2, A, B) +
+        '<div class="gx-dim gx-es-trunc">' + esc(r.note || '') + ' ' + esc(r.attribution || '') + '</div>';
+    }
+    dtShell(t('nav_sim'), form + res + dtShadowNote(null));
+  }
+  // LEG DE MUESTRA: el único sitio donde se enseña una trayectoria muestreada, y se dice
+  function dtSampleLeg(sl, A, B) {
+    if (!sl || !Array.isArray(sl.visits) || !sl.visits.length) return '';
+    var who = function (w) { return w === 'a' ? dtLast(A.name) : w === 'b' ? dtLast(B.name) : '—'; };
+    var tiles = sl.visits.map(function (v, i) {
+      var cls = 'gx-dt-visit ' + (v.who === 'a' ? 'a' : 'b') + (v.is180 ? ' x180' : '') + (v.bust ? ' bust' : '') + (v.fin ? ' fin' : '');
+      return '<div class="' + cls + '"><span class="gx-dt-visit-n gx-dim gx-mono">' + (i + 1) + '</span><b>' + esc(who(v.who)) + '</b>' +
+        '<span class="gx-mono gx-dt-visit-s">' + dtInt(v.from) + ' → ' + dtInt(v.to) + '</span>' +
+        '<em class="gx-mono">' + (v.bust ? 'BUST' : v.is180 ? '180' : dtInt(v.scored)) + '</em>' +
+        '<span class="gx-dim" style="font-size:9.5px">' + dtInt(v.darts) + esT(' dardos', ' darts') + (v.fin && v.dbl ? ' · ' + esc(String(v.dbl)) : '') + '</span></div>';
+    }).join('');
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Leg de muestra', 'Sample leg') + '</span>' +
+      '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('una trayectoria simulada de ejemplo', 'one simulated example trajectory') + (sl.winner ? ' · ' + esT('gana ', 'won by ') + esc(who(sl.winner)) : '') + '</span></div>' +
+      '<div class="gx-dt-film">' + tiles + '</div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Un solo leg muestreado del kernel para que se vea la mecánica, no un pronóstico: cada vez saldría otro. Nada de esto ocurrió.', 'A single leg sampled from the kernel to show the mechanics, not a forecast: every run would differ. None of this happened.') + '</div></div>';
+  }
+
+  // ── SOMBRA ──────────────────────────────────────────────────────────────────────────────────────────
+  function renderDtPerf() {
+    var d = dtGet('track', '/api/darts/track', 120000);
+    if (!d) { dtShell(t('nav_perf'), dtLoading()); return; }
+    if (d._err) { dtShell(t('nav_perf'), dtErr()); return; }
+    var kpi = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Monitor privado de dardos', 'Private darts monitor') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(d.regime || '') + '</span></div>' +
+      dtTiles([[esT('Abiertas', 'Open'), dtInt(d.open)], [esT('Liquidadas', 'Settled'), dtInt(d.settled)], [esT('Aciertos', 'Record'), dtInt(d.w) + '-' + dtInt(d.l) + (d.push ? '-' + d.push : '')], [esT('Unidades', 'Units'), dtNum(d.units, 2)], ['ROI', d.roi_pct != null ? dtNum(d.roi_pct, 1) + '%' : '—'], [esT('CLV medio', 'Avg CLV'), d.clv_avg_pct != null ? dtNum(d.clv_avg_pct, 2) + '% (n=' + dtInt(d.clv_n) + ')' : '—'], [esT('Anuladas', 'Voided'), dtInt(d.voided || 0)]]) +
+      '<div class="gx-dim gx-es-note">' + esc(d.reading || '') + '</div></div>';
+    var fam = d.by_family && Object.keys(d.by_family).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Por familia', 'By family') + '</span></div><div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Familia', 'Family') + '</th><th class="r">N</th><th class="r">' + esT('Acierto', 'Hit') + '</th><th class="r">' + esT('Unidades', 'Units') + '</th><th class="r">CLV</th><th class="r">σ CLV</th></tr></thead><tbody>' +
+      Object.keys(d.by_family).map(function (k) { var v = d.by_family[k] || {};
+        return '<tr><td><b>' + esc(k) + '</b>' + (v.note ? ' <span class="gx-dim" style="font-size:10px">' + esc(v.note) + '</span>' : '') + '</td><td class="r gx-mono">' + dtInt(v.n) + '</td><td class="r gx-mono">' + (v.hit_pct != null ? dtNum(v.hit_pct, 1) + '%' : '—') + '</td><td class="r gx-mono">' + dtNum(v.units, 2) + '</td><td class="r gx-mono">' + (v.clv_avg_pct != null ? dtNum(v.clv_avg_pct, 2) + '%' : '—') + (v.clv_n != null ? ' <span class="gx-dim">n=' + v.clv_n + '</span>' : '') + '</td><td class="r gx-mono gx-dim">' + dtNum(v.clv_sd, 2) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' : '';
+    var open = (d.open_list || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Tesis abiertas', 'Open theses') + '</span></div>' +
+      d.open_list.slice(0, 14).map(function (p) {
+        return '<div class="gx-ten-h2h"' + (p.match_id != null || p.id != null ? ' data-dtmatch="' + esc(p.match_id != null ? p.match_id : p.id) + '" style="cursor:pointer"' : '') + '><b>' + esc(p.a || '') + ' vs ' + esc(p.b || '') + '</b><span class="gx-dim">' + esc(p.family || '') + ' ' + esc(dtStr(p.side)) + (p.line != null ? ' ' + p.line : '') + ' @' + odd(p.odds) + (p.book ? ' · ' + esc(p.book) : '') + '</span><span class="gx-mono gx-dim">' + (p.edge_pp != null ? '+' + dtNum(p.edge_pp, 1) + 'pp' : '') + '</span></div>';
+      }).join('') + '</div>' : '';
+    var rec = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Últimas liquidadas', 'Recently settled') + '</span></div>' +
+      d.recent.slice(0, 12).map(function (p) {
+        var res = p.result || p.outcome || (p.won === true ? 'win' : p.won === false ? 'loss' : '');
+        return '<div class="gx-ten-h2h"><span class="' + (res === 'win' || res === 'W' ? 'gx-up' : res === 'loss' || res === 'L' ? 'gx-down' : 'gx-dim') + '">' + (res === 'win' || res === 'W' ? '✓' : res === 'loss' || res === 'L' ? '✕' : '·') + '</span><b>' + esc(p.a || '') + ' vs ' + esc(p.b || '') + '</b><span class="gx-dim">' + esc(p.family || '') + ' ' + esc(dtStr(p.side)) + (p.line != null ? ' ' + p.line : '') + ' @' + odd(p.odds) + '</span><span class="gx-mono">' + (p.units != null ? (p.units > 0 ? '+' : '') + dtNum(p.units, 2) + 'u' : '') + '</span></div>';
+      }).join('') + '</div>' : '';
+    dtShell(t('nav_perf'), kpi + fam + open + rec + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>' + dtShadowNote(null));
+  }
+
+  // ── BRIEF ───────────────────────────────────────────────────────────────────────────────────────────
+  function renderDtBrief() {
+    var d = dtGet('brief', '/api/darts/brief', 300000);
+    if (!d) { dtShell(t('nav_brief'), dtLoading()); return; }
+    if (d._locked) { dtShell(t('nav_brief'), '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo — la jornada, las señales y los números detrás — es parte de los planes Pro y Sharp.', 'The model\'s narrated read — the slate, the signals and the numbers behind them — is part of the Pro and Sharp plans.')) + '</div>'); return; }
+    if (d._err) { dtShell(t('nav_brief'), dtErr()); return; }
+    var intro = d.intro && d.intro.es ? '<div class="gx-panel gx-brief-intro"><p>' + esc(S.lang === 'en' && d.intro.en ? d.intro.en : d.intro.es) + '</p><span class="gx-dim" style="font-size:10.5px">GP · ' + esc(String(d.day || '')) + '</span></div>'
+      : '<div class="gx-panel"><div class="gx-dim">' + (d.intro_error === 'sin presupuesto de jobs para hoy' ? esT('La apertura narrada vuelve mañana (presupuesto del redactor agotado hoy); abajo va el tablero completo.', 'The narrated opener returns tomorrow (writer budget spent today); the full board is below.') : esT('Sin apertura narrada todavía hoy.', 'No narrated opener yet today.')) + '</div></div>';
+    var rows = (d.games || []).map(function (r) {
+      var gp = r.gp || {};
+      return '<tr' + (r.id != null ? ' data-dtmatch="' + esc(r.id) + '" style="cursor:pointer"' : '') + '><td>' + esc(r.a || '') + '<span class="gx-dim"> vs </span>' + esc(r.b || '') + (r.live && r.live.state === 'live' ? ' <span class="gx-live-pill">' + dtInt(r.live.legs_a) + '–' + dtInt(r.live.legs_b) + '</span>' : '') + '</td><td class="gx-dim">' + esc([r.tournament, r.stage].filter(Boolean).join(' · ')) + '</td>' +
+        '<td class="r gx-mono">' + dtPct(gp.p_a) + '</td>' +
+        '<td class="r gx-mono gx-dim">' + (r.market && r.market.ml_p_a != null ? dtPct(r.market.ml_p_a) : '—') + '</td>' +
+        '<td class="r gx-mono gx-dim">' + (gp.exp_legs != null ? dtNum(gp.exp_legs, 1) : gp.exp_sets != null ? dtNum(gp.exp_sets, 1) + ' sets' : '—') + '</td></tr>';
+    }).join('');
+    var table = rows ? '<div class="gx-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>' + esT('Partido', 'Match') + '</th><th>' + esT('Torneo', 'Event') + '</th><th class="r">GP</th><th class="r">' + esT('Mercado', 'Market') + '</th><th class="r">' + esT('Legs esp.', 'Exp. legs') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' : '';
+    dtShell(t('nav_brief'), intro + table + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>' + dtShadowNote(null));
+  }
+
+  // ── PREGÚNTALE A GP ─────────────────────────────────────────────────────────────────────────────────
+  function renderDtAsk() {
+    S.dt.ask = S.dt.ask || { hist: [], busy: false };
+    var A = S.dt.ask;
+    var sug = S.lang === 'en'
+      ? ['How is Littler arriving?', 'Simulate Humphries vs Littler best of 19', 'Who hits more 180s today?', 'How is the darts shadow doing?']
+      : ['¿Cómo llega Littler?', 'Simula Humphries vs Littler al mejor de 19', '¿Quién tira más 180s hoy?', '¿Cómo va la sombra de dardos?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) {
+      return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>');
+    }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox">' +
+      '<div class="gx-ph"><span class="gx-label">' + esc(t('nav_cb_ask')) + '</span><span class="gx-ph-extra">' + esc(t('sport_darts')) + ' · PDC</span></div>' +
+      thread +
+      (A.busy ? '<div class="gx-bb-a gx-dim">' + esT('Pensando…', 'Thinking…') + '</div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-dt-q" placeholder="' + esT('Pregunta por un partido, un tirador o la sombra…', 'Ask about a match, a player or the shadow…') + '" autocomplete="off"' + (A.busy ? ' disabled' : '') + '>' +
+      '<button class="gx-btn" data-dtaskgo' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + esT('Preguntar', 'Ask') + '</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-dtasksug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div>' +
+      '<div class="gx-dim gx-bb-courtnote">' + esT('Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.', 'Answers only with data loaded on the platform. If it lacks the data, it says so. Not financial advice.') + '</div>' +
+      '</div>';
+    dtShell(t('nav_cb_ask'), box);
+    var inp = $('#gx-dt-q');
+    if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') dtAskGo(inp.value); });
+  }
+  function dtAskGo(qArg) {
+    var inp = $('#gx-dt-q'); var q = String(qArg || (inp && inp.value) || '').trim(); if (!q) return;
+    S.dt.ask = S.dt.ask || { hist: [], busy: false };
+    var A = S.dt.ask;
+    A.hist.push({ q: q, answer: null }); A.busy = true; renderDtAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+      body: JSON.stringify({ q: q, sport: 'darts', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5).map(function (h) { return { q: h.q, a: h.answer }; }) }) })
+      .then(function (r) { return r.json(); }).catch(function () { return null; })
+      .then(function (j) {
+        A.busy = false;
+        A.hist[A.hist.length - 1].answer = (j && (j.a || j.answer || j.text)) || esT('No pude responder ahora mismo.', 'I could not answer right now.');
+        if (S.view === 'dtask') renderDtAsk();
+      });
+  }
+
+  // ── EL MOTOR ────────────────────────────────────────────────────────────────────────────────────────
+  function renderDtModel() {
+    var d = dtGet('model', '/api/darts/model', 3600000);
+    if (!d) { dtShell(t('dt_nav_model'), dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_model'), dtErr()); return; }
+    var b = d.base || {}, m = d.mechanism || {}, vt = d.validation || null;
+    var fresh = b.freshness && typeof b.freshness === 'object' ? Object.keys(b.freshness).map(function (k) { return k + ' ' + b.freshness[k]; }).join(' · ') : (b.freshness || '');
+    var head = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esc(d.name || esT('Motor de dardos', 'Darts engine')) + '</span><span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + esc([d.version ? 'v' + d.version : null, d.family].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<p class="gx-dim" style="font-size:12.5px;line-height:1.55">' + esc(d.doctrine || '') + '</p></div>';
+    var base = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('La base', 'The base') + '</span>' + (b.level ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(String(b.level)) + '</span>' : '') + '</div>' +
+      dtTiles([[esT('Partidos', 'Matches'), dtInt(b.matches)], [esT('Jugadores', 'Players'), dtInt(b.players)], [esT('Torneos', 'Tourneys'), dtInt(b.tourneys)], [esT('Ventana', 'Window'), dtStr(b.window)], [esT('Frescura', 'Freshness'), fresh || '—'], [esT('Orakel a fecha', 'Orakel as of'), dtStr(b.orakel_as_of)]]) +
+      (Array.isArray(b.sources) && b.sources.length ? '<div class="gx-dim gx-es-note">' + esT('Fuentes: ', 'Sources: ') + esc(b.sources.join(' · ')) + '</div>' : b.sources ? '<div class="gx-dim gx-es-note">' + esc(String(b.sources)) + '</div>' : '') + '</div>';
+    var mech = (m.atom || m.leg || m.match || m.markets) ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('El mecanismo', 'The mechanism') + '</span></div><ul class="gx-dt-mech">' +
+      [[esT('Átomo', 'Atom'), m.atom], ['Leg', m.leg], [esT('Partido', 'Match'), m.match], [esT('Mercados', 'Markets'), m.markets]].filter(function (x) { return x[1]; }).map(function (x) { return '<li><b>' + esc(x[0]) + '</b> ' + esc(String(x[1])) + '</li>'; }).join('') + '</ul></div>' : '';
+    var val;
+    if (vt && vt.n != null) {
+      var tiles = [['n', dtInt(vt.n)]];
+      ['skill_pct', 'brier', 'auc', 'logloss', 'legs_mae', 'legs_mae_naive', 'x180_mae', 'clv_avg_pct', 'roi_pct'].forEach(function (k) { if (vt[k] != null) tiles.push([k.replace(/_/g, ' '), typeof vt[k] === 'number' ? dtNum(vt[k], 3) + (/pct/.test(k) ? '%' : '') : String(vt[k])]); });
+      val = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Validación', 'Validation') + '</span>' + (vt.protocol ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(vt.protocol) + '</span>' : '') + '</div>' + dtTiles(tiles) + (vt.note ? '<div class="gx-dim gx-es-note">' + esc(vt.note) + '</div>' : '') + '</div>';
+    } else {
+      val = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span><b>' + esT('Validación pendiente.', 'Validation pending.') + '</b> ' + esc((vt && (vt.note || vt.pending || vt.why)) || esT('El modelo corre en sombra acumulando cierres; la validación fuera de muestra se publica cuando haya muestra que aguante mirarse.', 'The model runs in shadow accumulating closes; out-of-sample validation is published when there is a sample worth looking at.')) + '</span></div>';
+    }
+    var fams = d.families && Object.keys(d.families).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Familias', 'Families') + '</span></div><div class="gx-dt-fams">' +
+      Object.keys(d.families).map(function (k) { var st = String(d.families[k] || ''); return '<span class="gx-dt-fam' + (/sombra|shadow/i.test(st) ? ' sh' : /cerrad|closed|off/i.test(st) ? ' off' : '') + '"><b>' + esc(k) + '</b> ' + esc(st) + '</span>'; }).join('') + '</div></div>' : '';
+    var gaps = Array.isArray(d.known_gaps) && d.known_gaps.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Lo que falta', 'Known gaps') + '</span></div><ul class="gx-dt-mech">' + d.known_gaps.map(function (g) { return '<li>' + esc(String(g)) + '</li>'; }).join('') + '</ul></div>' : '';
+    dtShell(t('dt_nav_model'), head + base + mech + val + fams + gaps + '<div class="gx-dim gx-es-trunc">' + esc(d.disclaimer || t('disclaimer_short')) + '</div>' + dtShadowNote(null));
+  }
+
+  // ── CLICKS ──────────────────────────────────────────────────────────────────────────────────────────
+  function dtClicks(e) {
+    var mt = e.target.closest('[data-dtmatch]');
+    if (mt) { setHash('dtmatch/' + encodeURIComponent(mt.getAttribute('data-dtmatch'))); return; }
+    var bk = e.target.closest('[data-dtback]');
+    if (bk) { e.preventDefault(); setHash('dtgames'); return; }
+    var bk2 = e.target.closest('[data-dtbackto]');
+    if (bk2) { e.preventDefault(); setHash(bk2.getAttribute('data-dtbackto')); return; }
+    var tl = e.target.closest('[data-dtlens]');
+    if (tl) { S.dt.lens = tl.getAttribute('data-dtlens'); renderDtMatch(); return; }
+    var mf = e.target.closest('[data-dtmfilt]');
+    if (mf) { S.dt.mFilt = mf.getAttribute('data-dtmfilt'); renderDtGames(); return; }
+    var pl = e.target.closest('[data-dtplayer]');
+    if (pl) { var pid = pl.getAttribute('data-dtplayer'); if (pid && pid !== 'undefined' && pid !== 'null') setHash('dtplayer/' + encodeURIComponent(pid)); return; }
+    var tr = e.target.closest('[data-dttour]');
+    if (tr) { setHash('dttour/' + encodeURIComponent(tr.getAttribute('data-dttour'))); return; }
+    var go = e.target.closest('[data-dtsimgo]');
+    if (go) {
+      var a = ($('#gx-dtsim-a') || {}).value || '', b = ($('#gx-dtsim-b') || {}).value || '';
+      var fmt = ($('#gx-dtsim-fmt') || {}).value || 'bo11', starter = ($('#gx-dtsim-st') || {}).value || '';
+      if (!a.trim() || !b.trim()) return;
+      S.dt.sim = { a: a, b: b, fmt: fmt, starter: starter, loading: true };
+      renderDtSim();
+      fetch('/api/darts/sim?a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&format=' + encodeURIComponent(fmt) + (starter ? '&starter=' + starter : ''), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _locked: 1 } : null); }).catch(function () { return null; })
+        .then(function (j) {
+          S.dt.sim = { a: a, b: b, fmt: fmt, starter: starter, result: j || { available: false, why: esT('sin respuesta', 'no answer') } };
+          if (S.view === 'dtsim') renderDtSim();
+        });
+      return;
+    }
+    var ag = e.target.closest('[data-dtaskgo]');
+    if (ag) { dtAskGo(); return; }
+    var asug = e.target.closest('[data-dtasksug]');
+    if (asug) { dtAskGo(asug.getAttribute('data-dtasksug')); return; }
+  }
+  // gancho de prueba, inerte salvo que la página lo pida ANTES de cargar el script (arnés estático)
+  if (typeof window !== 'undefined' && window.__GP_DARTS_TEST__) {
+    window.__gpDartsTest = { renderDarts: renderDarts, setMe: function (me) { S.me = me; }, S: S, showView: function (v) { showView(v); } };
+  }
+
   var AMF_LEAGUES = [['nfl', 'NFL'], ['ncaaf', 'College'], ['cfl', 'CFL']];
   function nflLg() { return S.nfl.lg || 'nfl'; }
   function nflLgBar() {
@@ -17160,7 +18253,7 @@
             // shell está desactualizado y se repinta. Sin esto el usuario ve "Próximamente" hasta recargar.
             var barraVieja = (cbSportAllowed() && $('.gx-cbsoon')) ||
               [['hoops', bbAllowed()], ['esports', esAllowed()], ['nfl', nflAllowed()],
-               ['tennis', tenAllowed()], ['f1', f1Allowed()]].some(function (x) {
+               ['tennis', tenAllowed()], ['f1', f1Allowed()], ['darts', dtAllowed()]].some(function (x) {
                 return x[1] && !$('[data-sportgo="' + x[0] + '"]');
               });
             if (barraVieja) shell();
@@ -17170,7 +18263,7 @@
             // cuando `me` llegaba. Ese es el "hay que recargar para que aparezcan las cosas". Se repinta la
             // vista actual una sola vez, ya con la sesión en la mano.
             try { showView(S.view); } catch (e) {}
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(S.view) >= 0 && !f1Allowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis' || S.sport === 'f1') { S.sport = 'futbol'; shell(); } showView('board'); }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(S.view) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(S.view) >= 0 && !dtAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis' || S.sport === 'f1' || S.sport === 'darts') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
             // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
@@ -17179,6 +18272,7 @@
             // #gx-matchview. Es el tercer deporte que tropieza con esto; aquí ya va desde el principio.
             else if (F1_VIEWS.indexOf(S.view) >= 0) { applyView(); renderF1(S.view); }
             else if (TEN_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTennis(S.view); }
+            else if (DT_VIEWS.indexOf(S.view) >= 0) { applyView(); renderDarts(S.view); }
             else if (NFL_VIEWS.indexOf(S.view) >= 0) { applyView(); renderNfl(S.view); }
             else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
             else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }

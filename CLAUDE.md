@@ -81,6 +81,21 @@
   APAGADA con `GP_LOL_HARVEST=0`). Rating validado walk-forward (`priors.json`), fichas, campeones por parche y
   Draft Room encendidos. Crudo archivado en `/data/lol-raw` (PUT `/api/internal/lolraw`). Derechos: CC BY-SA →
   admin-only, nunca pick pública (`data/esports/lol/RIGHTS.md`).
+- **Dardos (9º deporte, 6-sep, admin-only, blueprint 8.0):** `darts-engine/` (`rules.js` reglamento 501 + catálogo de
+  formatos, `kernel.js` kernel de visita por dardo con política de cierre resuelta por DP y calibración a
+  media/180s/dobles, `compiler.js` carrera del leg exacta + compilador de legs/sets con 180s y checkout
+  conjuntos, `data.js` base propia + Elo, `store.js` agenda/mercado/sombra/catálogo) + `data-providers/darts/`
+  (`pdc.js` API pública de la PDC: formato POR RONDA certificado y resultados; `orakel.js` Darts Orakel:
+  media/180s/dobles por ventana; `books.js` Pinnacle (deporte 10) · Bovada (180s, marcador exacto) ·
+  Polymarket · Kalshi · Cloudbet; `flashscore.js` legs en vivo, display). Rutas `/api/darts/*` tras
+  `GP_DARTS_PUBLIC_ENABLED` (sin poner = solo admin); sonda `/api/internal/darts?key=` (`&odds=1` refresca y
+  enseña las claves crudas de Cloudbet, `&rec=1`, `&settle=1`). Jobs: `dartsJob` cada 10 min (agenda PDC +
+  cuotas + sombra + liquidación), `dartsTailJob` diario (cola de la base en proceso aparte;
+  `GP_DARTS_TAIL=false` la apaga). **TODAS las familias en SOMBRA**; el ganador es referencia. Modelo
+  market-blind por construcción. Base: `data/darts/{matches,orakel}.json.gz` + `players.json` (2023→hoy,
+  104k resultados PDC) — la cola en Render escribe en `/data/darts` y conserva el compacto del repo como
+  línea de base. Derechos: `data/darts/RIGHTS.md` (sin uso comercial hasta fuente licenciada). Smoke:
+  `node scripts/smoke/darts-smoke.js`; validación: `node scripts/darts-fit.js [--write]`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

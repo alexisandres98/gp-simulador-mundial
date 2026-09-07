@@ -6,6 +6,10 @@ MODUS Super Series (`darts-engine/modus.js`: 15 partidos/día, fixtures de las c
 base, primero a 4 legs, resultado por Flashscore) con etiqueta propia `circuit`; el track separa PDC y MODUS. Sonda
 de diagnóstico `darts?key=&board=1`. En la pestaña, los datos nuevos: `rows[].circuit`, `unresolved`, `gp.cold`,
 `proximo_pdc`, `by_circuit`, `open_by_circuit`, torneo sintético `modus`.
+**Tarde**: toda tesis de dardos sale con `pickCard()` (la card de la casa) en tablero y cockpit —`dtCardsOf`,
+`dtCandCard`, `dtTicket` en `premium.js`—; retrato de dardos dentro de la card. Fotos: `--photos` en
+`scripts/darts-harvest.js` (Wikipedia REST, cache en `RAW/wiki/photos.json`), `photo_src` en `players.json`,
+sonda `darts?key=&fotos=1|&photos=N|&tail=1`. Cola diaria con `--photos=150`.
 
 ## 🔧 7-sep — liquidación de CS2 desatascada (ver TODO_NEXT "CS2: por qué 43 apuestas reales…")
 Las 43 apuestas reales de CS2 (271 USDT) no se liquidaban por tres motivos encadenados: `ref_id` vacío en las

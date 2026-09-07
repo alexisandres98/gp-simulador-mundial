@@ -20,6 +20,23 @@ diana) y las superficies propias (river, loom, ladder, prism); rendimiento por c
 sectores de diana en retratos, tipografía de marcador, badge 180. 137 claves `dt_*` ES/EN. Verificado con el
 arnés (64 capturas, 0 errores) y con datos reales (`scratchpad/ui/local.js`: renderiza el repo con la API de prod
 cacheada). Backend afinado: el ganador (benchmark) ya no sale como card de tesis; la ficha MODUS marca `available`.
+**Cards y fotos (7-sep tarde, orden de Alexis: "las picks con el mismo formato que los otros deportes… y fotos de
+todos esos jugadores")**: toda tesis de dardos sale con `pickCard()` —la MISMA card de fútbol/combate/baloncesto—
+en tablero (tesis del día y por partido) y cockpit; la fila compacta `dtThesisRow` desapareció y una candidata
+SHADOW_PICK sin card compilada se construye al vuelo (`dtCandCard`, misma forma que el server). Ticket y familia
+bilingües en el cliente (`dtTicket`), retrato de dardos dentro de la card (foto o iniciales sobre el anillo, nunca
+un círculo vacío), y la ficha del partido deja de emitir el ganador (benchmark) como card. Fotos: la PDC solo tiene
+retrato para 318 de 4.942; `scripts/darts-harvest.js --photos[=N]` busca el resto en **Wikipedia** (resumen REST,
+solo si la descripción dice "darts player", negativos cacheados 60 días en `RAW/wiki/photos.json`, ≤1 req/s con
+User-Agent identificado); el build las aplica con `photo_src`, la cola diaria baja 150 por pasada y la sonda
+`darts?key=&fotos=1` da cobertura por fuente (`&photos=N` lanza la busca, `&tail=1` la cola). Techo honesto: los
+tiradores de MODUS de base (Coulson, Dekker, Mawson, Munyua, van den Herik) no tienen foto ni en Wikipedia ni en
+la web de MODUS (comprobado) → iniciales. **La busca se hace EN PRODUCCIÓN** (`&photos=N`, tandas de ~900 por el
+tope de 55 min de `opsSpawn`, reanudable: el cache y el compacto se escriben cada 25 nombres, activos primero): desde
+el sandbox Wikimedia devuelve 429 a los pocos minutos y la pasada se arrastra. Primera pasada prod (14:07-15:01):
+950 nombres, 33 fotos — los primeros por volumen son veteranos sin página; la segunda pasada prioriza a los
+jugadores con partido en los últimos 20 meses. La base del repo NO lleva las fotos de Wikipedia: viven en el disco
+(`/data/darts/players.json` + `/data/darts-raw/wiki/photos.json`) y el build diario las conserva.
 Lo que hay y lo que falta, en orden de importancia:
 1. **Liquidar los 180s fuera del Players Championship.** Orakel solo publica partido a partido el PC; en el
    Euro Tour y los majors (donde Bovada cotiza most/total/jugador 180s) la tesis se anota `unsettleable` y a los

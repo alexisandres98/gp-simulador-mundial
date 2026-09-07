@@ -45,11 +45,11 @@ async function wikiSummary(title) {
   for (let intento = 0; intento < 3; intento++) {
     const r = await fetch(u, { headers: { 'User-Agent': WIKI_UA, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
     if (r.status === 404) return null;
-    if (r.status === 429 || r.status >= 500) { await sleep(20000 * (intento + 1)); continue; }
+    if (r.status === 429 || r.status >= 500) { await sleep(15000 * (intento + 1)); continue; }
     if (!r.ok) return null;
     return r.json();
   }
-  return null;
+  throw new Error('429/5xx tras 3 intentos');
 }
 function wikiPhotoOf(j) {
   if (!j || j.type !== 'standard' || !/darts?\b/i.test(String(j.description || ''))) return null;
@@ -61,26 +61,36 @@ async function harvestPhotos(max) {
   const players = rd(path.join(OUT, 'players.json')) || rd(path.join(REPO_OUT, 'players.json')) || {};
   const cache = rd(WIKI_F()) || {};
   const now = Date.now();
+  // lo ya encontrado en pasadas anteriores se aplica ANTES de buscar más (una pasada cortada por tiempo no
+  // pierde nada: el cache se escribe cada 25 nombres y el compacto también)
+  const aplicar = () => { if (!args.build && Object.keys(players).length && mergeWikiPhotos(players)) wr(path.join(OUT, 'players.json'), players); };
+  aplicar();
+  // primero los que el usuario ve: jugadores con partido en los últimos ~20 meses, por volumen; después el resto
+  const last = {};
+  const M = rd(path.join(OUT, 'matches.json')) || rd(path.join(REPO_OUT, 'matches.json'));
+  if (M && M.rows && M.schema) { const Fd = M.schema.indexOf('date'), Fw = M.schema.indexOf('wid'), Fl = M.schema.indexOf('lid'); for (const r of M.rows) { for (const id of [r[Fw], r[Fl]]) if (!(last[id] >= r[Fd])) last[id] = r[Fd]; } }
+  const corte = +new Date(now - 600 * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
+  const activo = (id) => (last[id] || 0) >= corte;
   const cands = Object.entries(players)
     .filter(([id, p]) => !p.photo && p.name && !(cache[id] && (cache[id].url || now - Date.parse(cache[id].at || 0) < WIKI_TTL_NEG)))
-    .sort((a, b) => b[1].n - a[1].n).slice(0, max);
-  log(`fotos: ${cands.length} jugadores sin retrato a buscar en Wikipedia (tope ${max})`);
-  let hits = 0, done = 0;
+    .sort((a, b) => (activo(b[0]) - activo(a[0])) || (b[1].n - a[1].n)).slice(0, max);
+  log(`fotos: ${cands.length} jugadores sin retrato a buscar en Wikipedia (tope ${max}; activos primero: ${cands.filter(([id]) => activo(id)).length})`);
+  let hits = 0, done = 0, r429 = 0;
   for (const [id, p] of cands) {
     let hit = null;
     try {
       hit = wikiPhotoOf(await wikiSummary(p.name));
-      if (!hit) { await sleep(900); hit = wikiPhotoOf(await wikiSummary(`${p.name} (darts player)`)); }
-    } catch (e) { log(`  foto ${p.name}: ${e.message}`); }
+      if (!hit) { await sleep(500); hit = wikiPhotoOf(await wikiSummary(`${p.name} (darts player)`)); }
+    } catch (e) { if (/429/.test(e.message)) r429++; log(`  foto ${p.name}: ${e.message}`); }
     cache[id] = { url: hit && hit.url ? hit.url : null, title: hit ? hit.title : null, at: new Date().toISOString() };
     if (hit && hit.url) hits++;
-    if (++done % 25 === 0) { wr(WIKI_F(), cache); log(`  fotos ${done}/${cands.length} · ${hits} encontradas`); }
-    await sleep(900);
+    if (++done % 25 === 0) { wr(WIKI_F(), cache); aplicar(); log(`  fotos ${done}/${cands.length} · ${hits} encontradas${r429 ? ` · ${r429} con 429` : ''}`); }
+    if (r429 >= 10) { log('fotos: demasiados 429 seguidos, se corta la pasada (reanudable)'); break; }
+    await sleep(500);
   }
   wr(WIKI_F(), cache);
+  aplicar();
   log(`fotos: ${hits} nuevas de ${done} buscadas`);
-  // sin --build también se aplica al compacto, para que la foto llegue sin reconstruir la base entera
-  if (!args.build && Object.keys(players).length) { mergeWikiPhotos(players); wr(path.join(OUT, 'players.json'), players); log('fotos aplicadas a players.json'); }
 }
 function mergeWikiPhotos(players) {
   const cache = rd(WIKI_F()) || {};

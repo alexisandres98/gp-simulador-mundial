@@ -748,6 +748,28 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       }
       const hit = cands[0];
       if (!hit) {
+        // CUADRO CAMBIADO (7-sep). Doce picks del US Open llevaban una semana "sin cruce" porque el partido
+        // NUNCA se jugó: el feed de cuotas listó Cerúndolo–Ruud, Cilic–Rublev o Jodar–Kokkinakis y luego
+        // hubo retirada y lucky loser. La fuente lo delata: uno de los dos aparece en un partido FINAL de
+        // la misma ronda y fecha contra OTRO rival. Eso no es "esperar dato", es una tesis sobre un partido
+        // inexistente: se anula ya, con motivo, en vez de esperar el plazo de diez días.
+        const t0 = Date.parse(p.commence);
+        const jugoConOtro = (toksMio, toksRival) => evs.some(({ comp }) => {
+          const st = ((comp.status || {}).type || {}).name || '';
+          if (!/FINAL|RETIRED|WALKOVER/i.test(st)) return false;
+          const td = Date.parse(comp.date || 0);
+          // ±30 h: cubre el desfase entre el saque anunciado y el real sin abarcar la ronda anterior
+          if (!Number.isFinite(td) || Math.abs(td - t0) > 30 * 3600e3) return false;
+          const names = (comp.competitors || []).map(nameOf);
+          return names.some((n) => casaCon(n, toksMio)) && !names.some((n) => casaCon(n, toksRival));
+        });
+        if (jugoConOtro(A, B) || jugoConOtro(B, A)) {
+          p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0;
+          p.void_reason = 'cuadro cambiado: uno de los dos jugó ese día contra otro rival (retirada / lucky loser)';
+          p.settled_at = new Date().toISOString();
+          settled++; diag.cuadro_cambiado = (diag.cuadro_cambiado || 0) + 1;
+          continue;
+        }
         diag.sin_cruce++;
         diag.eventos_vistos = (diag.eventos_vistos || 0) + evs.length;
         // una sola muestra basta para ver si el problema es el día vacío o la forma del nombre

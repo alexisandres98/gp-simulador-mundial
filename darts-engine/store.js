@@ -232,7 +232,7 @@ function uncertaintyPp(skA, skB, pElo, pComp) {
 }
 function eventModel(fx, { starter = null } = {}) {
   const A = fx.a && fx.a.id, B = fx.b && fx.b.id;
-  if (!A || !B) return { available: false, why: 'cruce sin definir (a la espera de la ronda anterior)' };
+  if (!A || !B) return { available: false, why: fx.unresolved && fx.unresolved.length ? `jugador fuera de la base propia: ${fx.unresolved.join(', ')}` : 'cruce sin definir (a la espera de la ronda anterior)' };
   const fmt = formatOf(fx);
   const skA = skillOf(A), skB = skillOf(B);
   const cA = kernelOf(skA, fmt.double_in), cB = kernelOf(skB, fmt.double_in);

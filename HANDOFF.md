@@ -1,5 +1,12 @@
 # HANDOFF — estado al 7-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
 
+## 🎯 7-sep — dardos: circuito MODUS como segunda agenda + freshness informativa
+La sombra de dardos no producía nada porque la PDC no tenía cuadro definido hasta el 11-sep. Entra el circuito
+MODUS Super Series (`darts-engine/modus.js`: 15 partidos/día, fixtures de las casas, jugadores resueltos contra la
+base, primero a 4 legs, resultado por Flashscore) con etiqueta propia `circuit`; el track separa PDC y MODUS. Sonda
+de diagnóstico `darts?key=&board=1`. En la pestaña, los datos nuevos: `rows[].circuit`, `unresolved`, `gp.cold`,
+`proximo_pdc`, `by_circuit`, `open_by_circuit`, torneo sintético `modus`.
+
 ## 🔧 7-sep — liquidación de CS2 desatascada (ver TODO_NEXT "CS2: por qué 43 apuestas reales…")
 Las 43 apuestas reales de CS2 (271 USDT) no se liquidaban por tres motivos encadenados: `ref_id` vacío en las
 filas del brazo (la casa las tenía resueltas), picks de "mapa no jugado" que nunca se anulaban, y nombres de la

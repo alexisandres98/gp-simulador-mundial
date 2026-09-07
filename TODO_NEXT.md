@@ -2,7 +2,16 @@
 
 ## 🎯 DARDOS (6-sep, blueprint 8.0): el 9º deporte nace admin-only y TODO en sombra — lo que bloquea que valga algo
 Construido de punta a punta en un día (motor exacto, base propia 2023→hoy, agenda oficial, cuatro casas, sombra,
-pestaña). Lo que hay y lo que falta, en orden de importancia:
+pestaña). **7-sep, orden de Alexis ("quiero darts generando picks y acumulando data")**: la sombra llevaba 0 tesis
+porque la PDC no tenía UN partido con cuadro definido hasta el 11-sep (Flanders); la sonda `darts?key=&board=1` lo
+enseña por torneo y por puerta. Arreglos: (a) **circuito MODUS** (`darts-engine/modus.js`): 15 partidos diarios,
+fixtures desde los eventos de las casas, jugadores resueltos contra la base (apellido exacto + inicial: "Graham
+Mawson" ≠ "Gary Mawson"), formato fijo primero a 4 legs (medido en Flashscore), resultado por Flashscore; la pick
+lleva `circuit` y el track agrega por circuito (`by_circuit`, `open_by_circuit`); `GP_DARTS_MODUS=false` lo apaga.
+Primera pasada en prod: 9 partidos, 6 con modelo, 35 candidatas, 1 tesis (33 mueren en `edge`: el mercado de MODUS
+es más ajustado de lo que parece). (b) La puerta `freshness` pasa a **informativa** (la incertidumbre ya descuenta
+al jugador frío). (c) El tablero devuelve `proximo_pdc` para que el vacío diga cuándo vuelve el cuadro.
+Lo que hay y lo que falta, en orden de importancia:
 1. **Liquidar los 180s fuera del Players Championship.** Orakel solo publica partido a partido el PC; en el
    Euro Tour y los majors (donde Bovada cotiza most/total/jugador 180s) la tesis se anota `unsettleable` y a los
    12 días queda VOID con motivo. Candidatos: DartConnect (POST `api/event/{id}/matches`, los floor events

@@ -8,9 +8,12 @@ pestaña). Lo que hay y lo que falta, en orden de importancia:
    12 días queda VOID con motivo. Candidatos: DartConnect (POST `api/event/{id}/matches`, los floor events
    traen `dartConnectID`), Sportradar Darts v2 (de pago, el `sportRadarID` ya viene en cada fixture). Sin
    esto, la hipótesis principal del blueprint (A01/A02/A05) no se puede medir.
-2. **Cloudbet: confirmar las claves de mercado de dardos** con la sonda en prod (`/api/internal/darts?key=&odds=1`
-   → `cloudbet_keys`) y ajustar `CB_FAMILY` en `data-providers/darts/books.js`. Hasta entonces la única venue
-   con precio de 180s es Bovada (no ejecutable) y la referencia afilada es Pinnacle (solo ganador y total de legs).
+2. **Cloudbet SÍ cotiza dardos** (sonda en prod, 7-sep 03:49): `darts.winner`, `darts.total_legs`,
+   `darts.handicap_legs`, `darts.most_180s`, `darts.total_180s`, `darts.180s_handicap` (familia propia, display) y
+   `darts.set_correct_score_in_legs`. Falta **comprobar la forma de `outcome`/`params` de cada selección** con la
+   muestra cruda de la sonda (`snapshot.odds.cloudbet_sample`) y, si el marcador exacto viene como `home_6_3` u otro
+   formato, mapearlo en `cloudbetMarkets`. Con eso la venue ejecutable tendrá precio propio de legs y 180s; la
+   referencia afilada sigue siendo Pinnacle (ganador y total de legs) y la de 180s Bovada.
 3. **Validación**: `scripts/darts-fit.js` (Elo vs compilador vs mezcla, holdout 2026 intocable) — resultado en
    `data/darts/model-priors.json` y en la ficha del motor. Si el compilador no aporta sobre el Elo, `ensembleU`
    baja y se dice; el laboratorio granular sigue research-only (doctrina del blueprint §34).

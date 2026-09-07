@@ -175,10 +175,13 @@ async function cloudbetMarkets(providerId, { key = process.env.CLOUDBET_API_KEY 
         const out = String(sel.outcome || '').toLowerCase();
         const params = String(sel.params || '');
         const lm = params.match(/(?:handicap|total|line)=(-?[\d.]+)/i);
-        const line = lm ? +lm[1] : null;
+        let line = lm ? +lm[1] : null;
         let side = null, participant = null;
         if (out === 'home') side = 'a'; else if (out === 'away') side = 'b'; else if (/^(over|under)$/.test(out)) side = out; else if (/draw|tie/.test(out)) side = 'tie';
         else if (/^\d+[-:]\d+$/.test(out)) side = out.replace(':', '-');
+        // los hándicaps de Cloudbet llevan UN parámetro por mercado (el del local): la visita cubre el opuesto.
+        // Comprobado en prod el 7-sep: `handicap=-2.5` venía igual en las dos selecciones.
+        if (/HCP$/.test(fam) && side === 'b' && line != null) line = -line;
         const tm = params.match(/team=(home|away)/i) || params.match(/player=(home|away)/i);
         if (tm) participant = tm[1] === 'home' ? 'a' : 'b';
         if (!side) continue;

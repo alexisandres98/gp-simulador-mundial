@@ -21070,14 +21070,18 @@ const server = http.createServer(async (req, res) => {
         out.sport = sportQ; out.categorias = cats.length; out.competiciones = comps.length; out.lista = comps.slice(0, 80);
         if (js && js.error) out.error = js.error;
         // muestra de mercados del primer evento de la primera competición con eventos, para ver las claves
-        const c0 = comps.find((c) => (c.eventos || 0) > 0) || comps[0];
+        const c0 = (liga && comps.find((c) => new RegExp(liga, 'i').test(c.key))) || comps.find((c) => (c.eventos || 0) > 0) || comps[0];
         if (c0 && raw) {
+          out.competicion_muestra = c0.key;
           const fromS = Math.floor(Date.now() / 1000);
           const j = await fetch(`${CB.HOST}/pub/v2/odds/competitions/${encodeURIComponent(c0.key)}?limit=60&from=${fromS}&to=${fromS + 240 * 3600}`,
             { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) }).then((r) => r.json()).catch(() => null);
           // solo PARTIDOS (los outrights salen sin equipos y sin mercados de juego); las claves de mercado
           // vienen en el detalle del evento, no en el listado
-          const partidos = ((j && j.events) || []).filter((e) => e.type === 'EVENT_TYPE_EVENT' && e.id).slice(0, raw);
+          const todos = (j && j.events) || [];
+          out.eventos_listados = todos.length;
+          out.tipos = todos.reduce((m, e) => { m[e.type || '?'] = (m[e.type || '?'] || 0) + 1; return m; }, {});
+          const partidos = todos.filter((e) => e.type === 'EVENT_TYPE_EVENT' && e.id).slice(0, raw);
           out.muestra = [];
           for (const e of partidos) {
             const ev = await fetch(`${CB.HOST}/pub/v2/odds/events/${e.id}`, { headers: { 'X-API-Key': apiKey, accept: 'application/json' }, signal: AbortSignal.timeout(12000) })

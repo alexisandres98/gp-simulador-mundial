@@ -1075,6 +1075,10 @@ function ladoEnLaCasa(evRaw, equipo) {
 // casa permite menos, se coloca el máximo disponible; jamás por encima de $5. `GP_REAL_CS2_STAKE` lo
 // mueve sin tocar código.
 const CS2_STAKE_TOPE = () => num('GP_REAL_CS2_STAKE', 5);
+// El canal de CS2 al dinero, entero, tras una sola llave (7-sep). Alexis lo pausó tras dos semanas en rojo
+// (−66,9 sobre 600) y el fallo de identidad MOUZ/Spirit: ni filas manuales nuevas, ni ensayo, ni envío por el
+// brazo. Lo que ya está colocado se liquida igual. La sombra (`cs2_rounds_v1`) sigue intacta para acumular dato.
+const cs2RealOn = () => !/^(0|false|no|off)$/i.test(String(process.env.GP_REAL_CS2_ENABLED == null ? 'true' : process.env.GP_REAL_CS2_ENABLED).trim());
 // Busca la selección del hándicap de rondas en el evento CRUDO de la casa. La línea de la señal nació de
 // estos mismos mercados, así que se casa EXACTA (línea, lado y mapa) — sin flips de signo: el flip es solo
 // de display. Devuelve las coordenadas de colocación o null.
@@ -1117,7 +1121,9 @@ function selectionForCs2(evRaw, { map, line, side, equipo = null }) {
 // manual. `evRaw` inyectable para la auditoría (sin red). Devuelve la fila; nunca lanza.
 async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
   try {
-    const AUTO = String(process.env.GP_REAL_CS2_AUTO) === 'true';
+    // PAUSA DE CS2 EN LA CASA (7-sep, orden de Alexis): con GP_REAL_CS2_ENABLED=false no se envía nada
+    // aunque el AUTO siga en true. La sombra de esports no se entera: sigue acumulando muestra.
+    const AUTO = String(process.env.GP_REAL_CS2_AUTO) === 'true' && cs2RealOn();
     if (!fila || fila.familia !== 'CS2_RONDAS' || fila.status !== 'PENDIENTE') return fila;
     // en ensayo puro, un payload armado es el final del camino; en AUTO se REARMA en cada pasada —
     // el precio y el tope de la casa cambian, y lo que se envía tiene que ser lo recién verificado
@@ -1243,6 +1249,7 @@ function board({ limit = 40 } = {}) {
       stake_plano: C.stakeFlat > 0 ? C.stakeFlat : null, stake_cs2: CS2_STAKE_TOPE(),
       exposicion_max: C.maxOpen, suelo_saldo: C.minBalance,
       parada_diaria_pct: +(C.dayStopPct * 100).toFixed(1), deslizamiento_max_pct: +(C.minOddsSlipPct * 100).toFixed(1),
+      cs2_real: cs2RealOn() ? (String(process.env.GP_REAL_CS2_AUTO) === 'true' ? 'auto' : 'manual') : 'pausado',
     },
     saldo: L.saldo,
     cortafuegos: L.cortafuegos || null,
@@ -1288,4 +1295,4 @@ function board({ limit = 40 } = {}) {
 }
 
 module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
-  SEGMENTO, FAMILIA, LADO, CASA, LEDGER };
+  SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn };

@@ -57,6 +57,10 @@ Tres roturas encadenadas, ninguna era "la casa no ha resuelto" (la casa las ten�
    exacto manda y la contención exige la misma marca de filial en ambos lados. **Impacto en el modelo**: las
    picks de CS2 de equipos con filial homónima (MOUZ, y "Spirit Academy" cuando faltaba "Spirit") se calcularon
    con el historial equivocado; la muestra de `cs2_rounds_v1` hasta hoy lleva ese ruido. No se tocó la regla.
+- **CS2 PAUSADO en Cloudbet (7-sep, orden de Alexis)**: `GP_REAL_CS2_ENABLED=false` y `GP_REAL_CS2_AUTO=false` en
+  Render. Ni filas manuales nuevas, ni ensayo, ni envío. La sombra `cs2_rounds_v1` sigue acumulando (con el catálogo
+  corregido, así que la muestra desde hoy es limpia). Para reanudar: `GP_REAL_CS2_ENABLED=true` (+ `_AUTO=true`) y deploy.
+  Estado en `/api/internal/real` → `config.cs2_real` (pausado / manual / auto).
 - Pendiente: `run=cb_historial` sigue en INTERNAL_SERVER_ERROR (listado de la casa); por referencia sí contesta.
 - Pendiente: la sonda de esports muestra `sin_casar` solo 12 ejemplos y los más viejos; hacerla muestrear por fecha.
 

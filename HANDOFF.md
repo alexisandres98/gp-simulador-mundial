@@ -7,6 +7,11 @@ fuente que no resolvían igual. Arreglados en `real-executor/store.js`, `esports
 `esports-engine/cs2-data.js` (además: "MOUZ" ya no resuelve a MOUZ NXT). Ejecutor: sin ventana de saque, parada
 diaria 6 %, stake plano 30, veto a ligas eficientes y una posición por (partido, lado, línea) — sin tope de
 exposición. Los retiros de Alexis (1.235 + 150) explican el hueco entre libro y saldo.
+**CS2 en Cloudbet PAUSADO** (7-sep, `GP_REAL_CS2_ENABLED=false`, `GP_REAL_CS2_AUTO=false`): dos semanas en rojo
+(−66,9 sobre 600, 20G/34P) y la muestra contaminada por el fallo de identidad. La sombra sigue acumulando.
+Semana 31-ago→7-sep del ejecutor: −198,6 (fútbol −173,6, CS2 −25); causas medidas: ligas eficientes antes del veto
+(−159,6), subida de stake a 40 justo antes de la racha (−82 de más), sobreconfianza a cuota ≥2 / u3,5 (35 % de acierto
+contra 55–60 % prometido). No fue ejecución (deslizamiento −0,07 %; el papel perdió igual con CLV −1,25 %).
 
 ## 🎯 DARDOS (6-sep, blueprint 8.0 de Alexis) — construido de punta a punta, admin-only, TODO en sombra
 **Qué hay (todo en `darts-engine/`, `data-providers/darts/`, `scripts/darts-*.js`, `data/darts/`):**

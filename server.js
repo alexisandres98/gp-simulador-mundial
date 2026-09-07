@@ -13595,8 +13595,11 @@ async function shadowSweep() {
       // cs2_rounds_v1 con mejor cuota en Cloudbet entra al libro real como fila de canal manual; el correo
       // de abajo la reparte y Alexis la coloca. Hasta que la API se desbloquee, ese es el único camino de
       // esta familia al dinero — y el tope de ~20 USDT que la casa le puso a mano es un dato que el libro mide.
+      // PAUSA (7-sep, Alexis): con GP_REAL_CS2_ENABLED=false el canal de CS2 al dinero se detiene entero —
+      // ni filas nuevas ni ensayo ni envío—. La sombra sigue igual; lo ya colocado se liquida igual.
+      const cs2RealOn = RE.cs2RealOn();
       let cs2Manual = 0;
-      for (const sb of S.bets) {
+      for (const sb of (cs2RealOn ? S.bets : [])) {
         if (sb.segment !== 'cs2_rounds_v1' || sb.book !== 'cloudbet' || sb.status !== 'OPEN') continue;
         if (!sb.kickoff_at || Date.parse(sb.kickoff_at) <= Date.now() + 10 * 60e3) continue;
         try { if (RE.crearManualCs2(sb)) cs2Manual++; } catch { /* la siguiente pasada la coge */ }
@@ -13611,7 +13614,7 @@ async function shadowSweep() {
         // con el AUTO encendido (1-sep) las filas ya armadas TAMBIÉN entran: el payload se rearma con
         // el precio vivo en cada pasada y se envía de verdad; en ensayo puro se arma una sola vez
         const cs2Auto = String(process.env.GP_REAL_CS2_AUTO) === 'true';
-        const filasEns = LR2.bets.filter(b => b.familia === 'CS2_RONDAS' && b.status === 'PENDIENTE'
+        const filasEns = LR2.bets.filter(b => cs2RealOn && b.familia === 'CS2_RONDAS' && b.status === 'PENDIENTE'
           && (cs2Auto || !b.ensayo_payload) && b.kickoff_at && Date.parse(b.kickoff_at) > Date.now() + 5 * 60e3
           && (b.ensayo_intentos || 0) <= (cs2Auto ? 60 : 12));
         if (filasEns.length) {

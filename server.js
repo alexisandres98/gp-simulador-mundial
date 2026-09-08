@@ -21305,6 +21305,16 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get('rec') === '1') await step('recordShadow', () => TT.recordShadow());
       if (url.searchParams.get('settle') === '1') await step('settleShadow', () => TT.settleShadow());
       if (url.searchParams.get('selftest') === '1') await step('selfTest', () => require('./tt-engine/compiler').selfTest());
+      // `src=1`: ¿llegan las fuentes desde Render? ranking ITTF, historial de un jugador, eventos y retratos de la WTT
+      if (url.searchParams.get('src') === '1') await step('fuentes', async () => {
+        const W = require('./data-providers/tt/wtt');
+        const t = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); return { [name]: { n: Array.isArray(r) ? r.length : r && r.size != null ? r.size : r ? 1 : 0, ms: Date.now() - t0 } }; } catch (e) { return { [name]: { error: e.message } }; } };
+        const fs2 = require('fs'); const rawDir = process.env.GP_TT_RAW || require('path').join(require('path').dirname(process.env.DB_FILE || 'db.json'), 'tt-raw');
+        let raw = null; try { raw = { dir: rawDir, players: fs2.readdirSync(require('path').join(rawDir, 'players')).length, files: fs2.readdirSync(rawDir) }; } catch (e) { raw = { dir: rawDir, error: e.message }; }
+        // la llamada cruda del ranking, con su código y sus primeros bytes: es la que salió VACÍA en la primera cola de prod
+        const crudo = await (async () => { try { const r = await fetch(`${W.ITTF}internalttu/RankingsCurrentWeek/CurrentWeek/GetRankingIndividuals?TopN=5&CategoryCode=SEN&SubEventCode=MS`, { headers: W.HEAD, signal: AbortSignal.timeout(20000) }); const txt = await r.text(); return { status: r.status, len: txt.length, head: txt.slice(0, 200), ct: r.headers.get('content-type') }; } catch (e) { return { error: e.message }; } })();
+        return Object.assign({ raw, ranking_crudo: crudo }, await t('ranking_MS', () => W.rankings('MS')), await t('historial_121558', () => W.history('121558')), await t('eventos', () => W.events({ force: true })), await t('retratos', () => W.photos({ force: true })));
+      });
       if (url.searchParams.get('board') === '1') await step('board', async () => {
         const b = await TT.board({ daysAhead: 10, hoursBack: 12 });
         const motivos = {}, porTorneo = {};

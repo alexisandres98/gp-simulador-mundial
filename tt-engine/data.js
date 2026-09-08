@@ -47,11 +47,16 @@ function reset() { D = null; C && C.compileMatch && null; }
 
 function build() {
   if (D) return D;
-  const m = readJsonMaybe(archivo('matches.json')) || { schema: [], tourneys: {}, rows: [] };
-  const players = readJsonMaybe(archivo('players.json')) || {};
+  // el compacto del disco manda salvo que esté vacío o roto: entonces se cae al del repo (8-sep: una cosecha fallida
+  // en prod escribió un compacto de cero filas y dejó la base en blanco hasta el siguiente deploy)
+  let m = readJsonMaybe(archivo('matches.json'));
+  let fromRepo = false;
+  if (!m || !Array.isArray(m.rows) || m.rows.length < 1000) { const rp = path.join(REPO_BASE, 'matches.json'); m = readJsonMaybe(fs.existsSync(rp) ? rp : rp + '.gz') || { schema: [], tourneys: {}, rows: [] }; fromRepo = true; }
+  const players = readJsonMaybe(fromRepo ? path.join(REPO_BASE, 'players.json') : archivo('players.json')) || {};
   const priors = readJsonMaybe(path.join(REPO_BASE, 'model-priors.json')) || DEFAULT_PRIORS;
-  const formats = readJsonMaybe(archivo('formats.json')) || { by: {} };
-  const meta = readJsonMaybe(archivo('meta.json')) || { last_match_date: null, years: null, sources: [] };
+  const formats = readJsonMaybe(fromRepo ? path.join(REPO_BASE, 'formats.json') : archivo('formats.json')) || { by: {} };
+  const meta = readJsonMaybe(fromRepo ? path.join(REPO_BASE, 'meta.json') : archivo('meta.json')) || { last_match_date: null, years: null, sources: [] };
+  if (fromRepo) meta.source_note = 'compacto del repo (el del disco no existe o está vacío)';
   const cst = { ...DEFAULT_PRIORS.constants, ...(priors.constants || {}) };
   const F = {}; (m.schema || []).forEach((k, i) => { F[k] = i; });
   const rows = (m.rows || []).slice().sort((a, b) => a[F.date] - b[F.date] || String(a[F.tid]).localeCompare(String(b[F.tid])));

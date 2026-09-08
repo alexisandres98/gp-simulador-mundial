@@ -49,8 +49,16 @@ async function doPhotos() {
   if (m.size) { wj(path.join(RAW, 'photos.json'), { at: new Date().toISOString(), map: Object.fromEntries(m) }); log('retratos', m.size); } else log('retratos VACÍO');
 }
 function rankedIds() {
-  const ms = ((rj(path.join(RAW, 'rank_MS.json')) || {}).rows || []).map((r) => r.id);
-  const ws = ((rj(path.join(RAW, 'rank_WS.json')) || {}).rows || []).map((r) => r.id);
+  let ms = ((rj(path.join(RAW, 'rank_MS.json')) || {}).rows || []).map((r) => r.id);
+  let ws = ((rj(path.join(RAW, 'rank_WS.json')) || {}).rows || []).map((r) => r.id);
+  // sin ranking en crudo (la puerta ITTF puede fallar desde el servidor): la lista de ids sale del catálogo del
+  // repo, que ya trae el ranking de la última cosecha buena — así el historial se baja igual
+  if (!ms.length && !ws.length) {
+    const pl = rj(path.join(REPO_OUT, 'players.json')) || rj(path.join(OUT, 'players.json')) || {};
+    const ranked = Object.entries(pl).filter(([, p]) => p.rank).sort((a, b) => a[1].rank - b[1].rank);
+    ms = ranked.filter(([, p]) => p.gender !== 'W').map(([id]) => id); ws = ranked.filter(([, p]) => p.gender === 'W').map(([id]) => id);
+    if (ms.length || ws.length) log('ranking desde el catálogo del repo:', ms.length, 'MS ·', ws.length, 'WS');
+  }
   const out = [], seen = new Set();
   for (let i = 0; i < Math.max(ms.length, ws.length); i++) for (const id of [ms[i], ws[i]]) if (id && !seen.has(id)) { seen.add(id); out.push(id); }
   return out;
@@ -186,6 +194,10 @@ function build({ gz = false } = {}) {
     if (bo && !ret && tourneys[tid].tier !== 'other') { const fk = tourneys[tid].tier + '|' + (round || 'OTR'); formats[fk] = formats[fk] || {}; formats[fk][bo] = (formats[fk][bo] || 0) + 1; }
   }
   rows.sort((a, b) => a[0] - b[0] || String(a[2]).localeCompare(String(b[2])));
+  // CANDADO (8-sep, lección de prod): un compacto vacío o mucho más pequeño que el vigente NO se escribe jamás —
+  // el compacto del disco pisa al del repo y una cosecha fallida dejaría la base en cero. Se aborta con error.
+  const vigente = (() => { for (const base of [OUT, REPO_OUT]) { try { const mp = path.join(base, 'meta.json'); if (fs.existsSync(mp)) return JSON.parse(fs.readFileSync(mp, 'utf8')).rows || 0; } catch { /* sin meta */ } } return 0; })();
+  if (rows.length < 1000 || rows.length < 0.7 * vigente) { const msg = `compacto RECHAZADO: ${rows.length} filas frente a ${vigente} vigentes (crudo: ${files.length} archivos)`; log(msg); throw new Error(msg); }
   // catálogo: ranking, país, género, retrato, ficha
   for (const [id, p] of Object.entries(players)) {
     const rk = rank.get(id);

@@ -1,5 +1,14 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🎮 8-sep — LoL se mide en Pinnacle (orden de Alexis)
+El segmento `lol_kills_hcp_v1` ya tenía `manual_books: ['pinnacle']`, pero las 108 apuestas salieron TODAS por
+Cloudbet: el normalizador de Pinnacle (`data-providers/esports/pinnacle.js`) etiquetaba `spread`/`total` por mapa
+como RONDAS (nombres de CS2) para cualquier juego, así que los hándicaps y totales de kills que Pinnacle cotiza en
+LoL nunca casaban con `KILLS_HANDICAP`/`KILLS`. Arreglado con `familyOf(type, period, game)`: en LoL y Dota 2 el mapa
+es KILLS, en CS2 y Valorant sigue siendo RONDAS. Efecto: la pick nace con `book: pinnacle` cuando Pinnacle trae el
+mejor precio y la sombra la enruta como manual, igual que CS2 → el track por casa (`&bets=N&segmento=lol_kills_hcp_v1`)
+separa Cloudbet de Pinnacle solo. Verificar en una semana si LoL, como CS2, pierde en Cloudbet y gana en Pinnacle.
+
 ## 🎯 DARDOS (6-sep, blueprint 8.0): el 9º deporte nace admin-only y TODO en sombra — lo que bloquea que valga algo
 Construido de punta a punta en un día (motor exacto, base propia 2023→hoy, agenda oficial, cuatro casas, sombra,
 pestaña). **7-sep, orden de Alexis ("quiero darts generando picks y acumulando data")**: la sombra llevaba 0 tesis

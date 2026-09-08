@@ -124,12 +124,19 @@ const amToDec = (a) => {
 // El periodo es la unidad: 0 es la SERIE, 1..N son los MAPAS. Con eso, la misma clave de mercado significa
 // dos familias distintas según dónde esté — `ou` en periodo 0 es "total de mapas" y en periodo 1 es "total de
 // rondas del mapa 1". Mapearlo sin mirar el periodo es el error obvio y caro.
-function familyOf(type, period) {
+// Y EL JUEGO TAMBIÉN ES LA UNIDAD (8-sep, orden de Alexis: "empieza a medir LoL en Pinnacle"). Dentro de un
+// mapa, `spread`/`total` son RONDAS en los shooters (CS2, Valorant) pero KILLS en los MOBA (LoL, Dota 2).
+// Pinnacle cotiza el hándicap y el total de kills por mapa; con la etiqueta de rondas esas filas jamás
+// casaban con la familia KILLS_HANDICAP del motor de LoL, y la sombra no podía enrutar LoL a Pinnacle
+// (108 apuestas, todas en Cloudbet). La convención de línea es la misma que en CS2: la del local.
+const MOBA = new Set(['lol', 'dota2']);
+function familyOf(type, period, game) {
   const serie = period === 0;
+  const moba = MOBA.has(String(game || '').toLowerCase());
   if (type === 'moneyline') return serie ? ['SERIE', 'Ganador de la serie'] : ['MAPA', 'Ganador del mapa'];
-  if (type === 'spread') return serie ? ['HANDICAP', 'Hándicap de mapas'] : ['RONDAS_HANDICAP', 'Hándicap de rondas'];
-  if (type === 'total') return serie ? ['TOTAL_MAPAS', 'Total de mapas'] : ['RONDAS', 'Total de rondas del mapa'];
-  if (type === 'team_total') return serie ? null : ['RONDAS_EQUIPO', 'Rondas del equipo'];
+  if (type === 'spread') return serie ? ['HANDICAP', 'Hándicap de mapas'] : moba ? ['KILLS_HANDICAP', 'Hándicap de kills'] : ['RONDAS_HANDICAP', 'Hándicap de rondas'];
+  if (type === 'total') return serie ? ['TOTAL_MAPAS', 'Total de mapas'] : moba ? ['KILLS', 'Total de kills del mapa'] : ['RONDAS', 'Total de rondas del mapa'];
+  if (type === 'team_total') return serie ? null : moba ? ['KILLS_EQUIPO', 'Kills del equipo'] : ['RONDAS_EQUIPO', 'Rondas del equipo'];
   return null;
 }
 
@@ -145,7 +152,7 @@ async function markets(providerId, game) {
     // designaciones vacías y hasta veintidós precios en un solo bloque (un "jugador con más kills"). Colarlos
     // como si fueran el ganador del mapa 2 fabricaba precios absurdos: se filtran por el id del padre.
     if (String(m.matchupId) !== wantId) { skippedSpecials++; continue; }
-    const fam = familyOf(m.type, m.period);
+    const fam = familyOf(m.type, m.period, game);
     if (!fam) continue;
     const prices = (m.prices || []).filter((p) => p && p.designation);
     if (!prices.length) { skippedSpecials++; continue; }

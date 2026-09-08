@@ -5,7 +5,11 @@ El segmento `lol_kills_hcp_v1` ya tenía `manual_books: ['pinnacle']`, pero las 
 Cloudbet: el normalizador de Pinnacle (`data-providers/esports/pinnacle.js`) etiquetaba `spread`/`total` por mapa
 como RONDAS (nombres de CS2) para cualquier juego, así que los hándicaps y totales de kills que Pinnacle cotiza en
 LoL nunca casaban con `KILLS_HANDICAP`/`KILLS`. Arreglado con `familyOf(type, period, game)`: en LoL y Dota 2 el mapa
-es KILLS, en CS2 y Valorant sigue siendo RONDAS. Efecto: la pick nace con `book: pinnacle` cuando Pinnacle trae el
+es KILLS, en CS2 y Valorant sigue siendo RONDAS. Segundo hallazgo (medido en la LPL): las kills NO están en el matchup
+padre —que solo trae el ganador de cada mapa— sino en un HIJO sin `special`, `units: 'Kills'`, cuyos mercados llegan en
+`markets/related/straight` con el id del hijo; el filtro por id del padre los tiraba. Ahora se identifica por `/related`
+y se aceptan solo sus filas (18 hándicaps + 18 totales + 4 de equipo por mapa, tope 1.500 por línea, 5× el de CS2).
+Verificado en prod 09:52 UTC: Invictus–LGD trae 72 KILLS_HANDICAP de Pinnacle. Efecto: la pick nace con `book: pinnacle` cuando Pinnacle trae el
 mejor precio y la sombra la enruta como manual, igual que CS2 → el track por casa (`&bets=N&segmento=lol_kills_hcp_v1`)
 separa Cloudbet de Pinnacle solo. Verificar en una semana si LoL, como CS2, pierde en Cloudbet y gana en Pinnacle.
 

@@ -325,6 +325,7 @@ const STORE_BACKUP_GLOBS = [
   { dir: 'amfoot', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
   { dir: 'tennis', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
   { dir: 'darts', re: /^(picks|closes|settle-diag|rank-snap)\.json$/ },
+  { dir: 'tt', re: /^(picks|closes|settle-diag|rank-snap-[MW]|tz|results)\.json$/ },
   { dir: '.', re: /^real-ledger\.json$/ },
 ];
 function backupStoresDaily() {
@@ -909,6 +910,42 @@ async function dartsTailJob(once) {
   finally { _dtTailRunning = false; proximo(); }
 }
 if (String(process.env.GP_DARTS_TAIL || 'true') !== 'false') setTimeout(dartsTailJob, 40 * 60e3);
+
+// ── TENIS DE MESA: agenda WTT + cuotas + sombra cada 10 min (8-sep, blueprint 9.0). La agenda se refresca
+// sola desde la API de la WTT (eventos activos + schedule por evento); la liquidación usa el match card
+// oficial (games con puntos), que además certifica el formato y la zona horaria del evento.
+async function ttJob() {
+  try {
+    const TT = require('./tt-engine/store');
+    await TT.refreshOdds().catch(() => null);
+    const rec = await TT.recordShadow().catch((e) => ({ error: e.message }));
+    const set = await TT.settleShadow().catch((e) => ({ error: e.message }));
+    TT.snapshotRanks();
+    const venc = (set && set.diag && set.diag.vencidas) || 0;
+    if ((rec && rec.recorded) || (set && set.settled) || venc || (rec && rec.error) || (set && set.error)) {
+      opsLog('tt_job', { recorded: (rec && rec.recorded) || 0, settled: (set && set.settled) || 0, vencidas: venc, diag: (set && set.diag) || null, err: (rec && rec.error) || (set && set.error) || null });
+    }
+  } catch (e) { opsLog('tt_job', { error: e.message }); }
+  setTimeout(ttJob, 10 * 60e3);
+}
+setTimeout(ttJob, 9 * 60e3);
+// la cola diaria de la base (ranking, eventos, retratos, historial ITTF por jugador y compacto) en un proceso aparte.
+// El historial se baja por tandas (`history` jugadores por pasada, los mejor clasificados primero) hasta cubrir
+// el ranking entero; después solo se refrescan los activos con crudo de más de 7 días.
+let _ttTailRunning = false;
+async function ttTailJob(once, { history = 900 } = {}) {
+  const proximo = () => { if (!once) setTimeout(ttTailJob, 24 * 3600e3); };
+  if (_ttTailRunning) return proximo();
+  if (typeof opsMemOk === 'function' && !opsMemOk('tt_tail', 200)) { setTimeout(ttTailJob, 30 * 60e3); return; }
+  _ttTailRunning = true;
+  try {
+    const out = await opsSpawn('tt_tail', ['scripts/tt-harvest.js', '--rank', '--events', '--photos', `--history=${Math.max(1, Math.min(2500, +history || 900))}`, '--refresh=7', '--cards=200', '--build', '--gz'], { heapMb: 450, timeoutMin: 55 });
+    opsLog('tt_tail', { code: out.code != null ? out.code : out.error });
+    if (out.code === 0) { try { require('./tt-engine/data').reset(); opsLog('tt_tail', { recargada: true }); } catch (e) { opsLog('tt_tail', { reset_err: e.message }); } }
+  } catch (e) { opsLog('tt_tail', { error: e.message }); }
+  finally { _ttTailRunning = false; proximo(); }
+}
+if (String(process.env.GP_TT_TAIL || 'true') !== 'false') setTimeout(ttTailJob, 50 * 60e3);
 
 // ── LA COLA DE LA BASE DE TENIS, UNA VEZ AL DÍA (20-ago) ─────────────────────────────────────────────────
 // La base salía entera de los repos de Jeff Sackmann, y esos repos fueron RETIRADOS de GitHub: el espejo
@@ -11276,6 +11313,50 @@ function askToolsFor(sport, { u, lang, org }) {
     return { tools, runTool, sportLabel: 'TENIS (ATP · WTA). Base propia validada fuera de muestra; TODAS las familias en sombra — si preguntan por picks, decí con naturalidad que el monitor es privado y ofrecé la proyección del modelo (probabilidad, juegos esperados, tiebreak). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
   }
   // ── DARDOS (6-sep, blueprint 8.0): agenda, cruce, jugador, simulador, torneo, ranking GP y sombra ─────
+  if (sport === 'tt') {
+    const TT = require('./tt-engine/store');
+    const TD = require('./tt-engine/data');
+    const tools = [
+      { name: 'agenda_tenis_mesa', description: 'Los partidos WTT en la ventana (evento, ronda, formato, hora UTC) con la probabilidad del modelo GP, los games y puntos esperados y el consenso de mercado. Úsala para "hoy", "mañana" o "qué se juega".', input_schema: { type: 'object', properties: {} } },
+      { name: 'jugador_tenis_mesa', description: 'Ficha de un jugador: Nivel GP (Elo), cuota de puntos, ranking WTT, balance, tasa de deuce, mano/empuñadura/estilo si constan, y últimos partidos con marcador por games.', input_schema: { type: 'object', properties: { jugador: { type: 'string' } }, required: ['jugador'] } },
+      { name: 'simular_cruce_tenis_mesa', description: 'Enfrenta a DOS jugadores con el modelo propio al mejor de 5 o 7: probabilidad, marcador exacto, games y puntos esperados, probabilidad de deuce por game y cara a cara real.', input_schema: { type: 'object', properties: { jugador_a: { type: 'string' }, jugador_b: { type: 'string' }, best_of: { type: 'number' } }, required: ['jugador_a', 'jugador_b'] } },
+      { name: 'torneo_tenis_mesa', description: 'El cuadro de un evento WTT en juego o próximo, por subevento y ronda, con resultados y probabilidades del modelo.', input_schema: { type: 'object', properties: { nombre: { type: 'string' } }, required: ['nombre'] } },
+      { name: 'ranking_gp_tenis_mesa', description: 'El top del ranking por Elo propio de GP (masculino o femenino; no es el ranking WTT).', input_schema: { type: 'object', properties: { genero: { type: 'string', description: 'M o W' } } } },
+      { name: 'sombra_tenis_mesa', description: 'El monitor en sombra de tenis de mesa: tesis registradas y el registro privado. Las familias NO publican picks.', input_schema: { type: 'object', properties: {} } },
+    ];
+    const runTool = async (name, input) => {
+      if (name === 'agenda_tenis_mesa') {
+        const b = await TT.board().catch(() => null);
+        return { partidos: ((b && b.rows) || []).filter((r) => r.status !== 'final').slice(0, 24).map((r) => ({ partido: `${r.a} vs ${r.b}`, evento: r.tournament_short, ronda: r.round_label, categoria: r.sub === 'WS' ? 'femenino' : 'masculino', comienza: r.start_at, formato: r.format ? `al mejor de ${r.format.best_of} games${r.format.certified ? '' : ' (no certificado)'}` : null,
+          gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), games_esperados: r.gp.exp_games, puntos_esperados: r.gp.exp_points, deuce_1er_game_pct: Math.round(100 * r.gp.p_deuce_g1) } : null,
+          mercado: r.market ? { prob_a_pct: r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null, casas: r.market.n_books } : null, en_vivo: r.live || null })) };
+      }
+      if (name === 'jugador_tenis_mesa') {
+        const pl = TD.resolvePlayer(String(input.jugador || ''));
+        if (!pl) return { error: 'jugador fuera de la base propia' };
+        const pf = TT.playerProfile(pl.id);
+        if (!pf.available) return { error: pf.why };
+        return { jugador: pf.name, pais: pf.country, edad: pf.age, ranking_wtt: pf.rank, nivel_gp: pf.elo, cuota_de_puntos: pf.point_share, balance: pf.wl, games: pf.games, puntos: pf.points, tasa_deuce: pf.deuce_rate, mano: pf.hand, empunadura: pf.grip, estilo: pf.style, contra_el_top: pf.solo, ultimos: pf.recent.slice(0, 8), nota: pf.inactive_note || undefined };
+      }
+      if (name === 'simular_cruce_tenis_mesa') {
+        const out = TT.simMatch(String(input.jugador_a || ''), String(input.jugador_b || ''), { best_of: +input.best_of === 7 ? 7 : 5 });
+        if (!out.available) return { error: out.why };
+        return { cruce: `${out.a.name} vs ${out.b.name} (al mejor de ${out.format.best_of})`, prob_a_pct: Math.round(100 * out.p_a), game: { prob_a_pct: Math.round(100 * out.game.p_a_first_a), deuce_pct: Math.round(100 * out.game.p_deuce), puntos_esperados: out.game.exp_points }, partido: { games_esperados: out.match.exp_games, puntos_esperados: out.match.exp_points, marcadores: out.match.score.slice(0, 6) }, h2h: { [out.a.name]: out.h2h.w_a, [out.b.name]: out.h2h.w_b }, nota: 'modelo propio market-blind; estimaciones estadísticas, no consejo financiero' };
+      }
+      if (name === 'torneo_tenis_mesa') {
+        const tl = await TT.tournamentsList().catch(() => ({ rows: [] }));
+        const q = TD.norm(input.nombre); const hit = tl.rows.find((t) => TD.norm(t.name).includes(q)) || tl.rows.find((t) => t.state === 'live' && !t.youth);
+        if (!hit) return { error: 'evento no encontrado en el calendario' };
+        const tb = await TT.tournamentBoard(hit.id).catch(() => null);
+        if (!tb || !tb.available) return { error: 'sin agenda' };
+        return { evento: tb.name, sede: [tb.venue, tb.city].filter(Boolean).join(', '), fechas: `${tb.start} → ${tb.end}`, subeventos: tb.subs.map((s) => ({ subevento: s.name, titulo: s.title ? s.title.rows.slice(0, 6).map((x) => ({ jugador: x.name, prob_pct: Math.round(100 * x.p) })) : null, rondas: s.rounds.map((r) => ({ ronda: r.label, partidos: r.fixtures.slice(0, 16).map((f) => `${f.a || '?'} vs ${f.b || '?'}` + (f.result ? ` ${f.result.score_a}-${f.result.score_b}` : f.gp ? ` (GP ${Math.round(100 * f.gp.p_a)} %)` : '')) })) })) };
+      }
+      if (name === 'ranking_gp_tenis_mesa') { const rk = TT.rankingBoard({ gender: String(input.genero || '').toUpperCase() === 'W' ? 'W' : 'M' }); return { top: rk.rows.slice(0, 20).map((r) => ({ pos: r.pos, jugador: r.name, nivel_gp: r.elo, ranking_wtt: r.rank })) }; }
+      if (name === 'sombra_tenis_mesa') return { sombra: TT.track({ limit: 10 }), doctrina: TT.DOCTRINE };
+      return { error: 'herramienta desconocida' };
+    };
+    return { tools, runTool, sportLabel: 'TENIS DE MESA (WTT). Motor propio que compila el partido punto a punto; TODAS las familias en sombra — si preguntan por picks, decí con naturalidad que el monitor es privado y ofrecé la proyección del modelo (probabilidad, games y puntos esperados, deuce). Si preguntan por otros deportes, indicá el conmutador de arriba.' };
+  }
   if (sport === 'darts') {
     const DT = require('./darts-engine/store');
     const DD = require('./darts-engine/data');
@@ -11853,6 +11934,34 @@ async function dartsBrief({ force = false } = {}) {
   }
   const out = { day, games, tournaments: b.tournaments || [], intro, intro_error: introErr, refreshed_at: new Date().toISOString(), note: 'todas las familias de dardos corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
   global._dtBriefMemo.x = { at: Date.now(), data: out };
+  return out;
+}
+
+// ── Brief diario de TENIS DE MESA (8-sep, blueprint 9.0): la jornada WTT con la lectura del modelo ────
+async function ttBrief({ force = false } = {}) {
+  global._ttBriefMemo = global._ttBriefMemo || {};
+  const memo = global._ttBriefMemo.x;
+  if (memo && !force && Date.now() - memo.at < 10 * 60e3) return memo.data;
+  const TT = require('./tt-engine/store');
+  const day = new Date().toISOString().slice(0, 10);
+  const b = await TT.board().catch(() => ({ rows: [], tournaments: [] }));
+  const games = (b.rows || []).filter((r) => r.status !== 'final').slice(0, 16);
+  db.ttBrief = db.ttBrief || {};
+  let intro = db.ttBrief[day] || null;
+  let introErr = null;
+  if (!intro && games.length) {
+    if (!llm.enabled()) introErr = 'llm_off';
+    else if (!llm.budgetOk()) introErr = 'sin presupuesto de jobs para hoy';
+    else {
+      try {
+        const w = await llm.writeBrief({ partidos: games.slice(0, 10).map((r) => ({ partido: `${r.a} vs ${r.b}`, evento: r.tournament_short, ronda: r.round_label, categoria: r.sub === 'WS' ? 'femenino' : 'masculino', gp: r.available ? { prob_a_pct: Math.round(100 * r.gp.p_a), games_esperados: r.gp.exp_games, puntos_esperados: r.gp.exp_points, deuce_1er_game_pct: Math.round(100 * r.gp.p_deuce_g1) } : null, mercado_prob_a_pct: r.market && r.market.ml_p_a != null ? Math.round(100 * r.market.ml_p_a) : null })), eventos: (b.tournaments || []).map((t) => `${t.short} (${t.tier_label}, ${t.city || t.country})`), sombra: TT.track({ limit: 5 }) }, 'tt');
+        if (w && w.es) { intro = { ...w, at: new Date().toISOString() }; db.ttBrief[day] = intro; save(); }
+        else introErr = 'el redactor no devolvió un texto usable';
+      } catch (e) { introErr = e.message; }
+    }
+  }
+  const out = { day, games, tournaments: b.tournaments || [], intro, intro_error: introErr, refreshed_at: new Date().toISOString(), note: 'todas las familias de tenis de mesa corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.' };
+  global._ttBriefMemo.x = { at: Date.now(), data: out };
   return out;
 }
 
@@ -12799,6 +12908,35 @@ async function dartsMatchRead(matchId, { force = false } = {}) {
   } catch (e) { console.error('[darts-read]', e.message); }
   return db.dartsReads[k] || null;
 }
+// ── LECTURA DE UN PARTIDO DE TENIS DE MESA (8-sep, blueprint 9.0): el dossier manda, el LLM narra ─────
+async function ttMatchRead(matchId, { force = false } = {}) {
+  db.ttReads = db.ttReads || {};
+  const k = String(matchId);
+  if (db.ttReads[k] && !force && db.ttReads[k].es) return db.ttReads[k];
+  if (!llm.enabled() || !llm.budgetOk()) return db.ttReads[k] || null;
+  const TT = require('./tt-engine/store');
+  const d = await TT.matchDetail(k).catch(() => null);
+  if (!d || !d.available || !d.a || !d.b) return db.ttReads[k] || null;
+  const pct = (x) => (x == null ? null : +(100 * x).toFixed(1));
+  const PA = d.profiles && d.profiles.a, PB = d.profiles && d.profiles.b;
+  const dossier = {
+    partido: `${d.a.name} vs ${d.b.name}`, evento: d.tournament_short, ronda: d.round_label, categoria: d.sub === 'WS' ? 'femenino' : 'masculino', formato: `al mejor de ${d.format.best_of} games` + (d.format.certified ? '' : ' (no certificado)'),
+    favorito_gp: { nombre: d.p_a >= 0.5 ? d.a.name : d.b.name, probabilidad_pct: pct(d.p_a >= 0.5 ? d.p_a : 1 - d.p_a) },
+    el_punto: { cuota_de_punto_pct: { [d.a.name]: pct(d.p_point), [d.b.name]: pct(1 - d.p_point) }, nota: 'probabilidad de que cada uno gane un punto cualquiera; el saque reparte apenas' },
+    el_game: { gana_el_primer_game_pct: { [d.a.name]: pct(d.game.p_a_first_a), [d.b.name]: pct(1 - d.game.p_a_first_a) }, deuce_pct: pct(d.game.p_deuce), puntos_esperados: d.game.exp_points_first_a },
+    el_partido: { games_esperados: d.match.exp_games, puntos_esperados: d.match.exp_points, marcadores_mas_probables: d.match.score.slice(0, 4).map(([s, p]) => `${s} (${pct(p)} %)`), barrida_pct: pct(d.format_prism.find((x) => x.current) ? d.format_prism.find((x) => x.current).p_sweep : null) },
+    nivel_gp: { [d.a.name]: PA ? { elo: PA.elo, ranking_wtt: PA.rank, balance: PA.wl, tasa_deuce_pct: pct(PA.deuce_rate), mano: PA.hand, estilo: PA.style } : null, [d.b.name]: PB ? { elo: PB.elo, ranking_wtt: PB.rank, balance: PB.wl, tasa_deuce_pct: pct(PB.deuce_rate), mano: PB.hand, estilo: PB.style } : null },
+    forma_reciente: { [d.a.name]: PA ? PA.recent.slice(0, 5).map((m) => `${m.won ? 'G' : 'P'} ${m.score} vs ${m.opp} (${m.tourney})`) : null, [d.b.name]: PB ? PB.recent.slice(0, 5).map((m) => `${m.won ? 'G' : 'P'} ${m.score} vs ${m.opp} (${m.tourney})`) : null },
+    historial_directo: d.h2h && (d.h2h.w_a + d.h2h.w_b) ? { partidos: d.h2h.w_a + d.h2h.w_b, gana_a: d.h2h.w_a, gana_b: d.h2h.w_b, ultimos: d.h2h.rows.slice(0, 3).map((m) => `${m.date} ${m.winner === 'a' ? d.a.name : d.b.name} ${m.score} (${m.tourney})`) } : null,
+    incertidumbre_pp: d.unc_pp, mercado: d.market && d.market.ml_p_a != null ? { prob_a_pct: pct(d.market.ml_p_a), casas: d.market.n_books } : null,
+    proceso_implicito: d.implied && d.implied.reading ? d.implied.reading : null,
+  };
+  try {
+    const w = await llm.escribirVerificado((pl, av) => llm.writeTtRead(pl, av), dossier, { etiqueta: 'tenis de mesa:' + k });
+    if (w && w.es) { const out = { es: w.es, en: w.en, at: new Date().toISOString(), match_id: k }; db.ttReads[k] = out; save(); return out; }
+  } catch (e) { console.error('[tt-read]', e.message); }
+  return db.ttReads[k] || null;
+}
 async function f1RaceRead(round, { force = false, key = null } = {}) {
   db.f1Reads = db.f1Reads || {};
   const k = String(key || round || 'next');
@@ -13045,6 +13183,16 @@ async function llmEsNflReadsPass({ cap = +(process.env.GP_LLM_READS_CAP || 12) }
       if (r && r.es) { done++; anota('darts'); }
     }
   } catch { /* dardos sin agenda */ }
+  try {
+    const TT = require('./tt-engine/store');
+    const b = await TT.board().catch(() => null);
+    for (const it of ((b && b.rows) || []).filter((r) => r.available && r.status === 'scheduled' && Date.parse(r.start_at || 0) > Date.now() - 3600e3 && Date.parse(r.start_at || 0) < Date.now() + 36 * 3600e3).slice(0, 12)) {
+      if (cuota('tt') <= 0) break;
+      if (db.ttReads && db.ttReads[it.id]) continue;
+      const r = await ttMatchRead(it.id).catch(() => null);
+      if (r && r.es) { done++; anota('tt'); }
+    }
+  } catch { /* tenis de mesa sin agenda */ }
   return { written: done };
 }
 
@@ -17019,7 +17167,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', dartsPublic: String(process.env.GP_DARTS_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', dartsPublic: String(process.env.GP_DARTS_PUBLIC_ENABLED || '') === 'true', ttPublic: String(process.env.GP_TT_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -18222,7 +18370,7 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req).catch(() => ({}));
       const q = String(b.q || '').slice(0, 400).trim();
       const lang = b.lang === 'en' ? 'en' : 'es';
-      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis', 'f1', 'darts'].includes(b.sport) ? b.sport : 'futbol';
+      const sport = ['combat', 'hoops', 'esports', 'nfl', 'tennis', 'f1', 'darts', 'tt'].includes(b.sport) ? b.sport : 'futbol';
       if (!q) return json(res, 400, { error: 'q requerida' });
       if (sport === 'hoops') {
         // Baloncesto es ADMIN-ONLY hasta que el modelo bata al cierre (mismo gate que /api/hoops/*).
@@ -18248,6 +18396,10 @@ const server = http.createServer(async (req, res) => {
       } else if (sport === 'darts') {
         const dtPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_DARTS_PUBLIC_ENABLED || '').trim());
         if (!(u.isAdmin || dtPub)) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      } else if (sport === 'tt') {
+        const ttPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_TT_PUBLIC_ENABLED || '').trim());
+        if (!(u.isAdmin || ttPub)) return json(res, 404, { error: 'No encontrado' });
         if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
@@ -20147,6 +20299,44 @@ const server = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'ruta de dardos desconocida' });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
+    // ── TENIS DE MESA (8-sep, blueprint 9.0): admin-only hasta que haya fuente licenciada; tiers como dardos ──
+    if (p.startsWith('/api/tt/')) {
+      const uT = getUser(req);
+      const ttPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_TT_PUBLIC_ENABLED || '').trim());
+      if (!uT || !(uT.isAdmin || ttPublic)) return json(res, 404, { error: 'No encontrado' });
+      const nsT = nsPlanCtx(uT, url);
+      if (['/api/tt/sim', '/api/tt/read', '/api/tt/brief', '/api/tt/track'].indexOf(p) >= 0 && !nsT.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      const ttStrip = (row) => { if (!row || nsT.pro) return row; const n = (row.picks || []).length; delete row.picks; delete row.candidates; if (n || row.shadow_n) { row.picks_locked = n || row.shadow_n || 0; row.shadow_n = 0; } return row; };
+      const TT = require('./tt-engine/store');
+      const qp = (k, d) => { const v = url.searchParams.get(k); return v == null || v === '' ? d : v; };
+      try {
+        if (p === '/api/tt/board') { const b = await TT.board({ daysAhead: Math.max(1, Math.min(14, +qp('days', 6))) }); b.rows = b.rows.map(ttStrip); return json(res, 200, b); }
+        if (p === '/api/tt/agenda') return json(res, 200, await TT.agenda());
+        if (p === '/api/tt/match') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); return json(res, 200, ttStrip(await TT.matchDetail(id))); }
+        if (p === '/api/tt/live') {
+          const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' });
+          const out = TT.liveProb(id, { ga: +qp('ga', 0) || 0, gb: +qp('gb', 0) || 0, i: +qp('i', 0) || 0, j: +qp('j', 0) || 0, server: ['a', 'b'].includes(qp('server')) ? qp('server') : null });
+          return json(res, 200, out || { p_a: null, why: 'sin modelo para este partido' });
+        }
+        if (p === '/api/tt/read') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); const r = await ttMatchRead(id, { force: qp('force') === '1' }).catch(() => null); return json(res, 200, r || { es: null, en: null }); }
+        if (p === '/api/tt/players') return json(res, 200, TT.playersDirectory({ q: qp('q', ''), limit: Math.min(200, +qp('limit', 80) || 80), gender: ['M', 'W'].includes(qp('gender')) ? qp('gender') : null }));
+        if (p === '/api/tt/player') { const idP = qp('id'); if (!idP) return json(res, 400, { error: 'falta id' }); return json(res, 200, TT.playerProfile(idP)); }
+        if (p === '/api/tt/ranking') return json(res, 200, TT.rankingBoard({ gender: qp('gender') === 'W' ? 'W' : 'M' }));
+        if (p === '/api/tt/tournaments') return json(res, 200, await TT.tournamentsList());
+        if (p === '/api/tt/tournament') { const idT = qp('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, await TT.tournamentBoard(idT)); }
+        if (p === '/api/tt/sim') {
+          const a = String(qp('a', '')), b2 = String(qp('b', ''));
+          if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });
+          return json(res, 200, TT.simMatch(a, b2, { best_of: +qp('best_of', 5) === 7 ? 7 : 5, first: ['a', 'b'].includes(qp('first')) ? qp('first') : null }));
+        }
+        if (p === '/api/tt/track') return json(res, 200, TT.track({ limit: Math.max(1, Math.min(5000, Number(qp('limit')) || 40)) }));
+        if (p === '/api/tt/model') return json(res, 200, TT.modelCard());
+        if (p === '/api/tt/competitions') return json(res, 200, TT.competitionMap());
+        if (p === '/api/tt/brief') return json(res, 200, await ttBrief({ force: qp('force') === '1' }));
+        if (p === '/api/tt/search') { const TD = require('./tt-engine/data'); const pl = TD.resolvePlayer(String(qp('q', ''))); return json(res, 200, { hit: pl ? { id: pl.id, name: pl.name } : null }); }
+        return json(res, 404, { error: 'ruta de tenis de mesa desconocida' });
+      } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p.startsWith('/api/esports/')) {
       const uE = getUser(req);
       const esPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '').trim());
@@ -21100,6 +21290,44 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.searchParams.get('tail') === '1') { out.tail = _dtTailRunning ? 'ya corriendo' : 'lanzada'; if (!_dtTailRunning) dartsTailJob(true); }
       await step('snapshot', () => DT.modelSnapshot());
+      out.ok = out.steps.every((x) => x.ok);
+      return json(res, 200, out);
+    }
+    // ── sonda de TENIS DE MESA (8-sep): `odds=1` · `rec=1` · `settle=1` · `board=1` (por qué no hay tesis) ·
+    // `selftest=1` (tabla sintética del blueprint) · `tail=1` (cola diaria entera) · `history=N` (solo historial, N jugadores)
+    if (p === '/api/internal/tt') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const TT = require('./tt-engine/store');
+      const out = { steps: [] };
+      const step = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; } catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; } };
+      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await TT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, available: o.available, cloudbet_keys: o.cloudbet_keys, competitions: o.competitions.slice(0, 12) }; });
+      if (url.searchParams.get('rec') === '1') await step('recordShadow', () => TT.recordShadow());
+      if (url.searchParams.get('settle') === '1') await step('settleShadow', () => TT.settleShadow());
+      if (url.searchParams.get('selftest') === '1') await step('selfTest', () => require('./tt-engine/compiler').selfTest());
+      if (url.searchParams.get('board') === '1') await step('board', async () => {
+        const b = await TT.board({ daysAhead: 10, hoursBack: 12 });
+        const motivos = {}, porTorneo = {};
+        let cands = 0, picks = 0, conMercado = 0, disponibles = 0;
+        for (const r of b.rows) {
+          const T = porTorneo[r.tournament_short] = porTorneo[r.tournament_short] || { partidos: 0, disponibles: 0, con_mercado: 0, picks: 0 };
+          T.partidos++;
+          if (r.available) { disponibles++; T.disponibles++; } else motivos[String(r.why || 'no disponible').slice(0, 60)] = (motivos[String(r.why || 'no disponible').slice(0, 60)] || 0) + 1;
+          if (r.market && r.market.n_books > 0) { conMercado++; T.con_mercado++; }
+          for (const c of r.candidates || []) { cands++; if (c.verdict === 'SHADOW_PICK') { picks++; T.picks++; } else motivos[c.no_pick_reason || 'sin_motivo'] = (motivos[c.no_pick_reason || 'sin_motivo'] || 0) + 1; }
+        }
+        return { partidos: b.rows.length, disponibles, con_mercado: conMercado, candidatas: cands, picks, motivos, por_torneo: porTorneo, books: b.books, competiciones: (b.competitions || []).slice(0, 8),
+          muestra: b.rows.filter((r) => r.market && r.market.n_books).slice(0, 6).map((r) => ({ id: r.id, torneo: r.tournament_short, ronda: r.round, start: r.start_at, a: r.a, b: r.b, disponible: r.available, libros: r.market.n_books, mk: r.market.ml_p_a, gp: r.gp && { p_a: r.gp.p_a, unc: r.gp.unc_pp, eg: r.gp.exp_games, ep: r.gp.exp_points }, candidatas: (r.candidates || []).slice(0, 5).map((c) => ({ f: c.family, s: c.side, l: c.line, g: c.game, o: c.odds, e: c.edge_pp, v: c.verdict, why: c.no_pick_reason })) })) };
+      });
+      const nHist = +(url.searchParams.get('history') || 0);
+      if (nHist > 0) {
+        out.history = 'lanzada (' + nHist + ')';
+        opsSpawn('tt_history', ['scripts/tt-harvest.js', '--rank', '--events', '--photos', `--history=${Math.min(2500, nHist)}`, '--build', '--gz'], { heapMb: 450, timeoutMin: 55 })
+          .then((o) => { opsLog('tt_history', { code: o.code != null ? o.code : o.error }); if (o.code === 0) { try { require('./tt-engine/data').reset(); } catch { /* sin recarga */ } } })
+          .catch((e) => opsLog('tt_history', { error: e.message }));
+      }
+      if (url.searchParams.get('tail') === '1') { out.tail = _ttTailRunning ? 'ya corriendo' : 'lanzada'; if (!_ttTailRunning) ttTailJob(true, { history: +(url.searchParams.get('n') || 900) }); }
+      await step('snapshot', () => TT.modelSnapshot());
       out.ok = out.steps.every((x) => x.ok);
       return json(res, 200, out);
     }

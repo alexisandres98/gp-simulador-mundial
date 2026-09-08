@@ -334,7 +334,7 @@
       adm_aff: 'Afiliados', adm_aff_email: 'Email del afiliado', adm_aff_rate: 'Comisión %', adm_aff_apply: 'Aplicar', adm_aff_ok: '✓ Rate aplicado', adm_aff_note: 'Default 10% · máximo 20% (influencers). El rate no se anuncia públicamente.', adm_aff_empty: 'Sin afiliados con actividad todavía', adm_aff_signups: 'Registros', adm_aff_refs: 'Pagando', adm_aff_wd: 'Retiros pendientes', adm_aff_pay: 'Pagar', adm_aff_reject: 'Rechazar', adm_aff_tx_ph: 'tx hash (opcional)',
       nav_combat: 'Combate',
       // ── COMBATE (R2 28-jul): navegación + vistas del deporte ──
-      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', cbet_kicker: 'Casa asociada', cbet_cb_t: 'Patrocinador oficial de la PFL', cbet_cb_s: 'La única casa que cotiza método y rounds de cada pelea — de ahí salen estas picks.', cbet_tn_t: 'ATP y WTA, torneo a torneo', cbet_tn_s: 'Ganador, sets y juegos en los cuadros que sigue el modelo.', cbet_fb_t: 'Las 24 ligas que cubrimos, cotizadas', cbet_fb_s: 'Incluidas las pequeñas que casi ninguna casa lista.', cbet_bb_t: 'Cuotas de la NBA y la WNBA', cbet_bb_s: 'Hándicaps, totales y líneas por cuarto en las cuatro ligas que seguimos.', cbet_es_t: 'La casa de los cuatro juegos', cbet_es_s: 'CS2, League of Legends, Valorant y Dota 2 en un solo sitio, con mercados por mapa.', cbet_offer: 'Paquete de bienvenida hasta $2.500', cbet_cta: 'Abrir cuenta', cbet_18: '18+ · juega con responsabilidad', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_darts: 'Dardos', dt_nav_games: 'Partidos', dt_nav_rank: 'Ranking GP', dt_nav_tours: 'Torneos', dt_nav_model: 'El motor', dt_nav_players: 'Tiradores',
+      nav_bb_games: 'Partidos', pf_fam_spread: 'HÁNDICAP', pf_fam_points: 'TOTAL DE PUNTOS', sport_futbol: 'Fútbol', sport_combat: 'Combate', sport_nba: 'Baloncesto', sport_esports: 'Esport', sport_soon: 'Próximamente', es_nav_board: 'Partidas', es_nav_model: 'El motor', es_nav_teams: 'Equipos', es_nav_circuit: 'El circuito', es_nav_tour: 'Torneos', es_nav_props: 'Props', slip_add: 'Boleto', slip_in: 'En el boleto', slip_title: 'Boleto GP', slip_comb: 'Cuota combinada', slip_prob: 'Prob. GP', slip_stake: 'Stake sugerido', slip_copy: 'Copiar', slip_copied: 'Copiado', slip_clear: 'Vaciar', slip_corr: 'Dos piernas de la misma partida van correlacionadas: el EV combinado no es fiable.', slip_noprob: 'Alguna pierna no trae probabilidad del modelo; se enseña la cuota combinada sin EV.', cbet_kicker: 'Casa asociada', cbet_cb_t: 'Patrocinador oficial de la PFL', cbet_cb_s: 'La única casa que cotiza método y rounds de cada pelea — de ahí salen estas picks.', cbet_tn_t: 'ATP y WTA, torneo a torneo', cbet_tn_s: 'Ganador, sets y juegos en los cuadros que sigue el modelo.', cbet_fb_t: 'Las 24 ligas que cubrimos, cotizadas', cbet_fb_s: 'Incluidas las pequeñas que casi ninguna casa lista.', cbet_bb_t: 'Cuotas de la NBA y la WNBA', cbet_bb_s: 'Hándicaps, totales y líneas por cuarto en las cuatro ligas que seguimos.', cbet_es_t: 'La casa de los cuatro juegos', cbet_es_s: 'CS2, League of Legends, Valorant y Dota 2 en un solo sitio, con mercados por mapa.', cbet_offer: 'Paquete de bienvenida hasta $2.500', cbet_cta: 'Abrir cuenta', cbet_18: '18+ · juega con responsabilidad', disclaimer_short: 'Estimaciones de un modelo estadístico, no consejo financiero. Apuesta con responsabilidad.', sport_nfl: 'Americano', nfl_nav_games: 'Partidos', nfl_nav_model: 'El motor', sport_tennis: 'Tenis', ten_nav_games: 'Partidos', ten_nav_rank: 'Ranking GP', ten_nav_load: 'Carga', ten_nav_model: 'El motor', sport_darts: 'Dardos', dt_nav_games: 'Partidos', dt_nav_rank: 'Ranking GP', dt_nav_tours: 'Torneos', dt_nav_model: 'El motor', dt_nav_players: 'Tiradores', sport_tt: 'Tenis de mesa', tt_nav_games: 'Partidos', tt_nav_rank: 'Ranking GP', tt_nav_tours: 'Eventos', tt_nav_model: 'El motor', tt_nav_players: 'Jugadores', tt_nav_map: 'Competiciones', tt_sec_game: 'El game', tt_sec_match: 'El partido', tt_sec_leverage: 'Leverage', tt_sec_implied: 'Proceso implícito',
       dt_circ_pdc: 'PDC', dt_circ_modus: 'MODUS', dt_circ_pdc_hint: 'Circuito PDC: cuadro oficial, formato certificado por ronda', dt_circ_modus_hint: 'MODUS Super Series: circuito diario fuera de la PDC', dt_modus_tag: 'circuito diario (fuera de la PDC)',
       dt_cold: 'frío', dt_cold_hint: 'jugador con poca exposición medida: la habilidad es un prior de población y la incertidumbre ya lo descuenta', dt_books: 'casas', dt_book_1: 'casa', dt_no_consensus: 'sin consenso', dt_market: 'mercado', dt_model: 'GP', dt_vs_market: 'GP vs mercado', dt_eq_market: 'igual que el mercado', dt_edge_for: '{pp} pp a {who}',
       dt_out_of_base: 'jugador fuera de la base: {who}', dt_out_of_base_short: 'fuera de la base', dt_next_pdc: 'Próximo cuadro PDC', dt_next_pdc_sub: 'La agenda se abre sola cuando la PDC publica los emparejamientos.', dt_in_days: 'en {n} días', dt_in_1day: 'mañana', dt_today: 'hoy', dt_days_left: 'faltan {n} días', dt_no_rows: 'Sin partidos con cuadro definido en la ventana.', dt_no_filter: 'Ningún partido con ese filtro.',
@@ -760,7 +760,7 @@
       adm_aff: 'Affiliates', adm_aff_email: 'Affiliate email', adm_aff_rate: 'Commission %', adm_aff_apply: 'Apply', adm_aff_ok: '✓ Rate applied', adm_aff_note: 'Default 10% · max 20% (influencers). The rate is never announced publicly.', adm_aff_empty: 'No affiliates with activity yet', adm_aff_signups: 'Sign-ups', adm_aff_refs: 'Paying', adm_aff_wd: 'Pending withdrawals', adm_aff_pay: 'Pay', adm_aff_reject: 'Reject', adm_aff_tx_ph: 'tx hash (optional)',
       nav_combat: 'Combat',
       // ── COMBAT (R2 28-jul) ──
-      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', cbet_kicker: 'Partner sportsbook', cbet_cb_t: 'Official PFL sponsor', cbet_cb_s: 'The only book pricing method and rounds on every fight — that is where these picks come from.', cbet_tn_t: 'ATP and WTA, tournament by tournament', cbet_tn_s: 'Winner, sets and games across the draws the model follows.', cbet_fb_t: 'All 24 leagues we cover, priced', cbet_fb_s: 'Including the small ones almost no book lists.', cbet_bb_t: 'NBA and WNBA prices', cbet_bb_s: 'Spreads, totals and quarter lines across the four leagues we cover.', cbet_es_t: 'The book that covers all four games', cbet_es_s: 'CS2, League of Legends, Valorant and Dota 2 in one place, with map-level markets.', cbet_offer: 'Welcome package up to $2,500', cbet_cta: 'Open an account', cbet_18: '18+ · gamble responsibly', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_darts: 'Darts', dt_nav_games: 'Matches', dt_nav_rank: 'GP Ranking', dt_nav_tours: 'Tournaments', dt_nav_model: 'The engine', dt_nav_players: 'Players',
+      nav_bb_games: 'Games', pf_fam_spread: 'SPREAD', pf_fam_points: 'TOTAL POINTS', sport_futbol: 'Football', sport_combat: 'Combat', sport_nba: 'Basketball', sport_esports: 'Esports', sport_soon: 'Coming soon', es_nav_board: 'Matches', es_nav_model: 'The engine', es_nav_teams: 'Teams', es_nav_circuit: 'The circuit', es_nav_tour: 'Tournaments', es_nav_props: 'Props', slip_add: 'Slip', slip_in: 'On the slip', slip_title: 'GP Slip', slip_comb: 'Combined odds', slip_prob: 'GP prob.', slip_stake: 'Suggested stake', slip_copy: 'Copy', slip_copied: 'Copied', slip_clear: 'Clear', slip_corr: 'Two legs from the same match are correlated: combined EV is unreliable.', slip_noprob: 'Some leg has no model probability; combined odds shown without EV.', cbet_kicker: 'Partner sportsbook', cbet_cb_t: 'Official PFL sponsor', cbet_cb_s: 'The only book pricing method and rounds on every fight — that is where these picks come from.', cbet_tn_t: 'ATP and WTA, tournament by tournament', cbet_tn_s: 'Winner, sets and games across the draws the model follows.', cbet_fb_t: 'All 24 leagues we cover, priced', cbet_fb_s: 'Including the small ones almost no book lists.', cbet_bb_t: 'NBA and WNBA prices', cbet_bb_s: 'Spreads, totals and quarter lines across the four leagues we cover.', cbet_es_t: 'The book that covers all four games', cbet_es_s: 'CS2, League of Legends, Valorant and Dota 2 in one place, with map-level markets.', cbet_offer: 'Welcome package up to $2,500', cbet_cta: 'Open an account', cbet_18: '18+ · gamble responsibly', disclaimer_short: 'Estimates from a statistical model, not financial advice. Bet responsibly.', sport_nfl: 'Am. Football', nfl_nav_games: 'Games', nfl_nav_model: 'The engine', sport_tennis: 'Tennis', ten_nav_games: 'Matches', ten_nav_rank: 'GP Ranking', ten_nav_load: 'Workload', ten_nav_model: 'The engine', sport_darts: 'Darts', dt_nav_games: 'Matches', dt_nav_rank: 'GP Ranking', dt_nav_tours: 'Tournaments', dt_nav_model: 'The engine', dt_nav_players: 'Players', sport_tt: 'Table tennis', tt_nav_games: 'Matches', tt_nav_rank: 'GP Ranking', tt_nav_tours: 'Events', tt_nav_model: 'The engine', tt_nav_players: 'Players', tt_nav_map: 'Competitions', tt_sec_game: 'The game', tt_sec_match: 'The match', tt_sec_leverage: 'Leverage', tt_sec_implied: 'Implied process',
       dt_circ_pdc: 'PDC', dt_circ_modus: 'MODUS', dt_circ_pdc_hint: 'PDC circuit: official draw, format certified per round', dt_circ_modus_hint: 'MODUS Super Series: daily circuit outside the PDC', dt_modus_tag: 'daily circuit (outside the PDC)',
       dt_cold: 'cold', dt_cold_hint: 'player with little measured exposure: skill is a population prior and the uncertainty already discounts it', dt_books: 'books', dt_book_1: 'book', dt_no_consensus: 'no consensus', dt_market: 'market', dt_model: 'GP', dt_vs_market: 'GP vs market', dt_eq_market: 'in line with the market', dt_edge_for: '{pp} pp to {who}',
       dt_out_of_base: 'player outside the base: {who}', dt_out_of_base_short: 'outside the base', dt_next_pdc: 'Next PDC draw', dt_next_pdc_sub: 'The slate opens on its own once the PDC publishes the pairings.', dt_in_days: 'in {n} days', dt_in_1day: 'tomorrow', dt_today: 'today', dt_days_left: '{n} days to go', dt_no_rows: 'No matches with a defined draw in the window.', dt_no_filter: 'No match with that filter.',
@@ -1038,7 +1038,7 @@
   }
 
   // ---------- state ----------
-  var S = { sport: 'futbol', lang: 'es', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, f1: {}, dt: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
+  var S = { sport: 'futbol', lang: 'es', cb: {}, bb: { lg: 'wnba' }, es: { game: 'cs2' }, nfl: {}, ten: { tour: 'atp' }, f1: {}, dt: {}, tt: {}, dash: null, value: null, sel: null, match: null, sub: 'picks', filt: 'all', mc: {}, view: 'board', matchId: null, fixtures: [], mfix: {},
     cal: [], stTeams: [], canon: [], canonByKey: {}, mFilt: 'all', mStage: 'all', mQuery: '', sim: { a: null, b: null, data: null, loading: false },
     groups: [], standings: {}, knockoutRaw: [], history: [], teamId: null, tcache: {}, hist: null, registry: null, tQuery: '', obs: undefined,
     teamTab: 'resumen', me: null, refer: null, perf: undefined, perfAt: 0, evoFilt: 'top', oppSub: 'picks', arb: undefined, arbSub: 'pure', arbCtx: null, pendingSec: null, h2h: {}, xgr: {}, intel: {}, style: {} };
@@ -1048,6 +1048,7 @@
   // Grammar: 24×24, stroke 1.8 redondeado, UN elemento en acento por ícono. Los nombres no cubiertos caen a Tabler.
   var IC_SVG = {
     'target-arrow': '<circle cx="12" cy="13" r="7.6"/><circle cx="12" cy="13" r="3.2"/><path class="a" d="M12 13l6.2-6.2M18.2 6.8h-3.6M18.2 6.8v3.6"/>',
+    'ping-pong': '<path d="M12.4 13.6 6.2 19.8"/><path d="M9.3 4.4a6 6 0 1 1 8.2 8.6c-2.2 2-5.5 2.4-7.9.9L7 15.5"/><circle cx="5.5" cy="6.5" r="1.8"/>',
     'ball-football': '<circle cx="12" cy="12" r="8.4"/><path class="a" d="M12 8.3 15.4 10.8 14.1 14.7 9.9 14.7 8.6 10.8Z"/><path d="M12 3.6v4.7M4.6 9.8l4 1M6.8 18.2l3.1-3.5M17.2 18.2l-3.1-3.5M19.4 9.8l-4 1"/>',
     'arrows-shuffle': '<path d="M4 7.2h3.2c4.2 0 5.4 9.6 9.6 9.6H20"/><path d="M4 16.8h3.2c1.7 0 2.9-1.5 3.9-3.3M20 7.2h-3.2c-1.7 0-2.9 1.5-3.9 3.3"/><path class="a" d="M20 16.8l-2.6-2.6M20 16.8l-2.6 2.6M20 7.2l-2.6-2.6M20 7.2l-2.6 2.6"/>',
     'shield': '<path d="M12 3.6 19 6.1v5.1c0 4.5-2.9 7.5-7 9.2-4.1-1.7-7-4.7-7-9.2V6.1Z"/><path class="a" d="M9.3 11.9l1.9 1.9 3.5-3.8"/>',
@@ -1169,12 +1170,23 @@
   ];
   var NAV2_DT = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
   function dtAllowed() { return !!(S.me && (S.me.isAdmin || S.me.dartsPublic)); }
+  // ── TENIS DE MESA (sep-2026): 11º deporte, al lado de Dardos. Compilador exacto punto → game → partido;
+  // TODAS las familias en sombra; admin-only de arranque (`GP_TT_PUBLIC_ENABLED` abre al público).
+  var TT_VIEWS = ['ttopps', 'ttgames', 'ttmatch', 'ttplayers', 'ttplayer', 'ttrank', 'tttours', 'tttour', 'ttsim', 'ttperf', 'ttbrief', 'ttask', 'ttmodel', 'ttmap'];
+  var NAV_TT = [
+    ['ttopps', 'target-arrow', 'nav_opps'], ['ttgames', 'ping-pong', 'tt_nav_games'], ['ttrank', 'trophy', 'tt_nav_rank'], ['tttours', 'calendar', 'tt_nav_tours'],
+    ['ttbrief', 'news', 'nav_brief'], ['ttask', 'message-circle', 'nav_cb_ask'], ['ttsim', 'adjustments', 'nav_sim'],
+    ['ttplayers', 'user', 'tt_nav_players'], ['ttmap', 'shield', 'tt_nav_map'], ['ttmodel', 'book', 'tt_nav_model'],
+    ['alerts', 'bell', 'nav_alerts'], ['ttperf', 'chart-line', 'nav_perf']
+  ];
+  var NAV2_TT = [['bets', 'wallet', 'nav_bets'], ['books', 'building-bank', 'nav_books'], ['refer', 'user-plus', 'nav_refer'], ['admin', 'settings', 'nav_admin']];
+  function ttAllowed() { return !!(S.me && (S.me.isAdmin || S.me.ttPublic)); }
   // ── F1 (18-ago, blueprint 7.0): 8º deporte, al lado de Tenis. Race Intelligence Twin admin-only.
   var F1_VIEWS = ['f1opps', 'f1race', 'f1standings', 'f1drivers', 'f1driver', 'f1sim', 'f1brief', 'f1ask', 'f1model', 'f1perf'];
   // UNA SOLA TABLA vista→deporte. `sportOf` ya la tenía escrita a mano abajo; tenerla dos veces es
   // exactamente el defecto que este arreglo viene a cerrar, así que se declara aquí y de aquí bebe todo.
   var SPORT_VIEWS = [['combat', CB_VIEWS], ['hoops', BB_VIEWS], ['esports', ES_VIEWS],
-    ['nfl', NFL_VIEWS], ['tennis', TEN_VIEWS], ['f1', F1_VIEWS], ['darts', DT_VIEWS]];
+    ['nfl', NFL_VIEWS], ['tennis', TEN_VIEWS], ['f1', F1_VIEWS], ['darts', DT_VIEWS], ['tt', TT_VIEWS]];
   // De una DIRECCIÓN (con su cola: `tenmatch/abc`, `f1driver/x`) al deporte. Devuelve null si la vista no
   // pertenece a ningún deporte con barra propia — así el arranque sabe distinguir "esto es fútbol" de
   // "esto no dice nada, usa lo último que usó el usuario".
@@ -1358,7 +1370,7 @@
   }
   // a dónde cae quien pide una de estas sin permiso: la pizarra de SU deporte
   var PERF_HOME = { perf: 'opps', cbperf: 'cbopps', bbperf: 'bbopps', esperf: 'esopps', nflperf: 'nflopps', tenperf: 'tenopps', f1perf: 'f1opps',
-    esmodel: 'esopps', f1model: 'f1opps', tenmodel: 'tenopps', nflmodel: 'nflopps', dtperf: 'dtopps', dtmodel: 'dtopps' };
+    esmodel: 'esopps', f1model: 'f1opps', tenmodel: 'tenopps', nflmodel: 'nflopps', dtperf: 'dtopps', dtmodel: 'dtopps', ttperf: 'ttopps', ttmodel: 'ttopps' };
 
   function viewNav(v) {
     if (v === 'bbgame') return 'bbgames';
@@ -1377,6 +1389,10 @@
     if (v === 'dtplayer') return 'dtplayers';
     if (v === 'dttour') return 'dttours';
     if (DT_VIEWS.indexOf(v) >= 0) return v;
+    if (v === 'ttmatch') return 'ttgames';
+    if (v === 'ttplayer') return 'ttplayers';
+    if (v === 'tttour') return 'tttours';
+    if (TT_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'f1driver') return 'f1drivers';
     if (F1_VIEWS.indexOf(v) >= 0) return v;
     if (v === 'cbfight') return 'cbfights';
@@ -1447,9 +1463,9 @@
 
   function shell() {
     var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS).concat(F1_VIEWS).concat(DT_VIEWS); // vistas implementadas (clickeables)
-    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1', isDt = S.sport === 'darts';
+    var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1', isDt = S.sport === 'darts', isTt = S.sport === 'tt';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
-    var NAV_A = isDt ? NAV_DT : isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isDt ? NAV2_DT : isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
+    var NAV_A = isTt ? NAV_TT : isDt ? NAV_DT : isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isTt ? NAV2_TT : isDt ? NAV2_DT : isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
     var navHtml = sinPerf(NAV_A).map(function (n) { var clk = live.indexOf(n[0]) >= 0; return '<div class="gx-nav' + (n[0] === cur ? ' on' : '') + '"' + (clk ? ' data-nav="' + n[0] + '"' : '') + '>' + ic(n[1]) + '<span>' + esc(t(n[2])) + '</span></div>'; }).join('');
     // F1/F2/F4: items gateados por flag del server (S.me.my_bets/my_books/daily_brief) — patrón gx-admin-only.
     var FEAT_NAV = { bets: 'gx-feat-bets', books: 'gx-feat-books', brief: 'gx-feat-brief' };
@@ -1463,6 +1479,7 @@
     // aparecían por ningún lado en móvil — ni en la barra de abajo ni en el menú de More.
     var moreViews = isNfl ? ['nflbrief', 'nflask', 'nflsim', 'nflplayers', 'nflmodel', 'alerts', 'nflperf', 'refer', 'admin', 'bets', 'books']
       : isTen ? ['tenbrief', 'tenask', 'tensim', 'tenplayers', 'tenmodel', 'alerts', 'tenperf', 'refer', 'admin', 'bets', 'books']
+      : isTt ? ['ttbrief', 'ttask', 'ttsim', 'ttplayers', 'tttours', 'ttmap', 'ttmodel', 'alerts', 'ttperf', 'refer', 'admin', 'bets', 'books']
       : isDt ? ['dtbrief', 'dtask', 'dtsim', 'dtplayers', 'dttours', 'dtmodel', 'alerts', 'dtperf', 'refer', 'admin', 'bets', 'books']
       : isF1 ? ['f1brief', 'f1ask', 'f1sim', 'f1drivers', 'f1model', 'alerts', 'f1perf', 'refer', 'admin', 'bets', 'books']
       : isEs ? ['esbrief', 'esask', 'esprops', 'escircuit', 'esmodel', 'alerts', 'esperf', 'refer', 'admin', 'bets', 'books'] : isHoops ? ['bbbrief', 'bbask', 'alerts', 'bbperf', 'refer', 'admin', 'bets', 'books'] : isCombat ? ['cbbrief', 'cbcard', 'cbask', 'cbfollow', 'alerts', 'cbperf', 'cborgs', 'cbevo', 'refer', 'admin', 'bets', 'books'] : ['ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'refer', 'method', 'admin', 'bets', 'books', 'brief'];
@@ -1470,6 +1487,7 @@
     var bnavItems = isNfl
       ? [['nflopps', 'target-arrow', 'nav_opps'], ['nflgames', 'ball-american-football', 'nfl_nav_games'], ['nflteams', 'shield', 'nav_teams'], ['nflperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isTen ? [['tenopps', 'target-arrow', 'nav_opps'], ['tengames', 'ball-tennis', 'ten_nav_games'], ['tenrank', 'trophy', 'ten_nav_rank'], ['tenperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
+      : isTt ? [['ttopps', 'target-arrow', 'nav_opps'], ['ttgames', 'ping-pong', 'tt_nav_games'], ['ttrank', 'trophy', 'tt_nav_rank'], ['ttperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isDt ? [['dtopps', 'target-arrow', 'nav_opps'], ['dtgames', 'target', 'dt_nav_games'], ['dtrank', 'trophy', 'dt_nav_rank'], ['dtperf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isF1 ? [['f1opps', 'target-arrow', 'nav_opps'], ['f1race', 'flag-checkered', 'f1_nav_race'], ['f1standings', 'trophy', 'f1_nav_wdc'], ['f1perf', 'chart-line', 'nav_perf'], ['__more', 'dots', 'more']]
       : isEs
@@ -1517,6 +1535,7 @@
         (f1Allowed() ? '<button class="gx-sport' + (S.sport === 'f1' ? ' on' : '') + '" data-sportgo="f1"><span class="gx-sport-ico">\ud83c\udfce\ufe0f</span>' + esc(t('sport_f1')) + '</button>' : '') +
         // DARDOS (sep-2026): mismo idioma que tenis y F1 \u2014 oculto hasta que est\u00e9 permitido, sin teaser
         (dtAllowed() ? '<button class="gx-sport' + (S.sport === 'darts' ? ' on' : '') + '" data-sportgo="darts"><span class="gx-sport-ico">\ud83c\udfaf</span>' + esc(t('sport_darts')) + '</button>' : '') +
+        (ttAllowed() ? '<button class="gx-sport' + (S.sport === 'tt' ? ' on' : '') + '" data-sportgo="tt"><span class="gx-sport-ico">\ud83c\udfd3</span>' + esc(t('sport_tt')) + '</button>' : '') +
       '</div>' +
       '<div class="gx-main">' +
       '<div class="gx-content">' +
@@ -1858,6 +1877,12 @@
         .concat([['refer', 'user-plus', 'nav_refer']])
         .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
       // DARDOS (sep-2026): su rama desde el primer día — la lección de baloncesto/esports/tenis
+      : S.sport === 'tt'
+      ? [['ttgames', 'ping-pong', 'tt_nav_games'], ['ttrank', 'trophy', 'tt_nav_rank'], ['tttours', 'calendar', 'tt_nav_tours'], ['ttplayers', 'user', 'tt_nav_players'], ['ttbrief', 'news', 'nav_brief'], ['ttask', 'message-circle', 'nav_cb_ask'], ['ttsim', 'adjustments', 'nav_sim'], ['ttmap', 'shield', 'tt_nav_map'], ['ttmodel', 'book', 'tt_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['ttperf', 'chart-line', 'nav_perf']]
+        .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
+        .concat(S.me && S.me.my_books ? [['books', 'building-bank', 'nav_books']] : [])
+        .concat([['refer', 'user-plus', 'nav_refer']])
+        .concat(isAdmin ? [['admin', 'settings', 'nav_admin']] : [])
       : S.sport === 'darts'
       ? [['dtgames', 'target', 'dt_nav_games'], ['dtrank', 'trophy', 'dt_nav_rank'], ['dttours', 'calendar', 'dt_nav_tours'], ['dtplayers', 'user', 'sr_players'], ['dtbrief', 'news', 'nav_brief'], ['dtask', 'message-circle', 'nav_cb_ask'], ['dtsim', 'adjustments', 'nav_sim'], ['dtmodel', 'book', 'dt_nav_model'], ['alerts', 'bell', 'nav_alerts'], ['dtperf', 'chart-line', 'nav_perf']]
         .concat(S.me && S.me.my_bets_feature ? [['bets', 'wallet', 'nav_bets']] : [])
@@ -2370,6 +2395,7 @@
   function pickRecText(p) {
     // dardos: la selección se redacta en el cliente en los dos idiomas (la card del server viene en español)
     if (p.dt_hash) return dtTicket(p);
+    if (p.tt_hash) return ttTicket(p);
     if (p.family === 'SOLID') {
       // DOBLE CHANCE (27-jul, modelo-líder en blandas): selection not_home/not_away = "el rival o empate"
       if (String(p.selection_code || '').indexOf('not_') === 0) return t('pf_dc', { team: pickTeam(p, p.selection_code === 'not_home' ? 'away' : 'home') });
@@ -2440,8 +2466,8 @@
     // el tenis entra por la MISMA puerta: un hash de apertura y un par de retratos. Ocho deportes con el
     // mismo mecanismo es la señal de que el mecanismo era el correcto.
     // el noveno deporte entra por la MISMA puerta: un hash de apertura y un par de escudos
-    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || p.nfl_hash || p.dt_hash || null;
-    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || p.nfl_logos || p.dt_avas || null;
+    var openHash = p.cb_hash || p.bb_hash || p.es_hash || p.ten_hash || p.f1_hash || p.nfl_hash || p.dt_hash || p.tt_hash || null;
+    var avas = p.cb_avas || p.bb_logos || p.es_logos || p.ten_avas || p.f1_avas || p.nfl_logos || p.dt_avas || p.tt_avas || null;
     var openId = openHash ? null : (p.club_eid || p.event_id || ((p.home_team_id && p.away_team_id) ? 'teams-' + p.home_team_id + '-' + p.away_team_id : null));
     var clickable = !!openId || !!openHash;
     var openAttr = openHash ? ' data-openhash="' + esc(openHash) + '"' : (clickable ? ' data-openmatch="' + esc(openId) + '"' : '');
@@ -2470,9 +2496,9 @@
         : '<div class="gx-pick-match">' +
         // dardos (7-sep): el retrato de la casa de dardos —foto o iniciales sobre el anillo de sectores—,
         // nunca un círculo vacío cuando el tirador no tiene foto
-        (p.dt_avas ? dtFace({ name: hh, photo: avas.h }, 'ra pk') : avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
+        (p.tt_avas ? ttFace({ name: hh, photo: avas.h }, 'ra pk') : p.dt_avas ? dtFace({ name: hh, photo: avas.h }, 'ra pk') : avas ? '<span class="gx-pick-cbava gr">' + (avas.h ? '<img src="' + esc(avas.h) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.home_team_id) + '</span>') + '<b>' + esc(hh) + '</b>' +
         '<span class="gx-pick-vs">' + esc(t('vs')) + '</span><b>' + esc(aa) + '</b>' +
-        (p.dt_avas ? dtFace({ name: aa, photo: avas.a }, 'rb pk') : avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>')) +
+        (p.tt_avas ? ttFace({ name: aa, photo: avas.a }, 'rb pk') : p.dt_avas ? dtFace({ name: aa, photo: avas.a }, 'rb pk') : avas ? '<span class="gx-pick-cbava rd">' + (avas.a ? '<img src="' + esc(avas.a) + '" alt="" onerror="this.remove()">' : '') + '</span>' : '<span class="fl">' + flag(p.away_team_id) + '</span>') + '</div>')) +
       '<div class="gx-pick-rec"><span class="gx-pick-rec-label">' + esc(t('pf_pick_label')) + '</span><div class="gx-pick-rec-text">' + esc(pickRecText(p)) + '</div>' + pickWhy(p) + '</div>' +
       lineMoveChip(p) +
       '<div class="gx-pick-foot">' +
@@ -4659,6 +4685,15 @@
     if (dtt) { S.dt = S.dt || {}; var dtid = decodeURIComponent(dtt[1]); if (!(S.view === 'dttour' && S.dt.tourId === dtid)) { S.dt.tourId = dtid; showView('dttour'); } return; }
     var dtv = h.match(/^(dtopps|dtgames|dtplayers|dtrank|dttours|dtsim|dtperf|dtbrief|dtask|dtmodel)$/i);
     if (dtv) { showView(dtv[1]); return; }
+    // ── TENIS DE MESA: el id del partido es `evento:códigoDeDocumento` de la WTT (lleva ':' y guiones) ──
+    var ttm = h.match(/^ttmatch\/(.+)$/i);
+    if (ttm) { S.tt = S.tt || {}; var tid = decodeURIComponent(ttm[1]); if (!(S.view === 'ttmatch' && S.tt.matchId === tid)) { S.tt.matchId = tid; showView('ttmatch'); } return; }
+    var ttp = h.match(/^ttplayer\/(.+)$/i);
+    if (ttp) { S.tt = S.tt || {}; var tpid = decodeURIComponent(ttp[1]); if (!(S.view === 'ttplayer' && S.tt.playerId === tpid)) { S.tt.playerId = tpid; showView('ttplayer'); } return; }
+    var ttt = h.match(/^tttour\/(.+)$/i);
+    if (ttt) { S.tt = S.tt || {}; var ttid = decodeURIComponent(ttt[1]); if (!(S.view === 'tttour' && S.tt.tourId === ttid)) { S.tt.tourId = ttid; showView('tttour'); } return; }
+    var ttv = h.match(/^(ttopps|ttgames|ttplayers|ttrank|tttours|ttsim|ttperf|ttbrief|ttask|ttmodel|ttmap)$/i);
+    if (ttv) { showView(ttv[1]); return; }
     // ── NFL ─────────────────────────────────────────────────────────────────────────────────────────
     var nfg = h.match(/^nflgame\/(.+)$/i);
     if (nfg) { if (!(S.view === 'nflgame' && S.nfl.gameId === decodeURIComponent(nfg[1]))) { S.nfl.gameId = decodeURIComponent(nfg[1]); showView('nflgame'); } return; }
@@ -4695,7 +4730,7 @@
     }
     showView('board');
   }
-  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model', f1perf: 'f1perf', dtopps: 'dtopps', dtgames: 'dtgames', dtplayers: 'dtplayers', dtrank: 'dtrank', dttours: 'dttours', dtsim: 'dtsim', dtperf: 'dtperf', dtbrief: 'dtbrief', dtask: 'dtask', dtmodel: 'dtmodel' };
+  var NAV_HASH = { opps: '', matches: 'matches', teams: 'teams', sim: 'sim', ask: 'ask', groups: 'groups', bracket: 'bracket', evo: 'evo', registry: 'registry', method: 'method', admin: 'admin', follow: 'follow', alerts: 'alerts', refer: 'refer', perf: 'perf', calc: 'calc', betcheck: 'betcheck', sub: 'sub', support: 'support', bets: 'bets', books: 'books', brief: 'brief', combat: 'cbfights', cbopps: 'cb', cbbrief: 'cbbrief', cbcard: 'cbcard', cbask: 'cbask', cbfights: 'cbfights', cbfighters: 'cbfighters', cbsim: 'cbsim', cbfollow: 'cbfollow', cbperf: 'cbperf', cborgs: 'cborgs', cbevo: 'cbevo', bbopps: 'bbopps', bbbrief: 'bbbrief', bbgames: 'bbgames', bbteams: 'bbteams', bbsim: 'bbsim', bbask: 'bbask', bbperf: 'bbperf', bbevo: 'bbevo', esopps: 'esopps', esboard: 'esboard', esmodel: 'esmodel', esperf: 'esperf', esteams: 'esteams', escircuit: 'escircuit', esprops: 'esprops', esbrief: 'esbrief', esask: 'esask', estour: 'estour', nflbrief: 'nflbrief', nflask: 'nflask', nflsim: 'nflsim', nflgames: 'nflgames', nflteams: 'nflteams', nflmodel: 'nflmodel', nflperf: 'nflperf', nflopps: 'nflopps', nflplayers: 'nflplayers', tenopps: 'tenopps', tengames: 'tengames', tenrank: 'tenrank', tenplayers: 'tenplayers', tensim: 'tensim', tenperf: 'tenperf', tenload: 'tenload', tenbrief: 'tenbrief', tenask: 'tenask', tenmodel: 'tenmodel', f1opps: 'f1opps', f1race: 'f1race', f1standings: 'f1standings', f1drivers: 'f1drivers', f1sim: 'f1sim', f1brief: 'f1brief', f1ask: 'f1ask', f1model: 'f1model', f1perf: 'f1perf', dtopps: 'dtopps', dtgames: 'dtgames', dtplayers: 'dtplayers', dtrank: 'dtrank', dttours: 'dttours', dtsim: 'dtsim', dtperf: 'dtperf', dtbrief: 'dtbrief', dtask: 'dtask', dtmodel: 'dtmodel', ttopps: 'ttopps', ttgames: 'ttgames', ttplayers: 'ttplayers', ttrank: 'ttrank', tttours: 'tttours', ttsim: 'ttsim', ttperf: 'ttperf', ttbrief: 'ttbrief', ttask: 'ttask', ttmodel: 'ttmodel', ttmap: 'ttmap' };
   // el nav preserva la competición elegida (memoria) al volver a la sección — reload la reconstruye del hash.
   function compHash(nav) {
     // baloncesto: la liga elegida viaja en el hash (memoria al volver a la sección y enlace compartible)
@@ -4864,11 +4899,12 @@
     if (sport === 'tennis' && !tenAllowed()) return;
     if (sport === 'f1' && !f1Allowed()) return;
     if (sport === 'darts' && !dtAllowed()) return;
+    if (sport === 'tt' && !ttAllowed()) return;
     if (sport === S.sport) return;
     S.sport = sport;
     try { localStorage.setItem('gp_sport', sport); } catch (e) {}
     shell();
-    navTo(sport === 'darts' ? 'dtopps' : sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tenopps' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
+    navTo(sport === 'tt' ? 'ttopps' : sport === 'darts' ? 'dtopps' : sport === 'f1' ? 'f1opps' : sport === 'tennis' ? 'tenopps' : sport === 'nfl' ? 'nflgames' : sport === 'esports' ? 'esopps' : sport === 'hoops' ? 'bbopps' : sport === 'combat' ? (cbCanSee('cbopps') ? 'cbopps' : 'cbfights') : 'opps');
   }
   // si la vista pedida pertenece a otro deporte (hash directo/atrás), el shell se reconstruye para ese deporte
   function ensureSport(v) {
@@ -4886,7 +4922,7 @@
     // Back office solo-admin (/x): registro, metodología, rendimiento, admin. Usuarios beta no acceden ni por hash directo.
     // 'sub' y 'support' son admin-only HASTA el lanzamiento de pagos (sacarlos de esta lista al abrir).
     // R2: TODO Combate es admin-only hasta que el monitor valide (ni por hash directo).
-    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(v) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(v) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(v) >= 0 && !dtAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
+    if (S.me && !S.me.isAdmin && (['registry', 'method', 'admin'].indexOf(v) >= 0 || (CB_VIEWS.indexOf(v) >= 0 && !cbCanSee(v)) || (ES_VIEWS.indexOf(v) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(v) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(v) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(v) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(v) >= 0 && !dtAllowed()) || (TT_VIEWS.indexOf(v) >= 0 && !ttAllowed()) || (v === 'sub' && !S.me.founder_public))) { v = 'board'; }
     ensureSport(v); // hash directo a otra sección de deporte → el shell se adapta
     var changed = S.view !== v;
     S.view = v; if (v !== 'match') S.matchId = null;
@@ -4895,6 +4931,7 @@
     if (F1_VIEWS.indexOf(v) >= 0) renderF1(v);
     else if (TEN_VIEWS.indexOf(v) >= 0) renderTennis(v);
     else if (DT_VIEWS.indexOf(v) >= 0) renderDarts(v);
+    else if (TT_VIEWS.indexOf(v) >= 0) renderTT(v);
     else if (NFL_VIEWS.indexOf(v) >= 0) renderNfl(v);
     else if (ES_VIEWS.indexOf(v) >= 0) renderES(v);
     else if (BB_VIEWS.indexOf(v) >= 0) renderBB(v);
@@ -15027,6 +15064,948 @@
   if (typeof window !== 'undefined' && window.__GP_DARTS_TEST__) {
     window.__gpDartsTest = { renderDarts: renderDarts, setMe: function (me) { S.me = me; }, S: S, showView: function (v) { showView(v); }, bust: function () { S.dt = {}; }, setLang: function (l) { LANG = l; S.lang = l; } };
   }
+
+  // ═══════════════════ TENIS DE MESA (sep-2026): el 11º deporte ═══════════════════════════════════════
+  // El objeto firma es el PUNTO y su ciclo: quién sirve, quién lo gana, cuándo llega el deuce y cómo se
+  // cierra el game. De la probabilidad de punto de cada uno se compila el game (recursión exacta con cola de
+  // deuce analítica) y el partido (convolución al mejor de 5 o 7), y de ese MISMO estado salen ganador,
+  // marcador, games, puntos, hándicaps y los mercados del primer game — no pueden contradecirse. Caja negra:
+  // evidencia sí, receta jamás. TODAS las familias corren en sombra; nada de esto es una pick. La superficie
+  // visual pertenece al juego (blueprint 9.0, Visual OS): la mesa se dibuja, el trenzado del saque se pinta,
+  // la lattice de estados se enseña, la cola de deuce se recorre. Nunca puntos inventados.
+  function ttGet(key, url, ttl) {
+    S.tt = S.tt || {};
+    var e = S.tt[key];
+    var age = e && e._at ? Date.now() - e._at : Infinity;
+    if (e && e.v !== undefined && age <= (ttl || 120000)) return e.v;
+    if (!e || !e._inflight) ttFetch(key, url);
+    return e && e.v !== undefined ? e.v : null;
+  }
+  function ttFetch(key, url) {
+    S.tt = S.tt || {};
+    var e = S.tt[key] = S.tt[key] || {};
+    e._inflight = true; var done = false;
+    var to = setTimeout(function () { if (done) return; done = true; e._inflight = false; e.v = { _err: 1 }; e._at = Date.now(); if (S.sport === 'tt') showView(S.view); }, 30000);
+    fetch(url, { headers: hdrs() })
+      .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _err: 1, _locked: 1 } : null); }).catch(function () { return null; })
+      .then(function (j) {
+        if (done) return; done = true; clearTimeout(to);
+        e._inflight = false; e.v = j || { _err: 1 }; e._at = Date.now();
+        if (S.sport === 'tt') showView(S.view);
+      });
+  }
+  function ttShell(title, inner) {
+    var mv = $('#gx-matchview'); if (!mv) return;
+    mv.innerHTML = '<div class="gx-mv"><div class="gx-content gx-cb-content gx-tt">' + (title == null ? '' : viewHead(title)) + cbetFor(S.view) + inner + '</div></div>';
+    mv.onclick = ttClicks;
+  }
+  var ttLoading = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('loader-2') + '<b>' + esT('Leyendo la base propia de tenis de mesa…', 'Reading the in-house table tennis base…') + '</b></div></div>'; };
+  var ttErr = function () { return '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esT('No se pudo leer el tablero.', 'Could not read the board.') + '</b></div></div>'; };
+  var ttPct = dtPct, ttPct1 = dtPct1, ttNum = dtNum, ttInt = dtInt, ttStr = dtStr, ttWL = dtWL, ttDate8 = dtDate8, ttPairs = dtPairs, ttTiles = dtTiles, ttHist = dtHist;
+  function ttLast(name) { return String(name || '—').trim().split(/\s+/).slice(-1)[0]; }
+  function ttSub(s) { return s === 'WS' ? esT('Femenino', 'Women') : s === 'MS' ? esT('Masculino', 'Men') : ttStr(s); }
+  function ttSubChip(s) { return s ? '<span class="gx-tt-sub ' + (s === 'WS' ? 'w' : 'm') + '">' + esc(s === 'WS' ? esT('FEM', 'W') : esT('MASC', 'M')) + '</span>' : ''; }
+  function ttTier(r) { return r && (r.tier_label || r.tier) ? '<span class="gx-tt-tier t-' + esc(r.tier || 'x') + '">' + esc(r.tier_label || r.tier) + '</span>' : ''; }
+  function ttRound(r) { return r && (r.round_label || r.round) ? esc(LANG === 'en' ? ttRoundEn(r.round) || r.round_label : r.round_label || r.round) : ''; }
+  var TT_ROUND_EN = { Q: 'Qualifying', GRP: 'Groups', R128: 'Round of 128', R64: 'Round of 64', R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Final', MD: 'Main draw', OTR: 'Round' };
+  function ttRoundEn(k) { return TT_ROUND_EN[k] || null; }
+  function ttFmt(f, long) { if (!f) return '—'; var s = 'BO' + (f.best_of || '?'); if (long) s = esT('al mejor de ', 'best of ') + (f.best_of || '?') + ' games'; if (f.certified === false && long) s += ' · ' + esT('no certificado', 'uncertified'); return s; }
+  function ttCert(f) { if (!f) return ''; return f.certified ? '<span class="gx-tt-fchip ok" title="' + esc(f.source || '') + '">' + esT('formato certificado', 'certified format') + '</span>' : '<span class="gx-tt-fchip warn" title="' + esc(f.source || '') + '">' + esT('formato histórico', 'historical format') + (f.share != null ? ' ' + Math.round(100 * f.share) + '%' : '') + '</span>'; }
+  function ttInteg(st) { var m = { VERIFIED_SCOPE: [esT('verificada', 'verified'), 'ok'], WATCH: [esT('en observación', 'watch'), 'watch'], RESTRICTED: [esT('restringida', 'restricted'), 'bad'], QUARANTINED: [esT('en cuarentena', 'quarantined'), 'bad'], BLOCKED: [esT('bloqueada', 'blocked'), 'bad'] }[st] || [ttStr(st), '']; return '<span class="gx-tt-integ ' + m[1] + '">' + esc(m[0]) + '</span>'; }
+  function ttCold(on) { return on ? '<span class="gx-dt-cold" title="' + esT('poca muestra: menos de 8 partidos en la base', 'thin sample: fewer than 8 matches in the base') + '">❄ ' + esT('frío', 'cold') + '</span>' : ''; }
+  function ttBooksTxt(n) { n = Number(n) || 0; return n + ' ' + (n === 1 ? esT('casa', 'book') : esT('casas', 'books')); }
+  function ttShadowNote(d) { return '<div class="gx-dim gx-es-trunc">' + esT('Todas las familias de tenis de mesa corren EN SOMBRA: nada de esto es una pick.', 'Every table tennis family runs IN SHADOW: none of this is a pick.') + (d && d.attribution ? ' ' + esc(d.attribution) : '') + '</div>'; }
+  function ttDisc() { return '<div class="gx-dim gx-es-trunc">' + esc(t('disclaimer_short')) + '</div>'; }
+  function ttBack(to, label) { return '<div class="gx-mv-bar"><button class="gx-mv-back" data-ttbackto="' + esc(to) + '">' + ic('arrow-left') + '<span>' + esc(label) + '</span></button></div>'; }
+  function ttDaysTo(iso) { var ms = Date.parse(iso || ''); if (isNaN(ms)) return null; return Math.ceil((ms - Date.now()) / 864e5); }
+
+  // ── IDENTIDAD TENIS DE MESA ─────────────────────────────────────────────────────────────────────────
+  // La MESA es el motivo: dos mitades azules con la red al centro y la pelota naranja. Es decoración
+  // semántica (de qué lado está la lectura), nunca dato. Retratos en loseta con esquina redondeada; el borde
+  // izquierdo verde para A y azul para B, como los dos lados de la mesa.
+  function ttMark(cls, w) {
+    w = w || 26; var h = Math.round(w * 0.56);
+    return '<svg class="gx-tt-mark' + (cls ? ' ' + cls : '') + '" viewBox="0 0 50 28" width="' + w + '" height="' + h + '" aria-hidden="true"><rect class="tb" x="1" y="3" width="48" height="22" rx="2"/><line class="ln" x1="25" y1="1" x2="25" y2="27"/><line class="ln thin" x1="1" y1="14" x2="49" y2="14"/><circle class="ball" cx="36" cy="10" r="2.6"/></svg>';
+  }
+  function ttFace(p, cls) {
+    var nm = (p && p.name) || '?';
+    var ini = nm.split(/\s+/).map(function (x) { return x[0]; }).slice(0, 2).join('').toUpperCase();
+    return '<span class="gx-tt-face' + (cls ? ' ' + cls : '') + '"><span class="in' + (p && p.photo ? ' has-photo' : '') + '"' + (p && p.photo ? '' : ' style="' + crestTint(nm) + '"') + '>' + (p && p.photo ? faceImg(p.photo) : '') + '<i>' + esc(ini) + '</i></span></span>';
+  }
+  function ttFlag(c) { return c ? '<em class="gx-tt-cc">' + esc(String(c)) + '</em>' : ''; }
+  function ttScore(a, b, cls) { return '<span class="gx-tt-score' + (cls ? ' ' + cls : '') + '"><b>' + ttInt(a) + '</b><i>–</i><b>' + ttInt(b) + '</b></span>'; }
+  function ttGamesStr(games, aFirst) { return (games || []).map(function (g) { return aFirst === false ? g[1] + '-' + g[0] : g[0] + '-' + g[1]; }).join(' · '); }
+  function ttIsLive(r) { return !!(r && r.live && r.live.state === 'live'); }
+  function ttIsFinal(r) { return !!(r && (r.status === 'final' || r.result)); }
+  function ttBucket(r) { if (ttIsLive(r)) return 'live'; if (ttIsFinal(r)) return 'fin'; return 'up'; }
+  // la ventaja GP − mercado en pp, con signo y a quién favorece
+  function ttEdge(pA, mkA, A, B) {
+    if (pA == null || isNaN(pA)) return '';
+    if (mkA == null || isNaN(mkA)) return '<span class="gx-dt-pp na">' + esT('sin consenso', 'no consensus') + '</span>';
+    var d = 100 * (Number(pA) - Number(mkA));
+    if (Math.abs(d) < 1) return '<span class="gx-dt-pp flat">' + esT('= mercado', '= market') + '</span>';
+    return '<span class="gx-dt-pp' + (Math.abs(d) >= 3 ? ' pos' : ' soft') + '">+' + Math.abs(d).toFixed(1) + ' pp ' + esc(ttLast(d > 0 ? A : B)) + '</span>';
+  }
+  // barra GP vs mercado (verde = P(A) del modelo, marca azul = consenso)
+  function ttMvM(pA, mkA, A, B, big) {
+    if (pA == null || isNaN(pA)) return '';
+    var hasMk = mkA != null && !isNaN(mkA);
+    return '<div class="gx-dt-mvm' + (big ? ' big' : '') + '"><span class="gx-dt-mvm-p a">' + ttPct(pA) + '</span>' +
+      '<div class="gx-dt-mvm-t"><i style="width:' + Math.round(100 * pA) + '%"></i>' + (hasMk ? '<em style="left:' + Math.round(100 * mkA) + '%" title="' + esT('mercado ', 'market ') + ttPct(mkA) + '"></em>' : '') + '</div>' +
+      '<span class="gx-dt-mvm-p b">' + ttPct(1 - pA) + '</span>' +
+      '<div class="gx-dt-mvm-f"><span class="gx-dim">GP · ' + (hasMk ? esT('mercado ', 'market ') + ttPct(mkA) : esT('sin consenso', 'no consensus')) + '</span>' + ttEdge(pA, mkA, A, B) + '</div></div>';
+  }
+  // escudo de evento: logo de la WTT o iniciales sobre su color oficial
+  function ttCrest(tq, cls) {
+    var nm = (tq && (tq.short || tq.name)) || '?';
+    var ini = String(nm).replace(/^WTT\s+/i, '').split(/\s+/).filter(Boolean).map(function (x) { return x[0]; }).join('').slice(0, 3).toUpperCase() || '?';
+    var tint = tq && tq.color ? 'background:' + esc(tq.color) : crestTint(nm);
+    if (tq && tq.logo) return '<span class="gx-tt-crest' + (cls ? ' ' + cls : '') + '" style="' + tint + '"><img src="' + esc(tq.logo) + '" alt="" loading="lazy" onload="this.parentNode.classList.add(\'ok\')" onerror="this.remove()"><i>' + esc(ini) + '</i></span>';
+    return '<span class="gx-tt-crest' + (cls ? ' ' + cls : '') + '" style="' + tint + '"><i>' + esc(ini) + '</i></span>';
+  }
+  function ttTourById(d, id) { return ((d && d.tournaments) || []).filter(function (x) { return String(x.id) === String(id); })[0] || null; }
+  function ttGroupByTour(rows) {
+    var groups = [], map = {};
+    rows.forEach(function (r) { var k = String(r.event_id || r.tournament || '?'); if (!map[k]) { map[k] = { id: k, name: r.tournament_short || r.tournament || '—', rows: [] }; groups.push(map[k]); } map[k].rows.push(r); });
+    return groups;
+  }
+  // estado vacío con sentido: el siguiente evento WTT
+  function ttNext(d) {
+    var px = d && d.proximo;
+    var out = '<div class="gx-panel gx-tt-next">' + ttMark('lg', 84) + '<div class="gx-dt-next-b">';
+    if (px) { var n = ttDaysTo(px.start); out += '<span class="gx-label">' + esT('Siguiente evento WTT', 'Next WTT event') + '</span><b>' + esc(px.short || px.name || '—') + '</b><span class="gx-dim">' + esc([px.city, px.country].filter(Boolean).join(', ')) + (px.start ? ' · ' + esc(ttDate8(px.start)) + (px.end ? ' → ' + esc(ttDate8(px.end)) : '') : '') + (n != null ? ' · ' + (n <= 0 ? esT('hoy', 'today') : n === 1 ? esT('mañana', 'tomorrow') : esT('en ' + n + ' días', 'in ' + n + ' days')) : '') + '</span>' + (px.id ? '<span class="gx-mcard-cta" data-tttour="' + esc(px.id) + '">' + esT('Eventos', 'Events') + ' →</span>' : ''); }
+    else out += '<span class="gx-label">' + esT('Sin partidos en la ventana', 'No matches in the window') + '</span><b>' + esc((d && d.note) || esT('La agenda se abre sola con el siguiente evento.', 'The slate opens on its own with the next event.')) + '</b>';
+    return out + '</div></div>';
+  }
+
+  // ── DESPACHO ────────────────────────────────────────────────────────────────────────────────────────
+  function renderTT(v) {
+    S.tt = S.tt || {};
+    if (!S.me) { ttShell(t('nav_opps'), ttLoading()); return; }
+    if (!ttAllowed()) { showView('board'); return; }
+    var lk = nsLockHtml(v); if (lk) { ttShell(t('nav_opps'), lk); return; }
+    if (v === 'ttopps') return renderTtOpps();
+    if (v === 'ttgames') return renderTtGames();
+    if (v === 'ttmatch') return renderTtMatch();
+    if (v === 'ttplayers') return renderTtPlayers();
+    if (v === 'ttplayer') return renderTtPlayer();
+    if (v === 'ttrank') return renderTtRank();
+    if (v === 'tttours') return renderTtTours();
+    if (v === 'tttour') return renderTtTour();
+    if (v === 'ttsim') return renderTtSim();
+    if (v === 'ttmap') return renderTtMap();
+    if (v === 'ttperf') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTtPerf(); }
+    if (v === 'ttbrief') return renderTtBrief();
+    if (v === 'ttask') return renderTtAsk();
+    if (v === 'ttmodel') { if (PERF_VIEWS_ALL.indexOf(v) >= 0 && !perfOK()) return navTo(PERF_HOME[v] || 'opps'); return renderTtModel(); }
+    renderTtGames();
+  }
+
+  // ── LA CARD DE LA CASA PARA TENIS DE MESA ───────────────────────────────────────────────────────────
+  var TT_CARD_FAM = { ML: 'SOLID', GAMES_TOTAL: 'TOTAL', GAMES_HCP: 'SPREAD', POINTS_TOTAL: 'TOTAL', POINTS_HCP: 'SPREAD', CORRECT_SCORE: 'COMBO', GAME_ML: 'SOLID', GAME_POINTS_TOTAL: 'TOTAL', GAME_POINTS_HCP: 'SPREAD', GAME_DEUCE: 'TOTAL' };
+  function ttFamName(f) {
+    return { ML: esT('Ganador', 'Winner'), GAMES_TOTAL: esT('Total de games', 'Total games'), GAMES_HCP: esT('Hándicap de games', 'Game handicap'), POINTS_TOTAL: esT('Total de puntos', 'Total points'), POINTS_HCP: esT('Hándicap de puntos', 'Point handicap'), CORRECT_SCORE: esT('Marcador exacto', 'Correct score'),
+      GAME_ML: esT('Ganador del 1er game', '1st game winner'), GAME_POINTS_TOTAL: esT('Puntos del 1er game', '1st game points'), GAME_POINTS_HCP: esT('Hándicap del 1er game', '1st game handicap'), GAME_DEUCE: esT('Deuce en el 1er game', '1st game deuce') }[f] || String(f || '—');
+  }
+  function ttTicket(p) {
+    var f = p.family_raw || p.family, who = p.side === 'a' ? p.home : p.side === 'b' ? p.away : null;
+    var ln = p.line != null ? p.line : '', over = p.side === 'over', sgn = (ln > 0 ? '+' : '') + ln;
+    switch (f) {
+      case 'ML': return who ? t('pf_wins', { team: who }) : (p.selection_name || '');
+      case 'GAMES_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' games', (over ? 'Over ' : 'Under ') + ln + ' games');
+      case 'GAMES_HCP': return (who || '') + ' ' + sgn + ' games';
+      case 'POINTS_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' puntos en el partido', (over ? 'Over ' : 'Under ') + ln + ' points in the match');
+      case 'POINTS_HCP': return (who || '') + ' ' + sgn + esT(' puntos', ' points');
+      case 'CORRECT_SCORE': return esT('Marcador exacto ', 'Correct score ') + (p.side || ln);
+      case 'GAME_ML': return esT((who || '') + ' gana el 1er game', (who || '') + ' wins game 1');
+      case 'GAME_POINTS_TOTAL': return esT((over ? 'Más de ' : 'Menos de ') + ln + ' puntos en el 1er game', (over ? 'Over ' : 'Under ') + ln + ' points in game 1');
+      case 'GAME_POINTS_HCP': return (who || '') + ' ' + sgn + esT(' puntos en el 1er game', ' points in game 1');
+      case 'GAME_DEUCE': return p.side === 'yes' ? esT('El 1er game llega a deuce', 'Game 1 goes to deuce') : esT('El 1er game no llega a deuce', 'Game 1 does not go to deuce');
+      default: return p.selection_name || String(f);
+    }
+  }
+  function ttFamLabel(c, r) { return ttTicket({ family_raw: c.family, side: c.side, line: c.line, home: r && (typeof r.a === 'string' ? r.a : r.a && r.a.name), away: r && (typeof r.b === 'string' ? r.b : r.b && r.b.name) }); }
+  function ttCard(pk, r) {
+    var o = Object.assign({}, pk);
+    o.fam_label = ttFamName(pk.family_raw || pk.family);
+    if (!o.tt_avas) o.tt_avas = { h: (r && r.photo_a) || null, a: (r && r.photo_b) || null };
+    if (!o.tt_hash && r && r.id) o.tt_hash = 'ttmatch/' + r.id;
+    return o;
+  }
+  function ttCandCard(r, c) {
+    var p = Number(c.p_model), odds = Number(c.odds), st = null;
+    if (p > 0 && odds > 1) { var b = odds - 1, k = (p * b - (1 - p)) / b; if (k > 0) { var raw = Math.round(10000 * k / 4) / 100; st = { pct: Math.min(2, raw), raw: raw, capped: raw > 2 }; } }
+    var pc = function (x) { return (100 * (x || 0)).toFixed(1) + ' %'; };
+    var why = esT('El compilador da ' + pc(c.p_model) + ' a esta línea contra el ' + pc(c.p_implied) + ' que implica la cuota. Modelo market-blind por construcción. EN SOMBRA: se anota y se liquida para acumular muestra, no se publica como pick.', 'The compiler gives this line ' + pc(c.p_model) + ' against the ' + pc(c.p_implied) + ' the price implies. Market-blind by construction. IN SHADOW: logged and settled to build the sample, not published as a pick.');
+    var nm = function (x) { return typeof x === 'string' ? x : (x && x.name) || ''; };
+    return ttCard(Object.assign({}, c, { family: TT_CARD_FAM[c.family] || 'TOTAL', family_raw: c.family, home: nm(r.a), away: nm(r.b), home_team_id: null, away_team_id: null, competition_name: r.tournament_short || r.tournament || null, kickoff: r.start_at || null, confidence: c.p_model, model_prob: c.p_model, market_prob: c.p_implied,
+      pick_id: 'tt_' + r.id + '_' + c.family + '_' + c.side + '_' + (c.line != null ? c.line : 'x'), why_es: c.why_es || why, why_en: c.why_en || why, stake_pct: st ? st.pct : null, stake_raw_pct: st ? st.raw : null, stake_capped: !!(st && st.capped), shadow: true,
+      signals: { win_prob: c.p_model, edge_pp: c.edge_pp, data_confidence: (r.gp && r.gp.cold) ? 'low' : 'med', pick_quality: c.edge_pp >= 6 ? 'strong' : c.edge_pp >= 4 ? 'moderate' : 'marginal', regime: 'monitor' } }), r);
+  }
+  function ttSameThesis(pk, c) { return pk.family_raw === c.family && String(pk.side) === String(c.side) && String(pk.line) === String(c.line) && String(pk.game || '') === String(c.game || ''); }
+  function ttCardsOf(r) {
+    var pks = r.picks || [];
+    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).map(function (c) { var pk = pks.filter(function (x) { return ttSameThesis(x, c); })[0]; return pk ? ttCard(pk, r) : ttCandCard(r, c); });
+  }
+
+  // ── OPORTUNIDADES ───────────────────────────────────────────────────────────────────────────────────
+  function ttPairCell(r, opt) {
+    opt = opt || {};
+    var win = function (id) { return ttIsFinal(r) && r.winner_id != null && r.winner_id === id; };
+    return '<div class="gx-cell-team gx-tt-cell">' + ttFace({ name: r.a, photo: r.photo_a }, 'ra' + (opt.big ? ' md' : '')) +
+      '<div class="gx-teamnames gx-tt-names"><b' + (win(r.a_id) ? ' class="win"' : '') + '>' + esc(r.a || '—') + ttFlag(r.a_country) + (r.a_rank ? '<em class="gx-tt-rk">#' + ttInt(r.a_rank) + '</em>' : '') + (win(r.a_id) ? ' <span class="gx-dt-win">✓</span>' : '') + '</b>' +
+      '<span' + (win(r.b_id) ? ' class="win"' : '') + '>' + esc(r.b || '—') + ttFlag(r.b_country) + (r.b_rank ? '<em class="gx-tt-rk">#' + ttInt(r.b_rank) + '</em>' : '') + (win(r.b_id) ? ' <span class="gx-dt-win">✓</span>' : '') + '</span></div>' +
+      ttFace({ name: r.b, photo: r.photo_b }, 'rb' + (opt.big ? ' md' : '')) + '</div>';
+  }
+  function ttMatchHead(r, n) {
+    return '<div class="gx-dt-mh" data-ttmatch="' + esc(r.id) + '">' + ttFace({ name: r.a, photo: r.photo_a }, 'ra sm') + '<b>' + esc(r.a || '—') + '</b><span class="gx-dim">vs</span><b>' + esc(r.b || '—') + '</b>' + ttFace({ name: r.b, photo: r.photo_b }, 'rb sm') + ttSubChip(r.sub) +
+      '<span class="gx-spacer"></span><span class="gx-dim gx-mono">' + esc(fmtDateTime(r.start_at)) + '</span>' + (ttIsLive(r) ? '<span class="gx-live-pill">' + ttInt(r.live.games_a) + '–' + ttInt(r.live.games_b) + '</span>' : '') +
+      '<span class="gx-badge gx-b-watch">' + n + ' ' + esT('tesis en sombra', 'shadow theses') + '</span><span class="gx-dim">' + ic('chevron-right') + '</span></div>';
+  }
+  // RADAR: dónde se separa el compilador del consenso
+  function ttRadar(rows) {
+    var xs = (rows || []).filter(function (r) { return r.available !== false && r.gp && r.gp.p_a != null && !ttIsFinal(r); });
+    if (!xs.length) return '';
+    xs.sort(function (p, q) { var ep = p.market && p.market.ml_p_a != null ? Math.abs(p.gp.p_a - p.market.ml_p_a) : -1, eq = q.market && q.market.ml_p_a != null ? Math.abs(q.gp.p_a - q.market.ml_p_a) : -1; return eq - ep || (Date.parse(p.start_at || 0) || 0) - (Date.parse(q.start_at || 0) || 0); });
+    return '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Radar', 'Radar') + '</span><span class="gx-ph-extra gx-dim">' + esT('todos los partidos con modelo: dónde se separa el compilador del consenso', 'every match with a model: where the compiler parts from the consensus') + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-dt-radar"><thead><tr><th>' + esT('Partido', 'Match') + '</th><th>' + esT('Evento', 'Event') + '</th><th class="r">GP</th><th class="r">' + esT('Mercado', 'Market') + '</th><th>' + esT('Ventaja', 'Edge') + '</th><th class="r">' + esT('Games', 'Games') + '</th><th class="r">' + esT('Puntos', 'Points') + '</th><th class="r">' + esT('Tesis', 'Theses') + '</th></tr></thead><tbody>' +
+      xs.slice(0, 24).map(function (r) {
+        var mk = r.market || {}, gp = r.gp || {};
+        return '<tr data-ttmatch="' + esc(r.id) + '" style="cursor:pointer"><td><div class="gx-dt-pair">' + ttFace({ name: r.a, photo: r.photo_a }, 'sm') + ttFace({ name: r.b, photo: r.photo_b }, 'sm') + '<div class="gx-dt-pair-n"><b>' + esc(r.a || '—') + '</b><span>' + esc(r.b || '—') + '</span></div>' + (ttIsLive(r) ? '<span class="gx-live-pill"></span>' : '') + '</div></td>' +
+          '<td><span class="gx-dim" style="font-size:11px">' + esc(r.tournament_short || '') + '</span> ' + ttSubChip(r.sub) + ttCold(gp.cold) + '</td>' +
+          '<td class="r gx-mono"><b>' + ttPct(gp.p_a) + '</b><span class="gx-dim"> / ' + ttPct(1 - gp.p_a) + '</span></td>' +
+          '<td class="r gx-mono gx-dim">' + (mk.ml_p_a != null ? ttPct(mk.ml_p_a) + ' / ' + ttPct(1 - mk.ml_p_a) : '—') + '</td>' +
+          '<td>' + ttEdge(gp.p_a, mk.ml_p_a, r.a, r.b) + '</td><td class="r gx-mono gx-dim">' + ttNum(gp.exp_games, 2) + '</td><td class="r gx-mono gx-dim">' + ttNum(gp.exp_points, 1) + '</td>' +
+          '<td class="r gx-mono">' + (r.shadow_n || (r.picks || []).length ? '<b class="gx-up">' + (r.shadow_n || r.picks.length) + '</b>' : '<span class="gx-dim">·</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+  }
+  function ttSideCockpit(rows) {
+    var xs = rows.filter(function (r) { return r.available !== false && r.gp && r.gp.p_a != null && !ttIsFinal(r); });
+    if (!xs.length) return '';
+    var sel = S.tt.ckSel && xs.some(function (r) { return String(r.id) === String(S.tt.ckSel); }) ? String(S.tt.ckSel) : String(xs[0].id);
+    var m = xs.filter(function (r) { return String(r.id) === sel; })[0];
+    var gp = m.gp || {}, mk = m.market || {};
+    var picker = '<div class="gx-ck-picker"><span class="gx-label">' + esT('Elige un partido', 'Pick a match') + '</span><div class="gx-ck-selwrap">' + ic('target') + '<select class="gx-ck-select" id="gx-tt-ck">' + xs.map(function (r) { return '<option value="' + esc(r.id) + '"' + (String(r.id) === sel ? ' selected' : '') + '>' + esc(r.a + ' vs ' + r.b) + '</option>'; }).join('') + '</select>' + ic('chevron-down') + '</div></div>';
+    var card = '<div class="gx-panel gx-ck-score gx-tt-ck">' +
+      '<div class="gx-ck-comp" style="text-align:center;margin-bottom:10px">' + esc([m.tournament_short, ttRound(m)].filter(Boolean).join(' · ')) + (m.start_at ? ' · ' + esc(fmtDateTime(m.start_at)) : '') + ' ' + ttSubChip(m.sub) + '</div>' +
+      '<div class="gx-ck-teams"><div class="gx-ck-side">' + ttFace({ name: m.a, photo: m.photo_a }, 'ra big') + '<b>' + esc(m.a || '—') + '</b></div>' +
+      '<div class="gx-ck-mid">' + (m.live ? ttScore(m.live.games_a, m.live.games_b, 'live') : '<div class="gx-ck-num">' + esc(t('vs')) + '</div>') + '<div class="gx-dt-fmt">' + esc(ttFmt(m.format)) + '</div></div>' +
+      '<div class="gx-ck-side">' + ttFace({ name: m.b, photo: m.photo_b }, 'rb big') + '<b>' + esc(m.b || '—') + '</b></div></div>' +
+      '<div class="gx-pbar"><i class="h" style="width:' + (100 * gp.p_a).toFixed(1) + '%"></i><i class="a" style="width:' + (100 * (1 - gp.p_a)).toFixed(1) + '%"></i></div>' +
+      '<div class="gx-plabels"><span>' + esc(ttLast(m.a)) + ' <b>' + ttPct(gp.p_a) + '</b></span><span>' + esc(ttLast(m.b)) + ' <b>' + ttPct(1 - gp.p_a) + '</b></span></div>' +
+      '<div class="gx-ck-stats"><div class="gx-ck-stat"><span class="gx-label">' + esT('Games esp.', 'Exp. games') + '</span><div class="v">' + ttNum(gp.exp_games, 2) + '</div></div><div class="gx-ck-stat"><span class="gx-label">' + esT('Puntos esp.', 'Exp. points') + '</span><div class="v">' + ttNum(gp.exp_points, 1) + '</div></div><div class="gx-ck-stat"><span class="gx-label">' + esT('Deuce G1', 'Deuce G1') + '</span><div class="v">' + ttPct(gp.p_deuce_g1) + '</div></div></div>' +
+      '<div class="gx-dt-ck-foot">' + ttEdge(gp.p_a, mk.ml_p_a, m.a, m.b) + '<span class="gx-dim">' + esc(ttBooksTxt(mk.n_books)) + (gp.cold ? ' ' + ttCold(true) : '') + '</span></div>' +
+      '<button class="gx-btn gx-dt-ck-btn" data-ttmatch="' + esc(m.id) + '">' + esT('Abrir el cockpit', 'Open the cockpit') + ' →</button></div>';
+    return '<aside class="gx-dt-aside">' + picker + card + '</aside>';
+  }
+  function renderTtOpps() {
+    var d = ttGet('board', '/api/tt/board', 120000);
+    if (!d) { ttShell(t('nav_opps'), ttLoading()); return; }
+    if (d._err) { ttShell(t('nav_opps'), ttErr()); return; }
+    var rows = d.rows || [];
+    if (rows.some(ttIsLive)) nsLiveAuto(function () { nsBust(S.tt, 'board'); });
+    var filt = S.tt.oFilt || 'all';
+    var vis = rows.filter(function (r) { var b = ttBucket(r); return filt === 'all' ? b !== 'fin' : filt === b; });
+    var theses = [];
+    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && !c.benchmark) theses.push({ r: r, c: c }); }); });
+    theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
+    var lockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
+    var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f']];
+    var head = '<div class="gx-ohead"><h1>' + esc(t('nav_opps')) + '</h1><div class="gx-seg">' + tabs.map(function (x) { return '<button data-ttofilt="' + x[0] + '"' + (filt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + theses.length + ' ' + esT('tesis en sombra', 'shadow theses') + ' · ' + vis.length + ' ' + esT('partidos', 'matches') + (d.odds_at ? ' · ' + esT('cuotas', 'odds') + ' ' + esc(fmtDateTime(d.odds_at)) : '') + '</span></div>';
+    if (!rows.length) { ttShell(null, head + ttNext(d) + ttShadowNote(d)); return; }
+    var main = '';
+    var top = theses[0];
+    var topCard = top ? (ttCardsOf(top.r).filter(function (pk) { return ttSameThesis(pk, top.c); })[0] || ttCandCard(top.r, top.c)) : null;
+    if (topCard) main += '<div class="gx-dt-potd"><div class="gx-dt-sech">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Tesis del día', 'Thesis of the day') + '</span><span class="gx-dim">' + esc(ttFamLabel(top.c, top.r)) + ' · ' + esc(top.r.tournament_short || '') + '</span></div><div class="gx-picks-feed one">' + pickCard(topCard, {}) + '</div></div>';
+    else if (lockedN) main += '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de tenis de mesa son para suscriptores', 'Table tennis theses are for subscribers'), esT('El registro por familia —games, puntos, primer game, deuce— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — games, points, first game, deuce — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
+    else main += '<div class="gx-panel gx-dt-none">' + ttMark('lg', 70) + '<div><b>' + esT('Ninguna tesis hoy.', 'No thesis today.') + '</b><span class="gx-dim">' + esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO también es un resultado.', 'The engine valued the open lines and none beats its own noise. Saying NO is also a result.') + '</span></div></div>';
+    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }); });
+    if (withT.length) {
+      main += '<div class="gx-dt-sech"><span class="gx-label">' + esT('Por partido', 'By match') + '</span><span class="gx-dim">' + withT.length + ' ' + esT('partidos', 'matches') + '</span></div>';
+      withT.sort(function (x, y) { return (Date.parse(x.start_at || 0) || 0) - (Date.parse(y.start_at || 0) || 0); });
+      main += withT.map(function (r) {
+        var cards = ttCardsOf(r), pk = visiblePicks(cards);
+        var body = pk.length ? '<div class="gx-picks-feed' + (pk.length === 1 ? ' one' : '') + '">' + pk.map(function (x) { return pickCard(x, {}); }).join('') + '</div>' : '';
+        return '<div class="gx-dt-mgroup">' + ttMatchHead(r, cards.length) + (cards.length > 1 ? '<div class="gx-dt-corr">' + ic('alert-triangle') + '<span>' + esT('Mismo partido: liquidan juntas. Para el stake, trátalas como una sola.', 'Same match: they settle together. For your stake, treat them as one.') + '</span></div>' : '') + body + '</div>';
+      }).join('');
+      var all = []; withT.forEach(function (r) { ttCardsOf(r).forEach(function (pk) { all.push(pk); }); });
+      main += hiddenNote(all) + ttDisc();
+    }
+    main += ttRadar(vis);
+    var page = '<div class="gx-dt-opps"><div class="gx-dt-opps-main">' + main + '</div>' + ttSideCockpit(vis) + '</div>';
+    ttShell(null, head + page + soloAdmin('<div class="gx-panel gx-bb-note">' + ic('eye') + '<span><b>' + esT('Familias en sombra, no picks.', 'Shadow families, not picks.') + '</b> ' + esc(clampFrase(d.doctrine || '', 420)) + '</span></div>') + ttShadowNote(d));
+    var ck = $('#gx-tt-ck'); if (ck) ck.addEventListener('change', function () { S.tt.ckSel = ck.value; renderTtOpps(); var a = $('.gx-dt-aside'); if (window.innerWidth <= 1180 && a) a.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  }
+
+  // ── PARTIDOS ────────────────────────────────────────────────────────────────────────────────────────
+  function ttStateCell(r) {
+    if (ttIsLive(r)) { var lv = r.live; return '<span class="gx-dt-st">' + ttScore(lv.games_a, lv.games_b, 'live') + (lv.current ? '<span class="gx-tt-cur gx-mono">' + ttInt(lv.current.a) + '–' + ttInt(lv.current.b) + (lv.server ? '<i class="gx-tt-serve ' + lv.server + '" title="' + esT('saca', 'serving') + '"></i>' : '') + '</span>' : '') + '<span class="gx-live-pill">' + esc(t('st_live')) + '</span></span>'; }
+    if (ttIsFinal(r)) return '<span class="gx-dt-st">' + ttScore(r.score_a, r.score_b) + (r.result && r.result.games ? '<span class="gx-tt-games gx-mono gx-dim">' + esc(ttGamesStr(r.result.games)) + '</span>' : '') + '<span class="gx-dim" style="font-weight:600;font-size:11px">' + esT('Final', 'Final') + '</span></span>';
+    return '<span class="gx-dim" style="font-size:11px">' + esc(fmtTime(r.start_at)) + (r.tz_certain === false ? ' <i class="gx-dim" title="' + esT('hora estimada por sede', 'venue-estimated time') + '">≈</i>' : '') + '</span>';
+  }
+  function ttGpCell(r) {
+    var gp = r.gp || {};
+    if (r.available === false) return '<span class="gx-dim" style="font-size:11px">' + esc(r.why || esT('fuera de la base', 'outside the base')) + '</span>';
+    if (gp.p_a == null) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    var a = gp.p_a >= 0.5;
+    return '<span class="gx-tri gx-gp gx-dt-duo"><span' + (a ? ' class="hi"' : '') + '>' + ttPct(gp.p_a) + '</span><span' + (!a ? ' class="hi"' : '') + '>' + ttPct(1 - gp.p_a) + '</span></span>';
+  }
+  function ttSignalCell(r) {
+    var n = r.shadow_n || (r.picks || []).length || 0;
+    if (r.available === false || ttIsFinal(r)) return '<span class="gx-dim" style="font-size:11px">—</span>';
+    return (n ? '<span class="gx-badge gx-b-watch">' + n + ' ' + esT('tesis', 'theses') + '</span>' : '<span class="gx-dim" style="font-size:11px">—</span>') + (r.gp && r.gp.cold ? ' ' + ttCold(true) : '');
+  }
+  function ttRowHtml(r) {
+    var ok = r.available !== false;
+    return '<tr class="gx-row' + (ok ? '' : ' gx-row-static gx-dt-off') + '" data-ttmatch="' + esc(r.id) + '">' +
+      '<td class="gx-time">' + esc(fmtTime(r.start_at)) + '<div class="gx-dim gx-dt-time-s"><span>' + ttSubChip(r.sub) + ' ' + ttRound(r) + ' · ' + esc(ttFmt(r.format)) + '</span><span title="' + esc(r.tournament || '') + '">' + esc(r.tournament_short || '') + (r.table ? ' · ' + esc(r.table) : '') + '</span></div></td>' +
+      '<td class="l">' + ttPairCell(r) + '</td><td class="l">' + ttStateCell(r) + '</td><td>' + ttGpCell(r) + '</td><td class="l">' + ttSignalCell(r) + '</td><td class="l"><span class="gx-dim">' + ic('chevron-right') + '</span></td></tr>';
+  }
+  function ttTableHead() { return '<table class="gx-table gx-dt-table gx-tt-table"><thead><tr><th class="l">' + esc(t('th_time')) + '</th><th class="l">' + esc(t('th_match')) + '</th><th class="l">' + esc(t('th_state')) + '</th><th class="grp">' + esc(t('th_gp')) + '</th><th class="l">' + esc(t('th_signal')) + '</th><th></th></tr></thead><tbody>'; }
+  function ttMatchCard(r) {
+    var ok = r.available !== false, mk = r.market || {}, gp = r.gp || {};
+    return '<div class="gx-mcard gx-dt-mcard gx-tt-mcard' + (ok ? '' : ' gx-mcard-static gx-dt-off') + (ttIsLive(r) ? ' live' : '') + '" data-ttmatch="' + esc(r.id) + '">' +
+      '<div class="gx-mcard-top"><span class="gx-time">' + ttSubChip(r.sub) + ' ' + esc(fmtTime(r.start_at)) + ' · ' + esc(r.tournament_short || '') + ' · ' + ttRound(r) + '</span><span class="gx-spacer"></span>' + ttStateCell(r) + '</div>' +
+      '<div style="margin:8px 0">' + ttPairCell(r, { big: true }) + '</div>' + (ok && !ttIsFinal(r) ? ttMvM(gp.p_a, mk.ml_p_a, r.a, r.b) : '') +
+      '<div class="gx-mcard-rows"><div><span class="gx-label">' + esc(t('th_gp')) + '</span>' + ttGpCell(r) + '</div></div>' +
+      '<div class="gx-mcard-foot"><span>' + ttSignalCell(r) + (ok ? ' <span class="gx-dim" style="font-family:var(--gx-sans);font-size:10.5px">' + esc(ttFmt(r.format)) + ' · ' + esc(ttBooksTxt(mk.n_books)) + '</span>' : '') + '</span><span class="gx-mcard-cta">' + esc(t('cta_analyze')) + ' →</span></div></div>';
+  }
+  function renderTtGames() {
+    var d = ttGet('board', '/api/tt/board', 120000);
+    if (!d) { ttShell(esT('Partidos', 'Matches'), ttLoading()); return; }
+    if (d._err) { ttShell(esT('Partidos', 'Matches'), ttErr()); return; }
+    var all = d.rows || [];
+    if (all.some(ttIsLive)) nsLiveAuto(function () { nsBust(S.tt, 'board'); });
+    var q = (S.tt.mQ || '').toLowerCase().trim(), filt = S.tt.mFilt || 'all', tour = S.tt.mTour || 'all', sub = S.tt.mSub || 'all';
+    var ord = { live: 0, up: 1, fin: 2 };
+    var items = all.filter(function (r) {
+      if (q && ((r.a || '') + ' ' + (r.b || '')).toLowerCase().indexOf(q) < 0) return false;
+      if (tour !== 'all' && String(r.event_id) !== tour) return false;
+      if (sub !== 'all' && r.sub !== sub) return false;
+      return filt === 'all' || filt === ttBucket(r);
+    }).sort(function (x, y) { var bx = ttBucket(x), by = ttBucket(y); if (ord[bx] !== ord[by]) return ord[bx] - ord[by]; var tx = Date.parse(x.start_at || 0) || 0, ty = Date.parse(y.start_at || 0) || 0; return bx === 'fin' ? ty - tx : tx - ty; });
+    var tours = [], seen = {};
+    all.forEach(function (r) { var k = String(r.event_id); if (!seen[k]) { seen[k] = 1; tours.push({ id: k, name: r.tournament_short || r.tournament }); } });
+    var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f'], ['fin', 'st_finished']];
+    var head = '<div class="gx-ohead"><h1>' + esT('Partidos', 'Matches') + '</h1><div class="gx-seg">' + tabs.map(function (x) { return '<button data-ttmfilt="' + x[0] + '"' + (filt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
+      '<div class="gx-seg gx-tt-subseg">' + [['all', esT('Todos', 'All')], ['MS', esT('Masc.', 'Men')], ['WS', esT('Fem.', 'Women')]].map(function (x) { return '<button data-ttmsub="' + x[0] + '"' + (sub === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>'; }).join('') + '</div>' +
+      (tours.length > 1 ? '<select class="gx-select" id="gx-ttmtour"><option value="all">' + esT('Todos los eventos', 'All events') + '</option>' + tours.map(function (x) { return '<option value="' + esc(x.id) + '"' + (tour === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select>' : '') +
+      '<div class="gx-msearch">' + ic('search') + '<input id="gx-ttmsearch" placeholder="' + esT('Buscar jugador…', 'Search player…') + '" value="' + esc(S.tt.mQ || '') + '" autocomplete="off"></div>' +
+      '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + items.length + ' ' + esT('partidos', 'matches') + '</span></div>';
+    var body;
+    if (!all.length) body = ttNext(d);
+    else if (!items.length) body = '<div class="gx-panel"><div class="gx-empty">' + ic('calendar-off') + '<b>' + esT('Nada con ese filtro.', 'Nothing with that filter.') + '</b></div></div>';
+    else {
+      var groups = [], gmap = {};
+      items.forEach(function (r) { var k = dayKey(r.start_at); if (!gmap[k]) { gmap[k] = { k: k, label: dayLabel(r.start_at), rows: [] }; groups.push(gmap[k]); } gmap[k].rows.push(r); });
+      body = groups.map(function (g) { return '<div class="gx-mgroup"><div class="gx-mgroup-h"><span>' + esc(g.label) + '</span><span class="gx-dim">' + g.rows.length + '</span></div><div class="gx-panel gx-board gx-matches-desk">' + ttTableHead() + g.rows.map(ttRowHtml).join('') + '</tbody></table></div><div class="gx-matches-mob">' + g.rows.map(ttMatchCard).join('') + '</div></div>'; }).join('');
+    }
+    ttShell(null, head + body + ttShadowNote(d));
+    var si = $('#gx-ttmsearch');
+    if (si) si.addEventListener('input', function () { S.tt.mQ = si.value; clearTimeout(S._ttmq); S._ttmq = setTimeout(function () { renderTtGames(); var e2 = $('#gx-ttmsearch'); if (e2) { e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }, 260); });
+    var ts = $('#gx-ttmtour'); if (ts) ts.addEventListener('change', function () { S.tt.mTour = ts.value; renderTtGames(); });
+  }
+
+  // ── EL COCKPIT DEL PARTIDO ──────────────────────────────────────────────────────────────────────────
+  function renderTtMatch() {
+    var id = S.tt.matchId;
+    var d = ttGet('m_' + id, '/api/tt/match?id=' + encodeURIComponent(id), 120000);
+    var back = '<div class="gx-mv-bar"><button class="gx-mv-back" data-ttback>' + ic('arrow-left') + '<span>' + esT('Partidos', 'Matches') + '</span></button></div>';
+    if (!d) { ttShell(esT('Partido', 'Match'), back + ttLoading()); return; }
+    if (d._err) { ttShell(esT('Partido', 'Match'), back + ttErr()); return; }
+    var A = d.a && typeof d.a === 'object' ? d.a : { name: d.a, photo: d.photo_a, id: d.a_id, country: d.a_country };
+    var B = d.b && typeof d.b === 'object' ? d.b : { name: d.b, photo: d.photo_b, id: d.b_id, country: d.b_country };
+    if (d.available === false) {
+      ttShell(null, back + ttHero(d, A, B) + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('sin lectura', 'no read')) + '</b><span class="gx-dim">' + esT('Sin historial con puntos por game para los dos, no hay rating de punto y no hay compilador: la ficha queda en el mercado.', 'Without point-by-game history for both there is no point rating and no compiler: the card stays at market level.') + '</span></div></div>' + (Array.isArray(d.market_rows) && d.market_rows.length ? ttMarketsPanel(d, A, B) : '') + ttShadowNote(d));
+      return;
+    }
+    var PR = d.profiles || {}, PA = PR.a || {}, PB = PR.b || {};
+    var isLive = ttIsLive(d);
+    if (isLive) nsLiveAuto(function () { nsBust(S.tt, 'm_'); nsBust(S.tt, 'live_'); });
+    var sections = [{ id: 'resumen', key: 'dt_sec_resumen' }, { id: 'prob', key: 'dt_sec_prob' }];
+    if (d.live) sections.push({ id: 'live', key: 'dt_sec_live' });
+    sections.push({ id: 'mercados', key: 'dt_sec_mercados' }, { id: 'game', key: 'tt_sec_game' }, { id: 'partido', key: 'tt_sec_match' }, { id: 'leverage', key: 'tt_sec_leverage' }, { id: 'implicito', key: 'tt_sec_implied' }, { id: 'contexto', key: 'dt_sec_contexto' });
+    var sec = function (sid, html) { return html ? '<div class="gx-sec" id="sec-' + sid + '">' + html + '</div>' : ''; };
+    ttShell(null, back + ttHero(d, A, B) + mvNav(sections) +
+      '<div class="gx-mv-grid">' +
+      '<div class="gx-mv-col">' + sec('resumen', ttMemo(d, A, B)) + sec('prob', ttProbPanel(d, A, B)) + sec('game', ttGamePanel(d, A, B)) + sec('leverage', ttLeveragePanel(d, A, B)) + sec('contexto', ttEvidencePanel(d, A, B) + ttFormPanel(d, A, B, PA, PB) + ttH2HPanel(d, A, B) + ttGatesPanel(d, A, B)) + '</div>' +
+      '<div class="gx-mv-col">' + (d.live ? sec('live', ttLiveGauge(d, A, B)) : '') + sec('mercados', ttMarketsPanel(d, A, B)) + sec('partido', ttMatchPanel(d, A, B)) + sec('implicito', ttImpliedPanel(d, A, B) + ttEquivPanel(d, A, B)) + '</div>' +
+      '</div>' + ttShadowNote(d));
+    bindMvNav();
+  }
+  function ttHero(d, A, B) {
+    var pa = d.p_a != null ? d.p_a : (d.gp && d.gp.p_a), mk = d.market || {}, f = d.format || {};
+    var isLive = ttIsLive(d), fin = ttIsFinal(d);
+    var best = {}; (d.market_rows || []).forEach(function (r) { if (r.family === 'ML' && r.odds > 1) { if (!best[r.side] || r.odds > best[r.side].odds) best[r.side] = r; } });
+    var side = function (P, cls) {
+      var sub = [P.country, P.rank ? esT('WTT #', 'WTT #') + P.rank : null, P.seed ? esT('cabeza ', 'seed ') + P.seed : null, P.hand ? esc(String(P.hand)) : null].filter(Boolean).join(' · ');
+      return '<div class="gx-hero-side gx-dt-hside" data-ttplayer="' + esc(P.id) + '">' + ttFace(P, cls + ' hero') + '<b>' + esc(P.name || '—') + '</b><span class="gx-dim gx-dt-hsub">' + sub + '</span></div>';
+    };
+    var sc = d.live && d.live.games_a != null ? { a: d.live.games_a, b: d.live.games_b } : fin && d.score_a != null ? { a: d.score_a, b: d.score_b } : null;
+    var mini = function (label, v, extra) { return '<div class="gx-hero-mini"><span class="gx-label">' + esc(label) + '</span><b class="gx-mono">' + v + '</b>' + (extra || '') + '</div>'; };
+    var M = d.match || {}, G = d.game || {};
+    return '<div class="gx-panel gx-hero gx-tt-hero">' + ttMark('bg', 300) +
+      '<div class="gx-hero-meta">' + ttTier(d) + ttSubChip(d.sub) + esc([d.tournament_short, ttRound(d) && (LANG === 'en' ? ttRoundEn(d.round) || d.round_label : d.round_label), d.table].filter(Boolean).join(' · ')) + (d.start_at ? ' · ' + esc(fmtDateTime(d.start_at)) : '') + ' ' + ttInteg(d.integrity && d.integrity.state) + '<span class="gx-spacer"></span>' +
+        (isLive ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : fin ? '<span class="gx-dim" style="font-size:11.5px;font-weight:600">' + esT('Final', 'Final') + '</span>' : d.start_at ? '<span class="gx-dim" style="font-size:11.5px">' + esc(fmtTime(d.start_at)) + '</span>' : '') + '</div>' +
+      '<div class="gx-hero-teams">' + side(A, 'ra') + '<div class="gx-hero-mid">' + (sc ? ttScore(sc.a, sc.b, (isLive ? 'live ' : '') + 'xl') : '<div class="gx-hero-vs">' + esc(t('vs')) + '</div>') +
+        (d.result && d.result.games ? '<div class="gx-tt-games gx-mono gx-dim" style="margin-top:4px">' + esc(ttGamesStr(d.result.games)) + '</div>' : isLive && d.live.current ? '<div class="gx-tt-cur gx-mono" style="margin-top:4px">' + esT('game ', 'game ') + ttInt(d.live.current.game) + ': ' + ttInt(d.live.current.a) + '–' + ttInt(d.live.current.b) + (d.live.server ? '<i class="gx-tt-serve ' + d.live.server + '"></i>' : '') + '</div>' : '') +
+        '<div class="gx-dt-fmt" style="margin-top:6px">' + esc(ttFmt(f, true)) + '</div>' + ttCert(f) + '</div>' + side(B, 'rb') + '</div>' +
+      (pa != null ? '<div class="gx-pbar"><i class="h" style="width:' + (100 * pa).toFixed(1) + '%"></i><i class="a" style="width:' + (100 * (1 - pa)).toFixed(1) + '%"></i></div>' +
+        '<div class="gx-plabels"><span>' + esc(A.name || '') + ' <b>' + ttPct(pa) + '</b></span><span class="gx-dt-plmid">' + ttEdge(pa, mk.ml_p_a, A.name, B.name) + '</span><span>' + esc(B.name || '') + ' <b>' + ttPct(1 - pa) + '</b></span></div>' : '') +
+      '<div class="gx-hero-grid">' +
+        (mk.ml_p_a != null ? mini(t('hero_mkt'), '<span class="gx-tri"><span>' + ttPct(mk.ml_p_a) + '</span><span>' + ttPct(1 - mk.ml_p_a) + '</span></span>', '<span class="gx-dim" style="font-size:10px">' + esc(ttBooksTxt(mk.n_books)) + '</span>') : '') +
+        (best.a || best.b ? mini(t('hero_best'), '<span class="gx-tri gx-best"><span' + (pa >= 0.5 ? ' class="hi"' : '') + '>' + (best.a ? odd(best.a.odds) : '—') + '</span><span' + (pa < 0.5 ? ' class="hi"' : '') + '>' + (best.b ? odd(best.b.odds) : '—') + '</span></span>') : '') +
+        (M.exp_games != null ? mini(esT('Games esperados', 'Expected games'), ttNum(M.exp_games, 2), mk.lines_games && mk.lines_games.length ? '<span class="gx-dim" style="font-size:10px">' + esT('línea ', 'line ') + esc(mk.lines_games.join(' / ')) + '</span>' : '') : '') +
+        (M.exp_points != null ? mini(esT('Puntos esperados', 'Expected points'), ttNum(M.exp_points, 1), mk.lines_points && mk.lines_points.length ? '<span class="gx-dim" style="font-size:10px">' + esT('línea ', 'line ') + esc(mk.lines_points.join(' / ')) + '</span>' : '') : '') +
+        (G.p_deuce != null ? mini(esT('Deuce por game', 'Deuce per game'), '<span class="gx-tt-ballchip"><b></b></span> ' + ttPct(G.p_deuce), '<span class="gx-dim" style="font-size:10px">' + esT('+', '+') + ttNum(G.deuce && G.deuce.exp_extra, 1) + esT(' puntos si llega', ' points if reached') + '</span>') : '') +
+        (d.p_point != null ? mini(esT('Cuota de punto', 'Point share'), ttPct1(d.p_point) + ' – ' + ttPct1(1 - d.p_point)) : '') +
+        (d.unc_pp != null ? mini(esT('Incertidumbre', 'Uncertainty'), '±' + ttNum(d.unc_pp, 1) + ' pp') : '') +
+      '</div>' +
+      '<div class="gx-hero-note gx-dim">' + esc(f.source || '') + (d.tz_certain === false ? ' · ' + esT('hora estimada por sede', 'venue-estimated time') : '') + (d.picks && d.picks.length ? ' · <b class="gx-up">' + d.picks.length + ' ' + esT('tesis en sombra', 'shadow theses') + '</b>' : '') + '</div></div>';
+  }
+  // DECISION MEMO
+  function ttMemo(d, A, B) {
+    var cs = Array.isArray(d.candidates) ? d.candidates : [];
+    var pk = ttCardsOf(d)[0] || null;
+    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
+    var top = sh[0] || null, f = d.format || {}, R = d.resolution || {};
+    var conf = pk && pk.signals ? pk.signals.data_confidence : null;
+    var confH = conf ? '<span class="gx-conf ' + (conf === 'high' ? 'hi' : conf === 'med' ? 'mid' : 'lo') + '">' + ic('point') + esc(t('conf') + ': ' + t(conf === 'high' ? 'conf_hi' : conf === 'med' ? 'conf_mid' : 'conf_lo')) + '</span>' : '<span class="gx-conf lo">' + ic('point') + esT('todo en sombra', 'all in shadow') + '</span>';
+    var lead;
+    if (top) lead = '<div class="gx-dt-memo-lead on">' + ic('eye') + '<div><b>' + esT('Tesis en sombra', 'Shadow thesis') + '</b><span>' + esc(ttFamLabel(top, { a: A.name, b: B.name })) + ' · <span class="gx-mono">' + odd(top.odds) + '</span> ' + esc(prettyBook(top.book || '') || top.book || '') + ' · <b class="gx-up">+' + Number(top.edge_pp || 0).toFixed(1) + ' pp</b>' + (sh.length > 1 ? ' · +' + (sh.length - 1) + ' ' + esT('tesis', 'theses') : '') + '</span></div></div>';
+    else if (d.picks_locked) lead = '<div class="gx-dt-memo-lead">' + ic('lock') + '<div><b>' + d.picks_locked + ' ' + esT('tesis', 'theses') + '</b><span>' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</span></div></div>';
+    else {
+      var bestNo = cs.filter(function (c) { return c.verdict !== 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || -99) - (x.edge_pp || -99); })[0];
+      var fail = bestNo && (bestNo.gates || []).filter(function (g) { return g && g.pass === false && !g.informativo; })[0];
+      lead = '<div class="gx-dt-memo-lead"><span class="gx-dt-memo-no">NO</span><div><b>' + esT('Sin tesis en este partido', 'No thesis on this match') + '</b><span>' + (bestNo ? esc(ttFamLabel(bestNo, { a: A.name, b: B.name })) + ' ' + esT('fue la más cercana', 'came closest') + (bestNo.edge_pp != null ? ' (' + (bestNo.edge_pp > 0 ? '+' : '') + Number(bestNo.edge_pp).toFixed(1) + ' pp)' : '') + (fail ? ' · ' + esc(fail.gate) + (fail.detail ? ': ' + esc(fail.detail) : '') : '') : cs.length ? esT('ninguna línea supera su propio ruido', 'no line beats its own noise') : esT('sin líneas cotizadas que evaluar', 'no priced lines to evaluate')) + '</span></div></div>';
+    }
+    var pa = d.p_a, favN = pa != null ? (pa >= 0.5 ? A.name : B.name) : null;
+    var risks = [];
+    var K = d.resolution && d.resolution.samples || {};
+    if (K.a != null && K.a < 8) risks.push(esc(ttLast(A.name)) + ': ' + esT('poca muestra (' + K.a + ' partidos)', 'thin sample (' + K.a + ' matches)'));
+    if (K.b != null && K.b < 8) risks.push(esc(ttLast(B.name)) + ': ' + esT('poca muestra (' + K.b + ' partidos)', 'thin sample (' + K.b + ' matches)'));
+    if (f.certified === false) risks.push(esT('formato no certificado', 'uncertified format') + (f.share != null ? ' (' + Math.round(100 * f.share) + '% ' + esT('histórico', 'historical') + ')' : ''));
+    if (d.tz_certain === false) risks.push(esT('hora estimada por la sede (la WTT publica hora local)', 'venue-estimated time (WTT publishes local time)'));
+    risks.push(esT('saque/recepción no identificados: reparto de población', 'serve/receive not identified: population split'));
+    var why = pa != null ? esT('El compilador da ', 'The compiler gives ') + '<b>' + ttPct(pa) + '</b>' + esT(' a ', ' to ') + '<b>' + esc(favN) + '</b>' + esT(' con una cuota de punto de ', ' with a point share of ') + '<b>' + ttPct1(pa >= 0.5 ? d.p_point : 1 - d.p_point) + '</b>' + (d.match ? esT(', ', ', ') + '<b>' + ttNum(d.match.exp_games, 2) + '</b>' + esT(' games y ', ' games and ') + '<b>' + ttNum(d.match.exp_points, 1) + '</b>' + esT(' puntos esperados', ' expected points') : '') + (d.market && d.market.ml_p_a != null ? esT('; el consenso de ', '; the consensus of ') + esc(ttBooksTxt(d.market.n_books)) + esT(' pone ', ' puts ') + '<b>' + ttPct(d.market.ml_p_a) + '</b>' + esT(' a ', ' on ') + esc(ttLast(A.name)) : esT('; sin consenso de mercado', '; no market consensus')) + '.' : '';
+    return '<div class="gx-panel gx-memo gx-dt-memo"><div class="gx-memo-head"><span class="gx-memo-title">' + ic('clipboard-text') + esc(t('memo')) + '</span>' + confH + '</div>' + lead +
+      '<div class="gx-memo-grid">' +
+        '<div class="gx-memo-item"><span class="gx-label">' + esT('Por qué', 'Why') + '</span><p>' + why + '</p></div>' +
+        '<div class="gx-memo-item' + (risks.length ? ' risk' : '') + '"><span class="gx-label">' + esT('Riesgos', 'Risks') + '</span><p>' + risks.join('<br>') + '</p></div>' +
+        '<div class="gx-memo-item"><span class="gx-label">' + esT('Datos', 'Data') + '</span><p>' + esc(R.level || 'L1') + ' · ' + esT('puntos por game', 'points per game') + (K.a != null ? '<br>' + esc(ttLast(A.name)) + ' ' + ttInt(K.a) + ' · ' + esc(ttLast(B.name)) + ' ' + ttInt(K.b) + ' ' + esT('partidos', 'matches') : '') + (d.unc_pp != null ? '<br>' + esT('Incertidumbre', 'Uncertainty') + ' <b>±' + ttNum(d.unc_pp, 1) + ' pp</b>' : '') + '</p></div>' +
+        '<div class="gx-memo-item"><span class="gx-label">' + esT('Competición', 'Competition') + '</span><p>' + ttInteg(d.integrity && d.integrity.state) + ' ' + esc((d.integrity && d.integrity.note) || '') + '</p></div>' +
+      '</div>' + (pk ? '<div class="gx-picks-feed one" style="margin-top:14px">' + pickCard(pk, {}) + '</div>' : '') +
+      '<div class="gx-memo-cta"><span class="gx-dim" style="font-size:11px">' + esc(t('disclaimer_short')) + '</span></div></div>';
+  }
+  // PROBABILIDAD GP: Elo → punto → compilador → mezcla, con los dos sorteos del primer servidor
+  function ttProbPanel(d, A, B) {
+    var pa = d.p_a; if (pa == null) return '';
+    var bar = function (label, p, cls, note) { if (p == null || isNaN(p)) return ''; return '<div class="gx-dt-pstep' + (cls ? ' ' + cls : '') + '"><div class="gx-dt-pstep-h"><span class="gx-label">' + esc(label) + '</span><span class="gx-mono">' + ttPct(p) + ' <i class="gx-dim">·</i> ' + ttPct(1 - p) + '</span></div><div class="gx-pbar sm"><i class="h" style="width:' + (100 * p).toFixed(1) + '%"></i><i class="a" style="width:' + (100 * (1 - p)).toFixed(1) + '%"></i></div>' + (note ? '<div class="gx-dim gx-dt-pstep-n">' + note + '</div>' : '') + '</div>'; };
+    var sc = d.scenarios || null;
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esc(t('dt_sec_prob')) + '</span><span class="gx-ph-extra gx-dim">' + esc(ttLast(A.name)) + ' ← → ' + esc(ttLast(B.name)) + '</span></div><div class="gx-mod-body">' +
+      '<p class="gx-dim gx-dt-pintro">' + esT('Tres lecturas del mismo duelo: solo resultados (Elo), el punto compilado hasta el partido, y la mezcla que se publica. La distancia entre ellas es información.', 'Three reads of the same duel: results only (Elo), the point compiled up to the match, and the published blend. The distance between them is information.') + '</p>' +
+      bar(esT('Solo resultados (Elo)', 'Results only (Elo)'), d.p_a_elo, '', esT('quién le ha ganado a quién, ponderado por nivel de evento', 'who has beaten whom, weighted by event tier')) +
+      bar(esT('Punto → game → partido', 'Point → game → match'), d.p_a_compiled, '', esT('cuota de punto ', 'point share ') + ttPct1(d.p_point) + esT(' compilada con las reglas exactas', ' compiled with the exact rules')) +
+      bar(esT('GP (mezcla)', 'GP (blend)'), pa, 'on', d.unc_pp != null ? esT('incertidumbre ±', 'uncertainty ±') + ttNum(d.unc_pp, 1) + ' pp' : '') +
+      (sc && sc.a_first && sc.b_first ? '<div class="gx-dt-scen"><span class="gx-label">' + esT('Quién sirve primero (sorteo desconocido: se promedian)', 'Who serves first (unknown draw: averaged)') + '</span><div class="gx-dt-scen-r"><span>' + esT('sirve ', 'serves: ') + esc(ttLast(A.name)) + ' → <b class="gx-mono">' + ttPct1(sc.a_first.p_a) + '</b></span><span>' + esT('sirve ', 'serves: ') + esc(ttLast(B.name)) + ' → <b class="gx-mono">' + ttPct1(sc.b_first.p_a) + '</b></span><span class="gx-dim">' + esT('puntos esp. ', 'exp. points ') + ttNum(sc.a_first.exp_points, 1) + ' / ' + ttNum(sc.b_first.exp_points, 1) + '</span></div></div>' : '') +
+      '</div></div>';
+  }
+  // MEDIDOR EN VIVO: P(A) ahora desde games + puntos del game en curso + quién saca (/api/tt/live)
+  function ttLiveGauge(d, A, B) {
+    if (!d.live) return '';
+    var lv = d.live, isLive = lv.state === 'live';
+    var ga = Number(lv.games_a) || 0, gb = Number(lv.games_b) || 0, cur = lv.current || { a: 0, b: 0 };
+    var L = isLive ? ttGet('live_' + d.id + '_' + ga + '_' + gb + '_' + (cur.a || 0) + '_' + (cur.b || 0) + '_' + (lv.server || ''), '/api/tt/live?id=' + encodeURIComponent(d.id) + '&ga=' + ga + '&gb=' + gb + '&i=' + (cur.a || 0) + '&j=' + (cur.b || 0) + (lv.server ? '&server=' + lv.server : ''), 60000) : null;
+    var pNow = L && !L._err && L.p_a != null ? Number(L.p_a) : null;
+    var pPre = d.p_a != null ? Number(d.p_a) : null;
+    // la mesa como medidor: la pelota se coloca en P(A) sobre la red
+    var W = 320, H = 120;
+    var x = pNow != null ? 20 + 280 * pNow : null;
+    var svg = '<svg class="gx-tt-gauge" viewBox="0 0 ' + W + ' ' + H + '"><rect class="tb" x="20" y="30" width="280" height="60" rx="4"/><line class="ln" x1="160" y1="22" x2="160" y2="98"/><line class="ln thin" x1="20" y1="60" x2="300" y2="60"/>' +
+      (pPre != null ? '<line class="pre" x1="' + (20 + 280 * pPre).toFixed(1) + '" y1="26" x2="' + (20 + 280 * pPre).toFixed(1) + '" y2="94"/>' : '') +
+      (x != null ? '<circle class="ball" cx="' + x.toFixed(1) + '" cy="60" r="7"/>' : '') +
+      '<text class="gt a" x="20" y="112">' + esc(ttLast(A.name)) + '</text><text class="gt b" x="300" y="112" text-anchor="end">' + esc(ttLast(B.name)) + '</text></svg>';
+    var read = !isLive ? '<span class="gx-dim">' + esT('Final', 'Final') + '</span>' : !L ? '<span class="gx-dim">' + ic('loader-2') + ' ' + esT('leyendo el estado…', 'reading the state…') + '</span>' : pNow == null ? '<span class="gx-dim">' + esT('sin probabilidad en vivo', 'no live probability') + '</span>'
+      : '<span class="gx-dt-gpre gx-mono">' + esT('prematch ', 'pre-match ') + ttPct(pPre) + '</span><span class="gx-dt-garr">→</span><span class="gx-dt-gnow gx-mono">' + esT('ahora ', 'now ') + '<b>' + ttPct(pNow) + '</b></span>' + (pPre != null ? '<span class="gx-dt-pp' + (pNow - pPre >= 0 ? ' pos' : ' neg') + '">' + (pNow - pPre >= 0 ? '+' : '') + (100 * (pNow - pPre)).toFixed(0) + ' pp ' + esc(ttLast(A.name)) + '</span>' : '');
+    return '<div class="gx-panel gx-mv-panel gx-dt-livep' + (isLive ? ' live' : '') + '"><div class="gx-ph">' + (isLive ? '<span class="gx-live-pill">' + esc(t('st_live')) + '</span>' : '<span class="gx-badge">' + esT('Final', 'Final') + '</span>') + '<span class="gx-label">' + esT('En vivo', 'Live') + '</span><span class="gx-ph-extra gx-dim">' + (lv.best_of ? 'BO' + esc(String(lv.best_of)) + ' · ' : '') + esc(lv.source || '') + '</span></div>' +
+      '<div class="gx-dt-livep-g"><div class="gx-dt-livep-l"><div class="gx-dt-livep-sc"><span class="gx-dt-lsn">' + esc(ttLast(A.name)) + '</span>' + ttScore(ga, gb, isLive ? 'live xl' : 'xl') + '<span class="gx-dt-lsn r">' + esc(ttLast(B.name)) + '</span></div>' +
+        (lv.games && lv.games.length ? '<div class="gx-tt-games gx-mono gx-dim">' + esc(ttGamesStr(lv.games)) + '</div>' : '') +
+        (isLive && lv.current ? '<div class="gx-tt-cur gx-mono" style="font-size:14px;margin-top:4px">' + esT('game ', 'game ') + ttInt(lv.current.game) + ' · ' + ttInt(lv.current.a) + '–' + ttInt(lv.current.b) + (lv.server ? ' <i class="gx-tt-serve ' + lv.server + '"></i> ' + esT('saca ', 'serving ') + esc(ttLast(lv.server === 'a' ? A.name : B.name)) : '') + '</div>' : '') +
+        '<div class="gx-dim" style="font-size:11px;margin-top:6px">' + esT('El mismo compilador desde el estado exacto: games, puntos del game en curso y quién saca.', 'The same compiler from the exact state: games, points of the current game and who serves.') + '</div><div class="gx-dt-gread">' + read + '</div></div>' +
+      '<div class="gx-dt-livep-r">' + svg + '</div></div></div>';
+  }
+
+  // ── VISUAL OS · EL GAME ─────────────────────────────────────────────────────────────────────────────
+  // Service Braid: los 20 primeros puntos con quién sirve (bloques de dos) y P(el que sirve gana el punto)
+  function ttBraid(braid, A, B) {
+    var xs = Array.isArray(braid) ? braid : [];
+    if (!xs.length) return '';
+    return '<div class="gx-tt-braid">' + xs.map(function (s) {
+      var p = Number(s.p_server_wins) || 0;
+      return '<div class="gx-tt-bslot ' + (s.server === 'a' ? 'a' : 'b') + '" title="' + esT('punto ', 'point ') + s.n + ' · ' + esT('sirve ', 'serves ') + esc(ttLast(s.server === 'a' ? A.name : B.name)) + ' · ' + ttPct1(p) + '"><i style="height:' + Math.round(100 * p) + '%"></i><b></b><span>' + (s.n % 2 === 1 ? s.n : '') + '</span></div>';
+    }).join('') + '<div class="gx-tt-bdeuce" title="' + esT('desde 10–10 el saque alterna en cada punto', 'from 10–10 the serve alternates every point') + '"><span>10–10</span><i>↻</i></div></div>' +
+      '<div class="gx-tt-blegend gx-dim"><span><i class="a"></i>' + esT('sirve ', 'serves ') + esc(ttLast(A.name)) + '</span><span><i class="b"></i>' + esT('sirve ', 'serves ') + esc(ttLast(B.name)) + '</span><span>' + esT('altura = P(el que sirve gana el punto)', 'height = P(server wins the point)') + '</span></div>';
+  }
+  // Game State Lattice: P(A gana el game) desde cada marcador i–j (0…10), con el deuce en la esquina
+  function ttLattice(grid, A, B, opt) {
+    opt = opt || {};
+    if (!Array.isArray(grid) || !grid.length) return '';
+    var n = grid.length;
+    var head = '<tr><th></th>' + grid[0].map(function (_, j) { return '<th>' + j + '</th>'; }).join('') + '</tr>';
+    var rows = grid.map(function (row, i) {
+      return '<tr><th>' + i + '</th>' + row.map(function (p, j) {
+        var v = Number(p); var g = Math.round(255 * v), col = 'rgba(' + (v >= 0.5 ? '31,227,164' : '91,168,255') + ',' + (0.12 + 0.78 * Math.abs(v - 0.5) * 2).toFixed(3) + ')';
+        var deuce = i === n - 1 && j === n - 1;
+        return '<td class="gx-tt-lc' + (deuce ? ' deuce' : '') + (opt.cur && opt.cur.a === i && opt.cur.b === j ? ' cur' : '') + '" style="background:' + col + '" data-ttlc="' + i + '-' + j + '" data-ttlp="' + ttPct1(v) + '" title="' + i + '–' + j + ' · ' + ttPct1(v) + '">' + (v >= 0.995 ? '99' : v <= 0.005 ? '·' : Math.round(100 * v)) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    return '<div class="gx-tt-latwrap"><div class="gx-perf-scroll"><table class="gx-tt-lattice"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="gx-dim" style="font-size:10.5px">' + esc(ttLast(A.name)) + ' ↓ · ' + esc(ttLast(B.name)) + ' → · ' + esT('cada celda: P(', 'each cell: P(') + esc(ttLast(A.name)) + esT(' gana el game) desde ese marcador; la esquina 10–10 es el deuce', ' wins the game) from that score; the 10–10 corner is deuce') + '</div>' +
+      '<div class="gx-tt-latcap gx-mono"></div></div>';
+  }
+  // Deuce Return Loop: el bucle de 10–10 — sale A (u), sale B (v) o vuelve (r); y la cola geométrica de puntos
+  function ttDeuceLoop(G, A, B) {
+    var dz = G && G.deuce; if (!dz) return '';
+    var u = Number(dz.u) || 0, v = Number(dz.v) || 0, r = Number(dz.r) || 0;
+    var tail = ttPairs(G.total).filter(function (x) { return Number(x[0]) >= 22; }).slice(0, 8);
+    var mx = Math.max.apply(null, tail.map(function (x) { return x[1]; }).concat([0.0001]));
+    var svg = '<svg class="gx-tt-loop" viewBox="0 0 260 120"><circle class="ring" cx="130" cy="60" r="34"/><path class="arr r" d="M130 26 A34 34 0 1 1 129 26" /><text class="c" x="130" y="57" text-anchor="middle">10–10</text><text class="c2" x="130" y="72" text-anchor="middle">P ' + ttPct(G.p_deuce) + '</text>' +
+      '<line class="arr a" x1="96" y1="60" x2="40" y2="60"/><text class="la" x="36" y="50" text-anchor="end">' + esc(ttLast(A.name)) + '</text><text class="la" x="36" y="66" text-anchor="end">u ' + ttPct1(u) + '</text>' +
+      '<line class="arr b" x1="164" y1="60" x2="220" y2="60"/><text class="lb" x="224" y="50">' + esc(ttLast(B.name)) + '</text><text class="lb" x="224" y="66">v ' + ttPct1(v) + '</text>' +
+      '<text class="lr" x="130" y="16" text-anchor="middle">' + esT('vuelve ', 'returns ') + ttPct1(r) + '</text><text class="lr2" x="130" y="112" text-anchor="middle">' + esT('sale con ', 'exits with ') + '<tspan class="hi">' + ttPct(dz.p_a) + '</tspan> ' + esc(ttLast(A.name)) + ' · +' + ttNum(dz.exp_extra, 1) + esT(' puntos esperados', ' expected points') + '</text></svg>';
+    var bars = tail.length ? '<div class="gx-tt-tail">' + tail.map(function (x) { return '<div class="gx-tt-tb" title="' + x[0] + esT(' puntos · ', ' points · ') + ttPct1(x[1]) + '"><i style="height:' + Math.max(3, Math.round(100 * x[1] / mx)) + '%"></i><span>' + x[0] + '</span></div>'; }).join('') + '</div><div class="gx-dim" style="font-size:10.5px">' + esT('cola geométrica: P(total del game = 22, 24, 26…) — el 21 no existe', 'geometric tail: P(game total = 22, 24, 26…) — 21 does not exist') + '</div>' : '';
+    return '<div class="gx-tt-loopwrap">' + svg + bars + '</div>';
+  }
+  function ttGamePanel(d, A, B) {
+    var G = d.game; if (!G) return '';
+    var first = S.tt.gFirst || 'a';
+    var seg = '<div class="gx-seg gx-tt-miniseg">' + [['a', esT('sirve ', 'serves ') + ttLast(A.name)], ['b', esT('sirve ', 'serves ') + ttLast(B.name)]].map(function (x) { return '<button data-ttgfirst="' + x[0] + '"' + (first === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>'; }).join('') + '</div>';
+    var pG = first === 'a' ? G.p_a_first_a : G.p_a_first_b, eP = first === 'a' ? G.exp_points_first_a : G.exp_points_first_b;
+    var tiles = ttTiles([[esT('P(gana el game) · ', 'P(wins game) · ') + ttLast(A.name), ttPct1(pG)], [esT('Puntos esperados', 'Expected points'), ttNum(eP, 2)], [esT('P(deuce)', 'P(deuce)'), ttPct1(G.p_deuce)], [esT('Punto · sirve ', 'Point · serves ') + ttLast(A.name), ttPct1(G.a)], [esT('Punto · sirve ', 'Point · serves ') + ttLast(B.name), ttPct1(1 - G.b)]]);
+    var marg = ttPairs(G.margin).length ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('Margen del game', 'Game margin') + '</span><span class="gx-dim">' + esc(ttLast(B.name)) + ' ← 0 → ' + esc(ttLast(A.name)) + ' · ' + esT('nunca ±1: mínimo dos', 'never ±1: minimum two') + '</span></div>' + ttHist(G.margin, { sign: true, every: 2 }) : '';
+    return '<div class="gx-panel gx-mv-panel gx-tt-gamep"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esc(t('tt_sec_game')) + '</span><span class="gx-ph-extra gx-dim">' + esT('punto a punto, con las reglas exactas', 'point by point, with the exact rules') + '</span></div><div class="gx-mod-body">' +
+      seg + tiles +
+      '<div class="gx-dt-sub"><span class="gx-label">Service Braid</span><span class="gx-dim">' + esT('los 20 primeros puntos', 'the first 20 points') + '</span></div>' + ttBraid(first === 'a' ? G.braid_first_a : G.braid_first_b, A, B) +
+      '<div class="gx-dt-sub"><span class="gx-label">Game State Lattice</span><span class="gx-dim">' + esT('P(gana el game) desde cada marcador', 'P(wins game) from every score') + '</span></div>' + ttLattice(first === 'a' ? G.lattice_first_a : G.lattice_first_b, A, B, { cur: d.live && d.live.current && ttIsLive(d) ? { a: Math.min(10, d.live.current.a), b: Math.min(10, d.live.current.b) } : null }) +
+      '<div class="gx-dt-sub"><span class="gx-label">Deuce Return Loop</span><span class="gx-dim">' + esT('qué pasa desde 10–10', 'what happens from 10–10') + '</span></div>' + ttDeuceLoop(G, A, B) +
+      '<div class="gx-dt-sub"><span class="gx-label">' + esT('Puntos del game', 'Game points') + '</span><span class="gx-dim">' + esT('11–x antes del deuce, pares después', '11–x before deuce, even totals after') + '</span></div>' + ttHist(G.total, { every: 2, lines: (d.market && d.market.lines_g1) || [] }) + marg +
+      '<div class="gx-dim gx-es-note">' + esT('Un game no puede acabar 11–10 ni sumar 21 puntos. "Más de 20,5" y "más de 21,5" son la misma apuesta. El reparto saque/recepción es un prior de población y se declara.', 'A game cannot end 11–10 or total 21 points. "Over 20.5" and "over 21.5" are the same bet. The serve/receive split is a population prior and is declared.') + '</div></div></div>';
+  }
+
+  // ── VISUAL OS · EL PARTIDO ──────────────────────────────────────────────────────────────────────────
+  // Correct Score Foldout: rejilla interactiva del marcador en games
+  function ttScoreGrid(score, need, A, B) {
+    var xs = ttPairs(score); if (!xs.length) return '';
+    var cells = {}, mx = 0; xs.forEach(function (x) { var m = String(x[0]).match(/^(\d+)-(\d+)$/); if (!m) return; cells[m[1] + '-' + m[2]] = x[1]; if (x[1] > mx) mx = x[1]; });
+    var top = xs.slice().sort(function (p, q) { return q[1] - p[1]; })[0];
+    var W = need;
+    var head = '<tr><th></th>' + Array.apply(null, Array(W + 1)).map(function (_, j) { return '<th>' + j + '</th>'; }).join('') + '</tr>';
+    var rowsH = '';
+    for (var a = 0; a <= W; a++) rowsH += '<tr><th>' + a + '</th>' + Array.apply(null, Array(W + 1)).map(function (_, b) { var p = cells[a + '-' + b]; if (p == null) return '<td class="off"></td>'; return '<td class="gx-dt-sc' + (top && top[0] === a + '-' + b ? ' on' : '') + '" data-ttsc="' + a + '-' + b + '" data-ttp="' + ttPct1(p) + '" style="background:rgba(31,227,164,' + (0.10 + 0.85 * p / mx).toFixed(3) + ')">' + (p >= 0.01 ? Math.round(100 * p) : '·') + '</td>'; }).join('') + '</tr>';
+    return '<div class="gx-dt-scwrap gx-tt-scwrap"><span class="gx-label">Correct Score Foldout</span><span class="gx-dim" style="font-size:10.5px">' + esc(ttLast(A.name)) + ' ↓ · ' + esc(ttLast(B.name)) + ' →</span><div class="gx-perf-scroll"><table class="gx-dt-scgrid"><thead>' + head + '</thead><tbody>' + rowsH + '</tbody></table></div><div class="gx-dt-sccap gx-mono">' + (top ? esc(top[0]) + ' · ' + ttPct1(top[1]) + ' — ' + esT('el más probable', 'most likely') : '') + '</div></div>';
+  }
+  function ttMatchPanel(d, A, B) {
+    var M = d.match; if (!M) return '';
+    var mk = d.market || {};
+    var tiles = '<div class="gx-hero-grid gx-dt-projg">' +
+      '<div class="gx-hero-mini"><span class="gx-label">' + esT('Games esperados', 'Expected games') + '</span><b class="gx-mono">' + ttNum(M.exp_games, 2) + '</b></div>' +
+      '<div class="gx-hero-mini"><span class="gx-label">' + esT('Puntos esperados', 'Expected points') + '</span><b class="gx-mono">' + ttNum(M.exp_points, 1) + '</b></div>' +
+      (mk.lines_points && mk.lines_points.length ? '<div class="gx-hero-mini"><span class="gx-label">' + esT('Línea de puntos ', 'Points line ') + esc(mk.lines_points.join(' / ')) + '</span><b class="gx-mono">' + (function () { var l = mk.lines_points[0]; var o = ttPairs(M.points_total).reduce(function (s, x) { return s + (Number(x[0]) > l ? x[1] : 0); }, 0); return esT('Más ', 'Over ') + ttPct(o) + ' · ' + esT('Menos ', 'Under ') + ttPct(1 - o); })() + '</b></div>' : '') +
+      (M.score && M.score[0] ? '<div class="gx-hero-mini"><span class="gx-label">' + esc(t('hero_score')) + '</span><b class="gx-mono">' + esc(M.score[0][0]) + ' <span class="gx-dim">' + ttPct(M.score[0][1]) + '</span></b></div>' : '') + '</div>';
+    var pg = (M.per_game || []).length ? '<div class="gx-dt-sub"><span class="gx-label">Game Script River</span><span class="gx-dim">' + esT('game a game: se juega · lo gana ', 'game by game: played · won by ') + esc(ttLast(A.name)) + ' · ' + esT('puntos · deuce', 'points · deuce') + '</span></div><div class="gx-tt-river">' + M.per_game.map(function (g) {
+      return '<div class="gx-tt-rg" style="opacity:' + (0.35 + 0.65 * (g.p_played || 0)).toFixed(2) + '"><b>G' + g.game + '</b><span class="gx-mono">' + ttPct(g.p_played) + '</span><div class="gx-tt-rgbar"><i style="width:' + Math.round(100 * (g.p_a || 0)) + '%"></i></div><span class="gx-mono">' + ttPct(g.p_a) + '</span><span class="gx-mono gx-dim">' + ttNum(g.exp_points, 1) + ' pt</span><span class="gx-mono gx-dim">' + ttPct(g.p_deuce) + ' ' + esT('deuce', 'deuce') + '</span></div>';
+    }).join('') + '</div>' : '';
+    return '<div class="gx-panel gx-mv-panel gx-dt-river"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esc(t('tt_sec_match')) + '</span><span class="gx-ph-extra gx-dim">' + esT('la curva entera, no las dos líneas de la casa', 'the whole curve, not the house\'s two lines') + '</span></div><div class="gx-mod-body">' + tiles + ttScoreGrid(M.score, M.need, A, B) +
+      '<div class="gx-dt-sub"><span class="gx-label">' + esT('Games totales', 'Total games') + '</span><span class="gx-dim gx-mono">' + esT('media ', 'mean ') + ttNum(M.exp_games, 2) + (mk.lines_games && mk.lines_games.length ? ' · ' + esT('línea ', 'line ') + esc(mk.lines_games.join(' / ')) : '') + '</span></div>' + ttHist(M.games_total, { every: 1, lines: mk.lines_games || [] }) +
+      '<div class="gx-dt-sub"><span class="gx-label">' + esT('Puntos totales', 'Total points') + '</span><span class="gx-dim gx-mono">' + esT('media ', 'mean ') + ttNum(M.exp_points, 1) + (mk.lines_points && mk.lines_points.length ? ' · ' + esT('línea ', 'line ') + esc(mk.lines_points.join(' / ')) : '') + '</span></div>' + ttHist(M.points_total, { every: 6, lines: mk.lines_points || [] }) +
+      '<div class="gx-dt-sub"><span class="gx-label">Point-Margin Fold</span><span class="gx-dim">' + esc(ttLast(B.name)) + ' ← 0 → ' + esc(ttLast(A.name)) + '</span></div>' + ttHist(M.points_margin, { sign: true, every: 6 }) + pg +
+      '<div class="gx-dim gx-es-note">' + esT('Del mismo compilador que el ganador: marcador, games, puntos y margen no pueden contradecirse. La escala de las distribuciones se calibró aparte contra los totales reales (un ganador calibrado no fija la curva de puntos).', 'From the same compiler as the winner: score, games, points and margin cannot contradict each other. The distributions\' scale was calibrated separately against real totals (a calibrated winner does not pin the points curve).') + '</div></div></div>';
+  }
+  // Leverage Spine: cuánto vale cada game en cada estado del partido
+  function ttLeveragePanel(d, A, B) {
+    var M = d.match; if (!M || !Array.isArray(M.lattice)) return '';
+    var need = M.need, lat = M.lattice, lev = {}; (M.leverage || []).forEach(function (x) { lev[x.ga + '-' + x.gb] = x.leverage; });
+    var mxL = Math.max.apply(null, (M.leverage || []).map(function (x) { return x.leverage; }).concat([0.0001]));
+    var head = '<tr><th></th>' + Array.apply(null, Array(need)).map(function (_, j) { return '<th>' + j + '</th>'; }).join('') + '</tr>';
+    var rows = '';
+    for (var ga = 0; ga < need; ga++) rows += '<tr><th>' + ga + '</th>' + Array.apply(null, Array(need)).map(function (_, gb) { var p = lat[ga][gb], L = lev[ga + '-' + gb] || 0; var cur = d.live && ttIsLive(d) && d.live.games_a === ga && d.live.games_b === gb; return '<td class="gx-tt-lev' + (cur ? ' cur' : '') + '" title="' + ga + '–' + gb + ' · P(' + esc(ttLast(A.name)) + ') ' + ttPct1(p) + ' · leverage ' + ttPct1(L) + '"><b class="gx-mono">' + ttPct(p) + '</b><i style="width:' + Math.round(100 * L / mxL) + '%"></i><span class="gx-mono">' + (100 * L).toFixed(0) + '</span></td>'; }).join('') + '</tr>';
+    var maxCell = (M.leverage || []).slice().sort(function (x, y) { return y.leverage - x.leverage; })[0];
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">Leverage Spine</span><span class="gx-ph-extra gx-dim">' + esT('cuánto cambia P(partido) según quién gane el siguiente game', 'how much P(match) moves with who wins the next game') + '</span></div><div class="gx-mod-body">' +
+      '<div class="gx-perf-scroll"><table class="gx-tt-levt"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="gx-dim" style="font-size:10.5px">' + esc(ttLast(A.name)) + ' ↓ · ' + esc(ttLast(B.name)) + ' → · ' + esT('arriba P(', 'top P(') + esc(ttLast(A.name)) + esT(' gana el partido) desde ese marcador; abajo el leverage del siguiente game en pp', ' wins the match) from that score; below, the leverage of the next game in pp') + (maxCell ? ' · ' + esT('máximo en ', 'max at ') + maxCell.ga + '–' + maxCell.gb + ' (' + (100 * maxCell.leverage).toFixed(0) + ' pp)' : '') + '</div></div></div>';
+  }
+
+  // ── MERCADOS · PROCESO IMPLÍCITO · EQUIVALENCIAS · EVIDENCIA · CONTEXTO ─────────────────────────────
+  var TT_FAM_ORDER = ['ML', 'GAMES_HCP', 'GAMES_TOTAL', 'POINTS_TOTAL', 'POINTS_HCP', 'GAME_ML', 'GAME_POINTS_HCP', 'GAME_POINTS_TOTAL', 'GAME_DEUCE', 'CORRECT_SCORE'];
+  function ttModelProb(fam, side, line, game, d) {
+    var M = d.match, G = d.game; if (!M) return null;
+    var ln = line != null && line !== '' && !isNaN(line) ? Number(line) : null;
+    var over = function (pairs, l) { if (l == null) return null; var xs = ttPairs(pairs); if (!xs.length) return null; return xs.reduce(function (s, x) { return s + (Number(x[0]) > l ? Number(x[1]) : 0); }, 0); };
+    var ou = function (pairs) { var o = over(pairs, ln); if (o == null) return null; return side === 'over' ? o : side === 'under' ? 1 - o : null; };
+    var cover = function (pairs) { if (ln == null || (side !== 'a' && side !== 'b')) return null; var xs = ttPairs(pairs); var w = 0, push = 0; xs.forEach(function (x) { var v = (side === 'a' ? Number(x[0]) : -Number(x[0])) + ln; if (v > 0) w += x[1]; else if (v === 0) push += x[1]; }); return 1 - push > 0 ? w / (1 - push) : w; };
+    switch (fam) {
+      case 'ML': return d.p_a == null ? null : side === 'a' ? d.p_a : side === 'b' ? 1 - d.p_a : null;
+      case 'GAMES_TOTAL': return ou(M.games_total);
+      case 'GAMES_HCP': return cover(M.games_margin);
+      case 'POINTS_TOTAL': return ou(M.points_total);
+      case 'POINTS_HCP': return cover(M.points_margin);
+      case 'CORRECT_SCORE': { var k = String(side || line).replace(/\s+/g, ''); var h = ttPairs(M.score).filter(function (x) { return String(x[0]) === k; })[0]; return h ? Number(h[1]) : null; }
+      case 'GAME_ML': return G ? (side === 'a' ? (G.p_a_first_a + G.p_a_first_b) / 2 : side === 'b' ? 1 - (G.p_a_first_a + G.p_a_first_b) / 2 : null) : null;
+      case 'GAME_POINTS_TOTAL': return G ? ou(G.total) : null;
+      case 'GAME_POINTS_HCP': return G ? cover(G.margin) : null;
+      case 'GAME_DEUCE': return G ? (side === 'yes' ? G.p_deuce : 1 - G.p_deuce) : null;
+      default: return null;
+    }
+  }
+  function ttMarketsPanel(d, A, B) {
+    var rows = Array.isArray(d.market_rows) ? d.market_rows : [];
+    var body;
+    if (!rows.length) body = '<div class="gx-empty">' + ic('building-bank') + '<b>' + esc(t('mkt_none')) + '</b><span class="gx-dim">' + esT('Pinnacle publica el día del partido; Bovada y Cloudbet la víspera. El registro en sombra solo anota con precio.', 'Pinnacle posts on match day; Bovada and Cloudbet the day before. The shadow record only logs with a price.') + '</span></div>';
+    else {
+      var names = { a: A.name, b: B.name }, best = {}, order = [];
+      rows.forEach(function (r) { if (!(r.odds > 1)) return; var k = [r.family, r.side, r.line, r.game].join('|'); if (!best[k]) { best[k] = { family: r.family, side: r.side, line: r.line, game: r.game, odds: Number(r.odds), book: r.book, n: 0 }; order.push(k); } best[k].n++; if (Number(r.odds) > best[k].odds) { best[k].odds = Number(r.odds); best[k].book = r.book; } });
+      var cands = Array.isArray(d.candidates) ? d.candidates : [];
+      var items = order.map(function (k) { var b = best[k]; var c = cands.filter(function (x) { return x.family === b.family && x.side === b.side && String(x.line) === String(b.line) && String(x.game || '') === String(b.game || ''); })[0]; var pm = c && c.p_model != null ? Number(c.p_model) : ttModelProb(b.family, b.side, b.line, b.game, d); return { b: b, pm: pm, imp: 1 / b.odds, edge: pm != null ? 100 * (pm - 1 / b.odds) : null, shadow: c && c.verdict === 'SHADOW_PICK' }; });
+      var fams = []; items.forEach(function (it) { if (fams.indexOf(it.b.family) < 0) fams.push(it.b.family); });
+      fams.sort(function (x, y) { var fx = TT_FAM_ORDER.indexOf(x), fy = TT_FAM_ORDER.indexOf(y); return (fx < 0 ? 99 : fx) - (fy < 0 ? 99 : fy); });
+      body = fams.map(function (fam) {
+        var xs = items.filter(function (it) { return it.b.family === fam; }).sort(function (x, y) { return (Number(x.b.line) || 0) - (Number(y.b.line) || 0) || String(x.b.side).localeCompare(String(y.b.side), undefined, { numeric: true }); });
+        return '<div class="gx-mkt-sec"><div class="gx-mkt-sec-h">' + ttMark('sm', 20) + esc(ttFamName(fam)) + '<span class="gx-dim" style="font-weight:400;margin-left:auto;font-size:10.5px">' + xs.length + ' ' + esT('líneas', 'lines') + '</span></div>' +
+          '<div class="gx-perf-scroll"><table class="gx-mkt-table"><thead><tr><th class="l">' + esT('Selección', 'Selection') + '</th><th class="l">' + esT('Casa', 'Book') + '</th><th>' + esT('Cuota', 'Odds') + '</th><th>' + esT('Impl.', 'Impl.') + '</th><th>GP</th><th>' + esT('Ventaja', 'Edge') + '</th></tr></thead><tbody>' +
+          xs.map(function (it) {
+            var b = it.b; var who = b.side === 'a' ? names.a : b.side === 'b' ? names.b : null;
+            var sel = fam === 'ML' || fam === 'GAME_ML' ? esc(who || '—') : /HCP$/.test(fam) ? esc(ttLast(who)) + ' <span class="gx-mono">' + (Number(b.line) > 0 ? '+' : '') + esc(String(b.line)) + '</span>' : fam === 'CORRECT_SCORE' ? '<span class="gx-mono">' + esc(String(b.side)) + '</span>' : fam === 'GAME_DEUCE' ? esc(b.side === 'yes' ? esT('Sí', 'Yes') : 'No') : esc(b.side === 'over' ? esT('Más de', 'Over') : esT('Menos de', 'Under')) + ' <span class="gx-mono">' + esc(ttStr(b.line)) + '</span>';
+            var eCls = it.edge == null ? 'gx-dim' : it.edge >= 3 ? 'gx-up' : it.edge > 0 ? '' : 'gx-down';
+            return '<tr' + (it.shadow ? ' class="best"' : '') + '><td class="l"><span class="gx-mkt-oc">' + (it.shadow ? ic('eye') : '') + sel + '</span></td><td class="l">' + esc(prettyBook(b.book || '') || b.book || '—') + (b.n > 1 ? ' <span class="gx-dim" style="font-size:10px">+' + (b.n - 1) + '</span>' : '') + '</td><td class="gx-mono">' + odd(b.odds) + '</td><td class="gx-mono">' + ttPct1(it.imp) + '</td><td class="gx-mono">' + (it.pm != null ? '<b>' + ttPct1(it.pm) + '</b>' : '<span class="gx-dim">—</span>') + '</td><td class="gx-mono ' + eCls + '">' + (it.edge != null ? (it.edge > 0 ? '+' : '') + it.edge.toFixed(1) + ' pp' : '—') + '</td></tr>';
+          }).join('') + '</tbody></table></div></div>';
+      }).join('') + '<div class="gx-mkt-foot gx-dim">' + ic('info-circle') + esT('La implícita es 1/cuota; el motor descuenta el margen cuando tiene la línea contraria de la misma casa. Marcador exacto: solo display.', 'Implied is 1/odds; the engine removes the vig when it has the opposite line at the same book. Correct score: display only.') + '</div>';
+    }
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esc(t('mod_markets')) + '</span><span class="gx-ph-extra gx-dim">' + rows.length + ' ' + esT('líneas', 'lines') + (d.market && d.market.n_books ? ' · ' + esc(ttBooksTxt(d.market.n_books)) : '') + '</span></div><div class="gx-mod-body">' + body + '</div></div>';
+  }
+  // Market Implied Process Field: qué probabilidad de punto está cotizando cada línea del mercado
+  function ttImpliedPanel(d, A, B) {
+    var im = d.implied || {};
+    var gp = d.p_point_dist != null ? Number(d.p_point_dist) : (d.p_point != null ? Number(d.p_point) : null);
+    if (gp == null) return '';
+    var marks = [{ k: 'gp', p: gp, lab: 'GP', cls: 'gp' }];
+    if (im.from_ml && im.from_ml.p_point != null) marks.push({ k: 'ml', p: Number(im.from_ml.p_point), lab: esT('ganador', 'winner'), cls: 'mk' });
+    if (im.from_points_total && im.from_points_total.p_point_gap != null) marks.push({ k: 'pts', p: 0.5 + (gp >= 0.5 ? 1 : -1) * Number(im.from_points_total.p_point_gap), lab: esT('total puntos', 'points total'), cls: 'mk2' });
+    if (im.from_games_total && im.from_games_total.p_point_gap != null) marks.push({ k: 'gms', p: 0.5 + (gp >= 0.5 ? 1 : -1) * Number(im.from_games_total.p_point_gap), lab: esT('total games', 'games total'), cls: 'mk2' });
+    var lo = 0.38, hi = 0.62; var X = function (p) { return Math.max(0, Math.min(100, 100 * (p - lo) / (hi - lo))); };
+    var axis = '<div class="gx-tt-axis"><i class="mid"></i>' + marks.map(function (m, i) { return '<em class="' + m.cls + '" style="left:' + X(m.p).toFixed(1) + '%;top:' + (i % 2 ? 26 : 0) + 'px" title="' + esc(m.lab) + ' · ' + ttPct1(m.p) + '"><b></b><span>' + esc(m.lab) + ' ' + ttPct1(m.p) + '</span></em>'; }).join('') + '<div class="gx-tt-axis-l gx-dim gx-mono"><span>' + ttPct(lo) + '</span><span>50%</span><span>' + ttPct(hi) + '</span></div></div>';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">Market Implied Process</span><span class="gx-ph-extra gx-dim">' + esT('qué cuota de punto de ', 'what point share of ') + esc(ttLast(A.name)) + esT(' cotiza cada línea', ' each line is pricing') + '</span></div><div class="gx-mod-body">' +
+      axis + (im.reading ? '<div class="gx-tt-read' + (Math.abs(im.gap_pp || 0) > 1 ? ' on' : '') + '">' + ic('point') + '<span>' + esc(im.reading) + (im.gap_pp != null ? ' <b class="gx-mono">(' + (im.gap_pp > 0 ? '+' : '') + ttNum(im.gap_pp, 1) + ' pp)</b>' : '') + '</span></div>' : '<div class="gx-dim gx-es-note">' + esT('Sin líneas suficientes para leer el proceso implícito: hace falta ganador y al menos un total.', 'Not enough lines to read the implied process: a winner and at least one total are needed.') + '</div>') +
+      '<div class="gx-dim gx-es-note">' + esT('Cada línea de la casa implica una probabilidad de punto si se invierte el compilador. Cuando el ganador y el total no implican la misma, el mercado está cotizando dos procesos distintos: ahí vive la hipótesis del blueprint, y solo la sombra dirá si paga.', 'Each house line implies a point probability once the compiler is inverted. When winner and total do not imply the same one, the market is pricing two different processes: that is where the blueprint\'s hypothesis lives, and only the shadow will say whether it pays.') + '</div></div></div>';
+  }
+  // Payoff Equivalence Weave
+  function ttEquivPanel(d) {
+    var eq = Array.isArray(d.equivalences) ? d.equivalences : []; if (!eq.length) return '';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">Payoff Equivalence Weave</span><span class="gx-ph-extra gx-dim">' + esT('apuestas distintas que pagan igual por las reglas', 'different bets that pay the same by the rules') + '</span></div><div class="gx-mod-body"><div class="gx-tt-eq">' + eq.map(function (e) { return '<div class="gx-tt-eqrow"><span class="gx-tt-eqp gx-mono">' + (e.p != null ? ttPct1(e.p) : '≠') + '</span><div><span>' + esc(e.es) + '</span>' + (e.lines && e.lines.length ? '<div class="gx-tt-eqlines">' + e.lines.map(function (l) { return '<i class="gx-mono">' + esc(String(l)) + '</i>'; }).join('') + '</div>' : '') + '</div></div>'; }).join('') + '</div></div></div>';
+  }
+  // Evidence Lens: qué nivel de dato sostiene la lectura
+  function ttEvidencePanel(d, A, B) {
+    var R = d.resolution || {}; var f = d.format || {};
+    var row = function (ok, label, val) { return '<div class="gx-tt-ev ' + (ok === true ? 'ok' : ok === false ? 'no' : 'mid') + '"><i></i><span>' + esc(label) + '</span><b>' + val + '</b></div>'; };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Evidence Lens</span><span class="gx-ph-extra gx-dim">' + esc(R.level || 'L1') + ' · ' + esT('qué dato sostiene la lectura', 'what data holds the read') + '</span></div><div class="gx-tt-evs">' +
+      row(true, esT('Puntos por game en el historial', 'Points per game in the history'), esT('sí', 'yes')) +
+      row(false, esT('Reparto saque/recepción', 'Serve/receive split'), esc(R.serve_split || esT('prior', 'prior'))) +
+      row(R.samples && R.samples.a >= 8 && R.samples.b >= 8, esT('Muestra', 'Sample'), (R.samples ? esc(ttLast(A.name)) + ' ' + ttInt(R.samples.a) + ' · ' + esc(ttLast(B.name)) + ' ' + ttInt(R.samples.b) : '—')) +
+      row(!!f.certified, esT('Formato', 'Format'), esc(ttFmt(f)) + (f.certified ? '' : f.share != null ? ' · ' + Math.round(100 * f.share) + '% ' + esT('hist.', 'hist.') : '')) +
+      row(d.tz_certain !== false, esT('Hora', 'Time'), d.tz_certain === false ? esT('estimada por sede', 'venue estimate') : esT('certificada', 'certified')) +
+      row(d.integrity && d.integrity.state === 'VERIFIED_SCOPE', esT('Competición', 'Competition'), ttInteg(d.integrity && d.integrity.state)) +
+      '</div><div class="gx-dim gx-es-note">' + esc(R.note || '') + '</div></div>';
+  }
+  function ttH2HPanel(d, A, B) {
+    var h = d.h2h || {}; var n = (h.w_a || 0) + (h.w_b || 0);
+    if (!n) return '<div class="gx-panel"><div class="gx-empty">' + ic('history-off') + '<b>' + esT('No se han cruzado nunca en la base.', 'They have never met in the base.') + '</b><span class="gx-dim">' + esT('Sin historial directo, el modelo se apoya entero en el rating de punto de cada uno.', 'Without head-to-head history the model leans entirely on each point rating.') + '</span></div></div>';
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Historial directo', 'Head to head') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + n + esT(' partidos · games ', ' matches · games ') + ttInt(h.games_a) + '–' + ttInt(h.games_b) + '</span></div>' +
+      '<div class="gx-ten-h2h"><b class="gx-mono">' + ttInt(h.w_a) + '</b><span class="gx-dim">' + esc(A.name || '') + '</span><span class="gx-spacer"></span><span class="gx-dim">' + esc(B.name || '') + '</span><b class="gx-mono">' + ttInt(h.w_b) + '</b></div>' +
+      ((h.rows || []).length ? '<div class="gx-ten-h2hlist">' + h.rows.slice(0, 8).map(function (m) { var wA = m.winner === 'a'; return '<div class="gx-ten-h2hrow"><span class="gx-dim gx-mono">' + esc(m.dated ? ttDate8(m.date) : String(Math.floor(m.date / 10000))) + '</span><span class="' + (wA ? 'gx-up' : 'gx-down') + '">' + (wA ? '◀' : '▶') + '</span><span class="gx-tform-opp">' + esc(m.tourney || '') + '</span><span class="gx-dim">' + esc(m.round || '') + '</span><span class="gx-spacer"></span><span class="gx-mono">' + esc(m.score || '') + '</span><span class="gx-mono gx-dim" style="font-size:10px">' + esc(m.games || '') + '</span></div>'; }).join('') + '</div>' : '') + '</div>';
+  }
+  function ttFormPanel(d, A, B, PA, PB) {
+    var wl = function (m) { return '<i class="gx-fc gx-fc-' + (m.won ? 'w' : 'l') + '" title="' + esc((m.opp || '') + ' · ' + (m.score || '')) + '">' + (m.won ? (LANG === 'en' ? 'W' : 'V') : (LANG === 'en' ? 'L' : 'D')) + '</i>'; };
+    var one = function (who, P, cls) {
+      var rec = (P.recent || []).slice(0, 6); if (!rec.length) return '';
+      return '<div class="gx-dt-form-side"><div class="gx-dt-form-h" data-ttplayer="' + esc(who.id) + '">' + ttFace(who, cls) + '<b>' + esc(who.name || '—') + '</b><span class="gx-formchips">' + rec.map(wl).join('') + '</span></div>' +
+        rec.map(function (m) { return '<div class="gx-dt-form-row">' + wl(m) + '<span class="opp"' + (m.opp_id != null ? ' data-ttplayer="' + esc(m.opp_id) + '" style="cursor:pointer"' : '') + '>' + esc(m.opp || '') + (m.opp_elo ? ' <em class="gx-dim gx-mono" style="font-size:10px">' + ttInt(m.opp_elo) + '</em>' : '') + '<span class="gx-dim"> · ' + esc([m.tourney, m.round].filter(Boolean).join(' · ')) + '</span></span><span class="gx-mono">' + esc(m.score || '') + '</span><span class="gx-mono gx-dim" style="font-size:10px">' + esc(m.games || '') + '</span></div>'; }).join('') + '</div>';
+    };
+    var body = one(A, PA, 'ra') + one(B, PB, 'rb'); if (!body) return '';
+    return '<div class="gx-panel gx-mv-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Forma', 'Form') + '</span><span class="gx-ph-extra gx-dim">' + esT('últimos partidos · nivel GP del rival · games', 'latest matches · opponent GP level · games') + '</span></div><div class="gx-mod-body gx-dt-form">' + body + '</div></div>';
+  }
+  function ttGatesPanel(d, A, B) {
+    var cs = Array.isArray(d.candidates) ? d.candidates : []; if (!cs.length) return '';
+    var fake = { a: A.name, b: B.name };
+    return '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Invalidation Register</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('qué evaluó el motor y por qué dijo no', 'what the engine evaluated and why it said no') + '</span></div>' +
+      '<div class="gx-perf-scroll"><table class="gx-t gx-dt-gates"><thead><tr><th>' + esT('Familia', 'Family') + '</th><th>' + esT('Casa', 'Book') + '</th><th class="r">' + esT('Cuota', 'Odds') + '</th><th class="r">GP</th><th class="r">' + esT('Impl.', 'Impl.') + '</th><th class="r">Edge</th><th>' + esT('Veredicto', 'Verdict') + '</th></tr></thead><tbody>' +
+      cs.map(function (c) { var fail = (c.gates || []).filter(function (g) { return g && g.pass === false && !g.informativo; })[0]; var ok = c.verdict === 'SHADOW_PICK'; return '<tr><td><b>' + esc(ttFamLabel(c, fake)) + '</b></td><td class="gx-dim">' + esc(prettyBook(c.book || '') || c.book || '—') + '</td><td class="r gx-mono">' + odd(c.odds) + '</td><td class="r gx-mono">' + ttPct1(c.p_model) + '</td><td class="r gx-mono gx-dim">' + ttPct1(c.p_implied) + '</td><td class="r gx-mono ' + ((c.edge_pp || 0) > 0 ? 'gx-up' : 'gx-dim') + '">' + (c.edge_pp != null ? ((c.edge_pp > 0 ? '+' : '') + Number(c.edge_pp).toFixed(1)) : '—') + '</td><td>' + (ok ? '<span class="gx-clgate sh">' + esT('SOMBRA', 'SHADOW') + '</span>' : '<span class="gx-clgate">NO</span>') + (fail ? '<div class="gx-dim" style="font-size:10px;margin-top:2px">' + esc(fail.gate || '') + (fail.detail ? ' · ' + esc(fail.detail) : '') + '</div>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<div class="gx-dim gx-es-note">' + esT('Una tesis en sombra no es una pick: es el registro que decidirá si algún día lo es.', 'A shadow thesis is not a pick: it is the record that will decide whether it ever becomes one.') + '</div></div>';
+  }
+
+  // ── PLAYER ATLAS ────────────────────────────────────────────────────────────────────────────────────
+  function ttGenderSeg(cur, attr) { return '<div class="gx-seg gx-tt-subseg">' + [['M', esT('Masculino', 'Men')], ['W', esT('Femenino', 'Women')]].map(function (x) { return '<button data-' + attr + '="' + x[0] + '"' + (cur === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>'; }).join('') + '</div>'; }
+  function ttHandChip(p) { var bits = [p.hand, p.grip, p.style].filter(Boolean); return bits.length ? '<span class="gx-dim" style="font-size:10.5px">' + esc(bits.join(' · ')) + '</span>' : ''; }
+  function renderTtPlayers() {
+    var q = S.tt.pQ || '', g = S.tt.pG || 'M';
+    var d = ttGet('dir_' + g + '_' + q, '/api/tt/players?q=' + encodeURIComponent(q) + '&limit=80&gender=' + g, 300000);
+    var head = '<div class="gx-ohead"><h1>' + esT('Jugadores', 'Players') + '</h1>' + ttGenderSeg(g, 'ttpg') + '<div class="gx-msearch">' + ic('search') + '<input id="gx-ttsearch" placeholder="' + esT('Buscar jugador…', 'Search player…') + '" value="' + esc(q) + '" autocomplete="off"></div></div>';
+    var body;
+    if (!d) body = ttLoading();
+    else if (d._err) body = ttErr();
+    else {
+      var rows = d.rows || [];
+      body = rows.length ? '<div class="gx-est-grid">' + rows.map(function (p) {
+        return '<div class="gx-panel gx-est-card gx-tt-pcard" data-ttplayer="' + esc(p.id) + '"><div class="gx-est-top">' + ttFace(p, 'big') +
+          '<div class="gx-est-id"><b>' + esc(p.name || '—') + '</b><span>' + esc([p.country, p.rank ? 'WTT #' + p.rank : null].filter(Boolean).join(' · ')) + (p.inactive ? ' · <em style="color:#e5a84d">' + esT('inactivo', 'inactive') + '</em>' : '') + (p.cold ? ' · <em class="gx-dim">' + esT('poca muestra', 'thin sample') + '</em>' : '') + '</span>' + ttHandChip(p) + '</div>' +
+          '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + ttInt(p.elo) + '</b><span>' + esT('Nivel GP', 'GP level') + '</span></div></div>' +
+          '<div class="gx-est-meta"><span class="gx-mono">' + ttPct1(p.point_pct) + ' <i class="gx-dim">' + esT('puntos', 'points') + '</i></span><span class="gx-mono">' + ttPct1(p.deuce_rate) + ' <i class="gx-dim">deuce</i></span><span class="gx-mono gx-dim">' + esc(ttWL(p.wl)) + '</span><span class="gx-mono gx-dim">' + ttPct(p.games_pct) + ' games</span></div></div>';
+      }).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Ningún jugador con ese nombre.', 'No player by that name.') + '</b></div></div>';
+      body += '<div class="gx-dim gx-es-trunc">' + (d.total != null ? ttInt(d.total) + esT(' en la base · ', ' in the base · ') : '') + esc(String(d.freshness || '')) + ' ' + esc(d.attribution || '') + '</div>';
+    }
+    ttShell(null, head + body);
+    var si = $('#gx-ttsearch');
+    if (si) si.addEventListener('input', function () { S.tt.pQ = si.value; clearTimeout(S._ttq); S._ttq = setTimeout(function () { renderTtPlayers(); var e2 = $('#gx-ttsearch'); if (e2) { e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }, 250); });
+  }
+  // Form Ribbon: victorias por año como cinta
+  function ttYearRibbon(byYear) {
+    var xs = (byYear || []).slice(-8); if (!xs.length) return '';
+    return '<div class="gx-tt-ribbon">' + xs.map(function (y) { var n = y.w + y.l, pct = n ? y.w / n : 0; return '<div class="gx-tt-rby" title="' + y.year + ' · ' + y.w + '-' + y.l + '"><div class="gx-tt-rbbar"><i style="height:' + Math.round(100 * pct) + '%"></i></div><b class="gx-mono">' + Math.round(100 * pct) + '%</b><span class="gx-mono gx-dim">' + String(y.year).slice(2) + '</span><span class="gx-dim" style="font-size:9px">' + n + '</span></div>'; }).join('') + '</div>';
+  }
+  function renderTtPlayer() {
+    var id = S.tt.playerId;
+    var bk = ttBack('ttplayers', esT('Jugadores', 'Players'));
+    var d = ttGet('pl_' + id, '/api/tt/player?id=' + encodeURIComponent(id), 600000);
+    if (!d) { ttShell(esT('Jugadores', 'Players'), bk + ttLoading()); return; }
+    if (d._err) { ttShell(esT('Jugadores', 'Players'), bk + ttErr()); return; }
+    if (d.available === false) { ttShell(esT('Jugadores', 'Players'), bk + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('Fuera de la base', 'Outside the base')) + '</b></div></div>'); return; }
+    var hero = '<div class="gx-panel gx-est-hero gx-tt-phero">' + ttMark('bg', 260) + '<div class="gx-est-hero-main">' + ttFace(d, 'big') +
+      '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name || '—') + '</b><span class="gx-dim">' + esc([d.country, d.gender === 'W' ? esT('femenino', 'women') : d.gender === 'M' ? esT('masculino', 'men') : null, d.age != null ? d.age + esT(' años', ' y/o') : null, d.hand, d.grip, d.style].filter(Boolean).join(' · ')) + '</span></div>' +
+      '<span class="gx-spacer"></span><div class="gx-est-elo"><b>' + ttInt(d.elo) + '</b><span>' + esT('Nivel GP', 'GP level') + '</span></div><div class="gx-est-elo"><b>' + (d.rank != null ? '#' + d.rank : '—') + '</b><span>WTT' + (d.rank_prev != null && d.rank != null && d.rank_prev !== d.rank ? ' <i class="' + (d.rank < d.rank_prev ? 'gx-up' : 'gx-down') + '">' + (d.rank < d.rank_prev ? '▲' : '▼') + Math.abs(d.rank - d.rank_prev) + '</i>' : '') + '</span></div></div>' +
+      '<div class="gx-est-hero-stats"><div><b class="gx-mono">' + esc(ttWL(d.wl)) + '</b><span>W-L</span></div><div><b class="gx-mono">' + (d.games ? ttInt(d.games.won) + '-' + ttInt(d.games.lost) : '—') + '</b><span>games</span></div><div><b class="gx-mono">' + (d.points ? ttPct1(d.points.pct) : '—') + '</b><span>' + esT('puntos ganados', 'points won') + '</span></div><div><b class="gx-mono">' + ttPct1(d.deuce_rate) + '</b><span>' + esT('games a deuce', 'games to deuce') + '</span></div><div><b class="gx-mono">' + ttInt(d.titles) + '</b><span>' + esT('títulos', 'titles') + '</span></div><div><b class="gx-mono">' + ttInt(d.tourneys) + '</b><span>' + esT('eventos', 'events') + '</span></div><div><b class="gx-mono">' + ttInt(d.n_points) + '</b><span>' + esT('puntos medidos', 'points measured') + '</span></div></div>' +
+      (d.inactive_note ? '<div class="gx-dim" style="margin-top:8px">' + ic('alert-triangle') + ' ' + esc(d.inactive_note) + '</div>' : '') + '</div>';
+    var solo = Array.isArray(d.solo) && d.solo.length ? '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('El punto, contra el circuito', 'The point, against the circuit') + '</span><span class="gx-ph-extra gx-dim">' + esT('cuota de punto ', 'point share ') + ttPct1(d.point_share) + esT(' frente a un rival medio (θ = 0)', ' against an average opponent (θ = 0)') + '</span></div><div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Rival', 'Opponent') + '</th><th class="r">' + esT('Punto', 'Point') + '</th><th class="r">Game</th><th class="r">BO5</th><th class="r">Deuce</th><th class="r">' + esT('Pts/game', 'Pts/game') + '</th></tr></thead><tbody>' + d.solo.map(function (s) { return '<tr><td><b>' + esc(s.label) + '</b></td><td class="r gx-mono">' + ttPct1(s.p_point) + '</td><td class="r gx-mono">' + ttPct1(s.p_game) + '</td><td class="r gx-mono">' + ttPct1(s.p_match_bo5) + '</td><td class="r gx-mono gx-dim">' + ttPct1(s.p_deuce) + '</td><td class="r gx-mono gx-dim">' + ttNum(s.exp_points_game, 1) + '</td></tr>'; }).join('') + '</tbody></table></div><div class="gx-dim gx-es-note">' + esT('Compilado con las reglas exactas desde su rating de punto: es lo que el modelo espera, no lo que pasó.', 'Compiled with the exact rules from the point rating: what the model expects, not what happened.') + '</div></div>' : '';
+    var years = (d.by_year || []).length >= 2 ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Form Ribbon</span><span class="gx-ph-extra gx-dim">' + esT('% de victorias y partidos por temporada', 'win % and matches per season') + '</span></div>' + ttYearRibbon(d.by_year) + '</div>' : '';
+    var rec = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Últimos partidos', 'Latest matches') + '</span>' + (d.last_date ? '<span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + esc(ttDate8(d.last_date)) + '</span>' : '') + '</div><div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Fecha', 'Date') + '</th><th></th><th>' + esT('Rival', 'Opponent') + '</th><th class="r">GP</th><th>' + esT('Marc.', 'Score') + '</th><th>Games</th><th>' + esT('Evento', 'Event') + '</th></tr></thead><tbody>' +
+      d.recent.slice(0, 16).map(function (m) { return '<tr><td class="gx-mono gx-dim">' + esc(m.dated ? ttDate8(m.date) : String(Math.floor(m.date / 10000))) + '</td><td><b style="color:' + (m.won ? 'var(--gx-accent)' : '#e5484d') + '">' + (m.won ? 'W' : 'L') + '</b></td><td' + (m.opp_id != null ? ' data-ttplayer="' + esc(m.opp_id) + '" style="cursor:pointer"' : '') + '>' + esc(m.opp || '—') + '</td><td class="r gx-mono gx-dim">' + ttInt(m.opp_elo) + '</td><td class="gx-mono">' + esc(m.score || '') + '</td><td class="gx-mono gx-dim" style="font-size:10.5px">' + esc(m.games || '') + '</td><td class="gx-dim">' + esc([m.tourney, m.round].filter(Boolean).join(' · ')) + (m.bo ? ' · BO' + m.bo : '') + '</td></tr>'; }).join('') + '</tbody></table></div></div>' : '';
+    ttShell(null, bk + hero + solo + years + rec + '<div class="gx-dim gx-es-trunc">' + esc(d.level || '') + ' · ' + esc(String(d.freshness || '')) + ' ' + esc(d.attribution || '') + '</div>' + ttShadowNote(null));
+  }
+  // ── RANKING GP ──────────────────────────────────────────────────────────────────────────────────────
+  function renderTtRank() {
+    var g = S.tt.rG || 'M';
+    var d = ttGet('rank_' + g, '/api/tt/ranking?gender=' + g, 600000);
+    var head = '<div class="gx-ohead"><h1>' + esT('Ranking GP', 'GP Ranking') + '</h1>' + ttGenderSeg(g, 'ttrg') + '</div>';
+    if (!d) { ttShell(null, head + ttLoading()); return; }
+    if (d._err) { ttShell(null, head + ttErr()); return; }
+    var rows = d.rows || [];
+    var body = '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th class="r">#</th><th></th><th>' + esT('Jugador', 'Player') + '</th><th class="r">' + esT('Nivel GP', 'GP level') + '</th><th class="r">WTT</th><th class="r">Δ</th><th class="r">' + esT('Puntos', 'Points') + '</th><th class="r">Deuce</th><th class="r">W-L</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var mv = r.move == null ? '<span class="gx-dim">·</span>' : r.move > 0 ? '<span class="gx-up">▲' + r.move + '</span>' : r.move < 0 ? '<span style="color:#e5484d">▼' + (-r.move) + '</span>' : '<span class="gx-dim">=</span>';
+        var vs = r.vs_wtt == null ? '—' : r.vs_wtt > 0 ? '<span class="gx-up">+' + r.vs_wtt + '</span>' : r.vs_wtt < 0 ? '<span style="color:#e5484d">' + r.vs_wtt + '</span>' : '<span class="gx-dim">=</span>';
+        return '<tr data-ttplayer="' + esc(r.id) + '"><td class="r gx-mono gx-esr-rank">' + ttInt(r.pos) + '</td><td style="font-size:10.5px">' + mv + '</td><td><div class="gx-esr-team">' + ttFace(r) + '<b>' + esc(r.name || '—') + '</b>' + (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(r.country) + '</span>' : '') + (r.cold ? ' <span class="gx-dim" style="font-size:9.5px">❄</span>' : '') + '</div></td><td class="r gx-mono"><b>' + ttInt(r.elo) + '</b></td><td class="r gx-mono gx-dim">' + (r.rank != null ? '#' + r.rank : '—') + '</td><td class="r" style="font-size:10.5px" title="' + esT('ranking WTT − posición GP', 'WTT rank − GP position') + '">' + vs + '</td><td class="r gx-mono">' + ttPct1(r.point_pct) + '</td><td class="r gx-mono gx-dim">' + ttPct1(r.deuce_rate) + '</td><td class="r gx-mono gx-dim">' + esc(ttWL(r.wl)) + '</td></tr>';
+      }).join('') + '</tbody></table></div><div class="gx-dim gx-es-note">' + esc(d.note || '') + (d.snapshot_at ? ' · ' + esc(fmtDateTime(d.snapshot_at)) : '') + ' ' + esc(d.attribution || '') + '</div></div>';
+    ttShell(null, head + body + ttShadowNote(null));
+  }
+
+  // ── EVENTOS ─────────────────────────────────────────────────────────────────────────────────────────
+  function ttStateChip(st) { var m = { live: [esT('en juego', 'live'), 'live'], upcoming: [esT('próximo', 'upcoming'), 'up'], done: [esT('terminado', 'done'), 'done'] }[st] || [ttStr(st), '']; return '<span class="gx-dt-state ' + m[1] + '">' + esc(m[0]) + '</span>'; }
+  function renderTtTours() {
+    var d = ttGet('tours', '/api/tt/tournaments', 300000);
+    if (!d) { ttShell(esT('Eventos', 'Events'), ttLoading()); return; }
+    if (d._err) { ttShell(esT('Eventos', 'Events'), ttErr()); return; }
+    var showY = !!S.tt.showYouth;
+    var rows = (d.rows || []).filter(function (t2) { return showY || !t2.youth; }).slice().sort(function (x, y) { var o = { live: 0, upcoming: 1, done: 2 }; return (o[x.state] != null ? o[x.state] : 3) - (o[y.state] != null ? o[y.state] : 3) || String(x.start || '').localeCompare(String(y.start || '')); });
+    var head = '<div class="gx-ohead"><h1>' + esT('Eventos', 'Events') + '</h1><div class="gx-seg gx-tt-subseg"><button data-ttyouth="0"' + (!showY ? ' class="on"' : '') + '>' + esT('Mayores', 'Seniors') + '</button><button data-ttyouth="1"' + (showY ? ' class="on"' : '') + '>' + esT('+ juveniles', '+ youth') + '</button></div><span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + rows.length + ' ' + esT('eventos WTT', 'WTT events') + '</span></div>';
+    var card = function (tq) {
+      return '<div class="gx-panel gx-est-card gx-tt-tourcard' + (tq.youth ? ' youth' : '') + '" data-tttour="' + esc(tq.id) + '"' + (tq.color ? ' style="--tt-ev:' + esc(tq.color) + '"' : '') + '><div class="gx-est-top">' + ttCrest(tq, 'big') +
+        '<div class="gx-est-id"><b>' + esc(tq.short || tq.name || '—') + '</b><span>' + esc([tq.city, tq.country, tq.venue].filter(Boolean).join(' · ')) + '</span></div><span class="gx-spacer"></span><div class="gx-dt-tourcard-r">' + ttTier(tq) + ttStateChip(tq.state) + '</div></div>' +
+        '<div class="gx-est-meta"><span class="gx-mono">' + esc([tq.start ? ttDate8(tq.start) : null, tq.end ? ttDate8(tq.end) : null].filter(Boolean).join(' → ')) + '</span>' + (tq.youth ? '<span class="gx-dt-fchip warn">' + esT('juvenil · sin modelo', 'youth · no model') + '</span>' : ttInteg(tq.integrity)) + '<span class="gx-spacer"></span><span class="gx-dim">' + (tq.fixtures != null ? '<span class="gx-mono">' + ttInt(tq.fixtures) + '</span> ' + esT('partidos', 'matches') + (tq.results ? ' · <span class="gx-mono">' + ttInt(tq.results) + '</span> ' + esT('finales', 'final') : '') : '—') + '</span></div></div>';
+    };
+    var body = rows.length ? '<div class="gx-est-grid">' + rows.map(card).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Sin eventos en el calendario.', 'No events on the calendar.') + '</b></div></div>';
+    ttShell(null, head + body + ttShadowNote(d));
+  }
+  function ttTourFixture(r) {
+    var res = ttIsFinal(r), gp = r.gp || {}, p = gp.p_a, ok = r.available !== false;
+    var line = function (who, photo, id2, sc, pp) { var win = res && r.winner_id != null && r.winner_id === id2; return '<div class="gx-dt-bm-row' + (win ? ' win' : '') + '">' + ttFace({ name: who || 'TBD', photo: photo }, 'sm') + '<span class="gx-dt-bm-n">' + esc(who || (res ? '—' : 'TBD')) + '</span><span class="gx-mono">' + (res ? ttInt(sc) : ok && pp != null ? ttPct(pp) : '') + '</span></div>'; };
+    return '<div class="gx-dt-bm clk' + (ttIsLive(r) ? ' live' : '') + '" data-ttmatch="' + esc(r.id) + '">' + line(r.a, r.photo_a, r.a_id, r.score_a, p) + line(r.b, r.photo_b, r.b_id, r.score_b, p != null ? 1 - p : null) +
+      '<div class="gx-dt-bm-f gx-dim">' + (r.start_at ? esc(fmtDateTime(r.start_at)) : '') + (r.table ? ' · ' + esc(r.table) : '') + (res && r.result && r.result.games ? ' · <span class="gx-mono">' + esc(ttGamesStr(r.result.games)) + '</span>' : '') + (!ok ? ' <span class="gx-dt-off-t">' + esc(r.why || esT('fuera de la base', 'outside the base')) + '</span>' : (r.market && r.market.ml_p_a != null && !res ? ' · ' + esT('mercado ', 'market ') + ttPct(r.market.ml_p_a) : '')) + '</div></div>';
+  }
+  function renderTtTour() {
+    var id = S.tt.tourId, bk = ttBack('tttours', esT('Eventos', 'Events'));
+    var d = ttGet('tour_' + id, '/api/tt/tournament?id=' + encodeURIComponent(id), 300000);
+    if (!d) { ttShell(esT('Eventos', 'Events'), bk + ttLoading()); return; }
+    if (d._err) { ttShell(esT('Eventos', 'Events'), bk + ttErr()); return; }
+    if (d.available === false) { ttShell(esT('Eventos', 'Events'), bk + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('Evento fuera de la base', 'Event outside the base')) + '</b></div></div>'); return; }
+    var subs = Array.isArray(d.subs) ? d.subs : [];
+    var curSub = S.tt.tSub && subs.some(function (s) { return s.sub === S.tt.tSub; }) ? S.tt.tSub : (subs[0] || {}).sub;
+    var hero = '<div class="gx-panel gx-dt-thero gx-tt-thero"' + (d.color ? ' style="--tt-ev:' + esc(d.color) + '"' : '') + '>' + ttMark('bg', 220) + '<div class="gx-dt-thero-m">' + ttCrest(d, 'big') + '<div class="gx-dt-thero-id"><div class="gx-dt-comp-n"><b>' + esc(d.short || d.name || '—') + '</b>' + ttTier(d) + ttInteg(d.integrity && d.integrity.state) + '</div><span class="gx-dim">' + esc([d.venue, d.city, d.country].filter(Boolean).join(', ')) + (d.start ? ' · ' + esc(ttDate8(d.start)) + (d.end ? ' → ' + esc(ttDate8(d.end)) : '') : '') + (d.tz ? ' · UTC' + (d.tz.offset >= 0 ? '+' : '') + (d.tz.offset / 60) + (d.tz.certain ? '' : ' ≈') : '') + '</span></div></div>' +
+      '<div class="gx-dt-thero-k"><div class="gx-es-hero-n"><b>' + ttInt(d.results) + '</b><span>' + esT('finales', 'final') + '</span></div><div class="gx-es-hero-n"><b>' + ttInt(d.fixtures) + '</b><span>' + esT('partidos', 'matches') + '</span></div></div></div>';
+    var seg = subs.length > 1 ? '<div class="gx-seg gx-tt-subseg" style="margin-bottom:10px">' + subs.map(function (s) { return '<button data-tttsub="' + esc(s.sub) + '"' + (s.sub === curSub ? ' class="on"' : '') + '>' + esc(ttSub(s.sub)) + '</button>'; }).join('') + '</div>' : '';
+    var S1 = subs.filter(function (s) { return s.sub === curSub; })[0];
+    var body = '';
+    if (S1) {
+      var title = S1.title && S1.title.rows ? S1.title.rows.slice(0, 12) : [];
+      var mxT = Math.max.apply(null, title.map(function (x) { return x.p || 0; }).concat([0.0001]));
+      if (title.length) body += '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Probabilidad de título', 'Title probability') + '</span><span class="gx-ph-extra gx-dim">' + esT('GP · desde el cuadro conocido', 'GP · from the known draw') + (S1.title.estimated ? ' · ' + esT('rondas futuras estimadas por orden de partido', 'future rounds estimated by match order') : '') + '</span></div>' + title.map(function (x) { return '<div class="gx-dt-title" data-ttplayer="' + esc(x.id) + '">' + ttFace(x, 'sm') + '<b>' + esc(x.name || '—') + (x.country ? ' <span class="gx-dim" style="font-size:10px">' + esc(x.country) + '</span>' : '') + '</b><div class="gx-dt-title-bar"><i style="width:' + Math.round(100 * (x.p || 0) / mxT) + '%"></i></div><span class="gx-mono">' + ttPct1(x.p) + '</span></div>'; }).join('') + '</div>';
+      var rounds = S1.rounds || [];
+      body += '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('El cuadro', 'The draw') + '</span><span class="gx-ph-extra gx-dim">' + esT('por ronda · resultado o P(GP)', 'by round · result or P(GP)') + '</span></div>' +
+        (rounds.length ? (function () {
+          // grupos y clasificación (decenas de partidos) van en rejilla ancha; el cuadro final en columnas por ronda
+          var wide = rounds.filter(function (rd) { return ['GRP', 'Q', 'MD', 'OTR'].indexOf(rd.round) >= 0; }), ko = rounds.filter(function (rd) { return wide.indexOf(rd) < 0; });
+          var lab = function (rd) { return esc(LANG === 'en' ? ttRoundEn(rd.round) || rd.label : rd.label); };
+          return wide.map(function (rd) { return '<div class="gx-dt-stage-h" style="padding:8px 16px 0"><b>' + lab(rd) + '</b><span class="gx-dim gx-mono">' + rd.fixtures.length + '</span></div><div class="gx-dt-daygrid">' + rd.fixtures.map(ttTourFixture).join('') + '</div>'; }).join('') +
+            (ko.length ? '<div class="gx-dt-bracket">' + ko.map(function (rd) { return '<div class="gx-dt-stage"><div class="gx-dt-stage-h"><b>' + lab(rd) + '</b><span class="gx-dim gx-mono">' + rd.fixtures.length + '</span></div>' + rd.fixtures.map(ttTourFixture).join('') + '</div>'; }).join('') + '</div>' : '');
+        })() : '<div class="gx-empty">' + ic('calendar-off') + '<b>' + esT('Cuadro sin publicar.', 'Draw not published yet.') + '</b></div>') + '</div>';
+    }
+    ttShell(null, bk + hero + seg + body + ttShadowNote(d));
+  }
+  // ── COMPETITION OPERATING MAP ───────────────────────────────────────────────────────────────────────
+  function renderTtMap() {
+    var d = ttGet('comps', '/api/tt/competitions', 300000);
+    if (!d) { ttShell(esT('Competiciones', 'Competitions'), ttLoading()); return; }
+    if (d._err) { ttShell(esT('Competiciones', 'Competitions'), ttErr()); return; }
+    var states = d.states || [];
+    var intro = '<div class="gx-panel gx-bb-note">' + ic('shield') + '<span><b>' + esT('Solo lo verificado entra al modelo.', 'Only what is verified enters the model.') + '</b> ' + esT('El tenis de mesa de apuestas está lleno de ligas privadas creadas para el mercado (Liga Pro, Setka Cup, TT Cup…): sin cuerpo oficial, sin resultado independiente, sin plantilla en la base. Se enseñan con su aviso; jamás se modelan ni se registran en la sombra.', 'Betting table tennis is full of private leagues created for the market (Liga Pro, Setka Cup, TT Cup…): no official body, no independent result, no roster in the base. They are shown with a warning; never modelled nor logged in the shadow.') + '</span></div>';
+    var body = states.length ? states.map(function (s) {
+      return '<div class="gx-panel gx-tt-mapst ' + esc(s.state) + '"><div class="gx-ph">' + ttInteg(s.state) + '<span class="gx-label">' + esc(s.label || s.state) + '</span><span class="gx-ph-extra gx-dim">' + ttInt(s.events) + ' ' + esT('eventos cotizados', 'priced events') + '</span></div><div class="gx-dim gx-es-note" style="padding-top:0">' + esc(s.note || '') + '</div>' +
+        '<div class="gx-perf-scroll"><table class="gx-t"><thead><tr><th>' + esT('Competición', 'Competition') + '</th><th class="r">' + esT('Eventos', 'Events') + '</th><th class="r">' + esT('Líneas', 'Lines') + '</th><th>' + esT('Casas', 'Books') + '</th></tr></thead><tbody>' + (s.competitions || []).map(function (c) { return '<tr><td><b>' + esc(c.name) + '</b></td><td class="r gx-mono">' + ttInt(c.n) + '</td><td class="r gx-mono gx-dim">' + ttInt(c.lines) + '</td><td class="gx-dim">' + esc(Object.keys(c.books || {}).map(function (b) { return (prettyBook(b) || b) + ' ' + c.books[b]; }).join(' · ')) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    }).join('') : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Sin cuotas leídas todavía.', 'No odds read yet.') + '</b><span class="gx-dim">' + esT('El mapa se llena con la primera lectura de las casas.', 'The map fills with the first read of the books.') + '</span></div></div>';
+    ttShell(esT('Competiciones', 'Competitions'), intro + body + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + (d.at ? ' · ' + esc(fmtDateTime(d.at)) : '') + '</div>');
+  }
+  // ── SIMULADOR ───────────────────────────────────────────────────────────────────────────────────────
+  function renderTtSim() {
+    var st = S.tt.sim || {};
+    var form = '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Enfrenta a dos jugadores cualesquiera', 'Face off any two players') + '</span></div><div class="gx-tensim-f">' +
+      '<input id="gx-ttsim-a" placeholder="Wang Chuqin" value="' + esc(st.a || '') + '" autocomplete="off"><span class="gx-dim">vs</span><input id="gx-ttsim-b" placeholder="Felix Lebrun" value="' + esc(st.b || '') + '" autocomplete="off">' +
+      '<select id="gx-ttsim-bo"><option value="5"' + ((st.bo || '5') === '5' ? ' selected' : '') + '>' + esT('Al mejor de 5', 'Best of 5') + '</option><option value="7"' + (st.bo === '7' ? ' selected' : '') + '>' + esT('Al mejor de 7', 'Best of 7') + '</option></select>' +
+      '<select id="gx-ttsim-first">' + [['', esT('sorteo desconocido', 'unknown draw')], ['a', esT('sirve A', 'A serves')], ['b', esT('sirve B', 'B serves')]].map(function (x) { return '<option value="' + x[0] + '"' + ((st.first || '') === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join('') + '</select>' +
+      '<button class="gx-btn" data-ttsimgo>' + esT('Simular', 'Simulate') + '</button></div><div class="gx-dim gx-es-note">' + esT('Modelo propio, sin cuotas: punto → game → partido con las reglas exactas.', 'Own model, market-blind: point → game → match with the exact rules.') + '</div></div>';
+    var res = '', r = st.result;
+    if (st.loading) res = ttLoading();
+    else if (r && r._locked) res = '<div class="gx-panel">' + lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'), esT('Cruzar dos jugadores cualesquiera con el motor real es parte de los planes Pro y Sharp.', 'Crossing any two players with the real engine is part of the Pro and Sharp plans.')) + '</div>';
+    else if (r && r.available === false) res = '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(r.why || esT('sin respuesta', 'no answer')) + '</b></div></div>';
+    else if (r) {
+      var A = r.a || { name: st.a }, B = r.b || { name: st.b }, sk = r.skills || {};
+      var head = '<div class="gx-panel gx-ten-duel"><div class="gx-ten-duelhead"><div class="gx-ten-duelside" data-ttplayer="' + esc(A.id) + '">' + ttFace(A) + '<b>' + esc(A.name || '—') + '</b><span class="gx-ten-bigp">' + ttPct(r.p_a) + '</span></div><span class="gx-ten-vs gx-dim">BO' + esc(String(r.format.best_of)) + (r.first && r.first !== 'unknown' ? ' · ' + esT('sirve ', 'serves ') + esc(ttLast(r.first === 'a' ? A.name : B.name)) : '') + '</span><div class="gx-ten-duelside r" data-ttplayer="' + esc(B.id) + '">' + ttFace(B) + '<b>' + esc(B.name || '—') + '</b><span class="gx-ten-bigp">' + (r.p_a != null ? ttPct(1 - r.p_a) : '—') + '</span></div></div>' +
+        '<div class="gx-pbar"><i class="h" style="width:' + (100 * r.p_a).toFixed(1) + '%"></i><i class="a" style="width:' + (100 * (1 - r.p_a)).toFixed(1) + '%"></i></div>' +
+        ttTiles([[esT('Solo resultados / compilado', 'Results only / compiled'), ttPct(r.p_a_elo) + ' / ' + ttPct(r.p_a_compiled)], [esT('Cuota de punto', 'Point share'), ttPct1(r.p_point) + ' – ' + ttPct1(1 - r.p_point)], [esT('Gana el game · ', 'Wins game · ') + ttLast(A.name), ttPct1(r.game.p_a_first_a)], [esT('P(deuce)', 'P(deuce)'), ttPct1(r.game.p_deuce)], [esT('Games / puntos esp.', 'Exp. games / points'), ttNum(r.match.exp_games, 2) + ' / ' + ttNum(r.match.exp_points, 1)], [esT('Incertidumbre', 'Uncertainty'), r.unc_pp != null ? '±' + ttNum(r.unc_pp, 1) + ' pp' : '—']]) +
+        (sk.a && sk.b ? '<div class="gx-tcmp-head" style="margin-top:12px"><b>' + esc(ttLast(A.name)) + '</b><span class="gx-spacer"></span><b>' + esc(ttLast(B.name)) + '</b></div>' + tenCmp(esT('Nivel GP', 'GP level'), sk.a.elo, sk.b.elo, ttInt) + tenCmp(esT('cuota de punto (vs media)', 'point share (vs average)'), sk.a.point_share, sk.b.point_share, ttPct1) + tenCmp(esT('games a deuce', 'games to deuce'), sk.a.deuce_rate, sk.b.deuce_rate, ttPct1) + tenCmp(esT('partidos medidos', 'matches measured'), sk.a.n_matches, sk.b.n_matches, ttInt) : '') + '</div>';
+      var d2 = { game: Object.assign({}, r.game, { braid_first_b: r.game.braid_first_a, lattice_first_b: r.game.lattice_first_a, exp_points_first_b: r.game.exp_points, exp_points_first_a: r.game.exp_points, a: null, b: null }), match: Object.assign({}, r.match, { best_of: r.format.best_of, need: r.format.need, leverage: [] }), market: {}, equivalences: r.equivalences, h2h: r.h2h, implied: {}, p_point: r.p_point, p_point_dist: r.p_point };
+      var prism = Array.isArray(r.format_prism) ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">Format Prism</span><span class="gx-ph-extra gx-dim">' + esT('el mismo duelo a las dos distancias', 'the same duel at both distances') + '</span></div><div class="gx-perf-scroll"><table class="gx-t gx-dt-prism"><thead><tr><th>' + esT('Formato', 'Format') + '</th><th class="r">P(' + esc(ttLast(A.name)) + ')</th><th class="r">Games</th><th class="r">' + esT('Puntos', 'Points') + '</th></tr></thead><tbody>' + r.format_prism.map(function (x) { return '<tr' + (x.current ? ' class="pick"' : '') + '><td><b>' + esc(x.label) + '</b></td><td class="r gx-mono">' + ttPct1(x.p_a) + '</td><td class="r gx-mono">' + ttNum(x.exp_games, 2) + '</td><td class="r gx-mono">' + ttNum(x.exp_points, 1) + '</td></tr>'; }).join('') + '</tbody></table></div></div>' : '';
+      res = head + ttGamePanel(d2, A, B) + ttMatchPanel(d2, A, B) + prism + ttEquivPanel(d2) + ttH2HPanel(d2, A, B) + '<div class="gx-dim gx-es-trunc">' + esc(r.note || '') + ' ' + esc(r.attribution || '') + '</div>';
+    }
+    ttShell(t('nav_sim'), form + res + ttShadowNote(null));
+  }
+
+  // ── SOMBRA ──────────────────────────────────────────────────────────────────────────────────────────
+  function ttPerfTable(map, labelOf) {
+    var keys = Object.keys(map || {}); if (!keys.length) return '';
+    return '<div class="gx-perf-scroll"><table class="gx-t gx-dt-perf"><thead><tr><th></th><th class="r">N</th><th class="r">' + esT('Acierto', 'Hit') + '</th><th class="r">' + esT('Unidades', 'Units') + '</th><th class="r">ROI</th><th class="r">CLV</th><th class="r">CLV ' + esT('casa', 'own') + '</th></tr></thead><tbody>' +
+      keys.map(function (k) { var v = map[k] || {}; return '<tr><td><b>' + (labelOf ? labelOf(k, v) : esc(k)) + '</b>' + (v.note ? ' <span class="gx-dim" style="font-size:10px">' + esc(v.note) + '</span>' : '') + '</td><td class="r gx-mono">' + ttInt(v.n) + '</td><td class="r gx-mono">' + (v.hit_pct != null ? ttNum(v.hit_pct, 1) + '%' : '—') + '</td><td class="r gx-mono ' + (v.units > 0 ? 'gx-up' : v.units < 0 ? 'gx-down' : '') + '">' + (v.units != null ? (v.units > 0 ? '+' : '') + ttNum(v.units, 2) : '—') + '</td><td class="r gx-mono gx-dim">' + (v.roi_pct != null ? ttNum(v.roi_pct, 1) + '%' : '—') + '</td><td class="r gx-mono">' + (v.clv_avg_pct != null ? ttNum(v.clv_avg_pct, 2) + '%' : '—') + (v.clv_n != null ? ' <span class="gx-dim">n=' + v.clv_n + '</span>' : '') + '</td><td class="r gx-mono gx-dim">' + (v.clv_own_avg_pct != null ? ttNum(v.clv_own_avg_pct, 2) + '%' : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  }
+  function renderTtPerf() {
+    var d = ttGet('track', '/api/tt/track', 120000);
+    if (!d) { ttShell(t('nav_perf'), ttLoading()); return; }
+    if (d._err) { ttShell(t('nav_perf'), ttErr()); return; }
+    var kpi = '<div class="gx-panel gx-dt-kpi">' + ttMark('bg', 200) + '<div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Monitor privado de tenis de mesa', 'Private table tennis monitor') + '</span><span class="gx-ph-extra gx-dim">' + esc(d.regime || '') + '</span></div>' +
+      ttTiles([[esT('Abiertas', 'Open'), ttInt(d.open)], [esT('Liquidadas', 'Settled'), ttInt(d.settled)], [esT('Aciertos', 'Record'), ttInt(d.w) + '-' + ttInt(d.l) + (d.push ? '-' + d.push : '')], [esT('Unidades', 'Units'), d.units != null ? (d.units > 0 ? '+' : '') + ttNum(d.units, 2) : '—'], ['ROI', d.roi_pct != null ? ttNum(d.roi_pct, 1) + '%' : '—'], [esT('CLV medio', 'Avg CLV'), d.clv_avg_pct != null ? ttNum(d.clv_avg_pct, 2) + '% (n=' + ttInt(d.clv_n) + ')' : '—'], [esT('Anuladas', 'Voided'), ttInt(d.voided || 0)]]) +
+      '<div class="gx-dim gx-es-note">' + esc(d.reading || '') + '</div></div>';
+    var fam = d.by_family && Object.keys(d.by_family).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Por familia', 'By family') + '</span></div>' + ttPerfTable(d.by_family, function (k) { return esc(ttFamName(k)); }) + '</div>' : '';
+    var fb = d.by_family_book && Object.keys(d.by_family_book).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Por familia y casa', 'By family and book') + '</span><span class="gx-ph-extra gx-dim">' + esT('la vara: CLV contra el cierre de la MISMA casa', 'the bar: CLV against the SAME book\'s close') + '</span></div>' + ttPerfTable(d.by_family_book, function (k, v) { return esc(ttFamName(v.family)) + ' <span class="gx-dim">· ' + esc(prettyBook(v.book) || v.book) + '</span>'; }) + '</div>' : '';
+    var tier = d.by_tier && Object.keys(d.by_tier).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Por nivel de evento', 'By event tier') + '</span></div>' + ttPerfTable(d.by_tier) + '</div>' : '';
+    var line = function (p, lead, tail) { return '<div class="gx-dt-openrow" data-ttmatch="' + esc(p.event_id) + '" style="cursor:pointer">' + lead + '<div class="gx-dt-openrow-m"><b>' + esc(p.a || '') + ' <i class="gx-dim">vs</i> ' + esc(p.b || '') + '</b><span class="gx-dim">' + esc(ttFamName(p.family)) + ' · ' + esc(ttStr(p.side)) + (p.line != null ? ' ' + esc(String(p.line)) : '') + ' @' + odd(p.odds) + (p.book ? ' · ' + esc(prettyBook(p.book) || p.book) : '') + ' · ' + esc(p.tournament || '') + '</span></div>' + ttSubChip(p.sub) + (p.cold ? ttCold(true) : '') + tail + '</div>'; };
+    var open = (d.open_list || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Tesis abiertas', 'Open theses') + '</span></div>' + d.open_list.slice(0, 14).map(function (p) { return line(p, '', '<span class="gx-mono gx-up">' + (p.edge_pp != null ? '+' + ttNum(p.edge_pp, 1) + ' pp' : '') + '</span>'); }).join('') + '</div>' : '';
+    var rec = (d.recent || []).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Últimas liquidadas', 'Recently settled') + '</span></div>' + d.recent.slice(0, 12).map(function (p) { var w = p.result === 'WIN', l = p.result === 'LOSS'; return line(p, '<span class="gx-dt-res ' + (w ? 'w' : l ? 'l' : '') + '">' + (w ? '✓' : l ? '✕' : '·') + '</span>', '<span class="gx-mono ' + (p.units > 0 ? 'gx-up' : p.units < 0 ? 'gx-down' : 'gx-dim') + '">' + (p.units != null ? (p.units > 0 ? '+' : '') + ttNum(p.units, 2) + 'u' : '') + (p.clv_pct != null ? ' <span class="gx-dim">CLV ' + ttNum(p.clv_pct, 1) + '%</span>' : '') + '</span>'); }).join('') + '</div>' : '';
+    ttShell(t('nav_perf'), kpi + fam + fb + tier + open + rec + '<div class="gx-dim gx-es-trunc">' + esc(d.doctrine || '') + '</div>' + ttShadowNote(null));
+  }
+  // ── BRIEF ───────────────────────────────────────────────────────────────────────────────────────────
+  function renderTtBrief() {
+    var d = ttGet('brief', '/api/tt/brief', 300000);
+    if (!d) { ttShell(t('nav_brief'), ttLoading()); return; }
+    if (d._locked) { ttShell(t('nav_brief'), '<div class="gx-panel">' + lockPanelTxt(esT('El brief de la jornada es para suscriptores', 'The daily brief is for subscribers'), esT('La lectura narrada del modelo es parte de los planes Pro y Sharp.', 'The model\'s narrated read is part of the Pro and Sharp plans.')) + '</div>'); return; }
+    if (d._err) { ttShell(t('nav_brief'), ttErr()); return; }
+    var intro = d.intro && d.intro.es ? '<div class="gx-panel gx-brief-intro"><p>' + esc(S.lang === 'en' && d.intro.en ? d.intro.en : d.intro.es) + '</p><span class="gx-dim" style="font-size:10.5px">GP · ' + esc(String(d.day || '')) + '</span></div>' : '<div class="gx-panel"><div class="gx-dim">' + (d.intro_error === 'sin presupuesto de jobs para hoy' ? esT('La apertura narrada vuelve mañana (presupuesto del redactor agotado hoy); abajo va el tablero completo.', 'The narrated opener returns tomorrow (writer budget spent today); the full board is below.') : esT('Sin apertura narrada todavía hoy.', 'No narrated opener yet today.')) + '</div></div>';
+    var evs = (d.tournaments || []).length ? '<div class="gx-tt-evstrip">' + d.tournaments.map(function (tq) { return '<div class="gx-panel gx-tt-evchip" data-tttour="' + esc(tq.id) + '">' + ttCrest(tq, 'mid') + '<div><b>' + esc(tq.short || tq.name) + '</b><span class="gx-dim">' + esc([tq.tier_label, tq.city].filter(Boolean).join(' · ')) + ' · ' + ttInt(tq.fixtures) + ' ' + esT('partidos', 'matches') + '</span></div></div>'; }).join('') + '</div>' : '';
+    var rows = (d.games || []).map(function (r) { var gp = r.gp || {}; return '<tr data-ttmatch="' + esc(r.id) + '" style="cursor:pointer"><td>' + esc(r.a || '') + '<span class="gx-dim"> vs </span>' + esc(r.b || '') + (ttIsLive(r) ? ' <span class="gx-live-pill">' + ttInt(r.live.games_a) + '–' + ttInt(r.live.games_b) + '</span>' : '') + '</td><td class="gx-dim">' + esc([r.tournament_short, ttRound(r) && (LANG === 'en' ? ttRoundEn(r.round) || r.round_label : r.round_label)].filter(Boolean).join(' · ')) + ' ' + ttSubChip(r.sub) + '</td><td class="r gx-mono">' + ttPct(gp.p_a) + '</td><td class="r gx-mono gx-dim">' + (r.market && r.market.ml_p_a != null ? ttPct(r.market.ml_p_a) : '—') + '</td><td class="r gx-mono gx-dim">' + ttNum(gp.exp_games, 2) + '</td><td class="r gx-mono gx-dim">' + ttNum(gp.exp_points, 1) + '</td></tr>'; }).join('');
+    var table = rows ? '<div class="gx-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr><th>' + esT('Partido', 'Match') + '</th><th>' + esT('Evento', 'Event') + '</th><th class="r">GP</th><th class="r">' + esT('Mercado', 'Market') + '</th><th class="r">Games</th><th class="r">' + esT('Puntos', 'Points') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' : '';
+    ttShell(t('nav_brief'), intro + evs + table + '<div class="gx-dim gx-es-trunc">' + esc(d.note || '') + '</div>' + ttShadowNote(null));
+  }
+  // ── PREGÚNTALE A GP ─────────────────────────────────────────────────────────────────────────────────
+  function renderTtAsk() {
+    S.tt.ask = S.tt.ask || { hist: [], busy: false };
+    var A = S.tt.ask;
+    var sug = S.lang === 'en' ? ['How is Wang Chuqin arriving?', 'Simulate Lebrun vs Harimoto best of 7', 'Who plays today at the WTT Champions?', 'How is the table tennis shadow doing?'] : ['¿Cómo llega Wang Chuqin?', 'Simula Lebrun vs Harimoto al mejor de 7', '¿Quién juega hoy en el WTT Champions?', '¿Cómo va la sombra de tenis de mesa?'];
+    var thread = A.hist.length ? '<div class="gx-bb-thread">' + A.hist.map(function (h) { return '<div class="gx-bb-q">' + esc(h.q) + '</div>' + (h.answer ? '<div class="gx-bb-a">' + esc(h.answer).replace(/\n/g, '<br>') + '</div>' : '<div class="gx-bb-a gx-dim">…</div>'); }).join('') + '</div>' : '';
+    var box = '<div class="gx-panel gx-bb-askbox"><div class="gx-ph"><span class="gx-label">' + esc(t('nav_cb_ask')) + '</span><span class="gx-ph-extra">' + esc(t('sport_tt')) + ' · WTT</span></div>' + thread + (A.busy ? '<div class="gx-bb-a gx-dim">' + esT('Pensando…', 'Thinking…') + '</div>' : '') +
+      '<div class="gx-bb-askin"><input id="gx-tt-q" placeholder="' + esT('Pregunta por un partido, un jugador o la sombra…', 'Ask about a match, a player or the shadow…') + '" autocomplete="off"' + (A.busy ? ' disabled' : '') + '><button class="gx-btn" data-ttaskgo' + (A.busy ? ' disabled' : '') + '>' + ic('message-circle') + esT('Preguntar', 'Ask') + '</button></div>' +
+      '<div class="gx-bb-sugs">' + sug.map(function (s2) { return '<span class="gx-bb-sug" data-ttasksug="' + esc(s2) + '">' + esc(s2) + '</span>'; }).join('') + '</div><div class="gx-dim gx-bb-courtnote">' + esT('Responde solo con datos cargados en la plataforma. Si no tiene el dato, lo dice. No es consejo financiero.', 'Answers only with data loaded on the platform. If it lacks the data, it says so. Not financial advice.') + '</div></div>';
+    ttShell(t('nav_cb_ask'), box);
+    var inp = $('#gx-tt-q'); if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ttAskGo(inp.value); });
+  }
+  function ttAskGo(qArg) {
+    var inp = $('#gx-tt-q'); var q = String(qArg || (inp && inp.value) || '').trim(); if (!q) return;
+    S.tt.ask = S.tt.ask || { hist: [], busy: false }; var A = S.tt.ask;
+    A.hist.push({ q: q, answer: null }); A.busy = true; renderTtAsk();
+    fetch('/api/ask', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()), body: JSON.stringify({ q: q, sport: 'tt', lang: S.lang === 'en' ? 'en' : 'es', hist: A.hist.slice(0, -1).slice(-5).map(function (h) { return { q: h.q, a: h.answer }; }) }) })
+      .then(function (r) { return r.json(); }).catch(function () { return null; })
+      .then(function (j) { A.busy = false; A.hist[A.hist.length - 1].answer = (j && (j.a || j.answer || j.text)) || esT('No pude responder ahora mismo.', 'I could not answer right now.'); if (S.view === 'ttask') renderTtAsk(); });
+  }
+  // ── EL MOTOR ────────────────────────────────────────────────────────────────────────────────────────
+  function renderTtModel() {
+    var d = ttGet('model', '/api/tt/model', 3600000);
+    if (!d) { ttShell(esT('El motor', 'The engine'), ttLoading()); return; }
+    if (d._err) { ttShell(esT('El motor', 'The engine'), ttErr()); return; }
+    var b = d.base || {}, m = d.mechanism || {}, vt = d.validation || null;
+    var head = '<div class="gx-panel"><div class="gx-ph">' + ttMark('sm', 22) + '<span class="gx-label">' + esc(d.name || esT('Motor de tenis de mesa', 'Table tennis engine')) + '</span><span class="gx-ph-extra gx-dim gx-mono" style="font-size:10.5px">' + esc([d.version ? 'v' + d.version : null, d.family].filter(Boolean).join(' · ')) + '</span></div><p class="gx-dim" style="font-size:12.5px;line-height:1.55">' + esc(d.doctrine || '') + '</p></div>';
+    var base = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('La base', 'The base') + '</span>' + (b.level ? '<span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esc(String(b.level)) + '</span>' : '') + '</div>' + ttTiles([[esT('Partidos', 'Matches'), ttInt(b.matches)], [esT('Con fecha exacta', 'Exact-dated'), ttInt(b.dated)], [esT('Jugadores', 'Players'), ttInt(b.players)], [esT('Eventos', 'Events'), ttInt(b.tourneys)], [esT('Ventana', 'Window'), Array.isArray(b.window) ? b.window.join('–') : ttStr(b.window)], [esT('Frescura', 'Freshness'), ttStr(b.freshness)]]) + (Array.isArray(b.sources) ? '<div class="gx-dim gx-es-note">' + esT('Fuentes: ', 'Sources: ') + esc(b.sources.join(' · ')) + '</div>' : '') + '</div>';
+    var mech = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('El mecanismo', 'The mechanism') + '</span>' + (m.synthetic_check ? '<span class="gx-ph-extra ' + (/FALLA|FAIL/.test(m.synthetic_check) ? 'gx-down' : 'gx-up') + '" style="font-size:10.5px">' + esc(m.synthetic_check) + '</span>' : '') + '</div><ul class="gx-dt-mech">' + [[esT('Punto', 'Point'), m.atom], ['Game', m.game], [esT('Partido', 'Match'), m.match], [esT('Mercados', 'Markets'), Array.isArray(m.markets) ? m.markets.join(' · ') : m.markets]].filter(function (x) { return x[1]; }).map(function (x) { return '<li><b>' + esc(x[0]) + '</b> ' + esc(String(x[1])) + '</li>'; }).join('') + '</ul></div>';
+    var val;
+    if (vt && vt.n != null) {
+      var blk = function (label, o) { return o ? '<div class="gx-tt-valblk"><span class="gx-label">' + esc(label) + '</span>' + ttTiles([['log-loss', ttNum(o.logloss, 4)], [esT('skill', 'skill'), ttNum(o.skill_pct, 1) + '%'], ['Brier', ttNum(o.brier, 4)], ['AUC', ttNum(o.auc, 3)]]) + '</div>' : ''; };
+      val = '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Validación fuera de muestra', 'Out-of-sample validation') + '</span><span class="gx-ph-extra gx-dim" style="font-size:10.5px">' + esT('holdout desde ', 'holdout from ') + esc(String(vt.from || '')) + ' · n = ' + ttInt(vt.n) + '</span></div>' + blk(esT('Solo resultados (Elo)', 'Results only (Elo)'), vt.elo) + blk(esT('Compilado desde el punto', 'Compiled from the point'), vt.compiled) + blk(esT('Mezcla (publicada)', 'Blend (published)'), vt.ensemble) +
+        (vt.games ? '<div class="gx-dt-sub"><span class="gx-label">' + esT('Superficies', 'Surfaces') + '</span></div>' + ttTiles([[esT('Games: real / modelo', 'Games: real / model'), ttNum(vt.games.mean_real, 2) + ' / ' + ttNum(vt.games.mean_model, 2)], [esT('Games MAE / naif', 'Games MAE / naive'), ttNum(vt.games.mae, 3) + ' / ' + ttNum(vt.games.mae_naive, 3)], [esT('Puntos: real / modelo', 'Points: real / model'), ttNum(vt.points.mean_real, 1) + ' / ' + ttNum(vt.points.mean_model, 1)], [esT('Puntos MAE / naif', 'Points MAE / naive'), ttNum(vt.points.mae, 2) + ' / ' + ttNum(vt.points.mae_naive, 2)], [esT('Deuce: real / modelo', 'Deuce: real / model'), ttPct1(vt.deuce.rate_real) + ' / ' + ttPct1(vt.deuce.rate_model)], [esT('Barrida: real / modelo', 'Sweep: real / model'), vt.sweep ? ttPct1(vt.sweep.real) + ' / ' + ttPct1(vt.sweep.model) : '—']]) : '') +
+        (vt.protocol ? '<div class="gx-dim gx-es-note">' + esc(vt.protocol) + '</div>' : '') + '</div>';
+    } else val = '<div class="gx-panel gx-bb-note">' + ic('alert-triangle') + '<span><b>' + esT('Validación pendiente.', 'Validation pending.') + '</b> ' + esc((vt && (vt.note || vt.status)) || '') + '</span></div>';
+    var fams = d.families && Object.keys(d.families).length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Familias', 'Families') + '</span></div><div class="gx-dt-fams">' + Object.keys(d.families).map(function (k) { var st = String(d.families[k] || ''); return '<span class="gx-dt-fam' + (/sombra|shadow/i.test(st) ? ' sh' : /display|referencia/i.test(st) ? ' off' : '') + '"><b>' + esc(ttFamName(k)) + '</b> ' + esc(st) + '</span>'; }).join('') + '</div></div>' : '';
+    var integ = Array.isArray(d.integrity) ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Estados de competición', 'Competition states') + '</span></div><ul class="gx-dt-mech">' + d.integrity.map(function (x) { return '<li>' + ttInteg(x.state) + ' ' + esc(x.note) + '</li>'; }).join('') + '</ul></div>' : '';
+    var gaps = Array.isArray(d.known_gaps) && d.known_gaps.length ? '<div class="gx-panel"><div class="gx-ph"><span class="gx-label">' + esT('Lo que falta', 'Known gaps') + '</span></div><ul class="gx-dt-mech">' + d.known_gaps.map(function (g) { return '<li>' + esc(String(g)) + '</li>'; }).join('') + '</ul></div>' : '';
+    ttShell(esT('El motor', 'The engine'), head + base + mech + val + fams + integ + gaps + '<div class="gx-dim gx-es-trunc">' + esc(d.disclaimer || t('disclaimer_short')) + '</div>' + ttShadowNote(null));
+  }
+  // ── CLICKS ──────────────────────────────────────────────────────────────────────────────────────────
+  function ttClicks(e) {
+    var of = e.target.closest('[data-ttofilt]'); if (of) { S.tt.oFilt = of.getAttribute('data-ttofilt'); renderTtOpps(); return; }
+    var sc = e.target.closest('[data-ttsc]');
+    if (sc) { var wrap = sc.closest('.gx-tt-scwrap'); if (wrap) { [].forEach.call(wrap.querySelectorAll('.gx-dt-sc.on'), function (x) { x.classList.remove('on'); }); sc.classList.add('on'); var cap = wrap.querySelector('.gx-dt-sccap'); if (cap) cap.textContent = sc.getAttribute('data-ttsc') + ' · ' + sc.getAttribute('data-ttp'); } return; }
+    var lc = e.target.closest('[data-ttlc]');
+    if (lc) { var lw = lc.closest('.gx-tt-latwrap'); if (lw) { [].forEach.call(lw.querySelectorAll('.gx-tt-lc.on'), function (x) { x.classList.remove('on'); }); lc.classList.add('on'); var lcap = lw.querySelector('.gx-tt-latcap'); if (lcap) lcap.textContent = lc.getAttribute('data-ttlc').replace('-', '–') + ' → ' + lc.getAttribute('data-ttlp'); } return; }
+    var gf = e.target.closest('[data-ttgfirst]'); if (gf) { S.tt.gFirst = gf.getAttribute('data-ttgfirst'); if (S.view === 'ttmatch') renderTtMatch(); else renderTtSim(); return; }
+    var mt = e.target.closest('[data-ttmatch]'); if (mt) { setHash('ttmatch/' + encodeURIComponent(mt.getAttribute('data-ttmatch'))); return; }
+    var bk = e.target.closest('[data-ttback]'); if (bk) { e.preventDefault(); setHash('ttgames'); return; }
+    var bk2 = e.target.closest('[data-ttbackto]'); if (bk2) { e.preventDefault(); setHash(bk2.getAttribute('data-ttbackto')); return; }
+    var mf = e.target.closest('[data-ttmfilt]'); if (mf) { S.tt.mFilt = mf.getAttribute('data-ttmfilt'); renderTtGames(); return; }
+    var ms = e.target.closest('[data-ttmsub]'); if (ms) { S.tt.mSub = ms.getAttribute('data-ttmsub'); renderTtGames(); return; }
+    var pg = e.target.closest('[data-ttpg]'); if (pg) { S.tt.pG = pg.getAttribute('data-ttpg'); renderTtPlayers(); return; }
+    var rg = e.target.closest('[data-ttrg]'); if (rg) { S.tt.rG = rg.getAttribute('data-ttrg'); renderTtRank(); return; }
+    var ty = e.target.closest('[data-ttyouth]'); if (ty) { S.tt.showYouth = ty.getAttribute('data-ttyouth') === '1'; renderTtTours(); return; }
+    var tsb = e.target.closest('[data-tttsub]'); if (tsb) { S.tt.tSub = tsb.getAttribute('data-tttsub'); renderTtTour(); return; }
+    var pl = e.target.closest('[data-ttplayer]'); if (pl) { var pid = pl.getAttribute('data-ttplayer'); if (pid && pid !== 'undefined' && pid !== 'null') setHash('ttplayer/' + encodeURIComponent(pid)); return; }
+    var tr = e.target.closest('[data-tttour]'); if (tr) { setHash('tttour/' + encodeURIComponent(tr.getAttribute('data-tttour'))); return; }
+    var go = e.target.closest('[data-ttsimgo]');
+    if (go) {
+      var a = ($('#gx-ttsim-a') || {}).value || '', b = ($('#gx-ttsim-b') || {}).value || '', bo = ($('#gx-ttsim-bo') || {}).value || '5', first = ($('#gx-ttsim-first') || {}).value || '';
+      if (!a.trim() || !b.trim()) return;
+      S.tt.sim = { a: a, b: b, bo: bo, first: first, loading: true }; renderTtSim();
+      fetch('/api/tt/sim?a=' + encodeURIComponent(a) + '&b=' + encodeURIComponent(b) + '&best_of=' + bo + (first ? '&first=' + first : ''), { headers: hdrs() })
+        .then(function (r) { return r.ok ? r.json() : (r.status === 403 ? { _locked: 1 } : null); }).catch(function () { return null; })
+        .then(function (j) { S.tt.sim = { a: a, b: b, bo: bo, first: first, result: j || { available: false, why: esT('sin respuesta', 'no answer') } }; if (S.view === 'ttsim') renderTtSim(); });
+      return;
+    }
+    var ag = e.target.closest('[data-ttaskgo]'); if (ag) { ttAskGo(); return; }
+    var asug = e.target.closest('[data-ttasksug]'); if (asug) { ttAskGo(asug.getAttribute('data-ttasksug')); return; }
+  }
+  if (typeof window !== 'undefined' && window.__GP_TT_TEST__) {
+    window.__gpTtTest = { renderTT: renderTT, setMe: function (me) { S.me = me; }, S: S, showView: function (v) { showView(v); }, bust: function () { S.tt = {}; }, setLang: function (l) { LANG = l; S.lang = l; } };
+  }
+
 
   var AMF_LEAGUES = [['nfl', 'NFL'], ['ncaaf', 'College'], ['cfl', 'CFL']];
   function nflLg() { return S.nfl.lg || 'nfl'; }

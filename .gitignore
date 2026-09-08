@@ -72,3 +72,7 @@ data/propfirm/
 # Dardos: caché de disco local (en Render vive en /data/darts) y crudo de la cosecha
 /darts/
 /darts-raw/
+
+# tenis de mesa: crudo ITTF/WTT fuera del repo (Render: /data/tt-raw)
+/tt-raw/
+data/tt/matches.json

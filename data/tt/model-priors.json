@@ -1,0 +1,116 @@
+{
+ "model_version": "tt-l1-1",
+ "fitted_at": "2026-09-08T20:25:03.159Z",
+ "constants": {
+  "kScale": 1.4,
+  "pointEta": 0.08,
+  "pointNorm": 0.5,
+  "pointScale": 1,
+  "pointScaleDist": 1,
+  "serveDelta": 0.03,
+  "ensembleU": 0.25,
+  "youthWeight": 0.5,
+  "warmN": 8
+ },
+ "development": {
+  "from": 20230101,
+  "to": 20260101,
+  "n": 17227,
+  "best": {
+   "logloss": 0.523,
+   "skill_pct": 24.55,
+   "brier": 0.1764,
+   "auc": 0.813
+  },
+  "elo": {
+   "logloss": 0.5322,
+   "skill_pct": 23.224,
+   "brier": 0.1793,
+   "auc": 0.807
+  },
+  "compiled": {
+   "logloss": 0.5745,
+   "skill_pct": 17.122,
+   "brier": 0.1901,
+   "auc": 0.798
+  },
+  "games": {
+   "mean_real": 4.055,
+   "mean_model": 4.073,
+   "mae": 0.682,
+   "mae_naive": 0.766
+  },
+  "points": {
+   "mean_real": 74.515,
+   "mean_model": 74.792,
+   "mae": 14.588,
+   "mae_naive": 16.645
+  },
+  "deuce": {
+   "rate_real": 0.1511,
+   "rate_model": 0.1491
+  },
+  "grid": "kScale ∈ {0,7; 1; 1,4} × pointEta ∈ {0,02; 0,04; 0,08} × pointNorm ∈ {0,5; 1} × pointScale ∈ {0,5; 0,65; 0,8; 1} × u ∈ {0; 0,25; 0,5; 0,75; 1}; 2ª etapa pointScaleDist ∈ {0,8 … 1,7} por MAE de games/puntos y sesgo de barridas/deuce",
+  "protocol": "walk-forward point-in-time: cada partido predicho antes de actualizar; Elo de partido + rating de punto → compilador exacto; rejilla elegida por log-loss del ganador en desarrollo; holdout intocable"
+ },
+ "holdout": {
+  "from": 20260101,
+  "n": 4557,
+  "elo": {
+   "logloss": 0.5372,
+   "skill_pct": 22.505,
+   "brier": 0.1811,
+   "auc": 0.803
+  },
+  "compiled": {
+   "logloss": 0.5789,
+   "skill_pct": 16.48,
+   "brier": 0.1908,
+   "auc": 0.796
+  },
+  "ensemble": {
+   "logloss": 0.5273,
+   "skill_pct": 23.924,
+   "brier": 0.1777,
+   "auc": 0.81
+  },
+  "games": {
+   "mean_real": 3.893,
+   "mean_model": 3.881,
+   "mae": 0.653,
+   "mae_naive": 0.704
+  },
+  "points": {
+   "mean_real": 71.885,
+   "mean_model": 71.232,
+   "mae": 14.302,
+   "mae_naive": 15.475
+  },
+  "deuce": {
+   "rate_real": 0.1578,
+   "rate_model": 0.1489
+  },
+  "over_line": {
+   "real": 0.5912,
+   "model": 0.5799,
+   "brier": 0.2326,
+   "brier_naive": 0.2417
+  },
+  "sweep": {
+   "real": 0.4005,
+   "model": 0.4117
+  },
+  "correct_score": {
+   "logloss": 1.6327,
+   "logloss_uniform": 1.7918
+  },
+  "protocol": "mismas constantes; partidos de mayores 2026 sin retiradas con ambos jugadores ≥ warmN partidos previos"
+ },
+ "base": {
+  "rows": 192460,
+  "players": 15732,
+  "built_at": "2026-09-08T20:21:59.138Z",
+  "last_match_date": 20260908
+ },
+ "ms": 179936
+}

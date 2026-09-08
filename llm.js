@@ -556,7 +556,7 @@ async function writeGameRead(payload, aviso) {
 }
 
 const BRIEF_SPORT = { combat: 'combate (UFC/MMA)', hoops: 'baloncesto (NBA/WNBA/NCAA)', futbol: 'fútbol',
-  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1', darts: 'dardos (PDC)' };
+  esports: 'esports (CS2, LoL, Valorant y Dota 2)', nfl: 'fútbol americano (NFL, College y CFL)', tennis: 'tenis (ATP y WTA)', f1: 'Fórmula 1', darts: 'dardos (PDC)', tt: 'tenis de mesa (circuito WTT)' };
 // EL `aviso` ES EL TERCER ARGUMENTO DE TODO ESCRITOR (21-ago). Cuando entró el verificador, los nueve
 // escritores pasaron a aceptar un aviso final —la lista de números señalados en el intento anterior— y a
 // éste se le añadió al prompt pero NO a la firma. Resultado: `aviso` era un identificador libre y la
@@ -961,5 +961,19 @@ async function writeDartsRead(payload, aviso) {
   return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
 }
 
-module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, DOMINIOS, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead, writeDartsRead,
+// ── Redactor de TENIS DE MESA (8-sep, blueprint 9.0) ──────────────────────────────────────────────
+// El objeto del deporte es el PUNTO y su cola: quién gana más puntos, cuánto pesa el saque, cuándo llega
+// el deuce y cómo se reparte el partido en games. El dossier manda; el LLM narra; nada inventado.
+async function writeTtRead(payload, aviso) {
+  const resp = await call({
+    kind: 'writer', json: 'esen',
+    max_tokens: 2000,
+    system: 'Eres el analista de tenis de mesa (circuito WTT) de GP Simulador. PROHIBIDO describir el funcionamiento interno del sistema: nada de nombrar métodos, familias de modelo, pesos, constantes ni proveedores de datos. Se narra QUÉ ve el modelo y POR QUÉ importa, nunca CÓMO lo calcula. Con el dossier JSON escribe la lectura del partido en DOS párrafos por idioma (máximo 100 palabras cada uno). REGLA MAESTRA: el favorito es EXACTAMENTE "favorito_gp.nombre" con su probabilidad — tu tesis lo defiende SIEMPRE; si el "mercado" del dossier discrepa, esa discrepancia ES parte del análisis. (1) EL PARTIDO — qué decide el duelo en ESTE formato: la cuota de punto de cada uno ("el_punto"), quién gana el primer game y con qué probabilidad de deuce ("el_game"), los games y puntos esperados y los marcadores más probables ("el_partido"), el nivel GP y la forma reciente, el historial directo si viene; (2) EL GUION Y EL RIESGO — por dónde gana el otro, cómo pesa el formato (al mejor de 5 = más varianza que al mejor de 7), la incertidumbre del dossier, y qué señal en pista diría que la lectura falló (un primer game perdido, un deuce que se escapa). PROHIBIDO: inventar datos que no estén en el JSON; picks, apuestas, cuotas, edge o valor; contradecir a favorito_gp; hype. Nombra cada métrica como viene en el JSON. Responde SOLO un JSON {"es":"...","en":"..."} en UNA línea — separa los párrafos con \\n\\n dentro del string.',
+    messages: [{ role: 'user', content: JSON.stringify(payload) + (aviso ? '\n\n' + aviso : '') }],
+  });
+  const j = jsonOf(resp);
+  return j && j.es && j.en ? { es: String(j.es).slice(0, 2200), en: String(j.en).slice(0, 2200), _prov: resp._prov } : null;
+}
+
+module.exports = { init, enabled, budgetOk, hayGratis, CHAIN, PROV, budgetState, dailyBudget, remainingUsd, balance, usage, call, textOf, jsonOf, askWrite, askAgent, writePickWhy, writeFightRead, writeFightPreview, writeGameRead, writeBrief, extractSignals, DOMINIOS, writeNflRead, writeCs2Read, writeTennisRead, writeF1Read, writeAmfootRead, writeDartsRead, writeTtRead,
   verificarLectura, escribirVerificado, numerosTexto, numerosDossier };

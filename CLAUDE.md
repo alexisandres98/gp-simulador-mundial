@@ -96,6 +96,13 @@
   104k resultados PDC) — la cola en Render escribe en `/data/darts` y conserva el compacto del repo como
   línea de base. Derechos: `data/darts/RIGHTS.md` (sin uso comercial hasta fuente licenciada). Smoke:
   `node scripts/smoke/darts-smoke.js`; validación: `node scripts/darts-fit.js [--write]`.
+- **Tenis de mesa (11º deporte, admin-only, 8-sep, blueprint 9.0):** `tt-engine/` (rules, compiler EXACTO punto → game →
+  partido con cola de deuce analítica, data con Elo + rating de punto, store) + `data-providers/tt/{wtt,flashscore,books}.js` +
+  `scripts/tt-harvest.js` (crudo ITTF/WTT en `/data/tt-raw`, compacto en `data/tt/`) + `scripts/tt-fit.js` (walk-forward →
+  `data/tt/model-priors.json`). Rutas `/api/tt/*` tras `GP_TT_PUBLIC_ENABLED` (sin poner = solo admin); sonda
+  `/api/internal/tt?key=`. TODAS las familias en SOMBRA; ganador = referencia. Solo competiciones WTT/ITTF (VERIFIED_SCOPE):
+  las ligas privadas de apuestas (Liga Pro, Setka Cup, TT Cup…) se enseñan con aviso y jamás se modelan. `selfTest()` del
+  compilador reproduce la tabla sintética del blueprint a 6 decimales — si se toca el compilador, correrlo. Derechos: `data/tt/RIGHTS.md`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

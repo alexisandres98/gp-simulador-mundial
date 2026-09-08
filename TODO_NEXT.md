@@ -13,6 +13,27 @@ Verificado en prod 09:52 UTC: Invictus–LGD trae 72 KILLS_HANDICAP de Pinnacle.
 mejor precio y la sombra la enruta como manual, igual que CS2 → el track por casa (`&bets=N&segmento=lol_kills_hcp_v1`)
 separa Cloudbet de Pinnacle solo. Verificar en una semana si LoL, como CS2, pierde en Cloudbet y gana en Pinnacle.
 
+## 🏓 TENIS DE MESA (8-sep, blueprint 9.0): el 11º deporte — lo que falta para que valga algo
+Construido entero el 8-sep (ver HANDOFF). Pendientes reales, por orden:
+1. **Muestra en sombra**: la primera semana solo acumula. La vara (blueprint bloque 9): CLV por familia contra el cierre de la
+   MISMA casa (`clv_own_avg_pct`), no el ROI. Familias hipótesis: totales de puntos y del 1er game, deuce. El ganador es referencia.
+2. **Completar la base en prod**: la cola diaria baja 900 historiales por pasada; forzar con `/api/internal/tt?key=&tail=1&n=2500`
+   hasta que `meta.ranked` ≈ `raw_files`. Re-correr `scripts/tt-fit.js --write` con la base completa y comparar con el holdout
+   congelado (log-loss 0,5357 / AUC 0,807).
+3. **Pinnacle publica el día del partido**: el tablero de la víspera solo trae Bovada/Cloudbet. Comprobar en prod que a las
+   ~06:00Z las líneas de Pinnacle casan (`&board=1` → `con_mercado`, `por_torneo`). Si el casado por nombre falla en asiáticos
+   (Wang/Chen/Lin), afinar `nameIs` con el nombre de pila obligatorio cuando la familia es ambigua.
+4. **Saque/recepción (L2)**: la fuente da puntos por game, no por saque. El match card en vivo trae `serverPlayer` punto a punto:
+   con una semana de cards en vivo guardadas se puede estimar δ real por jugador y dejar de usar el prior 0,03.
+5. **Primer servidor**: la WTT no lo publica prematch; el card en vivo sí (`action.serverPlayer` del game 1). Guardarlo en
+   `results.json` y medir cuánto se separan los dos escenarios en la práctica.
+6. **Formatos**: `formats.json` dice que Champions R32/R16 son BO5 y QF mixto; el gate exige certificado o ≥ 95 % histórico.
+   Cuando el match card llegue (empieza el partido) el formato se certifica; las tesis prematch de rondas mixtas se quedan fuera.
+7. **Cloudbet**: confirmar en prod las claves reales (`cloudbet_keys` en la sonda) y si `table_tennis.totals` es de puntos o
+   games (se clasifica por magnitud de la línea).
+8. **Observador de prensa**: `tt` no está en `DOMINIOS` de llm.js ni en `obsSujetos*`; sin señales de lesión/baja. Entrar cuando
+   haya muestra (retiradas de cuadro son frecuentes en Feeder/Contender).
+
 ## 🎯 DARDOS (6-sep, blueprint 8.0): el 9º deporte nace admin-only y TODO en sombra — lo que bloquea que valga algo
 Construido de punta a punta en un día (motor exacto, base propia 2023→hoy, agenda oficial, cuatro casas, sombra,
 pestaña). **7-sep, orden de Alexis ("quiero darts generando picks y acumulando data")**: la sombra llevaba 0 tesis

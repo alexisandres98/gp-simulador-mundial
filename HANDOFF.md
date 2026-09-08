@@ -1,4 +1,55 @@
-# HANDOFF — estado al 7-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
+# HANDOFF — estado al 8-sep-2026 (nace TENIS DE MESA, el 11º deporte: compilador exacto punto → game → partido)
+
+## 🏓 TENIS DE MESA (8-sep, blueprint 9.0 de Alexis) — construido de punta a punta, admin-only, TODO en sombra
+Alexis: "quiero que este sea el mejor deporte de toda nuestra plataforma, a nivel de modelo, de data, de IU, de estructura".
+Lo que hay, verificado en el arnés (16 vistas × móvil/escritorio × ES/EN, cero errores):
+- **Motor exacto** (`tt-engine/rules.js`, `compiler.js`): a = P(A gana el punto sirviendo A), b = P(A gana el punto sirviendo B);
+  game por recursión exacta sobre el marcador con la cola de deuce ANALÍTICA (u = ab, v = (1−a)(1−b), P(A|deuce) = u/(u+v),
+  E[extra] = 2/(u+v)); partido al mejor de 5/7 por convolución con primer servidor alterno, llevando por estado la pmf de
+  puntos totales y la de margen. De un solo estado salen ganador, marcador, games, puntos, hándicaps y mercados del 1er game.
+  `selfTest()` reproduce la tabla sintética del blueprint (12.3) a 6 decimales — el blueprint la calculó con A sirviendo primero.
+  Identidades por construcción: 11–10 no existe, total 21 no existe, "más de 20,5" = "más de 21,5" = P(deuce), hándicap de
+  game ±1,5 = ganador del game. Lattice 11×11 de estados, leverage por game, probabilidad en vivo desde (games, puntos, servidor).
+- **Base propia** (`scripts/tt-harvest.js` → `data/tt/`): historial ITTF por jugador con los PUNTOS de cada game (2012→; los 2.226
+  del ranking MS/WS bajan en tandas: 900/pasada en la cola diaria de prod, `&tail=1&n=2500` para forzar). OJO: `OverallScore`
+  viene repetido (4–4, 3–3) en miles de filas → el ganador se deduce de los puntos. Eventos TEST/SIM excluidos. `formats.json`:
+  frecuencia real de BO5/BO7 por nivel×ronda (Champions R32/R16 son BO5, QF mixto, SF/F BO7 — la plantilla "Champions = BO7"
+  era falsa). Base completa (2.226 historiales, 0 fallos): 192.460 partidos (30.644 con fecha exacta), 15.732 jugadores, 1.697 retratos.
+- **Rating** (`tt-engine/data.js`): Elo de partido (L0) + rating de PUNTO θ (L1: P(punto) = σ(θA−θB), actualizado con los puntos
+  reales) → compilador → mezcla. DOS escalas (blueprint 12.3): `pointScale` para el ganador y `pointScaleDist` para las
+  distribuciones — con la base completa las dos quedaron en 1,0 (con la base parcial pedían 0,8/1,15: el rating de punto
+  estaba sub-identificado). Saque/recepción NO identificados (la fuente da puntos por game): δ = 0,03 de población, declarado en
+  pantalla (Evidence Lens). Walk-forward (`scripts/tt-fit.js --write`, desarrollo 2023-2025 n = 17.227) → holdout 2026
+  (n = 4.557): ensemble log-loss 0,5273 · skill 23,9 % · AUC 0,810 (Elo solo 0,5340; compilado solo 0,5310); games MAE 0,653 vs
+  naif 0,704; puntos MAE 14,3 vs 15,5; media de puntos 71,2 vs 71,9 real; deuce 14,9 % vs 15,8 %; barridas 41,2 % vs 40,1 %.
+  Constantes: kScale 1,4 · pointEta 0,08 · pointNorm 0,5 · u 0,25. Congelado en `data/tt/model-priors.json`.
+- **Store** (`tt-engine/store.js`): agenda WTT (eventos activos → schedule por evento; hora LOCAL → UTC por tabla de sedes y
+  CERTIFICADA con el primer match card del evento, `tz.json`), resultados oficiales con games (`results.json`; el tablero pide
+  hasta 12 rezagados por pasada), vivo WTT (ids + match card con puntos y servidor) con Flashscore de respaldo, tres casas
+  (Pinnacle 32 · Bovada · Cloudbet) normalizadas a 10 familias, casado por FAMILIA + nombre/inicial (Cloudbet solo lee mercados
+  de competiciones VERIFICADAS), consenso sin margen, `impliedProcess()` (qué cuota de punto cotiza el ganador y cuál el total:
+  su distancia es la hipótesis del blueprint), `payoffEquivalences()`, puertas (edge ≥ 3 pp, ruido vs incertidumbre, muestra
+  ≥ 8, frescura, formato certificado o ≥ 95 % histórico, solo 1er game, sin vivo), card de la casa (`tt_avas`/`tt_hash`),
+  sombra con cierres en cubos T−60/−30/−10/−5/−1 y CLV mejor/Pinnacle/misma casa, liquidación desde el match card, track por
+  familia/casa/nivel/categoría, catálogo (directorio por género, ranking GP vs WTT, ficha con "el punto contra el circuito" y
+  Form Ribbon), eventos (cuadro por subevento y ronda, título estimado emparejando por número de partido), simulador, mapa de
+  integridad de competiciones (`R.integrityOf`: WTT/ITTF verificadas; Liga Pro, Setka, TT Cup… RESTRICTED, solo display).
+- **Server**: `/api/tt/*` (board, agenda, match, live, read, players, player, ranking, tournaments, tournament, sim, track,
+  model, competitions, brief, search) tras `uT.isAdmin || GP_TT_PUBLIC_ENABLED`; `ttPublic` en /api/me; `ttJob` (10 min) y
+  `ttTailJob` (diario, opsSpawn `tt_tail`); sonda `/api/internal/tt?key=[&odds=1&rec=1&settle=1&board=1&selftest=1&tail=1&n=N&history=N]`;
+  Pregúntale a GP con seis herramientas; `ttBrief`; `ttMatchRead` + `llm.writeTtRead`; backup diario incluye `tt/`.
+- **UI** (premium.js, bloque "TENIS DE MESA"; CSS `gx-tt-*`): Oportunidades (card de la casa + radar + cockpit lateral),
+  Partidos (día/tabla/cards, filtros por estado, categoría y evento), cockpit del partido con el Visual OS: Service Braid, Game
+  State Lattice, Deuce Return Loop, Correct Score Foldout, Game Script River, Point-Margin Fold, Leverage Spine, Market Implied
+  Process, Payoff Equivalence Weave, Evidence Lens, medidor en vivo (la pelota sobre la mesa), mercados, forma, h2h, registro de
+  invalidación; Jugadores (Player Atlas M/W), ficha, Ranking GP, Eventos (con juveniles opcionales), evento, Competiciones
+  (Competition Operating Map), Simulador (BO5/BO7, sorteo), Sombra, Brief, Pregúntale, El motor. Arnés: `scratchpad/ttfix/shot.js`.
+- **Derechos**: `data/tt/RIGHTS.md` (todo research-only; `GP_TT_PUBLIC_ENABLED` sin poner).
+- **Lo que falta y se dice**: saque/recepción (L2) sin identificar; primer servidor desconocido prematch (se promedian los dos);
+  formatos no certificados hasta el match card; ligas privadas jamás modeladas; fechas < 2021 solo por año; Pinnacle publica el
+  día del partido (el tablero de la víspera solo trae Bovada/Cloudbet); ninguna prueba contra el mercado todavía → sombra.
+
+# (histórico) estado al 7-sep-2026 (nace DARDOS, el 9º deporte; ejecutor real con vetos y físicas)
 
 ## 🎯 7-sep — dardos: circuito MODUS como segunda agenda + freshness informativa
 La sombra de dardos no producía nada porque la PDC no tenía cuadro definido hasta el 11-sep. Entra el circuito

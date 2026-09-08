@@ -52,6 +52,19 @@ Lo que hay, verificado en el arnés (16 vistas × móvil/escritorio × ES/EN, ce
   cola diaria recibió el ranking ITTF VACÍO (404 desde Render), no bajó historiales y escribió un compacto de CERO filas en el
   disco, que pisó al del repo durante ~6 min → corregido en el segundo deploy (candado en la cosecha, caída al repo en el motor,
   lista de jugadores desde el catálogo, sonda `src=1`). Ver TODO_NEXT §Tenis de mesa punto 2.
+- **Prod, 8-sep 23:00Z (3er y 4º deploy), tras la captura de Alexis en el móvil ("Events no funciona, el menú inferior no
+  funciona")**: eran DOS fallos distintos. (1) `/api/tt/board` tardaba 38,8 s en prod (Cloudbet leía 71 eventos EN SERIE dentro
+  de la petición) → el cliente cortaba a los 30 s y pintaba "No se pudo leer el tablero" → arreglado con *stale-while-revalidate*
+  en cuotas y agenda (la petición devuelve lo último y refresca detrás), Cloudbet en paralelo (6 a la vez, tope 60/pasada),
+  resultados rezagados e ids en vivo en paralelo; tablero caliente en prod: 2-6 s. (2) Las vistas `tt*` NO estaban en la lista
+  `live` de `shell()` (vistas clicables) → el menú lateral y la barra inferior se pintaban SIN `data-nav` y no respondían al toque
+  (el menú "Más" sí, porque no pasa por esa lista) → añadido `TT_VIEWS`. Verificado contra prod con Playwright móvil
+  (`scratchpad/ttfix/prod.js`: 8 vistas cargan sin panel de error, cero errores de consola) y en el arnés (`ttfix/nav.js`).
+  También en el 3er deploy: memoria (la base en RAM guarda solo filas ≥ 2020 y 12 recientes por jugador → heap ≈ 53 MB),
+  primer servidor observado en vivo (`firsts.json`, alimenta el compilador del mismo partido), observador de prensa `tt`
+  (`DOMINIOS.tt` en llm.js + `obsSujetosTt`, señales en el cockpit como PRENSA) y textos de puerta traducidos al inglés.
+  Sombra a las 22:48Z: **17 tesis abiertas, 0 liquidadas** (todas Cloudbet: 5 totales de puntos, 4 hándicaps de puntos del 1er
+  game, 3 ganador del 1er game, 1 total del 1er game, 4 ganador como referencia); el primer partido es Macao 9-sep 03:00Z.
 - **Lo que falta y se dice**: saque/recepción (L2) sin identificar; primer servidor desconocido prematch (se promedian los dos);
   formatos no certificados hasta el match card; ligas privadas jamás modeladas; fechas < 2021 solo por año; Pinnacle publica el
   día del partido (el tablero de la víspera solo trae Bovada/Cloudbet); ninguna prueba contra el mercado todavía → sombra.

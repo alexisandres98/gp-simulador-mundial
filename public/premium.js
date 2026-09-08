@@ -1462,7 +1462,7 @@
   function syncFounderBanner() { var slot = $('#gx-fbanner-slot'); if (slot) slot.innerHTML = founderBanner() || freeBanner(); }
 
   function shell() {
-    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS).concat(F1_VIEWS).concat(DT_VIEWS); // vistas implementadas (clickeables)
+    var cur = viewNav(S.view), live = ['opps', 'matches', 'teams', 'sim', 'ask', 'follow', 'alerts', 'perf', 'betcheck', 'groups', 'bracket', 'evo', 'registry', 'method', 'refer', 'admin', 'bets', 'books', 'brief'].concat(CB_VIEWS).concat(BB_VIEWS).concat(ES_VIEWS).concat(NFL_VIEWS).concat(TEN_VIEWS).concat(F1_VIEWS).concat(DT_VIEWS).concat(TT_VIEWS); // vistas implementadas (clickeables)
     var isCombat = S.sport === 'combat', isHoops = S.sport === 'hoops', isEs = S.sport === 'esports', isNfl = S.sport === 'nfl', isTen = S.sport === 'tennis', isF1 = S.sport === 'f1', isDt = S.sport === 'darts', isTt = S.sport === 'tt';
     // Back office solo-admin en /x: Rendimiento, Registro y Metodología se ocultan a usuarios beta (producto = picks, no quant).
     var NAV_A = isTt ? NAV_TT : isDt ? NAV_DT : isF1 ? NAV_F1 : isTen ? NAV_TEN : isNfl ? NAV_NFL : isEs ? NAV_ES : isHoops ? NAV_BB : isCombat ? NAV_CB : NAV, NAV_B = isTt ? NAV2_TT : isDt ? NAV2_DT : isF1 ? NAV2_F1 : isTen ? NAV2_TEN : isNfl ? NAV2_NFL : isEs ? NAV2_ES : isHoops ? NAV2_BB : isCombat ? NAV2_CB : NAV2;
@@ -19866,6 +19866,11 @@
     ['maps de muestra', 'sample maps'],
     ['leído del marcador exacto de la serie', 'read from the exact series score'],
     ['marcador exacto de la serie', 'exact series score'],
+    // tenis de mesa: motivos de puerta que llegan del servidor en español
+    ['sin historial en la base propia: ', 'no history in our own base: '],
+    ['jugador fuera de la base propia', 'player outside our own base'],
+    ['en la base propia', 'in our own base'],
+    ['no encuentro a ', 'cannot find '],
   );
   var EN_MARK = /[áéíóúñÁÉÍÓÚÑ¿«]|\b(el|la|los|las|de|del|un|una|que|con|sin|por|para|se|no|ya|más|es|son|hay|hoy|en|sem)\b|partid|liquidad|abiert|ventaja|cuota|sombra|mapa|ronda|pelea|juego|casas|muestra|prórroga|puntúa|activ/i;
   function enTxt(txt) {

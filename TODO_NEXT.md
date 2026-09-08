@@ -30,14 +30,24 @@ Construido entero el 8-sep (ver HANDOFF). Pendientes reales, por orden:
    (Wang/Chen/Lin), afinar `nameIs` con el nombre de pila obligatorio cuando la familia es ambigua.
 4. **Saque/recepción (L2)**: la fuente da puntos por game, no por saque. El match card en vivo trae `serverPlayer` punto a punto:
    con una semana de cards en vivo guardadas se puede estimar δ real por jugador y dejar de usar el prior 0,03.
-5. **Primer servidor**: la WTT no lo publica prematch; el card en vivo sí (`action.serverPlayer` del game 1). Guardarlo en
-   `results.json` y medir cuánto se separan los dos escenarios en la práctica.
+5. ✅ **Primer servidor** (hecho 8-sep noche): el card en vivo lo da al 0–0 del game 1 y se guarda en `firsts.json`
+   (`recordFirstServer`/`firstServerOf`); el compilador del partido lo usa en cuanto existe. Falta MEDIR con muestra cuánto se
+   separan los dos escenarios (prematch se promedian).
 6. **Formatos**: `formats.json` dice que Champions R32/R16 son BO5 y QF mixto; el gate exige certificado o ≥ 95 % histórico.
    Cuando el match card llegue (empieza el partido) el formato se certifica; las tesis prematch de rondas mixtas se quedan fuera.
-7. **Cloudbet**: confirmar en prod las claves reales (`cloudbet_keys` en la sonda) y si `table_tennis.totals` es de puntos o
-   games (se clasifica por magnitud de la línea).
-8. **Observador de prensa**: `tt` no está en `DOMINIOS` de llm.js ni en `obsSujetos*`; sin señales de lesión/baja. Entrar cuando
-   haya muestra (retiradas de cuadro son frecuentes en Feeder/Contender).
+7. ✅ **Cloudbet** (confirmado en prod 8-sep): claves reales `table_tennis.{winner,totals,game_winner.v2,game_point_handicap.v2,
+   game_total_points.v2}`; `totals` es de PUNTOS (líneas 73,5-75,5). 260 eventos leídos, 60 con mercados por pasada (tope).
+8. ✅ **Observador de prensa** (hecho 8-sep noche): `DOMINIOS.tt` en llm.js (OUT/INJURY/ILLNESS/DOUBT/EQUIPMENT/RETURN/WALKOVER),
+   `obsSujetosTt`, ranura `obsTt`, señales en el cockpit como PRENSA. Ninguna toca una probabilidad.
+9. **Backtest contra el MERCADO no existe todavía** (y no puede existir con lo que hay): la validación es walk-forward contra
+   RESULTADOS (holdout 2026 n = 4.557: log-loss 0,5273, skill 23,9 %, AUC 0,810). Nadie publica cierres históricos de tenis de mesa
+   de la WTT → los cierres propios (`closes.json`, cubos T−60…T−1) son la única forma de saberlo. Listón para leer algo: ~150
+   tesis liquidadas por familia con CLV contra la misma casa. Hipótesis de edge (blueprint 9.0): el mercado cotiza ganador y total
+   con procesos de punto INCOHERENTES entre sí (`impliedProcess`) — el edge, si existe, está en totales de puntos y en el 1er game,
+   no en el ganador.
+10. **UI en prod**: la prueba real contra gpsimulador.com es `scratchpad/ttfix/prod.js` (Playwright móvil con la sesión admin;
+   Chromium necesita `--disable-features=PostQuantumKyber,EncryptedClientHello` y `--ssl-version-max=tls1.2` para pasar por el
+   proxy del sandbox). Correrla después de CADA deploy que toque `premium.js`.
 
 ## 🎯 DARDOS (6-sep, blueprint 8.0): el 9º deporte nace admin-only y TODO en sombra — lo que bloquea que valga algo
 Construido de punta a punta en un día (motor exacto, base propia 2023→hoy, agenda oficial, cuatro casas, sombra,

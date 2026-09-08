@@ -17,9 +17,14 @@ separa Cloudbet de Pinnacle solo. Verificar en una semana si LoL, como CS2, pier
 Construido entero el 8-sep (ver HANDOFF). Pendientes reales, por orden:
 1. **Muestra en sombra**: la primera semana solo acumula. La vara (blueprint bloque 9): CLV por familia contra el cierre de la
    MISMA casa (`clv_own_avg_pct`), no el ROI. Familias hipótesis: totales de puntos y del 1er game, deuce. El ganador es referencia.
-2. **Completar la base en prod**: la cola diaria baja 900 historiales por pasada; forzar con `/api/internal/tt?key=&tail=1&n=2500`
-   hasta que `meta.ranked` ≈ `raw_files`. Re-correr `scripts/tt-fit.js --write` con la base completa y comparar con el holdout
-   congelado (log-loss 0,5357 / AUC 0,807).
+2. **La base en prod es la del repo (completa, 192.460 partidos)**; el crudo del disco se acumula con la cola diaria. Dos cosas
+   aprendidas el 8-sep en prod: (a) el endpoint del RANKING de la ITTF (`internalttu/RankingsCurrentWeek…`) devuelve 404 desde
+   Render (desde el sandbox funciona) → la lista de jugadores sale del catálogo del repo (`players.json` trae el ranking) y el
+   ranking WTT se refresca desde el sandbox con `GP_FETCH_VIA_CURL=1 node scripts/tt-harvest.js --raw=… --rank --build --gz` y
+   commit; (b) el historial tarda ~30 s por jugador desde Render (2-3 s desde el sandbox) → una cola de 55 min baja ~450; la
+   cosecha rechaza compactos < 70 % del vigente, así que el disco no pisa al repo hasta tener la base entera (≈ 5 colas diarias).
+   Rutina: cada semana, cosecha completa en el sandbox (`--rank --events --photos --history=2500 --refresh=7 --build --gz`,
+   ~50 min) + `scripts/tt-fit.js --write` + commit; comparar con el holdout congelado (log-loss 0,5273 / AUC 0,810).
 3. **Pinnacle publica el día del partido**: el tablero de la víspera solo trae Bovada/Cloudbet. Comprobar en prod que a las
    ~06:00Z las líneas de Pinnacle casan (`&board=1` → `con_mercado`, `por_torneo`). Si el casado por nombre falla en asiáticos
    (Wang/Chen/Lin), afinar `nameIs` con el nombre de pila obligatorio cuando la familia es ambigua.

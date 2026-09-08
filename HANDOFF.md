@@ -45,6 +45,13 @@ Lo que hay, verificado en el arnés (16 vistas × móvil/escritorio × ES/EN, ce
   invalidación; Jugadores (Player Atlas M/W), ficha, Ranking GP, Eventos (con juveniles opcionales), evento, Competiciones
   (Competition Operating Map), Simulador (BO5/BO7, sorteo), Sombra, Brief, Pregúntale, El motor. Arnés: `scratchpad/ttfix/shot.js`.
 - **Derechos**: `data/tt/RIGHTS.md` (todo research-only; `GP_TT_PUBLIC_ENABLED` sin poner).
+- **Prod, 8-sep 20:30Z, verificado**: base 192.460 partidos cargada (del repo), agenda con 148 partidos de 3 eventos WTT (Macao
+  Champions, Panagyurishte Contender, Puerto Princesa Feeder), zona horaria certificada por match card en los tres, Cloudbet
+  leyendo 71 eventos WTT (`table_tennis.winner` + `totals` = puntos), Bovada 62, Pinnacle 0 (publica el día del partido), 46
+  candidatas y las **primeras 8 tesis en sombra** (R32 de Macao: totales de puntos + ganador como referencia). Incidente: la primera
+  cola diaria recibió el ranking ITTF VACÍO (404 desde Render), no bajó historiales y escribió un compacto de CERO filas en el
+  disco, que pisó al del repo durante ~6 min → corregido en el segundo deploy (candado en la cosecha, caída al repo en el motor,
+  lista de jugadores desde el catálogo, sonda `src=1`). Ver TODO_NEXT §Tenis de mesa punto 2.
 - **Lo que falta y se dice**: saque/recepción (L2) sin identificar; primer servidor desconocido prematch (se promedian los dos);
   formatos no certificados hasta el match card; ligas privadas jamás modeladas; fechas < 2021 solo por año; Pinnacle publica el
   día del partido (el tablero de la víspera solo trae Bovada/Cloudbet); ninguna prueba contra el mercado todavía → sombra.

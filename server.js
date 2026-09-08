@@ -22408,6 +22408,9 @@ async function anotar(pid){
           // peticiones para la misma respuesta, y con `aplicar` podrían insertar la misma fila dos veces.
           if (url.searchParams.get('bg') === '1') {
             const J = OPS.reconciliacion;
+            // un trabajo que lleva más de 40 min "corriendo" está colgado (8-sep: el GraphQL de la casa devolvía
+            // 500 y la promesa nunca resolvió) — se da por muerto y se deja lanzar otro
+            if (J && J.estado === 'corriendo' && Date.now() - Date.parse(J.empezada || 0) > 40 * 60e3) { J.estado = 'colgada'; J.terminada = new Date().toISOString(); }
             if (J && J.estado === 'corriendo') return json(res, 200, { ok: false, why: 'ya hay una reconciliación corriendo', empezada: J.empezada, aplicar: J.aplicar });
             const job = { estado: 'corriendo', empezada: new Date().toISOString(), terminada: null, aplicar, dias: opts.dias, cap: opts.cap, resultado: null };
             OPS.reconciliacion = job;

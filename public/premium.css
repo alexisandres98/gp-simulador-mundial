@@ -4529,6 +4529,13 @@ td .gx-calc-btn span { display: none; }
 .gx-tt-crest.mid{width:40px;height:40px;border-radius:11px}
 .gx-tt-crest.big{width:52px;height:52px;border-radius:13px}.gx-tt-crest.big i{font-size:13px}
 .gx-tt-tourcard{border-left:3px solid var(--tt-ev,var(--gx-line2))}
+/* móvil (captura de Alexis, 8-sep): el nombre del evento se truncaba a "WTT Cha…" porque las fichas de nivel/estado
+   compartían fila con él → el nombre puede ocupar dos líneas y las fichas bajan a su propia fila en pantallas estrechas */
+.gx-tt-tourcard .gx-est-top{flex-wrap:wrap}
+.gx-tt-tourcard .gx-est-id{flex:1 1 150px}
+.gx-tt-tourcard .gx-est-id b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2}
+.gx-tt-tourcard .gx-dt-tourcard-r{flex-wrap:wrap}
+@media (max-width:560px){.gx-tt-tourcard .gx-dt-tourcard-r{flex-basis:100%}}
 .gx-tt-tourcard.youth{opacity:.75}
 .gx-tt-thero{border-left:3px solid var(--tt-ev,var(--gx-line2))}
 .gx-tt-next{display:flex;align-items:center;gap:18px;padding:18px 20px;margin-bottom:10px}

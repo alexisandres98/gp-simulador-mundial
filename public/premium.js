@@ -19871,6 +19871,9 @@
     ['jugador fuera de la base propia', 'player outside our own base'],
     ['en la base propia', 'in our own base'],
     ['no encuentro a ', 'cannot find '],
+    ['Calendario, resultados y match cards: ', 'Calendar, results and match cards: '],
+    ['Ranking e historial: ', 'Ranking and history: '],
+    ['Uso interno de investigación, sin fines comerciales.', 'Internal research use, non-commercial.'],
   );
   var EN_MARK = /[áéíóúñÁÉÍÓÚÑ¿«]|\b(el|la|los|las|de|del|un|una|que|con|sin|por|para|se|no|ya|más|es|son|hay|hoy|en|sem)\b|partid|liquidad|abiert|ventaja|cuota|sombra|mapa|ronda|pelea|juego|casas|muestra|prórroga|puntúa|activ/i;
   function enTxt(txt) {

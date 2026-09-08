@@ -145,13 +145,28 @@ async function markets(providerId, game) {
   const rows = await pinFetch(`/matchups/${providerId}/markets/related/straight`);
   if (!Array.isArray(rows)) return null;
   const wantId = String(providerId);
+  // EN LOS MOBA LAS KILLS VIVEN EN UN MATCHUP HIJO (8-sep, medido en la LPL): el padre solo trae el ganador
+  // de cada mapa; el hándicap y el total de kills por mapa cuelgan de un hijo sin `special`, con
+  // `units: 'Kills'` y participantes "Invictus (Kills) vs LGD (Kills)". Sus mercados llegan en la misma
+  // respuesta con el `matchupId` del hijo, y el filtro por id del padre (correcto contra los especiales) los
+  // tiraba. Se identifica ese hijo por `/related` y se aceptan SOLO sus filas; los especiales siguen fuera.
+  const killIds = new Set();
+  if (MOBA.has(String(game || '').toLowerCase())) {
+    const rel = await pinFetch(`/matchups/${providerId}/related`);
+    for (const r of Array.isArray(rel) ? rel : []) {
+      if (String(r.parentId) === wantId && !r.special && /^kills$/i.test(String(r.units || ''))) killIds.add(String(r.id));
+    }
+  }
   const out = [];
   let disabled = 0, skippedSpecials = 0;
   for (const m of rows) {
     // LOS BLOQUES DE MERCADO ESPECIAL VIENEN MEZCLADOS EN LA MISMA RESPUESTA y traen `matchupId` de un hijo,
     // designaciones vacías y hasta veintidós precios en un solo bloque (un "jugador con más kills"). Colarlos
     // como si fueran el ganador del mapa 2 fabricaba precios absurdos: se filtran por el id del padre.
-    if (String(m.matchupId) !== wantId) { skippedSpecials++; continue; }
+    const mid = String(m.matchupId);
+    const esKills = killIds.has(mid);
+    if (mid !== wantId && !esKills) { skippedSpecials++; continue; }
+    if (esKills && m.period === 0) { skippedSpecials++; continue; }   // el hijo de kills no tiene serie
     const fam = familyOf(m.type, m.period, game);
     if (!fam) continue;
     const prices = (m.prices || []).filter((p) => p && p.designation);

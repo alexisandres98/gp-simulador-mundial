@@ -22802,7 +22802,11 @@ async function anotar(pid){
         exec_books: SHADOW_EXEC_BOOKS(),
         last7d: shadowSummary(Date.now() - 7 * 864e5), since_start: shadowSummary(0),
         por_segmento: shadowBySegment(0), por_segmento_7d: shadowBySegment(Date.now() - 7 * 864e5),
-        last_reports: S.reports.slice(-4), bets: S.bets.slice(-40), unexec: (S.unexec || []).slice(-40),
+        // `&bets=N[&segmento=X]` (8-sep): el libro completo de un segmento para cuadrar una semana casa por
+        // casa (CS2 en Pinnacle contra Cloudbet); sin el parámetro, las últimas 40 como siempre
+        last_reports: S.reports.slice(-4),
+        bets: (() => { const seg = String(url.searchParams.get('segmento') || ''); const n = Math.min(3000, Math.max(1, parseInt(url.searchParams.get('bets'), 10) || 40)); return S.bets.filter((b) => !seg || b.segment === seg).slice(-n); })(),
+        unexec: (S.unexec || []).slice(-40),
       });
     }
     // ===== COMBAT SPORTS (27-jul, F0-F1 — ADMIN ONLY hasta validar) ==========================================

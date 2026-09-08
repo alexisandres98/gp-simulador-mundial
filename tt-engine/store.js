@@ -60,6 +60,16 @@ const addDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 1
 const shortName = (name) => String(name || '').replace(/\s+(presented|powered)\s+by.*$/i, '').replace(/\s+-\s+president.*$/i, '').replace(/\s+\d{4}\s*$/, '').trim();
 function tzStore() { if (!G.tz) G.tz = rd('tz.json') || { by: {} }; return G.tz; }
 function resultsStore() { if (!G.results) G.results = rd('results.json') || { by: {} }; return G.results; }
+// primer servidor observado en vivo (game 1 a 0–0): alimenta el compilador sin mezclar los dos sorteos
+function firstsStore() { if (!G.firsts) G.firsts = rd('firsts.json') || { by: {} }; return G.firsts; }
+function recordFirstServer(fixtureId, side) {
+  const st = firstsStore();
+  if (st.by[fixtureId]) return;
+  st.by[fixtureId] = { side, at: new Date().toISOString() };
+  for (const [k, v] of Object.entries(st.by)) if (Date.now() - Date.parse(v.at) > 45 * 864e5) delete st.by[k];
+  wr('firsts.json', st);
+}
+const firstServerOf = (fixtureId) => ((firstsStore().by[fixtureId] || {}).side || null);
 function offsetFor(ev, when) {
   const tz = tzStore().by[ev.id];
   if (tz && tz.offset_min != null) return { offset: tz.offset_min, certain: true, source: 'match card oficial (hora local y UTC)' };
@@ -94,8 +104,15 @@ function normFixture(u, ev) {
   return { id: u.id, event_id: ev.id, code: u.code, tournament: ev.name, tournament_short: shortName(ev.name), tier, tier_label: R.TIER_LABEL[tier] || tier, sub: u.sub, sub_name: u.sub_name, round, round_code: u.round_code, round_label: R.ROUND_LABEL[round] || u.label, label: u.label, table: u.table_name || u.table, venue: u.venue || ev.venue, city: ev.city, country: ev.country,
     start_at, start_local: u.start_local, tz_certain: off.certain, tz_source: off.source, status: statusOf(u.status), wtt_status: u.status, a: pl(u.a), b: pl(u.b), format: { kind: 'games', best_of: fmt.best_of, certified: false, source: fmt.source, share: fmt.share, n: fmt.n }, integrity: R.INTEGRITY.VERIFIED_SCOPE, circuit: 'wtt' };
 }
-async function slate({ force = false, daysAhead = 10 } = {}) {
+let slateInflight = null;
+async function slate({ force = false, daysAhead = 10, wait = false } = {}) {
   if (G.slate && !force && Date.now() - G.slate.at < SLATE_TTL) return G.slate;
+  // stale-while-revalidate: con agenda en memoria se responde al instante y se renueva aparte
+  if (!slateInflight) slateInflight = slateNow({ force, daysAhead }).catch(() => G.slate).finally(() => { slateInflight = null; });
+  if (G.slate && !force && !wait) return G.slate;
+  return slateInflight;
+}
+async function slateNow({ force = false, daysAhead = 10 } = {}) {
   const evs = await activeEvents({ daysAhead });
   const fixtures = [], tournaments = [];
   const prev = (G.slate && G.slate.fixtures) || [];
@@ -146,24 +163,42 @@ async function fetchResult(fx) {
 
 // ══ 2. MERCADO ══════════════════════════════════════════════════════════════════════════════════════════
 const ODDS_TTL = 3 * 60e3;
-async function refreshOdds({ force = false } = {}) {
+// STALE-WHILE-REVALIDATE (8-sep, lección de prod): la primera pasada del tablero tardaba 39 s porque leía los
+// 71 mercados de Cloudbet en serie DENTRO de la petición y el móvil corta a los 30. Ahora: si hay cuotas en
+// memoria (aunque hayan vencido) se devuelven al instante y la renovación corre aparte; solo la primerísima
+// lectura espera. Cloudbet se lee de 6 en 6 y con tope por pasada, los partidos más próximos primero.
+let oddsInflight = null;
+async function refreshOdds({ force = false, wait = false } = {}) {
   if (G.odds && !force && Date.now() - G.odds.at < ODDS_TTL) return G.odds;
+  if (!oddsInflight) oddsInflight = refreshOddsNow().catch(() => G.odds).finally(() => { oddsInflight = null; });
+  if (G.odds && !force && !wait) return G.odds; // lo que hay, ya; lo nuevo llega solo
+  return oddsInflight;
+}
+const CB_MAX_PER_PASS = 60, CB_PAR = 6;
+async function refreshOddsNow() {
   const [pin, bov, cbf] = await Promise.all([BOOKS.pinnacle().catch(() => ({ events: [], available: false })), BOOKS.bovada().catch(() => ({ events: [], available: false })), BOOKS.cloudbetFixtures().catch(() => ({ events: [], available: false }))]);
   const events = [...pin.events, ...bov.events];
   // Cloudbet: mercados solo para los eventos de competiciones VERIFICADAS que casan con la agenda (ahorra llamadas);
   // las ligas privadas cuentan para el mapa de integridad pero no se leen sus líneas
   const sl = G.slate || (await slate().catch(() => null));
   let cbKeys = new Set(), cbRead = 0;
+  const toRead = [];
   for (const e of cbf.events || []) {
     const integ = R.integrityOf(e.competition);
-    e.integrity = integ;
-    if (integ !== R.INTEGRITY.VERIFIED_SCOPE) { e.rows = []; events.push(e); continue; }
-    const fx = sl ? matchFixture(sl.fixtures, e) : null;
-    if (!fx) { e.rows = []; events.push(e); continue; }
-    const mk = await BOOKS.cloudbetMarkets(e.provider_id).catch(() => ({ rows: [], raw_keys: [] }));
-    e.rows = mk.rows; e.raw_keys = mk.raw_keys; mk.raw_keys.forEach((k) => cbKeys.add(k)); cbRead++;
+    e.integrity = integ; e.rows = [];
     events.push(e);
+    if (integ !== R.INTEGRITY.VERIFIED_SCOPE) continue;
+    const fx = sl ? matchFixture(sl.fixtures, e) : null;
+    if (fx) toRead.push(e);
   }
+  toRead.sort((x, y) => Date.parse(x.start_at || 0) - Date.parse(y.start_at || 0));
+  const prev = G.odds ? new Map(G.odds.events.filter((e) => e.book === 'cloudbet' && (e.rows || []).length).map((e) => [e.provider_id, e])) : new Map();
+  const queue = toRead.slice(0, CB_MAX_PER_PASS);
+  // lo que no entra en esta pasada conserva sus filas de la pasada anterior
+  for (const e of toRead.slice(CB_MAX_PER_PASS)) { const p = prev.get(e.provider_id); if (p) { e.rows = p.rows; e.raw_keys = p.raw_keys; } }
+  let qi = 0;
+  const worker = async () => { while (qi < queue.length) { const e = queue[qi++]; const mk = await BOOKS.cloudbetMarkets(e.provider_id).catch(() => null); if (!mk) { const p = prev.get(e.provider_id); if (p) { e.rows = p.rows; e.raw_keys = p.raw_keys; } continue; } e.rows = mk.rows; e.raw_keys = mk.raw_keys; mk.raw_keys.forEach((k) => cbKeys.add(k)); cbRead++; } };
+  await Promise.all(Array.from({ length: CB_PAR }, worker));
   for (const e of events) if (!e.integrity) e.integrity = R.integrityOf(e.competition);
   // el mapa de competiciones (blueprint bloque 7)
   const comps = {};
@@ -238,8 +273,8 @@ function eventModel(fx, { first = null } = {}) {
   const missing = [fx.a, fx.b].filter((p) => { const q = D.playerOf(p.id); return !q || !(q.n > 0); }).map((p) => p.name || ('#' + p.id));
   if (missing.length) return { available: false, why: 'sin historial en la base propia: ' + missing.join(', '), unresolved: missing };
   if (fx.integrity && fx.integrity !== R.INTEGRITY.VERIFIED_SCOPE) return { available: false, why: `competición ${R.INTEGRITY_LABEL[fx.integrity] || fx.integrity}: el modelo no entra` };
-  const m = D.matchModel(fx.a.id, fx.b.id, { best_of: fx.format.best_of, first });
-  return { available: true, ...m, a: { ...fx.a, ...(pa || {}) }, b: { ...fx.b, ...(pb || {}) }, format: fx.format };
+  const m = D.matchModel(fx.a.id, fx.b.id, { best_of: fx.format.best_of, first: first || firstServerOf(fx.id) });
+  return { available: true, ...m, a: { ...fx.a, ...(pa || {}) }, b: { ...fx.b, ...(pb || {}) }, format: fx.format, first_observed: firstServerOf(fx.id) };
 }
 const EDGE_MIN_PP = 3, ODDS_MAX = 6.5;
 function gate(c, model, row) {
@@ -351,12 +386,12 @@ async function liveState(rows) {
   // 1) la WTT: ids en juego por evento y su match card en vivo (puntos del game en curso)
   const evIds = [...new Set(rows.filter((r) => r.status !== 'final').map((r) => r.event_id))];
   const now = Date.now();
-  for (const ev of evIds) {
+  await Promise.all(evIds.map(async (ev) => {
     try {
       const c = G.live.ids.get(ev);
       if (!c || now - c.at > 30e3) G.live.ids.set(ev, { at: now, ids: await WTT.liveIds(ev) });
     } catch { /* sin vivo */ }
-  }
+  }));
   for (const r of rows) {
     if (r.status === 'final') continue;
     const ids = (G.live.ids.get(r.event_id) || {}).ids || [];
@@ -371,6 +406,8 @@ async function liveState(rows) {
       r.live = { state: 'live', source: 'wtt', games_a: swapped ? k.score_a : k.score_h, games_b: swapped ? k.score_h : k.score_a, games, current: cur ? { game: games.length, a: cur[0], b: cur[1] } : null, server: k.server_side ? (swapped ? (k.server_side === 'h' ? 'b' : 'a') : (k.server_side === 'h' ? 'a' : 'b')) : null, best_of: k.best_of || null, timeouts: { a: swapped ? k.a.timeouts : k.h.timeouts, b: swapped ? k.h.timeouts : k.a.timeouts } };
       if (k.best_of) r.format = { ...r.format, best_of: k.best_of, certified: true, source: 'match card en vivo de la WTT' };
       r.status = 'live';
+      // el PRIMER SERVIDOR del partido (game 1, 0–0) solo se ve aquí: se guarda para el modelo y para la muestra de saques
+      if (cur && games.length === 1 && cur[0] === 0 && cur[1] === 0 && r.live.server) recordFirstServer(r.id, r.live.server);
     } else { r.live = { state: 'live', source: 'wtt', games_a: null, games_b: null, games: [], current: null }; r.status = 'live'; }
   }
   // 2) Flashscore (display) para lo que la WTT no marque
@@ -388,15 +425,10 @@ async function board({ daysAhead = 6, hoursBack = 10 } = {}) {
   const now = Date.now();
   const rows = [];
   // los partidos que ya debieron acabar y siguen "programados" en la agenda: se les pide el resultado oficial
-  // (hasta 12 por pasada) para que el tablero no enseñe como pendiente lo que ya se jugó
-  let catchup = 0;
-  for (const fx of sl.fixtures) {
-    const t = Date.parse(fx.start_at || 0);
-    if (fx.result || catchup >= 12 || !(t < now - 45 * 60e3 && t > now - hoursBack * 3600e3)) continue;
-    catchup++;
-    const res = await fetchResult(fx).catch(() => null);
-    if (res) { fx.result = res; fx.status = 'final'; if (res.best_of) fx.format = { ...fx.format, best_of: res.best_of, certified: true, source: 'match card oficial de la WTT' }; }
-  }
+  // (hasta 12 por pasada, de 4 en 4) para que el tablero no enseñe como pendiente lo que ya se jugó
+  const pend = sl.fixtures.filter((fx) => { const t = Date.parse(fx.start_at || 0); return !fx.result && t < now - 45 * 60e3 && t > now - hoursBack * 3600e3; }).slice(0, 12);
+  let pi = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => { while (pi < pend.length) { const fx = pend[pi++]; const res = await fetchResult(fx).catch(() => null); if (res) { fx.result = res; fx.status = 'final'; if (res.best_of) fx.format = { ...fx.format, best_of: res.best_of, certified: true, source: 'match card oficial de la WTT' }; } } }));
   for (const fx of sl.fixtures) {
     const t = Date.parse(fx.start_at || 0);
     if (!(t > now - hoursBack * 3600e3 && t < now + daysAhead * 864e5)) continue;

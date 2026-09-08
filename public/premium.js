@@ -15429,7 +15429,7 @@
     var sec = function (sid, html) { return html ? '<div class="gx-sec" id="sec-' + sid + '">' + html + '</div>' : ''; };
     ttShell(null, back + ttHero(d, A, B) + mvNav(sections) +
       '<div class="gx-mv-grid">' +
-      '<div class="gx-mv-col">' + sec('resumen', ttMemo(d, A, B)) + sec('prob', ttProbPanel(d, A, B)) + sec('game', ttGamePanel(d, A, B)) + sec('leverage', ttLeveragePanel(d, A, B)) + sec('contexto', ttEvidencePanel(d, A, B) + ttFormPanel(d, A, B, PA, PB) + ttH2HPanel(d, A, B) + ttGatesPanel(d, A, B)) + '</div>' +
+      '<div class="gx-mv-col">' + sec('resumen', ttMemo(d, A, B)) + sec('prob', ttProbPanel(d, A, B)) + sec('game', ttGamePanel(d, A, B)) + sec('leverage', ttLeveragePanel(d, A, B)) + sec('contexto', gpSenales(d.senales) + ttEvidencePanel(d, A, B) + ttFormPanel(d, A, B, PA, PB) + ttH2HPanel(d, A, B) + ttGatesPanel(d, A, B)) + '</div>' +
       '<div class="gx-mv-col">' + (d.live ? sec('live', ttLiveGauge(d, A, B)) : '') + sec('mercados', ttMarketsPanel(d, A, B)) + sec('partido', ttMatchPanel(d, A, B)) + sec('implicito', ttImpliedPanel(d, A, B) + ttEquivPanel(d, A, B)) + '</div>' +
       '</div>' + ttShadowNote(d));
     bindMvNav();

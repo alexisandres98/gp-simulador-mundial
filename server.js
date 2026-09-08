@@ -12930,6 +12930,7 @@ async function ttMatchRead(matchId, { force = false } = {}) {
     historial_directo: d.h2h && (d.h2h.w_a + d.h2h.w_b) ? { partidos: d.h2h.w_a + d.h2h.w_b, gana_a: d.h2h.w_a, gana_b: d.h2h.w_b, ultimos: d.h2h.rows.slice(0, 3).map((m) => `${m.date} ${m.winner === 'a' ? d.a.name : d.b.name} ${m.score} (${m.tourney})`) } : null,
     incertidumbre_pp: d.unc_pp, mercado: d.market && d.market.ml_p_a != null ? { prob_a_pct: pct(d.market.ml_p_a), casas: d.market.n_books } : null,
     proceso_implicito: d.implied && d.implied.reading ? d.implied.reading : null,
+    prensa: (() => { const x = obsParaDossier('tt', [obsClave(d.a.name)]), y = obsParaDossier('tt', [obsClave(d.b.name)]); return (x || y) ? { [d.a.name]: x, [d.b.name]: y } : null; })(),
   };
   try {
     const w = await llm.escribirVerificado((pl, av) => llm.writeTtRead(pl, av), dossier, { etiqueta: 'tenis de mesa:' + k });
@@ -16162,15 +16163,32 @@ async function obsSujetosDarts() {
   }
   return filas.sort((a, b) => a.t - b.t);
 }
+// tenis de mesa (8-sep): los jugadores de la agenda WTT de las próximas 72 h; las retiradas de cuadro son
+// frecuentes en Feeder/Contender y la fuente no las anuncia hasta el walkover
+async function obsSujetosTt() {
+  const TT = require('./tt-engine/store');
+  const sl = await TT.slate().catch(() => null);
+  const vistos = new Set(); const filas = [];
+  for (const f of ((sl && sl.fixtures) || [])) {
+    const t = Date.parse(f.start_at || 0);
+    if (!(t > Date.now() - 3 * 3600e3 && t < Date.now() + 3 * 864e5) || f.status === 'final') continue;
+    for (const lado of ['a', 'b']) {
+      const nm = f[lado] && f[lado].name; if (!nm || !f[lado].id) continue;
+      const id = obsClave(nm); if (vistos.has(id)) continue; vistos.add(id);
+      filas.push({ id, name: nm, t, langs: ['en'], meta: { tournament: f.tournament_short }, q: `"${nm}" table tennis` });
+    }
+  }
+  return filas.sort((a, b) => a.t - b.t);
+}
 async function runObsDeporte(dominio) {
   if (!obsDeportesOn()) return { skipped: 'disabled' };
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts', tt: 'obsTt' }[dominio];
   if (!SLOT) return { skipped: 'dominio' };
   db[SLOT] = db[SLOT] || {};
   const sujetos = dominio === 'esports' ? await obsSujetosEsports()
     : dominio === 'tennis' ? await obsSujetosTenis()
       : dominio === 'hoops' ? await obsSujetosHoops()
-        : dominio === 'darts' ? await obsSujetosDarts() : await obsSujetosAmfoot();
+        : dominio === 'darts' ? await obsSujetosDarts() : dominio === 'tt' ? await obsSujetosTt() : await obsSujetosAmfoot();
   const r = await OBSD.barrer({
     dominio, sujetos, store: db[SLOT], llm,
     // College puede meter 130 equipos en una jornada: el tope y el orden por hora de inicio son lo que
@@ -16192,7 +16210,7 @@ async function runObsDeporte(dominio) {
 // por el otro habría dado cero señales siempre, y en silencio — el peor tipo de fallo, porque parece que
 // la capa funciona y simplemente no hay noticias. Se prueban las dos.
 const obsSenales = (dominio, ids, opts) => {
-  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts' }[dominio];
+  const SLOT = { esports: 'obsEsports', tennis: 'obsTennis', amfoot: 'obsAmfoot', hoops: 'obsHoops', darts: 'obsDarts', tt: 'obsTt' }[dominio];
   const lista = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
   for (const id of lista) {
     try { const f = OBSD.banderas(dominio, db[SLOT] || {}, id, opts || {}); if (f.length) return f; } catch { /* sigue */ }
@@ -16209,7 +16227,7 @@ const obsParaDossier = (dominio, ids) => {
 if (obsDeportesOn()) {
   // escalonados para no salir los tres a la vez ni chocar con los dos que ya existían (150 s y 200 s)
   const arranca = (dom, ms) => { setTimeout(() => runObsDeporte(dom).catch(() => { }), ms); setInterval(() => runObsDeporte(dom).catch(() => { }), 3 * 3600 * 1000); };
-  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000); arranca('darts', 500 * 1000);
+  arranca('esports', 260 * 1000); arranca('tennis', 320 * 1000); arranca('amfoot', 380 * 1000); arranca('hoops', 440 * 1000); arranca('darts', 500 * 1000); arranca('tt', 560 * 1000);
 }
 // ── PROP FIRM (31-ago, Elite 10K de FundingPredicts comprado por Alexis) ────────────────────────────────
 // Barrido cada 10 min: consenso sharp de la casa vs precio de Polymarket (que la firm espeja en vivo),
@@ -20312,7 +20330,7 @@ const server = http.createServer(async (req, res) => {
       try {
         if (p === '/api/tt/board') { const b = await TT.board({ daysAhead: Math.max(1, Math.min(14, +qp('days', 6))) }); b.rows = b.rows.map(ttStrip); return json(res, 200, b); }
         if (p === '/api/tt/agenda') return json(res, 200, await TT.agenda());
-        if (p === '/api/tt/match') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); return json(res, 200, ttStrip(await TT.matchDetail(id))); }
+        if (p === '/api/tt/match') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); const out = ttStrip(await TT.matchDetail(id)); if (out && out.a && out.b && out.a.name) out.senales = [...obsSenales('tt', [obsClave(out.a.name)], { lado: 'a' }), ...obsSenales('tt', [obsClave(out.b.name)], { lado: 'b' })]; return json(res, 200, out); }
         if (p === '/api/tt/live') {
           const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' });
           const out = TT.liveProb(id, { ga: +qp('ga', 0) || 0, gb: +qp('gb', 0) || 0, i: +qp('i', 0) || 0, j: +qp('j', 0) || 0, server: ['a', 'b'].includes(qp('server')) ? qp('server') : null });

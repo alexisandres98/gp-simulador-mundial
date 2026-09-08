@@ -711,6 +711,20 @@ const DOMINIOS = {
     },
     ruido: 'Ignora clickbait, crónicas del partido de ayer ("beats", "wins", "loses to", "knocked out" describen un partido YA JUGADO), rankings, premios y noticias de otro torneo o de años anteriores.',
   },
+  tt: {
+    que: 'tenis de mesa (circuito WTT/ITTF)',
+    sujeto: 'el jugador indicado (no su rival)',
+    tipos: {
+      OUT: 'se retira del torneo o del cuadro antes de jugar (withdraws, pulls out)',
+      INJURY: 'lesión o molestia física reportada (muñeca, hombro, rodilla, espalda) sin retirada confirmada',
+      ILLNESS: 'enfermedad, virus o problema físico no traumático',
+      DOUBT: 'duda para jugar, tratamiento médico o declaraciones sobre su estado',
+      EQUIPMENT: 'cambio de goma, madera o material declarado por el jugador',
+      RETURN: 'vuelve a competir tras lesión o parón',
+      WALKOVER: 'pasa de ronda sin jugar porque su rival se retiró',
+    },
+    ruido: 'Ignora clickbait, crónicas del partido de ayer ("beats", "wins", "loses to", "stuns", "knocked out" describen un partido YA JUGADO), rankings, premios, dobles y noticias de otro evento o de años anteriores.',
+  },
 };
 async function extractSignals(items, domain) {
   if (!items.length) return [];

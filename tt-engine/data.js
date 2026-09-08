@@ -63,7 +63,9 @@ function build() {
   const T = replay(rows, F, m.tourneys || {}, cst, null);
   // MEMORIA (Render Starter, 512 MB): los ratings ya absorbieron TODO el historial; en memoria se conservan solo las filas
   // desde 2018 (h2h, liquidación, fichas). Las anteriores viven en el compacto y se reproducen en cada arranque.
-  const keep = rows.filter((r) => r[F.date] >= 20180101);
+  const keep = rows.filter((r) => r[F.date] >= 20200101);
+  // y el "recent" de cada ficha se corta a 12 (con 15.000 jugadores, cada fila de más pesa)
+  for (const p of T.prof.values()) { if (p.recent.length > 12) p.recent.splice(0, p.recent.length - 12); p.tourneys = { size: p.tourneys.size }; }
   D = { F, schema: m.schema || [], tourneys: m.tourneys || {}, rows: keep, rows_total: rows.length, players, priors: { ...priors, constants: cst }, formats: formats.by || {}, meta, T };
   return D;
 }
@@ -115,7 +117,7 @@ function replay(rows, F, tourneys, cst, onPredict, { until = null } = {}) {
       if (won && r[F.round] === 'F') p.titles++;
       const y = Math.floor(date / 10000); const by = p.byYear[y] = p.byYear[y] || { w: 0, l: 0 }; if (won) by.w++; else by.l++;
       p.recent.push({ d: date, dated: r[F.dated], opp, won, score: won ? `${r[F.wg]}-${r[F.lg]}` : `${r[F.lg]}-${r[F.wg]}`, games: won ? games.map((x) => x.join('-')).join(' ') : games.map((x) => x[1] + '-' + x[0]).join(' '), t: tq.name || '', tier: tq.tier || null, round: r[F.round], tid: r[F.tid], bo: r[F.bo] });
-      if (p.recent.length > 20) p.recent.shift();
+      if (p.recent.length > 16) p.recent.shift();
     }
   }
   return T;

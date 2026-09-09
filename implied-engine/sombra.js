@@ -18,8 +18,8 @@ const path = require('path');
 const CL = require('./closes');
 
 const RULE = {
-  version: 'implicito_v1',
-  frozen_at: '2026-09-09',
+  version: 'implicito_v2',
+  frozen_at: '2026-09-09',   // v1 vivió una hora: base GLOBAL del tablero; v2 = base por PARTIDO (≥ 3 casas)
   edge_min_pp: 3,          // ventaja mínima entre el precio coherente y el cotizado
   edge_cap_pp: 15,         // por encima es un error nuestro o una casa rota, no una señal
   odds_min: 1.25, odds_max: 6.0,
@@ -66,7 +66,9 @@ function updateBaseline(st, key, obs) {
 function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
   const st = rd(sport);
   st.picks = st.picks || {};
-  const out = { evaluadas: theses.length, nuevas: 0, bajo_liston: 0, vetadas: 0, fuera_de_cuota: 0, ya_existian: 0, por_familia: {} };
+  const out = { evaluadas: theses.length, nuevas: 0, bajo_liston: 0, vetadas: 0, fuera_de_cuota: 0, ya_existian: 0, anuladas_regla: 0, por_familia: {} };
+  // una tesis viva nacida con OTRA versión de la regla no se mezcla con las nuevas: se anula con motivo
+  for (const p of Object.values(st.picks)) if (p.status === 'ACTIVE' && p.rule_version !== RULE.version) { p.status = 'VOID'; p.result = 'VOID'; p.void_why = `regla ${p.rule_version} sustituida por ${RULE.version}`; p.settled_at = new Date(ahora).toISOString(); out.anuladas_regla++; }
   let nuevas = 0;
   // con tope por pasada, primero las de más ventaja (la primera pasada en prod evaluó 6.070 y el tope se llenó
   // por orden de evento y casa, que es arbitrario); las que se quedan fuera vuelven a evaluarse en 20 min
@@ -93,7 +95,7 @@ function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
     nuevas++; out.por_familia[fam].nuevas++;
   }
   out.nuevas = nuevas;
-  if (nuevas) { st.at = new Date(ahora).toISOString(); wr(sport, st); }
+  if (nuevas || out.anuladas_regla) { st.at = new Date(ahora).toISOString(); wr(sport, st); }
   return out;
 }
 

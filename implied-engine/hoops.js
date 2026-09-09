@@ -97,10 +97,16 @@ function analyzeBook(book, { league = 'default', sigma } = {}) {
 // ── ANALIZAR UN PARTIDO ─────────────────────────────────────────────────────────────────────────────────
 const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
 function analyzeGame(books, opts = {}) {
-  const per = (books || []).map((b) => analyzeBook(b, opts));
+  // primera pasada con la σ de referencia (liga o tablero); si ≥ 3 casas del MISMO partido revelan su σ implícita,
+  // la mediana de esas es la base del partido y las tesis se recalculan con ella (mismo principio que en fútbol:
+  // lo común a todas las casas es forma del modelo, lo que queda es lo que ESTA casa hace distinto)
+  let per = (books || []).map((b) => analyzeBook(b, opts));
+  const sigs = per.map((b) => b.implied && b.implied.sigma).filter((x) => Number.isFinite(x) && x > 5 && x < 25);
+  const sigmaGame = sigs.length >= 3 ? median(sigs) : null;
+  if (sigmaGame) per = (books || []).map((b) => analyzeBook(b, { ...opts, sigma: sigmaGame }));
   const mus = per.map((b) => (b.implied && b.implied.mu != null) ? b.implied.mu : b.spread ? b.spread.mu : b.ml ? b.ml.mu : null).filter(Number.isFinite);
   const tots = per.filter((b) => b.total).map((b) => b.total.line);
-  const consensus = { mu: r4(median(mus)), total: r4(median(tots)), n_books: per.length, sigma_implied_median: r4(median(per.map((b) => b.implied && b.implied.sigma).filter(Number.isFinite))) };
+  const consensus = { mu: r4(median(mus)), total: r4(median(tots)), n_books: per.length, sigma_implied_median: r4(median(per.map((b) => b.implied && b.implied.sigma).filter(Number.isFinite))), sigma_game: r4(sigmaGame) };
   const dev = [];
   if (per.length >= 3) {
     const s0 = per[0].sigma_league;

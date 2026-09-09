@@ -83,18 +83,18 @@ async function run({ dbc, qevents = {}, ahora = Date.now(), horizonH = 48 } = {}
   S.wr(SPORT, st);
   out.baseline = { delta_goals: r4(base.value), n_obs: base.n_obs, fresh: base.fresh };
 
-  // 2) segunda pasada con la línea de base descontada → tesis
+  // 2) tesis: la base es la del PARTIDO (mediana de la incoherencia entre sus casas, ≥ 3); la global de arriba
+  //    queda solo como diagnóstico de la forma del modelo (`baseline.delta_goals` en la sonda)
   const theses = [];
   for (const [ceid, bks] of books) {
     const meta = qevents[ceid] || {};
-    const m = base.value != null ? F.analyzeMatch(bks, { devig1x2: 'shin', deltaBaseline: base.value }) : analyzed.get(ceid);
+    const m = analyzed.get(ceid);
     const common = { ceid, league: meta.league || null, match: `${meta.home} vs ${meta.away}`, home: meta.home, away: meta.away, kickoff_at: meta.kickoff || null };
-    if (base.value != null) {
-      for (const b of m.books) for (const t of b.theses) {
-        theses.push({ ...common, key: `${ceid}|${t.family}|${b.code}|${t.side}|${t.line}`, book: b.code, family: t.family, side: t.side, line: t.line, odds: t.odds,
-          p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, basis: t.basis, n_books: m.consensus.n_books,
-          meta: { lh: b.x2.lh, la: b.x2.la, total_1x2: b.x2.total, overround_1x2: b.x2.overround } });
-      }
+    for (const t of m.theses || []) {
+      const b = m.books.find((x) => x.code === t.code) || { x2: {} };
+      theses.push({ ...common, key: `${ceid}|${t.family}|${t.code}|${t.side}|${t.line}`, book: t.code, family: t.family, side: t.side, line: t.line, odds: t.odds,
+        p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, basis: t.basis, n_books: t.n_books,
+        meta: { lh: b.x2.lh, la: b.x2.la, total_1x2: b.x2.total, overround_1x2: b.x2.overround, rel_delta_goals: t.rel_delta_goals } });
     }
     for (const d of m.deviations) {
       theses.push({ ...common, key: `${ceid}|${d.family}|${d.code}|${d.side}|${d.line}`, book: d.code, family: d.family, side: d.side, line: d.line, odds: d.odds,

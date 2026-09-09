@@ -30,8 +30,14 @@ intocables** (`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`, `corners_ov
      `σ_implícita = línea/(z_sp − z_ml)`; σ de referencia = mediana de σ implícitas del tablero (sin base, solo
      BOOK_DEV_*). Tesis IMPLIED_ML / IMPLIED_SPREAD + BOOK_DEV_SPREAD / _ML / _TOTAL. `hoopsImpliedJob` en la cadena de
      baloncesto (30 min), liquida por nombre contra ESPN.
-   - Puertas: edge 3-15 pp, cuota 1,25-6, ≤ 40 nuevas/pasada. Cierre = MISMA casa por cubo. Vara: `clv_own` por
-     familia y casa; listón ~150 liquidadas por familia.
+   - **v2 a la hora de nacer (01:00Z)**: la base GLOBAL no bastaba. En partidos muy desiguales (Barcelona–Feyenoord)
+     la Poisson+DC solo reproduce el empate del mercado con λ absurdas (5,5+0,6) y la incoherencia salía +14 pp en
+     TODAS las casas — error de FORMA, no señal. Ahora la base es la del **partido** (mediana de la incoherencia
+     entre sus ≥ 3 casas; en baloncesto la σ implícita mediana del partido): lo común a todas es forma, lo que
+     queda es lo que ESA casa hace distinto. Las 87 tesis v1 se anularon con motivo (`anuladas_regla`). Solo
+     medias líneas (x,5) en totales. Selftests incluyen "3 casas coherentes → edge 0".
+   - Puertas: edge 3-15 pp, cuota 1,25-6, ≤ 60 nuevas/pasada por ventaja descendente. Cierre = MISMA casa por
+     cubo. Vara: `clv_own` por familia y casa; listón ~150 liquidadas por familia.
    - Sonda: `/api/internal/implicito?key=[&run=1&hoops=1&buckets=1&snaps=1]` (tracks de las dos sombras, selftests
      de los dos inversores y los `tt_transfer` de clubes y baloncesto).
 4. **Autocomprobaciones**: `football.selfTest()` (1X2 generado por la Poisson vuelve a sus λ; casa coherente → edge 0),

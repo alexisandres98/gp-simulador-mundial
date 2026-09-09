@@ -153,17 +153,48 @@ function analyzeBook(book, { devig1x2 = 'shin', deltaBaseline = 0 } = {}) {
 // frente a ella (BOOK_DEV): qué casa cotiza más o menos goles que el consenso EN SU PROPIO 1X2 o total.
 const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
 function analyzeMatch(books, opts = {}) {
-  const per = (books || []).map((b) => analyzeBook(b, opts)).filter((b) => b.x2);
+  // cada casa se invierte SIN base global: la base que importa es la del MISMO partido (abajo)
+  const per = (books || []).map((b) => analyzeBook(b, { devig1x2: opts.devig1x2, deltaBaseline: 0 })).filter((b) => b.x2);
   const consensus = { total_1x2: median(per.map((b) => b.x2.total)), share: median(per.map((b) => b.x2.share)), n_books: per.length, by_line: {} };
   const lines = {};
-  for (const b of per) for (const t of b.totals) (lines[t.line] = lines[t.line] || []).push({ code: b.code, lambda: t.lambda_total, p_over: t.p_over, over: null });
-  for (const [L, arr] of Object.entries(lines)) consensus.by_line[L] = { lambda_total: median(arr.map((x) => x.lambda)), p_over: median(arr.map((x) => x.p_over)), n_books: arr.length };
+  for (const b of per) for (const t of b.totals) (lines[t.line] = lines[t.line] || []).push({ code: b.code, lambda: t.lambda_total, p_over: t.p_over, delta: t.delta_goals });
+  for (const [L, arr] of Object.entries(lines)) consensus.by_line[L] = { lambda_total: median(arr.map((x) => x.lambda)), p_over: median(arr.map((x) => x.p_over)), delta_median: median(arr.map((x) => x.delta)), n_books: arr.length };
+
+  // ── LA BASE ES LA DEL PARTIDO, NO LA DEL TABLERO (v2, 9-sep 01:00Z) ─────────────────────────────────────
+  // La primera hora en prod enseñó que una base GLOBAL no basta: en un partido muy desigual (Barcelona–Feyenoord)
+  // la Poisson+DC solo reproduce el empate del mercado con λ absurdas (5,5+0,6), y la incoherencia 1X2↔total sale
+  // de +14 pp EN TODAS las casas — eso es error de FORMA del modelo, no señal. La mediana de la incoherencia
+  // entre las casas del mismo partido absorbe ese error (es común a todas) y deja solo lo que ESTA casa hace
+  // distinto de sus pares: su 1X2 y su total se contradicen MÁS que los de las demás. Exige ≥ 3 casas en la línea.
+  const theses = [];
+  for (const b of per) {
+    const src = (books || []).find((x) => x.code === b.code) || {};
+    for (const t of b.totals) {
+      const c = consensus.by_line[t.line]; if (!c || c.n_books < 3 || !Number.isFinite(c.delta_median)) continue;
+      const m = c.delta_median;
+      const T1 = Math.max(0.3, b.x2.total + m), TT = Math.max(0.3, t.lambda_total - m);
+      const cohOver = coherentOver(T1 * b.x2.share, T1 * (1 - b.x2.share), t.line);
+      const c12 = coherent1x2(TT * b.x2.share, TT * (1 - b.x2.share));
+      const tq = (src.totals || []).find((x) => x.line === t.line) || {};
+      const eOver = 100 * (cohOver - t.p_over);
+      const sideT = eOver >= 0 ? 'over' : 'under';
+      theses.push({ code: b.code, family: 'IMPLIED_TOTAL', side: sideT, line: t.line, odds: sideT === 'over' ? tq.over : tq.under,
+        p_coherent: r4(sideT === 'over' ? cohOver : 1 - cohOver), p_market: r4(sideT === 'over' ? t.p_over : 1 - t.p_over),
+        edge_pp: r2(Math.abs(eOver)), rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
+        basis: `1X2 de ${b.code} → λ ${b.x2.total} + base del partido ${r4(m)} (${c.n_books} casas) vs total ${t.line} → λ ${t.lambda_total}` });
+      const pX = { home: b.x2.p.home, draw: b.x2.p.draw, away: b.x2.p.away };
+      const eX = { home: 100 * (c12.home - pX.home), draw: 100 * (c12.draw - pX.draw), away: 100 * (c12.away - pX.away) };
+      const bestX = ['home', 'draw', 'away'].sort((a, z) => eX[z] - eX[a])[0];
+      theses.push({ code: b.code, family: 'IMPLIED_1X2', side: bestX, line: t.line, odds: src.x2 ? src.x2[bestX] : null,
+        p_coherent: r4(c12[bestX]), p_market: r4(pX[bestX]), edge_pp: r2(eX[bestX]), rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
+        basis: `total ${t.line} de ${b.code} → λ ${t.lambda_total} − base del partido ${r4(m)} vs su 1X2 → λ ${b.x2.total}` });
+    }
+  }
+
+  // BOOK_DEV: la desviación del TOTAL de una casa frente a la mediana de ≥ 3 casas (puro precio, sin inversión del 1X2)
   const dev = [];
   if (per.length >= 3) {
     for (const b of per) {
-      // desviación del 1X2: la casa implica más/menos goles que la mediana; se apuesta el TOTAL de esa casa en
-      // la dirección del consenso (si su 1X2 dice 2,4 goles y el tablero 2,8, su under está caro y su over barato
-      // solo si su total también está desplazado — por eso se mide sobre el total cotizado, no sobre el 1X2)
       for (const t of b.totals) {
         const c = consensus.by_line[t.line]; if (!c || c.n_books < 3) continue;
         const cohOverCons = coherentOver(c.lambda_total * consensus.share, c.lambda_total * (1 - consensus.share), t.line);
@@ -178,7 +209,7 @@ function analyzeMatch(books, opts = {}) {
       }
     }
   }
-  return { books: per, consensus, deviations: dev };
+  return { books: per, consensus, theses, deviations: dev };
 }
 
 // ── AUTOCOMPROBACIÓN ────────────────────────────────────────────────────────────────────────────────────
@@ -196,7 +227,11 @@ function selfTest() {
   const book = { code: 'test', x2: { home: 1 / (r.home * m), draw: 1 / (r.draw * m), away: 1 / (r.away * m) }, totals: [{ line: 2.5, over: 1 / (pOver * 1.03), under: 1 / ((1 - pOver) * 1.03) }] };
   const a = analyzeBook(book, { devig1x2: 'proportional' });
   const edge0 = a.totals[0] ? Math.abs(a.totals[0].edge_over_pp) : 99;
-  return { ok: errL < 0.01 && errT < 0.01 && edge0 < 0.6, errL: r4(errL), errT: r4(errT), edge_coherente_pp: r2(edge0), inv, it };
+  // tres casas coherentes entre sí con márgenes distintos → las tesis del partido tienen que salir ≈ 0
+  const mk = (code, mm) => ({ code, x2: { home: 1 / (r.home * mm), draw: 1 / (r.draw * mm), away: 1 / (r.away * mm) }, totals: [{ line: 2.5, over: 1 / (pOver * (1 + (mm - 1) / 2)), under: 1 / ((1 - pOver) * (1 + (mm - 1) / 2)) }] });
+  const mt = analyzeMatch([mk('a', 1.04), mk('b', 1.06), mk('c', 1.08)], { devig1x2: 'proportional' });
+  const edgeM = Math.max(0, ...mt.theses.map((t) => Math.abs(t.edge_pp)));
+  return { ok: errL < 0.01 && errT < 0.01 && edge0 < 0.6 && edgeM < 0.6, errL: r4(errL), errT: r4(errT), edge_coherente_pp: r2(edge0), edge_partido_coherente_pp: r2(edgeM), inv, it };
 }
 
 module.exports = { devigProportional, devigShin, invert1x2, invertTotal, coherentOver, coherent1x2, analyzeBook, analyzeMatch, selfTest };

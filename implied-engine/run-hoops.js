@@ -72,11 +72,11 @@ async function run({ dbc, evs = {}, MK, ahora = Date.now() } = {}) {
     const common = { ceid, league: meta.league || null, match: `${meta.home} vs ${meta.away}`, home: meta.home, away: meta.away, kickoff_at: meta.kickoff || null };
     // las tesis de incoherencia interna solo nacen con la σ del TABLERO ya estimada: con la σ de liga por decreto
     // un desajuste de forma sesgaría todas a la vez (la desviación frente al tablero, BOOK_DEV, no depende de σ)
-    for (const b of (base.value != null ? g.books : [])) for (const t of b.theses) {
+    for (const b of ((g.consensus.sigma_game != null || base.value != null) ? g.books : [])) for (const t of b.theses) {
       if (!(t.odds > 1)) continue;
       theses.push({ ...common, key: `${ceid}|${t.family}|${b.code}|${t.side}|${t.line}`, book: b.code, family: t.family, side: t.side, line: t.line, odds: t.odds,
         p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, basis: t.basis, n_books: g.consensus.n_books,
-        meta: { sigma_used: b.sigma_league, sigma_implied: b.implied && b.implied.sigma, mu_spread: b.spread && b.spread.mu, mu_ml: b.ml && b.ml.mu, spread_line: b.spread && b.spread.line } });
+        meta: { sigma_used: b.sigma_league, sigma_game: g.consensus.sigma_game, sigma_implied: b.implied && b.implied.sigma, mu_spread: b.spread && b.spread.mu, mu_ml: b.ml && b.ml.mu, spread_line: b.spread && b.spread.line } });
     }
     for (const d of g.deviations) {
       if (!(d.odds > 1)) continue;

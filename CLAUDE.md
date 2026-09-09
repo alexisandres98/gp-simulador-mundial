@@ -108,6 +108,8 @@
   `hoops.js` (inversores de precio: 1X2↔total, hándicap↔ganador), `sombra.js` + `run-futbol.js` / `run-hoops.js`
   (familias de PRECIO en sombra propia, regla `implicito_v1`, disco `<dbdir>/implicito/`). Sonda
   `/api/internal/implicito?key=`. **Ninguna de estas piezas cambia qué picks nacen**; las familias congeladas siguen igual.
+  Generador de kills de LoL en sombra: `esports-engine/lol-gen.js` (+ `lol-gen-shadow.js`, `scripts/lol-gen-fit.js`,
+  `data/esports/lol/gen-priors.json`), sonda `/api/internal/lol-gen?key=`. No toca `lol.js` ni `lol_kills_hcp_v1`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

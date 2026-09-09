@@ -20,9 +20,14 @@ Desplegado el 9-sep (HANDOFF §🔁). Todo es medición o sombra nueva; ninguna 
 3. **Cubos finos y la edad del precio**: The Odds API se barre cada ~10-12 min; los cubos T−5/T−1 llevan `age_min` y
    hay que leerlos con él. Subir la cadencia del barrido para eventos a ≤ 60 min cuesta créditos: decidir con los
    datos de la primera semana si vale.
-4. **Lo que sigue de la lista del 9-sep**: motor generativo de kills en LoL (duración del mapa × tasa de kills por
-   liga y parche desde la base propia) con `unc_pp` de nacimiento; y la bisección de pRound + ancla al mercado en
-   Valorant que ya está propuesta en los backtests del 2-sep.
+4. ✅ **Generador de kills de LoL** (hecho 9-sep, HANDOFF §🔁 punto 5). Lo que dijo la validación: la forma de la liga
+   es lo que vale; el parche y el acople añaden 0,3-0,5 %. Pendientes: (a) el sesgo de colas (+4-5 pp de over en
+   mediana ± 3 en walk-forward) — probar un término de tendencia explícito por liga (pendiente mensual) en vez de
+   ventanas; (b) el reparto por equipo y el hándicap no están validados (la base no tiene pMap previa): medirlos en
+   la sombra con `calibracion.brier_generador` por familia; (c) si la sombra da CLV propio > 0 en KILLS con ≥ 150
+   liquidadas, proponer sustituir las constantes de perfil de `lol.js` (LCK 0,62 kpm cuando la base mide 0,90) —
+   decisión de Alexis, y NUNCA antes de que `lol_kills_hcp_v1` cierre su ventana. Sigue en la lista: bisección de
+   pRound + ancla al mercado en Valorant (backtests del 2-sep).
 5. **Bug latente visto al mapear** (no tocado, cambiaría qué picks nacen): en `buildHoopsPicks` la puerta de
    frescura lee `best.at` pero la fila trae `seen` → la puerta de precio viejo nunca dispara. Y `m.fam === 'total'`
    donde la familia es `match_total` → la regla "solo under" de v2 nunca se aplica. Corregir en la revisión de

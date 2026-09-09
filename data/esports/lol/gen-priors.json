@@ -1,0 +1,142 @@
+{
+ "version": "lol-gen-1",
+ "at": "2026-09-09T07:48:55.036Z",
+ "from": "2024-01",
+ "to": "2026-09",
+ "n_pred": 38761,
+ "variante": {
+  "k": 30,
+  "window": 365,
+  "lwindow": 240
+ },
+ "source": {
+  "celda": 4469,
+  "liga": 29867,
+  "circuito": 4425
+ },
+ "const": {
+  "version": "lol-gen-1",
+  "window_days": 365,
+  "league_days": 240,
+  "shrink_k": 30,
+  "min_cell": 8,
+  "recent_days": 60,
+  "recent_min": 25,
+  "recent_days_2": 120,
+  "recent_min_2": 40,
+  "recent_max_shift": 0.15,
+  "sims": 20000,
+  "seed": 77
+ },
+ "generador": {
+  "mae_kills": 7.65,
+  "logloss_mediana": 0.6966,
+  "brier_mediana": 0.2517,
+  "logloss_mas3": 0.6811,
+  "logloss_menos3": 0.6418,
+  "var_ratio": 0.98,
+  "calibracion": [
+   {
+    "decil": 0,
+    "n": 0,
+    "p": null,
+    "obs": null
+   },
+   {
+    "decil": 1,
+    "n": 0,
+    "p": null,
+    "obs": null
+   },
+   {
+    "decil": 2,
+    "n": 18,
+    "p": 0.292,
+    "obs": 0.3889
+   },
+   {
+    "decil": 3,
+    "n": 38226,
+    "p": 0.3624,
+    "obs": 0.4097
+   },
+   {
+    "decil": 4,
+    "n": 517,
+    "p": 0.4045,
+    "obs": 0.2959
+   },
+   {
+    "decil": 5,
+    "n": 8314,
+    "p": 0.5912,
+    "obs": 0.618
+   },
+   {
+    "decil": 6,
+    "n": 30447,
+    "p": 0.6225,
+    "obs": 0.6779
+   },
+   {
+    "decil": 7,
+    "n": 0,
+    "p": null,
+    "obs": null
+   },
+   {
+    "decil": 8,
+    "n": 0,
+    "p": null,
+    "obs": null
+   },
+   {
+    "decil": 9,
+    "n": 0,
+    "p": null,
+    "obs": null
+   }
+  ]
+ },
+ "liga_plana": {
+  "mae_kills": 7.62,
+  "logloss_mediana": 0.6927,
+  "brier_mediana": 0.2498,
+  "logloss_mas3": 0.6761,
+  "logloss_menos3": 0.6694
+ },
+ "liga_hist": {
+  "n": 32464,
+  "mae_kills": 7.46,
+  "logloss_mediana": 0.6948,
+  "logloss_mas3": 0.6664,
+  "logloss_menos3": 0.6551
+ },
+ "circuito": {
+  "mae_kills": 8.05,
+  "logloss_mediana": 0.6923,
+  "brier_mediana": 0.2496
+ },
+ "multilinea": {
+  "lineas": [
+   -9,
+   -6,
+   -3,
+   0,
+   3,
+   6,
+   9
+  ],
+  "gen": 0.5766,
+  "liga_plana": 0.6167,
+  "liga_hist": 0.5755,
+  "gen_misma_muestra": 0.5738,
+  "n_hist": 32464
+ },
+ "skill_multilinea_vs_hist_pct": 0.2954,
+ "skill_multilinea_vs_plana_pct": 6.5024,
+ "skill_vs_liga_pct": -0.74,
+ "skill_vs_liga_hist_pct": -0.11,
+ "lectura": "walk-forward mensual 2024-01→2026-09, 38761 partidas; pMap = 0,5 (sin fuerza). El generador se compara con la liga plana en log-loss de \"más de L\" con L = mediana ± 3.",
+ "veredicto": "El generador (liga×parche, acople paliza→duración/ritmo, reparto del ganador) bate a la Poisson plana de liga en un 6,5 % de log-loss multilínea (dispersión), pero al histograma empírico de la liga solo en un 0,3-0,5 %: la estructura no aporta sobre la FORMA de la liga cuando pMap = 0,5. Sesgo conocido: en las colas (mediana ± 3) el over realizado supera al predicho en 4-5 pp en walk-forward (la tendencia al alza de kills se come la ventana). La sombra mide contra el mercado, que es la pregunta; leer las tesis under con ese sesgo delante."
+}

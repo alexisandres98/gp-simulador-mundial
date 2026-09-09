@@ -12962,6 +12962,8 @@ if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
         if (r && r.retired) console.log('[esports] picks retiradas por lados cruzados:', JSON.stringify(r));
       }).catch(() => { }), Promise.resolve()))
       .then(() => { memMark('esports:liquidar'); return ES.GAME_ORDER.reduce((pr, g) => pr.then(() => ES.settlePicks(g).catch(() => { })), Promise.resolve()); })
+      // 9-sep: la sombra del GENERADOR de kills de LoL (liga×parche desde la base propia). Aparte, sin tocar picks
+      .then(() => { memMark('esports:lol-gen'); return require('./esports-engine/lol-gen-shadow').job().catch(() => { }); })
       .then(() => memMark('reposo'));
   };
   setTimeout(esChain, 320 * 1000);
@@ -21760,6 +21762,17 @@ const server = http.createServer(async (req, res) => {
       const D = require('./futbol-derivadas');
       const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
       return json(res, 200, { pasada: run, track: D.track() });
+    }
+    // 9-sep: la sombra del generador de kills de LoL. `?run=1` fuerza la pasada (agenda + mercado + cierres + liquidación).
+    if (p === '/api/internal/lol-gen') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const SH = require('./esports-engine/lol-gen-shadow');
+      const out = { at: new Date().toISOString() };
+      if (url.searchParams.get('run') === '1') out.pasada = await SH.job().catch((e) => ({ error: e.message }));
+      out.track = SH.track();
+      try { out.validacion = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'esports', 'lol', 'gen-priors.json'), 'utf8')); delete out.validacion.generador.calibracion; } catch { out.validacion = null; }
+      return json(res, 200, out);
     }
     // 9-sep: las familias de PRECIO del proceso implícito (fútbol y baloncesto) + lo transferido de tenis de mesa
     // a las sombras existentes (incertidumbre, cierres por cubo, misma casa). `?run=1` fuerza la pasada de fútbol;

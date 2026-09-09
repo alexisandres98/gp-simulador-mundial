@@ -49,6 +49,21 @@ intocables** (`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`, `corners_ov
      de los dos inversores y los `tt_transfer` de clubes y baloncesto).
 4. **Autocomprobaciones**: `football.selfTest()` (1X2 generado por la Poisson vuelve a sus λ; casa coherente → edge 0),
    `hoops.selfTest()` (σ y μ recuperados a 1e-2; casa coherente → edge 0). Humo: `scratchpad/ttfix/implicito-smoke.js`.
+5. **Generador de kills de LoL en sombra** (`esports-engine/lol-gen.js` + `lol-gen-shadow.js`, sonda
+   `/api/internal/lol-gen?key=[&run=1]`, disco `<dbdir>/implicito/lol_gen.json`): la prescripción de la autopsia §4.5
+   ("distribución de kills por LIGA y PARCHE desde la base propia, no por equipo"). Con las 97.588 partidas propias
+   (kills por lado y duración en todas; el "535k" de los docs son filas de JUGADOR, no partidas) ajusta por celda
+   liga×parche con encogimiento a liga y circuito: reparto del ganador, log-duración y log-ritmo como función de la
+   paliza (acople medido: b_len −0,98, b_kpm −0,38, ρ −0,47) y centro corregido a la media reciente de la liga.
+   **Validación walk-forward mensual 2024-01→2026-08 (38.761 partidas, pMap = 0,5)** en `data/esports/lol/gen-priors.json`:
+   bate a la Poisson plana de liga en 6,5 % de log-loss multilínea (dispersión), pero al **histograma empírico de la
+   liga solo en 0,3-0,5 %** — la estructura no añade sobre la forma de la liga. Sesgo conocido: en mediana ± 3 el over
+   realizado supera al predicho 4-5 pp (la subida de kills parche a parche se come la ventana; probado centro a 120 d,
+   60 d y a la media aritmética: no lo corrige). La sombra: para cada mapa cotizado por Pinnacle/Cloudbet en las
+   cuatro familias de kills, p del generador vs el par sin margen de la MISMA casa, pMap anclada a mercado (MAPA o
+   SERIE→mapa), unc de nacimiento por n_eff de la celda, cierres del archivo de esports por cubo, liquidación con
+   `settleOne` de la casa sobre Leaguepedia (con el giro de orientación del 2-sep). Nada toca `lol.js` ni
+   `lol_kills_hcp_v1`. Leer `calibracion.brier_generador` vs `brier_mercado` y `clv_own` por familia.
 Pendiente de la primera semana: leer `tt_transfer.gate` en fútbol/esports/baloncesto (¿la puerta 0,75×unc habría
 ahorrado?) y `clv_own` por familia y casa antes de proponer cambiar nada. Lo que sigue en la lista (chat 9-sep): motor
 generativo de kills en LoL (duración × tasa por liga/parche desde la base propia de 535k filas).

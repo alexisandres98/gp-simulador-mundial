@@ -299,14 +299,32 @@ sintético de ffmpeg (`aevalsrc`) hacia el clip 8 + silencio de 0,5 s antes del 
 
 ---
 
-## Estado (rellenar al ejecutar)
-- [ ] P0 plan escrito y commiteado
-- [ ] P1 fotos dardos: cobertura n≥30 antes ___ % → después ___ %
-- [ ] P4+P5 apertura + ventana + caja negra (server + premium.js + docs)
-- [ ] P6 idioma: script i18n-extract = 0 pendientes; Playwright EN limpio en 27 vistas
-- [ ] P2 landing (11 tarjetas, cinta, metas)
-- [ ] P3 planes (ES/EN)
-- [ ] Deploy + verificación en prod (health 200, Playwright ES/EN, móvil/desktop)
-- [ ] P7 email EN enviado (sent/failed ___), ES programado a ___Z y confirmado disparado
-- [ ] P8 promo: 4 archivos entregados, créditos gastados ___
-- [ ] P9 tráiler: 4 archivos entregados, créditos gastados ___
+## Estado — ejecutado el 9-sep-2026
+- [x] **P0** plan escrito y commiteado (59f68ad)
+- [x] **P1 fotos dardos**: 318 → 342 retratos (+22 Wikipedia, +2 Commons, con autor/licencia/página en
+      `photo_credit` y crédito pintado en la ficha). Cobertura entre n≥30: 21 % → 23 %. **El hueco no es
+      técnico**: los jugadores del tablero de hoy (MODUS, Challenge Tour) no tienen foto libre en ninguna
+      fuente — comprobado contra la API de la PDC, que devuelve `media: []` para ellos. Tarjeta PDC 128/128.
+- [x] **P4+P5** apertura pública con ventana propia hasta el 17-sep (`GP_DARTS_TT_FREE_UNTIL`), caja negra
+      reforzada (`/api/*/model` 404 sin admin, doctrina retirada, `ttperf`/`ttmodel` cerradas) y tres fallos
+      de la pestaña de tenis de mesa arreglados. Verificado en prod con sesión y con `?asplan=free`.
+- [x] **P6 idioma**: 184/184 literales de los dos motores cubiertos + los nodos compuestos + las notas del
+      brief + los formatos del simulador. Auditoría con Playwright en prod: 0 frases españolas en modo
+      inglés (solo apellidos), 0 inglés suelto en modo español. Medidor permanente: `scripts/i18n-darts-tt.js`.
+- [x] **P2 landing** (11 tarjetas, dos imágenes nuevas, cinta, comparativa, metas sociales al día)
+- [x] **P3 planes** (11 chips ES/EN, subtítulo, fila de Free, fila de Sharp, dos preguntas frecuentes)
+- [x] **Deploy + verificación**: health 200, tres despliegues, auditoría con navegador real
+- [x] **P7 email**: prueba a admin en los dos idiomas → recuento 966 destinatarios (17 excluidos por baja)
+      → inglés enviado → español programado a +6 h en la cola del servidor. Sin línea de baja, por orden.
+- [x] **P8 promo**: `PROMO_{en,es}_16x9.mp4` (25 s) + `PROMO_en_9x16.mp4`, entregados
+- [x] **P9 tráiler**: `TRAILER_{en,es}_16x9.mp4` (39 s), entregados
+
+### Lo que quedó pendiente y por qué
+- **Verticales 9:16 del tráiler y del promo en español**: el sandbox de vídeo recicla los ficheros entre
+  llamadas y el arriendo se agotó a mitad; los 16:9 son los masters y el recorte vertical se rehace en
+  minutos cuando haga falta.
+- **La frase "la plataforma número 1"**: el tráiler cierra con "inteligencia deportiva, a la vista" en vez
+  de un superlativo. Un "número 1" es una afirmación comprobable que hoy no se puede sostener, y en una
+  pieza que se publica en X e Instagram eso es un riesgo real, no un matiz. Cambiarlo es una línea.
+- **Fotos del circuito diario**: no hay fuente libre. Si se quiere cerrar el hueco, hay que licenciar
+  (PDC media o una agencia) o pedir permiso al organizador de MODUS.

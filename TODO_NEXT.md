@@ -1,5 +1,30 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔁 9-sep — TT → familias que pierden: qué leer y qué falta
+Desplegado el 9-sep (HANDOFF §🔁). Todo es medición o sombra nueva; ninguna regla cambió.
+1. **En una semana, leer antes de tocar nada**: (a) `tt_transfer.<FAMILIA>.gate` en `/api/internal/clubs-picks`,
+   `/api/esports/track`, `/api/hoops/picks` y `/api/tennis/track` — si `con_puerta` gana a `sin_puerta` en CLV propio y
+   unidades, la puerta 0,75×unc merece pasar de etiqueta a regla (decisión de Alexis, familia por familia, y JAMÁS en
+   las congeladas antes de que cierren su ventana); (b) `clv_own_avg_pct` por familia Y casa — la vara que la autopsia
+   pedía ("edge al cierre por familia y casa, no ROI"); (c) `curve` por cubo — si el CLV propio es positivo en T−60 y
+   negativo en T−1 la casa nos sigue: el edge es de MOMENTO y la regla es de hora, no de modelo.
+2. **Proceso implícito** (`/api/internal/implicito?key=`): la línea de base de fútbol (`baseline.delta_goals`) tiene que
+   estabilizarse (esperable −0,2 a −0,4 goles: la forma DC "ve" más goles que el mercado de totales); si oscila
+   mucho entre pasadas, subir `baseline_ema`. En baloncesto `baseline.sigma_implied` debería caer cerca de 11-13; si no,
+   las casas no cotizan hándicap y ganador con una sola normal y hay que revisar el modelo antes de leer tesis.
+   Con ≥ 150 liquidadas por familia: `clv_own` decide. Las espejo (IMPLIED_TOTAL vs IMPLIED_1X2, IMPLIED_ML vs
+   IMPLIED_SPREAD) dirán cuál de los dos mercados de la casa dice la verdad.
+3. **Cubos finos y la edad del precio**: The Odds API se barre cada ~10-12 min; los cubos T−5/T−1 llevan `age_min` y
+   hay que leerlos con él. Subir la cadencia del barrido para eventos a ≤ 60 min cuesta créditos: decidir con los
+   datos de la primera semana si vale.
+4. **Lo que sigue de la lista del 9-sep**: motor generativo de kills en LoL (duración del mapa × tasa de kills por
+   liga y parche desde la base propia) con `unc_pp` de nacimiento; y la bisección de pRound + ancla al mercado en
+   Valorant que ya está propuesta en los backtests del 2-sep.
+5. **Bug latente visto al mapear** (no tocado, cambiaría qué picks nacen): en `buildHoopsPicks` la puerta de
+   frescura lee `best.at` pero la fila trae `seen` → la puerta de precio viejo nunca dispara. Y `m.fam === 'total'`
+   donde la familia es `match_total` → la regla "solo under" de v2 nunca se aplica. Corregir en la revisión de
+   baloncesto, con sello de era.
+
 ## 🎮 8-sep — LoL se mide en Pinnacle (orden de Alexis)
 El segmento `lol_kills_hcp_v1` ya tenía `manual_books: ['pinnacle']`, pero las 108 apuestas salieron TODAS por
 Cloudbet: el normalizador de Pinnacle (`data-providers/esports/pinnacle.js`) etiquetaba `spread`/`total` por mapa

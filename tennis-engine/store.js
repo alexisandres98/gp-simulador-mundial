@@ -133,6 +133,8 @@ function lineasDe(rows, consenso, lados) {
       if (Number.isFinite(x[k]) && x[k] > (o[k] || 0)) { o[k] = x[k]; o[bk] = x.book; }
       // Pinnacle aparte: es la referencia del CLV del preregistro (docs/PREREGISTRO_TENIS_TOTAL.md)
       if (x.book === 'pinnacle' && Number.isFinite(x[k])) o['pin_' + k] = x[k];
+      // 9-sep: cada casa con su precio, para el CLV contra la MISMA casa de la pick (traído de tenis de mesa)
+      if (Number.isFinite(x[k]) && x.book) { o.bb = o.bb || {}; (o.bb[x.book] = o.bb[x.book] || {})[k] = x[k]; }
     }
     por.set(x.line, o);
   }
@@ -605,6 +607,10 @@ async function recordShadow() {
         a: row.a, b: row.b, family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
         p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, benchmark: !!c.benchmark,
         commence: row.commence, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
+        // 9-sep: la incertidumbre de la candidata ya se calculaba y no se guardaba; ahora viaja con el veredicto
+        // de la puerta 0,75×unc de tenis de mesa (medición; la puerta de tenis sigue siendo la suya)
+        unc_pp: c.unc_pp != null ? c.unc_pp : null,
+        unc: (() => { try { return c.unc_pp != null ? require('../implied-engine/uncertainty').gateVerdict(c.edge_pp, c.unc_pp) : null; } catch { return null; } })(),
       };
       // PREREGISTRO TOTAL (2-sep, docs/PREREGISTRO_TENIS_TOTAL.md): la ventaja al nacer queda congelada y
       // la tesis se marca si entra en la regla fija (TOTAL, ventaja ≥ 8 pp). Se cuenta por EVENTO, no por
@@ -831,6 +837,9 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
           const ln = ((p.family === 'TOTAL' ? cl.totals_all : cl.spreads_all) || []).find((x) => x.line === p.line);
           const pin = ln ? ln['pin_' + p.side] : null;
           if (pin > 1) { p.close_pin = pin; p.clv_pin_pct = +((p.odds / pin - 1) * 100).toFixed(2); }
+          // 9-sep: y contra la MISMA casa donde nació la pick, en su línea exacta
+          const own = ln && ln.bb && p.book && ln.bb[p.book] ? ln.bb[p.book][p.side] : null;
+          if (own > 1) { p.close_own = own; p.clv_own_pct = +((p.odds / own - 1) * 100).toFixed(2); }
         }
       }
       p.settled_at = new Date().toISOString();
@@ -957,6 +966,20 @@ function track(tour, { limit = 40 } = {}) {
       note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined,
     }])),
     por_evento: { TOTAL: porEventoTotal },
+    // 9-sep (traído de tenis de mesa), por familia: CLV contra la MISMA casa y la muestra partida por el
+    // veredicto de la puerta 0,75×unc. Medición: la puerta de tenis (edge > unc) no cambia.
+    tt_transfer: (() => {
+      try {
+        const U = require('../implied-engine/uncertainty');
+        const mean = (a) => (a.length ? r2(a.reduce((x, y) => x + y, 0) / a.length) : null);
+        return Object.fromEntries(Object.entries(byFam).map(([f]) => {
+          const l = done.filter((p) => p.family === f); const own = l.map((p) => p.clv_own_pct).filter(Number.isFinite);
+          return [f, { n: l.length, clv_own_avg_pct: mean(own), clv_own_n: own.length, clv_own_sd: clvSd(own),
+            clv_own_beat_pct: own.length ? r2(100 * own.filter((x) => x > 0).length / own.length) : null,
+            gate: U.splitByGate(l, { unitsOf: (p) => p.units, clvOf: (p) => (Number.isFinite(p.clv_own_pct) ? p.clv_own_pct : p.clv_pct) }) }];
+        }));
+      } catch { return null; }
+    })(),
     recent: done.slice(-limit).reverse(), open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia, no el ROI.',
     // el parte del liquidador viaja con el track: "0 liquidadas" y "la fuente está caída" se parecen

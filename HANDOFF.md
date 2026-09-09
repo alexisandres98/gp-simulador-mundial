@@ -1,4 +1,46 @@
-# HANDOFF — estado al 8-sep-2026 (nace TENIS DE MESA, el 11º deporte: compilador exacto punto → game → partido)
+# HANDOFF — estado al 9-sep-2026 (lo de tenis de mesa, transferido a las familias que pierden)
+
+## 🔁 9-sep — LO INNOVADOR DE TENIS DE MESA Y DARDOS, TRASPLANTADO A LAS FAMILIAS QUE PIERDEN (orden de Alexis: "procede")
+Pregunta de Alexis: qué hicimos distinto en TT/dardos que sirva a los modelos que pierden. Respuesta (chat 9-sep) y lo
+construido, TODO medición o sombra nueva — **ninguna regla de apuesta cambió, las cuatro familias congeladas siguen
+intocables** (`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`, `corners_over_v1`):
+1. **Incertidumbre por muestra + veredicto de puerta** (`implied-engine/uncertainty.js`): `unc_pp = 100·0,28·√(1/(nA+2)+1/(nB+2))`
+   y `unc = {passes: edge ≥ 0,75×unc, margin_pp}` en cada tesis nueva de **fútbol** (partidos del rating o de la
+   proyección de córners/tarjetas), **esports** (`matches_a/b` del rating + `epistemic_pp`), **baloncesto**
+   (`C.fit.n` por equipo + `fit_sd`, `win_ci`) y **tenis** (su `unc_pp`, que se calculaba y no se guardaba). Los tracks
+   parten la muestra por el veredicto (`gate.con_puerta` / `sin_puerta`; en fútbol claves `unc:pass|fail` y
+   `FAMILIA|unc:…`). Ataca la "ley común" de la autopsia: la pick nace donde modelo−mercado es máximo.
+2. **Cierres por cubo T−60/−30/−10/−5/−1 y contra la MISMA casa** (`implied-engine/closes.js`, la forma de TT):
+   fútbol (`p.closes` por `refreshClubPickPrices` + job `clubPicksCloseBuckets` cada 3 min; `closing.own_odds/pin_odds`
+   y `clv_own_pct/clv_pin_pct` a la cuota de creación), baloncesto (`hoopsCloseSnapshots` cada 2 min → `p.closes`),
+   esports (`entry.snaps` en `snapshot()` + barrido fino cada 2 min para juegos con picks a ≤ 65 min; `close_own`,
+   `close_series` en la liquidación), tenis (`bb` por casa en `lineasDe` → `clv_own_pct`), dardos (`series` + `own`),
+   TT (`close_series` ahora con own/best/pinnacle). Cada lectura lleva `age_min` de la cotización de fondo (The Odds API
+   refresca cada ~10 min: un T−5 con precio de hace 15 min se ve). Tracks: `tt_transfer` (fútbol, esports, baloncesto,
+   tenis) y `clv_curve` (TT, dardos).
+3. **Proceso implícito = familias de PRECIO en sombra propia** (`implied-engine/sombra.js`, regla `implicito_v1`
+   congelada 9-sep; disco `<dbdir>/implicito/{futbol,hoops}.json`):
+   - **Fútbol** (`football.js`, `run-futbol.js`): 1X2 sin margen (Shin) → (λh, λa) por bisección alternada sobre la
+     matriz Poisson+Dixon-Coles del motor de goles; total → λ_T con el reparto del 1X2. Incoherencia = λ_T − (λh+λa).
+     La forma DC reproduce un empate dado con MÁS goles que el mercado de totales → **línea de base del tablero**
+     (mediana de la pasada, EMA 0,7, ≥ 8 obs) descontada antes de leer cada casa; sin base solo nace BOOK_DEV. Tesis
+     espejo IMPLIED_TOTAL / IMPLIED_1X2 + BOOK_DEV (desviación de una casa frente a la mediana de ≥ 3). Cableado en
+     `derivadasJob` (cada 20 min), liquida con `derivadasScore`.
+   - **Baloncesto** (`hoops.js`, `run-hoops.js`): margen ~ N(μ, σ); hándicap y ganador de la misma casa revelan
+     `σ_implícita = línea/(z_sp − z_ml)`; σ de referencia = mediana de σ implícitas del tablero (sin base, solo
+     BOOK_DEV_*). Tesis IMPLIED_ML / IMPLIED_SPREAD + BOOK_DEV_SPREAD / _ML / _TOTAL. `hoopsImpliedJob` en la cadena de
+     baloncesto (30 min), liquida por nombre contra ESPN.
+   - Puertas: edge 3-15 pp, cuota 1,25-6, ≤ 40 nuevas/pasada. Cierre = MISMA casa por cubo. Vara: `clv_own` por
+     familia y casa; listón ~150 liquidadas por familia.
+   - Sonda: `/api/internal/implicito?key=[&run=1&hoops=1&buckets=1&snaps=1]` (tracks de las dos sombras, selftests
+     de los dos inversores y los `tt_transfer` de clubes y baloncesto).
+4. **Autocomprobaciones**: `football.selfTest()` (1X2 generado por la Poisson vuelve a sus λ; casa coherente → edge 0),
+   `hoops.selfTest()` (σ y μ recuperados a 1e-2; casa coherente → edge 0). Humo: `scratchpad/ttfix/implicito-smoke.js`.
+Pendiente de la primera semana: leer `tt_transfer.gate` en fútbol/esports/baloncesto (¿la puerta 0,75×unc habría
+ahorrado?) y `clv_own` por familia y casa antes de proponer cambiar nada. Lo que sigue en la lista (chat 9-sep): motor
+generativo de kills en LoL (duración × tasa por liga/parche desde la base propia de 535k filas).
+
+# (histórico) estado al 8-sep-2026 (nace TENIS DE MESA, el 11º deporte: compilador exacto punto → game → partido)
 
 ## 🏓 TENIS DE MESA (8-sep, blueprint 9.0 de Alexis) — construido de punta a punta, admin-only, TODO en sombra
 Alexis: "quiero que este sea el mejor deporte de toda nuestra plataforma, a nivel de modelo, de data, de IU, de estructura".

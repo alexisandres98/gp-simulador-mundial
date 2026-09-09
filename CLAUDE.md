@@ -103,6 +103,11 @@
   `/api/internal/tt?key=`. TODAS las familias en SOMBRA; ganador = referencia. Solo competiciones WTT/ITTF (VERIFIED_SCOPE):
   las ligas privadas de apuestas (Liga Pro, Setka Cup, TT Cup…) se enseñan con aviso y jamás se modelan. `selfTest()` del
   compilador reproduce la tabla sintética del blueprint a 6 decimales — si se toca el compilador, correrlo. Derechos: `data/tt/RIGHTS.md`.
+- **Proceso implícito y transferencias de TT (9-sep):** `implied-engine/` — `uncertainty.js` (unc_pp por muestra +
+  veredicto 0,75×unc, SOLO etiqueta), `closes.js` (cubos T−60/−30/−10/−5/−1 contra la MISMA casa), `football.js` /
+  `hoops.js` (inversores de precio: 1X2↔total, hándicap↔ganador), `sombra.js` + `run-futbol.js` / `run-hoops.js`
+  (familias de PRECIO en sombra propia, regla `implicito_v1`, disco `<dbdir>/implicito/`). Sonda
+  `/api/internal/implicito?key=`. **Ninguna de estas piezas cambia qué picks nacen**; las familias congeladas siguen igual.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 

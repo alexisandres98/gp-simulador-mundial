@@ -316,6 +316,15 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
       entry.tape.push({ t: mk.at, h: th, a: ta });
       if (entry.tape.length > 30) entry.tape.splice(0, entry.tape.length - 30);
     }
+    // CUBOS T−60/−30/−10/−5/−1 (9-sep, traído de tenis de mesa). La primera lectura dentro de cada cubo se
+    // congela con sus filas —casa incluida— para medir el CLV por cubo y contra la MISMA casa. Aditivo: solo
+    // la liquidación lee `snaps`; `rows`, `open_rows` y `tape` no cambian de significado.
+    {
+      const CL = require('../implied-engine/closes');
+      entry.snaps = (prev && prev.snaps) || {};
+      const bkt = CL.bucketFor(ev.start_at, Date.parse(mk.at) || Date.now());
+      if (bkt && !entry.snaps[bkt]) entry.snaps[bkt] = { at: mk.at, rows: entry.rows.slice(0, 400).map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })) };
+    }
     // NO BORRAR LO QUE LA CASA DEJÓ DE COTIZAR (25-ago). Cada pasada sobreescribía `rows` entera, y eso
     // parecía inocente: el último guardado antes del inicio es el cierre. Pero una casa no cotiza el mismo
     // menú todo el rato. El hándicap de kills de LoL se publica horas antes y DESAPARECE del tablero cerca
@@ -1438,6 +1447,19 @@ async function recordPicks(game, { withinMin = 720, cap = 10 } = {}) {
         p_gp: p.p_gp, p_market: p.p_market, edge_pp: p.edge_pp,
         uncertainty_pp: p.uncertainty_pp, calibration_pp: p.calibration_pp,
         thesis: p.thesis, stake_pct: p.stake_pct,
+        // 9-sep (traído de tenis de mesa): muestra por lado, incertidumbre por MUESTRA y el veredicto que habría
+        // dado la puerta edge ≥ 0,75×unc. SOLO etiqueta: qué picks nacen no cambia (cs2_rounds_v1 y
+        // lol_kills_hcp_v1 siguen congeladas); el track parte la muestra por el veredicto.
+        ...(() => {
+          try {
+            const U = require('../implied-engine/uncertainty');
+            const ra = out.rating || {}; const nA = ra.matches_a, nB = ra.matches_b;
+            const un = (nA != null && nB != null) ? U.uncPp(nA, nB) : null;
+            return { sample_n: { a: nA != null ? nA : null, b: nB != null ? nB : null, pair: out.sample != null ? out.sample : null },
+              unc_sample_pp: un, unc: un != null ? U.gateVerdict(p.edge_pp, un) : null,
+              epistemic_pp: out.model && out.model.uncertainty ? out.model.uncertainty.epistemic_pp : null };
+          } catch { return {}; }
+        })(),
         // solo Valorant (2-sep): nivel del mapa (mercado y modelo), corrección aplicada al modelo, pRound
         // resuelto y método de la distribución, para que el registro se pueda desglosar por `dist_method`
         ...(game === 'valorant' ? {
@@ -1583,6 +1605,21 @@ function settleOne(pk, res) {
 //     débil y el informe tiene que poder separarlas en vez de mezclarlas en una media que nadie pidió.
 // Y un límite: fuera de 3 puntos de distancia no se interpola. A esa distancia ya no es la misma apuesta.
 const CLOSE_MAX_GAP = 3;
+
+// 9-sep (traído de tenis de mesa): el cierre de la MISMA casa de la pick en su línea exacta, y la curva por
+// cubo (own/best/pinnacle en T−60…T−1) desde `snaps`. Aditivo a `closeOddsFor`, que sigue mandando sobre
+// `clv_pct` (el de las familias congeladas).
+function closeExtrasFor(pk, closes) {
+  const c = closes && closes.closes && closes.closes[pk.event_id]; if (!c) return {};
+  const same = (r) => r.family === pk.family && r.side === pk.side && (r.map || null) === (pk.map || null) && (r.team || null) === (pk.team || null)
+    && (r.line == null ? null : +r.line) === (pk.line == null ? null : +pk.line);
+  const pick = (rows) => { const s = (rows || []).filter(same); const own = s.find((r) => r.book === pk.book), pin = s.find((r) => r.book === 'pinnacle'); const best = s.reduce((m, r) => (r.odds > m ? r.odds : m), 0); return { own: own ? own.odds : null, best: best || null, pinnacle: pin ? pin.odds : null }; };
+  const out = {};
+  const last = pick(c.rows);
+  if (last.own > 1) { out.close_own = last.own; out.clv_own_pct = +(((pk.odds / last.own) - 1) * 100).toFixed(2); }
+  if (c.snaps) { out.close_series = {}; for (const [b, s] of Object.entries(c.snaps)) out.close_series[b] = { at: s.at, ...pick(s.rows) }; }
+  return out;
+}
 
 function closeOddsFor(pk, closes) {
   const c = closes && closes.closes && closes.closes[pk.event_id];
@@ -1845,6 +1882,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     pk.result_source = r.source;
     const co = closeOddsFor(pk, closes);
     if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
+    try { Object.assign(pk, closeExtrasFor(pk, closes)); } catch { /* la medición extra nunca bloquea la liquidación */ }
     settled++;
   }
   st.at = new Date().toISOString();
@@ -2004,6 +2042,21 @@ function track(game, { limit = 60 } = {}) {
     by_family_book: Object.fromEntries(Object.entries(byFB).map(([k, v]) => [k,
       { family: v.family, book: v.book, n: v.n, hit_pct: v.n ? +(100 * v.w / v.n).toFixed(1) : null,
         units: +v.units.toFixed(2), clv_avg_pct: avg(v.clv), clv_n: v.clv.length, clv_sd: sdOf(v.clv) }])),
+    // 9-sep (traído de tenis de mesa), por familia: CLV contra la MISMA casa, curva por cubo T−60…T−1 y la
+    // muestra partida por el veredicto de la puerta de incertidumbre. Medición: ninguna regla cambia.
+    tt_transfer: (() => {
+      try {
+        const CL = require('../implied-engine/closes'), U = require('../implied-engine/uncertainty');
+        const byF = {}; for (const p of settled) (byF[p.family || '?'] = byF[p.family || '?'] || []).push(p);
+        return Object.fromEntries(Object.entries(byF).map(([f, l]) => {
+          const own = l.map((p) => p.clv_own_pct).filter(Number.isFinite);
+          return [f, { n: l.length, clv_own_avg_pct: avg(own), clv_own_n: own.length, clv_own_sd: sdOf(own),
+            clv_own_beat_pct: own.length ? +(100 * own.filter((x) => x > 0).length / own.length).toFixed(1) : null,
+            curve: CL.summarize(l.filter((p) => p.close_series).map((p) => ({ odds: p.odds, closes: { buckets: p.close_series } }))),
+            gate: U.splitByGate(l, { unitsOf: (p) => p.units, clvOf: (p) => (Number.isFinite(p.clv_own_pct) ? p.clv_own_pct : p.clv_pct) }) }];
+        }));
+      } catch { return null; }
+    })(),
     // SOLO VALORANT (2-sep): el registro cortado por cómo nació la distribución de rondas. Las picks
     // anteriores al 2-sep no llevan `dist_method` y salen como 'clamp' (el ×0,44); las nuevas, 'bisect'.
     // Mezclarlas en un solo ROI sería juzgar al modelo nuevo con los errores del viejo.

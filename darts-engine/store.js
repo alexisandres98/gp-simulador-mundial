@@ -473,7 +473,11 @@ function snapshotCloses(rows) {
     const t = Date.parse(r.start_at || 0);
     if (!(t > now - 3600e3) || !r.available) continue;
     // todas las líneas cotizadas, con la mejor cuota por lado y casa (la liquidación busca la línea exacta)
-    st.closes[r.id] = { a: r.a, b: r.b, start_at: r.start_at, at: new Date().toISOString(), rows: (r._mk_rows || []).map((x) => ({ book: x.book, family: x.family, side: x.side, line: x.line, odds: x.odds, participant: x.participant })) };
+    const rows2 = (r._mk_rows || []).map((x) => ({ book: x.book, family: x.family, side: x.side, line: x.line, odds: x.odds, participant: x.participant }));
+    const c = st.closes[r.id] = st.closes[r.id] || { a: r.a, b: r.b, start_at: r.start_at, series: {} };
+    c.at = new Date().toISOString(); c.rows = rows2;
+    // 9-sep (traído de tenis de mesa): la primera lectura dentro de cada cubo T−60/−30/−10/−5/−1 se congela
+    try { const CL = require('../implied-engine/closes'); const bkt = CL.bucketFor(r.start_at, now); c.series = c.series || {}; if (bkt && !c.series[bkt]) c.series[bkt] = { at: c.at, rows: rows2 }; } catch { }
     dirty = true;
   }
   for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.start_at) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
@@ -564,6 +568,14 @@ async function settleShadow({ voidDays = 12 } = {}) {
         if (best) { p.close_price = best.odds; p.clv_pct = +((p.odds / best.odds - 1) * 100).toFixed(2); p.close_source = best.book; }
         if (pin) { p.close_pin = pin.odds; p.clv_pin_pct = +((p.odds / pin.odds - 1) * 100).toFixed(2); }
         if (!best) p.close_missing = 'línea no cotizada al cierre';
+        // 9-sep (traído de tenis de mesa): la MISMA casa de la pick y la curva por cubo (own/best/pinnacle)
+        const own = same.find((x) => x.book === p.book);
+        if (own) { p.close_own = own.odds; p.clv_own_pct = +((p.odds / own.odds - 1) * 100).toFixed(2); }
+        if (cl.series) p.close_series = Object.fromEntries(Object.entries(cl.series).map(([k, s]) => {
+          const s2 = (s.rows || []).filter((x) => x.family === p.family && x.side === p.side && (x.participant || null) === (p.participant || null) && (p.line == null || x.line === p.line));
+          const bst = s2.reduce((b2, x) => (!b2 || x.odds > b2.odds ? x : b2), null), ownS = s2.find((x) => x.book === p.book), pinS = s2.find((x) => x.book === 'pinnacle');
+          return [k, { at: s.at, own: ownS ? ownS.odds : null, best: bst ? bst.odds : null, pinnacle: pinS ? pinS.odds : null }];
+        }));
       }
       p.settled_at = new Date().toISOString(); settled++; diag.ok++;
     } catch (e) { diag.error = String(e.message || e).slice(0, 120); }
@@ -582,8 +594,9 @@ function track({ limit = 40 } = {}) {
   const clv = done.filter((p) => p.clv_pct != null);
   const byFam = {}, byFB = {}, byCirc = {};
   for (const p of done) {
-    const Fm = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [] };
+    const Fm = byFam[p.family] = byFam[p.family] || { n: 0, w: 0, units: 0, clv: [], own: [] };
     Fm.n++; if (p.result === 'WIN') Fm.w++; Fm.units += p.units || 0; if (p.clv_pct != null) Fm.clv.push(p.clv_pct);
+    if (p.clv_own_pct != null) Fm.own.push(p.clv_own_pct);   // 9-sep: CLV contra la misma casa
     // por circuito × familia: MODUS y PDC nunca en la misma media
     const ck = (p.circuit || 'pdc') + ' · ' + p.family;
     const Cc = byCirc[ck] = byCirc[ck] || { n: 0, w: 0, units: 0, clv: [], book: null, family: p.family, circuit: p.circuit || 'pdc' };
@@ -593,14 +606,18 @@ function track({ limit = 40 } = {}) {
     B.n++; if (p.result === 'WIN') B.w++; B.units += p.units || 0; if (p.clv_pct != null) B.clv.push(p.clv_pct);
   }
   const sd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length; return r2(Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1))); };
-  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, Fm]) => [k, { ...(Fm.book ? { family: Fm.family, book: Fm.book } : {}), n: Fm.n, hit_pct: Fm.n ? r2(100 * Fm.w / Fm.n) : null, units: r2(Fm.units), clv_avg_pct: Fm.clv.length ? r2(Fm.clv.reduce((a, b) => a + b, 0) / Fm.clv.length) : null, clv_n: Fm.clv.length, clv_sd: sd(Fm.clv), note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
+  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, Fm]) => [k, { ...(Fm.book ? { family: Fm.family, book: Fm.book } : {}), n: Fm.n, hit_pct: Fm.n ? r2(100 * Fm.w / Fm.n) : null, units: r2(Fm.units), clv_avg_pct: Fm.clv.length ? r2(Fm.clv.reduce((a, b) => a + b, 0) / Fm.clv.length) : null, clv_n: Fm.clv.length, clv_sd: sd(Fm.clv),
+    ...(Fm.own ? { clv_own_avg_pct: Fm.own.length ? r2(Fm.own.reduce((a, b) => a + b, 0) / Fm.own.length) : null, clv_own_n: Fm.own.length } : {}),
+    note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
+  // 9-sep: la curva de cierre por cubo (own/best/pinnacle) por familia
+  const clvCurve = (() => { try { const CL = require('../implied-engine/closes'); const byF = {}; for (const p of done) (byF[p.family] = byF[p.family] || []).push(p); return Object.fromEntries(Object.entries(byF).map(([f, l]) => [f, CL.summarize(l.filter((p) => p.close_series).map((p) => ({ odds: p.odds, closes: { buckets: p.close_series } })))])); } catch { return null; } })();
   return {
     regime: 'shadow', doctrine: DOCTRINE,
     open: mine.filter((p) => p.status === 'OPEN').length, open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
     settled: done.length, w, l, push: done.filter((p) => p.result === 'PUSH').length, voided: mine.filter((p) => p.result === 'VOID').length,
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
-    by_family: fam(byFam), by_family_book: fam(byFB),
+    by_family: fam(byFam), by_family_book: fam(byFB), clv_curve: clvCurve,
     by_circuit: Object.fromEntries(Object.entries(byCirc).map(([k, Cc]) => [k, { circuit: Cc.circuit, family: Cc.family, n: Cc.n, hit_pct: Cc.n ? r2(100 * Cc.w / Cc.n) : null, units: r2(Cc.units), clv_avg_pct: Cc.clv.length ? r2(Cc.clv.reduce((a, b) => a + b, 0) / Cc.clv.length) : null, clv_n: Cc.clv.length, clv_sd: sd(Cc.clv) }])),
     open_by_circuit: mine.filter((p) => p.status === 'OPEN').reduce((m, p) => { const c = p.circuit || 'pdc'; m[c] = (m[c] || 0) + 1; return m; }, {}),
     recent: done.slice(-limit).reverse(),

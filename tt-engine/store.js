@@ -600,7 +600,12 @@ async function settleShadow({ voidDays = 10 } = {}) {
         if (pin) { p.close_pin = pin.odds; p.clv_pin_pct = +((p.odds / pin.odds - 1) * 100).toFixed(2); }
         if (own) { p.close_own = own.odds; p.clv_own_pct = +((p.odds / own.odds - 1) * 100).toFixed(2); }
         if (!best) p.close_missing = 'línea no cotizada al cierre';
-        p.close_series = Object.fromEntries(Object.entries(cl.series || {}).map(([k, s]) => { const x = (s.rows || []).filter((y) => y.family === p.family && y.side === p.side && (y.game || null) === (p.game || null) && (p.line == null || y.line === p.line)).reduce((b2, y) => (!b2 || y.odds > b2.odds ? y : b2), null); return [k, x ? x.odds : null]; }));
+        // la curva por cubo guarda las TRES referencias (misma casa, mejor, Pinnacle), no solo la mejor (9-sep)
+        p.close_series = Object.fromEntries(Object.entries(cl.series || {}).map(([k, s]) => {
+          const same2 = (s.rows || []).filter((y) => y.family === p.family && y.side === p.side && (y.game || null) === (p.game || null) && (p.line == null || y.line === p.line));
+          const bst = same2.reduce((b2, y) => (!b2 || y.odds > b2.odds ? y : b2), null), ownS = same2.find((y) => y.book === p.book), pinS = same2.find((y) => y.book === 'pinnacle');
+          return ['T' + k, { at: s.at, own: ownS ? ownS.odds : null, best: bst ? bst.odds : null, pinnacle: pinS ? pinS.odds : null }];
+        }));
       }
       p.settled_at = new Date().toISOString(); settled++; diag.ok++;
     } catch (e) { diag.error = String(e.message || e).slice(0, 120); }
@@ -620,7 +625,9 @@ function track({ limit = 40 } = {}) {
   const agg = (keyOf, extra) => { const o = {}; for (const p of done) { const k = keyOf(p); if (k == null) continue; const F = o[k] = o[k] || { n: 0, w: 0, units: 0, clv: [], clvOwn: [], ...(extra ? extra(p) : {}) }; F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0; if (p.clv_pct != null) F.clv.push(p.clv_pct); if (p.clv_own_pct != null) F.clvOwn.push(p.clv_own_pct); } return o; };
   const sd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length; return r2(Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1))); };
   const mean = (a) => (a.length ? r2(a.reduce((x, y) => x + y, 0) / a.length) : null);
-  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, F]) => [k, { ...Object.fromEntries(Object.entries(F).filter(([kk]) => !['n', 'w', 'units', 'clv', 'clvOwn'].includes(kk))), n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units), roi_pct: F.n ? r2(100 * F.units / F.n) : null, clv_avg_pct: mean(F.clv), clv_n: F.clv.length, clv_sd: sd(F.clv), clv_own_avg_pct: mean(F.clvOwn), note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
+  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, F]) => [k, { ...Object.fromEntries(Object.entries(F).filter(([kk]) => !['n', 'w', 'units', 'clv', 'clvOwn'].includes(kk))), n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units), roi_pct: F.n ? r2(100 * F.units / F.n) : null, clv_avg_pct: mean(F.clv), clv_n: F.clv.length, clv_sd: sd(F.clv), clv_own_avg_pct: mean(F.clvOwn), clv_own_n: F.clvOwn.length, clv_own_sd: sd(F.clvOwn), clv_own_beat_pct: F.clvOwn.length ? r2(100 * F.clvOwn.filter((x) => x > 0).length / F.clvOwn.length) : null, note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
+  // la curva de cierre por cubo (T−60…T−1, own/best/pinnacle) por familia — el "cuándo" del edge
+  const curve = (() => { try { const CL = require('../implied-engine/closes'); const byF = {}; for (const p of done) (byF[p.family] = byF[p.family] || []).push(p); return Object.fromEntries(Object.entries(byF).map(([f, l]) => [f, CL.summarize(l.filter((p) => p.close_series).map((p) => ({ odds: p.odds, closes: { buckets: p.close_series } })))])); } catch { return null; } })();
   return {
     regime: 'shadow', doctrine: DOCTRINE,
     open: mine.filter((p) => p.status === 'OPEN').length, open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
@@ -628,6 +635,7 @@ function track({ limit = 40 } = {}) {
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: fam(agg((p) => p.family)), by_family_book: fam(agg((p) => p.family + ' · ' + (p.book || 'sin_casa'), (p) => ({ family: p.family, book: p.book || 'sin_casa' }))), by_tier: fam(agg((p) => p.tier || 'otro')), by_sub: fam(agg((p) => p.sub || '—')),
+    clv_curve: curve,
     recent: done.slice(-limit).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia y casa, no el ROI.',
     settle_diag: settleDiag,

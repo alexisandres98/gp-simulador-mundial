@@ -6157,6 +6157,14 @@ function clubBaseElo(lg, tid) {
   const L = RT.leagues && RT.leagues[lg];
   return (L && L.ratings && L.ratings[tid] && L.ratings[tid].elo) || 1500;
 }
+// partidos detrás del rating de un equipo (ratings.json trae `games`); null si no está. Alimenta la
+// incertidumbre por muestra de las picks (9-sep).
+function clubTeamGames(lg, tid) {
+  const RT = global._clubsRatings || {};
+  const L = RT.leagues && RT.leagues[lg];
+  const r = L && L.ratings && L.ratings[tid];
+  return r && Number.isFinite(r.games) ? r.games : null;
+}
 // Prior por división de una liga virtual de COPA (clubs-engine/cups.js, 2-sep): el overlay dinámico db.clubElos
 // es GLOBAL por equipo (nace en su liga de origen), así que el prior se SUMA al leer el Elo dentro de la copa y
 // se RESTA al escribirlo (applyClubElo) para que jamás se filtre a la liga de origen. Fuera de copas es 0.
@@ -7909,6 +7917,9 @@ async function derivadasJob({ force = false } = {}) {
     out.diag_lambdas = global._derivDiag;
     out.closes = await D.closes({ dbc }).catch((e) => ({ error: e.message }));
     out.settle = D.settle({ scoreFor: derivadasScore });
+    // 9-sep: el PROCESO IMPLÍCITO (1X2 ↔ total por casa + desviación frente al tablero), familia de precio en
+    // su propia sombra (`implied-engine/`). Mismo mapa de eventos y mismo marcador que las derivadas.
+    try { out.implicito = await require('./implied-engine/run-futbol').job({ dbc, qevents, scoreFor: derivadasScore }); } catch (e) { out.implicito = { error: e.message }; }
     _derivLast = Date.now();
   } catch (e) { out.error = e.message; }
   finally { _derivRunning = false; out.finished = new Date().toISOString(); _derivOut = out; }
@@ -8179,6 +8190,8 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
             bestOdds: best.odds_decimal, bestBook: best.sportsbook_code, books: new Set(sq.map(q => q.sportsbook_code)).size,
             familyApproved: famApproved, mu: +mu.toFixed(2),
             ...(refInfo || {}), // córners: ref_name/ref_effect/ref_n/ref_applied (tarjetas: nada)
+            // 9-sep: la muestra de la proyección (partidos por equipo) viaja para la incertidumbre de la pick
+            sample: proj.sample || null,
           });
         }
       }
@@ -8385,6 +8398,8 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     // 3-sep (córners × árbitro): anotación de MEDICIÓN en la pick — nombre, efecto encogido, nº de partidos del
     // árbitro y si se aplicó (solo con GP_CORNERS_REF=1). CARDS no lleva nada de esto.
     if (g.family === 'CORNERS' && pm2.ref_name !== undefined) Object.assign(recP, { ref_name: pm2.ref_name || null, ref_effect: pm2.ref_effect != null ? pm2.ref_effect : null, ref_n: pm2.ref_n || 0, ref_applied: !!pm2.ref_applied });
+    // 9-sep: muestra por equipo de la proyección de córners/tarjetas (la incertidumbre se etiqueta más abajo)
+    if (pm2.sample && pm2.sample.home_n != null) { recP.sample_home_n = pm2.sample.home_n; recP.sample_away_n = pm2.sample.away_n; }
     fresh.push(recP);
   }
   // PLAYER (assists + anytime goal): 1 pick por (evento, sub-familia), la de mayor confianza — feed limpio.
@@ -8424,6 +8439,17 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
       p.prereg_goals_late = !!(p.hours_to_ko != null && p.hours_to_ko <= 48 && k > 0 && o >= 1 / k);
     }
     if (p.family === 'CORNERS') p.prereg_corners_2books = (Number(p.books_at_create) || 0) >= 2;
+    // INCERTIDUMBRE POR MUESTRA (9-sep, traída de tenis de mesa y dardos): etiqueta de MEDICIÓN, no decide nada.
+    // unc_pp = 100·0,28·√(1/(nH+2)+1/(nA+2)) con los partidos de cada equipo (la proyección de córners/tarjetas
+    // trae los suyos; el resto usa los del rating), y el veredicto que habría dado la puerta edge ≥ 0,75×unc.
+    // El track parte la muestra por ese veredicto: si la puerta hubiera ahorrado dinero, se verá ahí antes de
+    // tocar ninguna regla (las cuatro familias congeladas siguen intocables).
+    try {
+      const UNC = require('./implied-engine/uncertainty');
+      const nH = p.sample_home_n != null ? p.sample_home_n : clubTeamGames(p.league, p.event && p.event.home_team_id);
+      const nA = p.sample_away_n != null ? p.sample_away_n : clubTeamGames(p.league, p.event && p.event.away_team_id);
+      if (nH != null && nA != null && p.edge_pp != null) { p.sample_n = { home: nH, away: nA }; p.unc = UNC.gateVerdict(Math.abs(Number(p.edge_pp)), UNC.uncPp(nH, nA)); }
+    } catch { /* la etiqueta nunca bloquea */ }
   }
   db.clubDailyPicks = db.clubDailyPicks || [];
   // REGLA DE PUBLICACIÓN (autopsia 18-jul): máximo 3 picks PÚBLICAS por evento — SOLID > GOALS > la mejor
@@ -9068,12 +9094,63 @@ async function refreshClubPickPrices() {
       p.best_odds = +Number(best.o).toFixed(3); p.best_book = best.b; p.books = new Set(rows.map(r => r.b)).size;
       p.books_final = p.books; // nº de casas del último refresco (≤2 h del saque) — lo que antes se leía como `books`
       p.odds_refreshed_at = new Date().toISOString();
+      // 9-sep: la misma lectura entra al cierre por cubo (T−60/−30/−10) de la MISMA casa de creación, la mejor y
+      // Pinnacle. `clubPicksCloseBuckets` (cada 3 min) rellena los cubos finos; aquí solo se aprovecha la consulta.
+      try { clubPickCloseRecord(p, rows, ko, now); } catch { /* nunca bloquea el refresco */ }
       refreshed++;
     } catch { /* siguiente ciclo */ }
   }
   if (refreshed) save();
   return { refreshed };
 }
+// ── CIERRES POR CUBO Y CONTRA LA MISMA CASA (9-sep, traído de tenis de mesa) ────────────────────────────
+// `rows` = [{ b: casa, o: cuota, seen? }] de la selección exacta de la pick. Guarda en `p.closes` una lectura por
+// cubo T−60/−30/−10/−5/−1 con tres referencias: la casa donde nació (own), la mejor (best) y Pinnacle. La
+// cotización de fondo se refresca cada ~10 min desde The Odds API, así que los cubos finos llevan `age_min`.
+function clubPickCloseRecord(p, rows, ko, now = Date.now()) {
+  if (!rows || !rows.length) return null;
+  const CL = require('./implied-engine/closes');
+  const ownB = p.best_book_at_create || p.best_book;
+  const own = rows.find((r) => r.b === ownB), pin = rows.find((r) => r.b === 'pinnacle');
+  const best = rows.reduce((m, r) => (r.o > m ? r.o : m), 0);
+  const newest = rows.reduce((m, r) => (r.seen && String(r.seen) > String(m) ? r.seen : m), '');
+  p.closes = p.closes || { buckets: {}, last: null };
+  return CL.record(p.closes, ko, { own: own ? own.o : null, best: best || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now);
+}
+let _clubBucketsBusy = false;
+async function clubPicksCloseBuckets() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured() || _clubBucketsBusy) return { skipped: 'db_off_o_ocupado' };
+  _clubBucketsBusy = true;
+  const now = Date.now();
+  let leidas = 0, cubos = 0;
+  try {
+    const cerca = (db.clubDailyPicks || []).filter((p) => {
+      if (p.status !== 'ACTIVE' || !p.event || !p.event.canonical_event_id) return false;
+      if (!['SOLID', 'GOALS', 'CORNERS', 'CARDS'].includes(p.family)) return false;
+      const ko = Date.parse(p.event.kickoff_at || ''); if (!isFinite(ko)) return false;
+      const m = (ko - now) / 60000; return m <= 95 && m > -3;
+    });
+    if (!cerca.length) return { candidatas: 0 };
+    const ids = [...new Set(cerca.map((p) => p.event.canonical_event_id))];
+    const r = await dbc.query(`SELECT canonical_event_id ceid, market_family fam, line::float line, lower(side) side, lower(sportsbook_code) b, odds_decimal::float o, observed_at seen
+      FROM sportsbook_goal_quote_current WHERE canonical_event_id = ANY($1) AND market_family IN ('match_winner','match_total','corners_total','cards_total')
+        AND coalesce(quote_status,'open')='open' AND is_live = FALSE AND observed_at > now() - interval '40 minutes'`, [ids]).catch(() => ({ rows: [] }));
+    for (const p of cerca) {
+      const fam = p.family === 'SOLID' ? 'match_winner' : p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
+      const side = String(p.family === 'SOLID' ? p.selection_code : p.side || '').toLowerCase();
+      const rows = r.rows.filter((x) => x.ceid === p.event.canonical_event_id && x.fam === fam && x.side === side && (fam === 'match_winner' || Math.abs(x.line - p.line) < 0.01));
+      if (!rows.length) continue;
+      leidas++;
+      const ko = Date.parse(p.event.kickoff_at);
+      if (clubPickCloseRecord(p, rows, ko, now)) cubos++;
+    }
+    if (cubos) save();
+    return { candidatas: cerca.length, leidas, cubos_nuevos: cubos };
+  } catch (e) { return { error: e.message }; }
+  finally { _clubBucketsBusy = false; }
+}
+setInterval(() => { clubPicksCloseBuckets().catch(() => { }); }, 3 * 60e3);
 // P2: QUANT de clubes = la MISMA quantMetrics del Mundial (CLV, brier modelo-vs-mercado, calibración)
 // sobre db.clubDailyPicks. PRIVADO admin (monitoreo pre-lanzamiento).
 function clubDailyPicksQuant() {
@@ -9100,7 +9177,9 @@ async function captureClubPicksClosing({ force = false } = {}) {
       try {
         const ceid = p.event.canonical_event_id;
         const cutoff = new Date(ko + 30 * 60e3).toISOString(); // tolerancia: última observación hasta KO+30min
-        let fair = null, odds = null, at = null, fairShin = null;
+        let fair = null, odds = null, at = null, fairShin = null, ownOdds = null, pinOdds = null;
+        const ownBook = p.best_book_at_create || p.best_book;
+        const ownPin = (byBook, sel) => { const bo = byBook[ownBook], bp = byBook.pinnacle; ownOdds = bo && bo[sel] ? bo[sel].o : null; pinOdds = bp && bp[sel] ? bp[sel].o : null; };
         if (p.family === 'SOLID') {
           const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND observed_at <= $2`, [ceid, cutoff]).catch(() => ({ rows: [] }));
           const byBook = {};
@@ -9118,6 +9197,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
             if (sh.status === 'ok' && sh.probabilities) shinFairs.push(sh.probabilities[['home', 'draw', 'away'].indexOf(sel)]);
           }
           fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null; fairShin = shinFairs.length ? med(shinFairs) : null;
+          ownPin(byBook, sel);
         } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
           const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
           const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at <= $4`, [ceid, fam, p.line, cutoff]).catch(() => ({ rows: [] }));
@@ -9131,6 +9211,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
             fairs.push(side === 'over' ? pOver : 1 - pOver); oddsArr.push(b[side].o); at = b[side].observed_at;
           }
           fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null;
+          ownPin(byBook, side);
         } else if (p.family === 'PLAYER') {
           const r = await dbc.query(`SELECT odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at <= $4`, [ceid, p.player_family, p.pid, cutoff]).catch(() => ({ rows: [] }));
           const implied = r.rows.map(q => 1 / q.o);
@@ -9138,13 +9219,19 @@ async function captureClubPicksClosing({ force = false } = {}) {
           at = r.rows.length ? r.rows[0].observed_at : null;
         }
         if (fair == null) { misses++; continue; }
-        p.closing = { fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null, at: at || new Date(ko).toISOString(), ...(fairShin != null ? { fair_prob_shin: +fairShin.toFixed(6) } : {}) };
+        p.closing = { fair_prob: +fair.toFixed(6), odds: odds != null ? +odds.toFixed(4) : null, at: at || new Date(ko).toISOString(), ...(fairShin != null ? { fair_prob_shin: +fairShin.toFixed(6) } : {}),
+          // 9-sep: el cierre de la MISMA casa de creación y el de Pinnacle, al lado del mejor (traído de tenis de mesa)
+          ...(ownOdds > 1 ? { own_odds: +ownOdds.toFixed(4), own_book: ownBook } : {}), ...(pinOdds > 1 ? { pin_odds: +pinOdds.toFixed(4) } : {}) };
         captured++;
       } catch { misses++; continue; }
     }
     if (p.closing && (p.clv == null || force) && p.best_odds) {
       const c = metrics.computeClv(Number(p.best_odds), p.closing);
       if (c) { p.clv = c.clv_pct; p.clv_ev_pp = c.ev_close_pp; clvSet++; }
+      // CLV contra la misma casa: la cuota A LA QUE NACIÓ en esa casa contra su propio cierre. Sin sesgo de mezcla.
+      const oc = Number(p.odds_at_create) || Number(p.best_odds);
+      if (p.closing.own_odds > 1 && oc > 1) p.clv_own_pct = +((oc / p.closing.own_odds - 1) * 100).toFixed(2);
+      if (p.closing.pin_odds > 1 && oc > 1) p.clv_pin_pct = +((oc / p.closing.pin_odds - 1) * 100).toFixed(2);
     }
   }
   if (captured || clvSet) save();
@@ -9215,6 +9302,8 @@ function clubDailyPicksTrackRecord() {
       const tag = p.prereg_corners_2books ? 'on' : 'off', mx = p.league === 'ligamx' ? 'ligamx' : 'resto';
       keys.push('CORNERS|prereg_corners_2books:' + tag, 'CORNERS|' + mx, 'CORNERS|prereg_corners_2books:' + tag + '|' + mx);
     }
+    // 9-sep: la muestra partida por el veredicto de la puerta de incertidumbre (edge ≥ 0,75 × unc_pp)
+    if (p.unc && p.unc.passes != null) { const u = p.unc.passes ? 'pass' : 'fail'; keys.push('unc:' + u, p.family + '|unc:' + u); }
     for (const key of keys) bump(key, p.result_code, Number(p.best_odds) || 0, Number(p.odds_at_create) || 0);
   }
   for (const k in agg) {
@@ -9240,6 +9329,26 @@ function clubDailyPicksTrackRecord() {
     a.hit_rate = dec ? +(a.wins / dec).toFixed(3) : null; a.roi_at_create = a.n ? +(a.pnl_at_create / a.n).toFixed(3) : null; a.pnl_at_create = +a.pnl_at_create.toFixed(2);
   }
   agg.superseded_medido = sup;
+  // ── 9-sep: lo traído de tenis de mesa, por familia ──────────────────────────────────────────────────────
+  // (a) CLV contra la MISMA casa de creación (y Pinnacle), (b) la curva de cierre por cubo T−60…T−1 y (c) la
+  // muestra partida por el veredicto de la puerta de incertidumbre. Todo medición: ninguna regla cambia.
+  try {
+    const CL = require('./implied-engine/closes'), UNC = require('./implied-engine/uncertainty');
+    const done = (db.clubDailyPicks || []).filter((p) => p.status === 'SETTLED' && ['WIN', 'LOSS', 'PUSH'].includes(p.result_code));
+    const unitsOf = (p) => (p.result_code === 'WIN' ? (Number(p.odds_at_create) || Number(p.best_odds) || 1) - 1 : p.result_code === 'LOSS' ? -1 : 0);
+    const byFam = {}; for (const p of done) (byFam[p.family] = byFam[p.family] || []).push(p);
+    const mean = (a) => (a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null);
+    agg.tt_transfer = { by_family: {}, note: 'clv_own = cuota de creación en su casa vs cierre de esa MISMA casa; curve = CLV por cubo T−60/−30/−10/−5/−1 (own/best/pinnacle); gate = muestra partida por edge ≥ 0,75×unc_pp' };
+    for (const [f, list] of Object.entries(byFam)) {
+      const own = list.map((p) => p.clv_own_pct).filter(Number.isFinite), pin = list.map((p) => p.clv_pin_pct).filter(Number.isFinite);
+      agg.tt_transfer.by_family[f] = {
+        n: list.length, clv_own_avg_pct: mean(own), clv_own_n: own.length, clv_own_beat_pct: own.length ? +(100 * own.filter((x) => x > 0).length / own.length).toFixed(1) : null,
+        clv_pin_avg_pct: mean(pin), clv_pin_n: pin.length,
+        curve: CL.summarize(list.filter((p) => p.closes).map((p) => ({ odds: Number(p.odds_at_create) || Number(p.best_odds), closes: p.closes }))),
+        gate: UNC.splitByGate(list, { unitsOf, clvOf: (p) => (Number.isFinite(p.clv_own_pct) ? p.clv_own_pct : p.clv) }),
+      };
+    }
+  } catch { /* la medición nunca rompe el track */ }
   return agg;
 }
 // ===== F1 — MI CARTERA: helpers ==============================================================================
@@ -12506,6 +12615,18 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
             counterfactual: c.decision.counterfactual, blocks: c.decision.blocks, expiry: c.decision.expiry,
             thresholds: c.decision.thresholds } : null,
           novig_method: 'shin',
+          // ── 9-sep, traído de tenis de mesa: MUESTRA e INCERTIDUMBRE POR MUESTRA (medición, no decide) ──
+          // partidos de cada equipo detrás del rating, unc_pp = 100·0,28·√(1/(nH+2)+1/(nA+2)) y el veredicto que
+          // habría dado la puerta edge ≥ 0,75×unc; más lo que el simulador ya sabía y se perdía al escribir.
+          ...(() => {
+            try {
+              const U = require('./implied-engine/uncertainty');
+              const nH = C.fit.n ? C.fit.n[g.home.id] : null, nA = C.fit.n ? C.fit.n[g.away.id] : null;
+              const un = (nH != null && nA != null) ? U.uncPp(nH, nA) : null;
+              return { sample_n: { home: nH != null ? nH : null, away: nA != null ? nA : null }, unc_sample_pp: un, unc: un != null ? U.gateVerdict(c.edgePp, un) : null,
+                meta_v1: { fit_games: C.fit.games || null, fit_sd: C.fit.sd || null, win_ci: sim.win_ci || null, quote_seen: c.best.seen || null } };
+            } catch { return {}; }
+          })(),
         };
         if (have.has(hoopsPickKey(pick))) continue;
         have.add(hoopsPickKey(pick));
@@ -12634,6 +12755,63 @@ async function hoopsPicksCloseline() {
   return { closed, lines: touched };
 }
 
+// ── CIERRES POR CUBO Y MISMA CASA (9-sep, traído de tenis de mesa) ───────────────────────────────────────
+// Cada 2 min, para las picks del monitor a ≤ 95 min del salto: la cuota de la MISMA casa donde nació, la mejor
+// y Pinnacle, en la línea exacta, guardadas una vez por cubo T−60/−30/−10/−5/−1 (`p.closes`). No toca
+// `close_odds`/`clv_pct` (la serie histórica sigue igual). El mismo lote sirve a la sombra del proceso implícito.
+let _hoopsSnapsBusy = false;
+async function hoopsCloseSnapshots() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured() || _hoopsSnapsBusy) return { skipped: 'sin base u ocupado' };
+  _hoopsSnapsBusy = true;
+  const now = Date.now();
+  try {
+    const MK = require('./basketball-engine/markets'), CL = require('./implied-engine/closes');
+    const near = (db.hoopsPicks || []).filter((p) => { if (p.status !== 'ACTIVE' || !p.event || !p.event.kickoff_at || !p.ceid) return false; const m = (Date.parse(p.event.kickoff_at) - now) / 60000; return m <= 95 && m > -3; });
+    let cubos = 0, leidas = 0;
+    if (near.length) {
+      const ceids = [...new Set(near.map((p) => p.ceid))];
+      const rows = await MK.loadQuotes(dbc, ceids, { minutes: 30 }).catch(() => []);
+      const mkts = MK.groupMarkets(rows);
+      for (const p of near) {
+        const fam = p.family === 'MONEYLINE' ? 'match_winner' : p.family === 'SPREAD' ? 'spread' : 'match_total';
+        const m = mkts.find((x) => x.ceid === p.ceid && x.fam === fam && (x.line == null ? p.line == null : Math.abs(x.line - p.line) < 0.01));
+        const q = m && m.q[p.selection_code]; if (!q || !q.length) continue;
+        leidas++;
+        const own = q.find((x) => x.book === p.best_book), pin = q.find((x) => x.book === 'pinnacle');
+        const newest = q.reduce((mx, x) => (String(x.seen) > String(mx) ? x.seen : mx), '');
+        p.closes = p.closes || { buckets: {}, last: null };
+        if (CL.record(p.closes, p.event.kickoff_at, { own: own ? own.o : null, best: q.reduce((mx, x) => (x.o > mx ? x.o : mx), 0) || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now)) cubos++;
+      }
+      if (cubos) save();
+    }
+    let implicito = null;
+    try { implicito = await require('./implied-engine/run-hoops').closesOnly({ dbc, MK, ahora: now }); } catch (e) { implicito = { error: e.message }; }
+    return { candidatas: near.length, leidas, cubos_nuevos: cubos, implicito };
+  } catch (e) { return { error: e.message }; }
+  finally { _hoopsSnapsBusy = false; }
+}
+// ── PROCESO IMPLÍCITO DE BALONCESTO (9-sep): hándicap ↔ ganador ↔ total por casa, sombra de precio aparte ──
+async function hoopsImpliedJob() {
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'sin base' };
+  const MK = require('./basketball-engine/markets'), RH = require('./implied-engine/run-hoops'), SB = require('./implied-engine/sombra');
+  const ESPN = require('./data-providers/basketball/espn'), ST = require('./basketball-engine/store');
+  const evs = MK.hoopsEvents(db.clubsQuoteEvents || {}, { pastH: 0, futureH: 36 });
+  // marcadores para liquidar: por liga del modelo, partidos terminados de los últimos 6 días, casados por nombre
+  const nrm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  const idx = {};
+  const pend = Object.values((SB.rd('hoops').picks) || {}).filter((p) => p.status === 'ACTIVE' && p.kickoff_at && Date.parse(p.kickoff_at) < Date.now() - 2 * 3600e3);
+  const lgs = new Set();
+  for (const p of pend) for (const [lg, keys] of Object.entries(MK.LEAGUE_KEYS)) if (keys.includes(p.league) && ST.LEAGUES[lg]) lgs.add(lg);
+  for (const lg of lgs) {
+    const gs = await ESPN.games(lg, { from: new Date(Date.now() - 6 * 864e5), to: new Date(Date.now() + 864e5) }).catch(() => []);
+    for (const g of gs) if (g.completed && g.home && g.away && g.home.score != null && g.away.score != null) idx[nrm(g.home.name) + '|' + nrm(g.away.name)] = { home: g.home.score, away: g.away.score };
+  }
+  const scoreFor = (p) => idx[nrm(p.home) + '|' + nrm(p.away)] || null;
+  return RH.job({ dbc, evs, MK, scoreFor });
+}
+
 // MIGRACIÓN IDEMPOTENTE DEL CLV (clv_v: 2). Las picks cerradas con la fórmula vieja llevan su número a
 // `clv_price_pct` y reciben el CLV justa-vs-justa reconstruido desde `close_odds` (consenso proporcional sin
 // margen) y `market_prob`. Corre en cada arranque de la cadena de baloncesto; tras la primera vez no cambia nada.
@@ -12695,6 +12873,23 @@ function hoopsPicksTrack() {
     clv_v: HOOPS_CLV.CLV_V,
     clv_pendientes_migracion: all.filter((p) => p.close_odds != null && p.clv_v !== HOOPS_CLV.CLV_V).length,
     notas: HOOPS_CLV.NOTAS,
+    // 9-sep (traído de tenis de mesa), por familia: CLV contra la MISMA casa (cuota de creación en esa casa vs su
+    // último precio antes del salto), curva por cubo T−60…T−1 y la muestra partida por la puerta 0,75×unc.
+    tt_transfer: (() => {
+      try {
+        const CL = require('./implied-engine/closes'), U = require('./implied-engine/uncertainty');
+        const out = {};
+        for (const f of ['MONEYLINE', 'SPREAD', 'TOTAL']) {
+          const l = settled.filter((p) => p.family === f); if (!l.length) continue;
+          const own = l.map((p) => (p.closes && p.closes.last && p.closes.last.own > 1 ? CL.clvPct(p.best_odds, p.closes.last.own) : null)).filter(Number.isFinite);
+          out[f] = { n: l.length, clv_own_avg_pct: own.length ? +(own.reduce((a, b) => a + b, 0) / own.length).toFixed(2) : null, clv_own_n: own.length,
+            clv_own_beat_pct: own.length ? +(100 * own.filter((x) => x > 0).length / own.length).toFixed(1) : null,
+            curve: CL.summarize(l.filter((p) => p.closes).map((p) => ({ odds: p.best_odds, closes: p.closes }))),
+            gate: U.splitByGate(l, { unitsOf: (p) => p.units, clvOf: (p) => (p.closes && p.closes.last && p.closes.last.own > 1 ? CL.clvPct(p.best_odds, p.closes.last.own) : p.clv_pct) }) };
+        }
+        return out;
+      } catch { return null; }
+    })(),
   };
 }
 
@@ -12722,13 +12917,15 @@ function hoopsInjuriesHistoryJob() {
 const hoopsChain = () => { memMark('hoops:build'); migrateHoopsClv(); return buildHoopsPicks().catch(() => { })
   .then(() => { memMark('hoops:settle'); return settleHoopsPicks().catch(() => { }); })
   .then(() => { memMark('hoops:closeline'); return hoopsPicksCloseline().catch(() => { }); })
+  .then(() => { memMark('hoops:implicito'); return hoopsImpliedJob().catch(() => { }); })
   .then(() => { memMark('hoops:bajas'); hoopsInjuriesHistoryJob(); })
   .then(() => memMark('reposo')); };
 
 if (String(process.env.GP_HOOPS_PICKS_ENABLED || 'true') !== 'false') {
   setTimeout(hoopsChain, 200 * 1000);
-  setInterval(() => { buildHoopsPicks().catch(() => { }).then(() => settleHoopsPicks().catch(() => { })); }, 30 * 60 * 1000);
+  setInterval(() => { buildHoopsPicks().catch(() => { }).then(() => settleHoopsPicks().catch(() => { })).then(() => hoopsImpliedJob().catch(() => { })); }, 30 * 60 * 1000);
   setInterval(() => { hoopsPicksCloseline().catch(() => { }); }, 5 * 60 * 1000);   // el cierre se congela fino
+  setInterval(() => { hoopsCloseSnapshots().catch(() => { }); }, 2 * 60 * 1000);   // cubos T−60…T−1 y misma casa (9-sep)
   // bajas histórico: una pasada al día alcanza porque es idempotente y el parte del día ya está en memoria
   setInterval(hoopsInjuriesHistoryJob, 24 * 3600 * 1000);
   // CONGELADO HISTÓRICO DIARIO (módulo 12). Cada 6 horas se reescribe el resumen del día en curso: conteos
@@ -12769,6 +12966,20 @@ if (String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false') {
   };
   setTimeout(esChain, 320 * 1000);
   setInterval(esChain, 20 * 60 * 1000);
+  // 9-sep (traído de tenis de mesa): barrido FINO de cierres cada 2 min, solo para los juegos con picks vivas a
+  // ≤ 65 min del inicio, para que existan los cubos T−10/−5/−1 (esChain va cada 20 min). Ligero: agenda + mercado
+  // de ≤ 6 eventos por juego, en serie. Nada de esto cambia qué picks nacen ni el `clv_pct` histórico.
+  let _esSnapsBusy = false;
+  setInterval(() => {
+    if (_esSnapsBusy) return;
+    try {
+      const ES = require('./esports-engine/store');
+      const soon = ES.GAME_ORDER.filter((g) => { try { return ES.picksRaw(g, { status: 'ACTIVE' }).some((p) => { const m = (Date.parse(p.start_at) - Date.now()) / 60000; return m <= 65 && m > -5; }); } catch { return false; } });
+      if (!soon.length) return;
+      _esSnapsBusy = true;
+      soon.reduce((pr, g) => pr.then(() => ES.snapshot(g, { withinMin: 65, cap: 6 }).catch(() => { })), Promise.resolve()).finally(() => { _esSnapsBusy = false; });
+    } catch { _esSnapsBusy = false; }
+  }, 2 * 60 * 1000);
 }
 
 // ── NFL (17-ago): el mismo bucle, con el reloj de la NFL ─────────────────────────────────────────────────
@@ -21549,6 +21760,25 @@ const server = http.createServer(async (req, res) => {
       const D = require('./futbol-derivadas');
       const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
       return json(res, 200, { pasada: run, track: D.track() });
+    }
+    // 9-sep: las familias de PRECIO del proceso implícito (fútbol y baloncesto) + lo transferido de tenis de mesa
+    // a las sombras existentes (incertidumbre, cierres por cubo, misma casa). `?run=1` fuerza la pasada de fútbol;
+    // `?hoops=1` la de baloncesto; `?buckets=1` el barrido fino de cierres de clubes.
+    if (p === '/api/internal/implicito') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const RF = require('./implied-engine/run-futbol'), RH = require('./implied-engine/run-hoops');
+      const out = { at: new Date().toISOString() };
+      if (url.searchParams.get('run') === '1') out.pasada_futbol = await derivadasJob({ force: true });
+      if (url.searchParams.get('hoops') === '1') out.pasada_hoops = await hoopsImpliedJob().catch((e) => ({ error: e.message }));
+      if (url.searchParams.get('buckets') === '1') out.buckets_clubes = await clubPicksCloseBuckets().catch((e) => ({ error: e.message }));
+      if (url.searchParams.get('snaps') === '1') out.snaps_hoops = await hoopsCloseSnapshots().catch((e) => ({ error: e.message }));
+      out.futbol = RF.track(); out.hoops = RH.track();
+      out.selftest = { futbol: require('./implied-engine/football').selfTest().ok, hoops: require('./implied-engine/hoops').selfTest().ok };
+      // lo transferido a las sombras existentes
+      try { out.clubes_tt_transfer = (clubDailyPicksTrackRecord() || {}).tt_transfer || null; } catch { out.clubes_tt_transfer = null; }
+      try { out.hoops_tt_transfer = (hoopsPicksTrack() || {}).tt_transfer || null; } catch { out.hoops_tt_transfer = null; }
+      return json(res, 200, out);
     }
     // ── PROFUNDIDAD REAL POR FAMILIA (20-ago) ──────────────────────────────────────────────────────────
     // Para proyectar cuánto rinde un bankroll no basta la ventaja: hace falta saber CUÁNTO ACEPTA la casa a

@@ -93,12 +93,12 @@ async function run({ dbc, qevents = {}, ahora = Date.now(), horizonH = 48 } = {}
     for (const t of m.theses || []) {
       const b = m.books.find((x) => x.code === t.code) || { x2: {} };
       theses.push({ ...common, key: `${ceid}|${t.family}|${t.code}|${t.side}|${t.line}`, book: t.code, family: t.family, side: t.side, line: t.line, odds: t.odds,
-        p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, basis: t.basis, n_books: t.n_books,
+        p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, unc_pp: t.unc_pp, basis: t.basis, n_books: t.n_books,
         meta: { lh: b.x2.lh, la: b.x2.la, total_1x2: b.x2.total, overround_1x2: b.x2.overround, rel_delta_goals: t.rel_delta_goals } });
     }
     for (const d of m.deviations) {
       theses.push({ ...common, key: `${ceid}|${d.family}|${d.code}|${d.side}|${d.line}`, book: d.code, family: d.family, side: d.side, line: d.line, odds: d.odds,
-        p_coherent: d.p_coherent, p_market: d.p_market, edge_pp: d.edge_pp, basis: d.basis, n_books: d.n_books, meta: { delta_goals: d.delta_goals } });
+        p_coherent: d.p_coherent, p_market: d.p_market, edge_pp: d.edge_pp, unc_pp: d.unc_pp, basis: d.basis, n_books: d.n_books, meta: { delta_goals: d.delta_goals } });
     }
   }
   out.tesis_evaluadas = theses.length;

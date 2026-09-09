@@ -43,6 +43,7 @@ function PhiInv(p) { // Acklam
   return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 }
 
+const phi = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 function devig2(oa, ob) {
   if (!(oa > 1 && ob > 1)) return null;
   const ia = 1 / oa, ib = 1 / ob, s = ia + ib;
@@ -80,16 +81,19 @@ function analyzeBook(book, { league = 'default', sigma } = {}) {
     const pMlCoh = Phi(out.spread.mu / s0);
     const eMl = 100 * (pMlCoh - out.ml.p_home);
     const sideMl = eMl >= 0 ? 'home' : 'away';
+    // incertidumbre (puerta de TT): 0,5 pp de ruido en el precio del hándicap → μ → pp del ganador, y al revés
+    const uncMl = 100 * phi(out.spread.mu / s0) * 0.005 / Math.max(1e-3, phi(zs));
+    const uncSp = 100 * phi((out.ml.mu + sp.line) / s0) * 0.005 / Math.max(1e-3, phi(zm));
     out.theses.push({ family: 'IMPLIED_ML', side: sideMl, line: null, odds: ml[sideMl],
       p_coherent: r4(sideMl === 'home' ? pMlCoh : 1 - pMlCoh), p_market: r4(sideMl === 'home' ? out.ml.p_home : 1 - out.ml.p_home),
-      edge_pp: r2(Math.abs(eMl)), basis: `hándicap ${sp.line} → μ ${out.spread.mu} (σ ${s0}) vs ganador ${out.ml.p_home}` });
+      edge_pp: r2(Math.abs(eMl)), unc_pp: r2(uncMl), basis: `hándicap ${sp.line} → μ ${out.spread.mu} (σ ${s0}) vs ganador ${out.ml.p_home}` });
     // IMPLIED_SPREAD: el ganador dice μ_ml → cubre coherente Φ((μ_ml + línea)/σ) vs p_cover de la casa
     const pCovCoh = Phi((out.ml.mu + sp.line) / s0);
     const eSp = 100 * (pCovCoh - out.spread.p_cover);
     const sideSp = eSp >= 0 ? 'home' : 'away';
     out.theses.push({ family: 'IMPLIED_SPREAD', side: sideSp, line: sideSp === 'home' ? sp.line : -sp.line, odds: sp[sideSp],
       p_coherent: r4(sideSp === 'home' ? pCovCoh : 1 - pCovCoh), p_market: r4(sideSp === 'home' ? out.spread.p_cover : 1 - out.spread.p_cover),
-      edge_pp: r2(Math.abs(eSp)), basis: `ganador ${out.ml.p_home} → μ ${out.ml.mu} (σ ${s0}) vs hándicap ${sp.line}` });
+      edge_pp: r2(Math.abs(eSp)), unc_pp: r2(uncSp), basis: `ganador ${out.ml.p_home} → μ ${out.ml.mu} (σ ${s0}) vs hándicap ${sp.line}` });
   }
   return out;
 }
@@ -117,7 +121,7 @@ function analyzeGame(books, opts = {}) {
         const pCoh = Phi((consensus.mu + b.spread.line) / s0);
         const e = 100 * (pCoh - b.spread.p_cover), side = e >= 0 ? 'home' : 'away';
         dev.push({ family: 'BOOK_DEV_SPREAD', code: b.code, side, line: side === 'home' ? b.spread.line : -b.spread.line, odds: src.spread ? src.spread[side] : null,
-          p_coherent: r4(side === 'home' ? pCoh : 1 - pCoh), p_market: r4(side === 'home' ? b.spread.p_cover : 1 - b.spread.p_cover), edge_pp: r2(Math.abs(e)), n_books: per.length,
+          p_coherent: r4(side === 'home' ? pCoh : 1 - pCoh), p_market: r4(side === 'home' ? b.spread.p_cover : 1 - b.spread.p_cover), edge_pp: r2(Math.abs(e)), unc_pp: 0.5, n_books: per.length,
           basis: `μ del tablero ${consensus.mu} vs hándicap ${b.spread.line} de ${b.code}` });
       }
       // ganador de la casa vs μ del tablero
@@ -125,7 +129,7 @@ function analyzeGame(books, opts = {}) {
         const pCoh = Phi(consensus.mu / s0);
         const e = 100 * (pCoh - b.ml.p_home), side = e >= 0 ? 'home' : 'away';
         dev.push({ family: 'BOOK_DEV_ML', code: b.code, side, line: null, odds: src.ml ? src.ml[side] : null,
-          p_coherent: r4(side === 'home' ? pCoh : 1 - pCoh), p_market: r4(side === 'home' ? b.ml.p_home : 1 - b.ml.p_home), edge_pp: r2(Math.abs(e)), n_books: per.length,
+          p_coherent: r4(side === 'home' ? pCoh : 1 - pCoh), p_market: r4(side === 'home' ? b.ml.p_home : 1 - b.ml.p_home), edge_pp: r2(Math.abs(e)), unc_pp: 0.5, n_books: per.length,
           basis: `μ del tablero ${consensus.mu} (σ ${s0}) vs ganador ${b.ml.p_home} de ${b.code}` });
       }
       // total de la casa vs mediana de totales: la desviación en puntos se pasa a probabilidad con σ_total ≈ 1,6·σ
@@ -134,7 +138,7 @@ function analyzeGame(books, opts = {}) {
         const pCoh = Phi((consensus.total - b.total.line) / sT);
         const e = 100 * (pCoh - b.total.p_over), side = e >= 0 ? 'over' : 'under';
         dev.push({ family: 'BOOK_DEV_TOTAL', code: b.code, side, line: b.total.line, odds: src.total ? src.total[side] : null,
-          p_coherent: r4(side === 'over' ? pCoh : 1 - pCoh), p_market: r4(side === 'over' ? b.total.p_over : 1 - b.total.p_over), edge_pp: r2(Math.abs(e)), n_books: per.length,
+          p_coherent: r4(side === 'over' ? pCoh : 1 - pCoh), p_market: r4(side === 'over' ? b.total.p_over : 1 - b.total.p_over), edge_pp: r2(Math.abs(e)), unc_pp: 0.5, n_books: per.length,
           basis: `total del tablero ${consensus.total} vs ${b.total.line} de ${b.code}` });
       }
     }

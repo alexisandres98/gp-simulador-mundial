@@ -75,13 +75,13 @@ async function run({ dbc, evs = {}, MK, ahora = Date.now() } = {}) {
     for (const b of ((g.consensus.sigma_game != null || base.value != null) ? g.books : [])) for (const t of b.theses) {
       if (!(t.odds > 1)) continue;
       theses.push({ ...common, key: `${ceid}|${t.family}|${b.code}|${t.side}|${t.line}`, book: b.code, family: t.family, side: t.side, line: t.line, odds: t.odds,
-        p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, basis: t.basis, n_books: g.consensus.n_books,
+        p_coherent: t.p_coherent, p_market: t.p_market, edge_pp: t.edge_pp, unc_pp: t.unc_pp, basis: t.basis, n_books: g.consensus.n_books,
         meta: { sigma_used: b.sigma_league, sigma_game: g.consensus.sigma_game, sigma_implied: b.implied && b.implied.sigma, mu_spread: b.spread && b.spread.mu, mu_ml: b.ml && b.ml.mu, spread_line: b.spread && b.spread.line } });
     }
     for (const d of g.deviations) {
       if (!(d.odds > 1)) continue;
       theses.push({ ...common, key: `${ceid}|${d.family}|${d.code}|${d.side}|${d.line}`, book: d.code, family: d.family, side: d.side, line: d.line, odds: d.odds,
-        p_coherent: d.p_coherent, p_market: d.p_market, edge_pp: d.edge_pp, basis: d.basis, n_books: d.n_books, meta: { consensus_mu: g.consensus.mu, consensus_total: g.consensus.total } });
+        p_coherent: d.p_coherent, p_market: d.p_market, edge_pp: d.edge_pp, unc_pp: d.unc_pp, basis: d.basis, n_books: d.n_books, meta: { consensus_mu: g.consensus.mu, consensus_total: g.consensus.total } });
     }
   }
   out.tesis_evaluadas = theses.length;

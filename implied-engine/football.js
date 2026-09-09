@@ -115,7 +115,13 @@ function analyzeBook(book, { devig1x2 = 'shin', deltaBaseline = 0 } = {}) {
   const [pH, pD, pA] = dv.probs;
   const inv = invert1x2(pH, pD, pA);
   if (!inv || inv.fit_err > 0.02) return out;              // un 1X2 que la Poisson no puede reproducir no se usa
-  out.x2 = { p: { home: r4(pH), draw: r4(pD), away: r4(pA) }, overround: dv.overround, method: dv.method, lh: inv.lh, la: inv.la, total: inv.total, share: inv.share, fit_err: inv.fit_err };
+  // INCERTIDUMBRE DE LA INVERSIÓN (la puerta de TT aplicada al inversor). El empate es casi plano en T cuando el
+  // partido es de muchos goles: 0,5 pp de precio del empate mueven T un gol entero. Sin esto la "incoherencia"
+  // de una casa es ruido de precio amplificado (+14 pp en MLS). uncT = 0,005 / |∂pD/∂T|, en goles.
+  const drawAt = (T) => dist.oneX2FromMatrix(dist.buildMatrix(T * inv.share, T * (1 - inv.share)).matrix).raw.draw;
+  const dDraw = (drawAt(inv.total + 0.05) - drawAt(Math.max(0.3, inv.total - 0.05))) / 0.1;
+  const uncT = Math.abs(dDraw) > 1e-6 ? Math.min(5, 0.005 / Math.abs(dDraw)) : 5;
+  out.x2 = { p: { home: r4(pH), draw: r4(pD), away: r4(pA) }, overround: dv.overround, method: dv.method, lh: inv.lh, la: inv.la, total: inv.total, share: inv.share, fit_err: inv.fit_err, unc_T: r4(uncT) };
 
   for (const t of book.totals || []) {
     if (!(t.over > 1 && t.under > 1) || !Number.isFinite(t.line)) continue;
@@ -126,8 +132,13 @@ function analyzeBook(book, { devig1x2 = 'shin', deltaBaseline = 0 } = {}) {
     const T1 = Math.max(0.3, inv.total + dB), TT = Math.max(0.3, it.total - dB);
     const cohOver = coherentOver(T1 * inv.share, T1 * (1 - inv.share), t.line);   // total que dice el 1X2
     const c12 = coherent1x2(TT * inv.share, TT * (1 - inv.share));               // 1X2 que dice el total
+    const overAt = (T) => coherentOver(T * inv.share, T * (1 - inv.share), t.line);
+    const dOver = (overAt(inv.total + 0.05) - overAt(Math.max(0.3, inv.total - 0.05))) / 0.1;       // ∂P(over)/∂T en el 1X2
+    const uncTotalPp = 100 * Math.abs(dOver) * uncT;                                              // ruido del empate → pp del total
+    const uncLambdaT = Math.abs(dOver) > 1e-6 ? Math.min(5, 0.005 / Math.abs(dOver)) : 5;            // ruido del total → goles
     const row = {
       line: t.line, p_over: r4(pOver), overround: pv.overround, lambda_total: it.total,
+      unc_total_pp: r2(uncTotalPp), unc_lambda_T: r4(uncLambdaT),
       delta_goals: r4(it.total - inv.total),                         // >0: el total cotiza MÁS goles que el 1X2 (crudo)
       delta_adj: r4(it.total - inv.total - dB),                      // lo mismo con la base del tablero descontada
       coherent_over: r4(cohOver), edge_over_pp: r2(100 * (cohOver - pOver)), edge_under_pp: r2(100 * ((1 - cohOver) - (1 - pOver))),
@@ -180,13 +191,16 @@ function analyzeMatch(books, opts = {}) {
       const sideT = eOver >= 0 ? 'over' : 'under';
       theses.push({ code: b.code, family: 'IMPLIED_TOTAL', side: sideT, line: t.line, odds: sideT === 'over' ? tq.over : tq.under,
         p_coherent: r4(sideT === 'over' ? cohOver : 1 - cohOver), p_market: r4(sideT === 'over' ? t.p_over : 1 - t.p_over),
-        edge_pp: r2(Math.abs(eOver)), rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
+        edge_pp: r2(Math.abs(eOver)), unc_pp: t.unc_total_pp, rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
         basis: `1X2 de ${b.code} → λ ${b.x2.total} + base del partido ${r4(m)} (${c.n_books} casas) vs total ${t.line} → λ ${t.lambda_total}` });
       const pX = { home: b.x2.p.home, draw: b.x2.p.draw, away: b.x2.p.away };
       const eX = { home: 100 * (c12.home - pX.home), draw: 100 * (c12.draw - pX.draw), away: 100 * (c12.away - pX.away) };
       const bestX = ['home', 'draw', 'away'].sort((a, z) => eX[z] - eX[a])[0];
+      // incertidumbre del lado del 1X2: el ruido del precio del total (uncLambdaT goles) movido a pp de ese lado
+      const x2At = (T) => coherent1x2(T * b.x2.share, T * (1 - b.x2.share))[bestX];
+      const dX = (x2At(TT + 0.05) - x2At(Math.max(0.3, TT - 0.05))) / 0.1;
       theses.push({ code: b.code, family: 'IMPLIED_1X2', side: bestX, line: t.line, odds: src.x2 ? src.x2[bestX] : null,
-        p_coherent: r4(c12[bestX]), p_market: r4(pX[bestX]), edge_pp: r2(eX[bestX]), rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
+        p_coherent: r4(c12[bestX]), p_market: r4(pX[bestX]), edge_pp: r2(eX[bestX]), unc_pp: r2(100 * Math.abs(dX) * t.unc_lambda_T), rel_delta_goals: r4(t.delta_goals - m), n_books: c.n_books,
         basis: `total ${t.line} de ${b.code} → λ ${t.lambda_total} − base del partido ${r4(m)} vs su 1X2 → λ ${b.x2.total}` });
     }
   }
@@ -204,7 +218,7 @@ function analyzeMatch(books, opts = {}) {
         const tq = (src.totals || []).find((x) => x.line === t.line) || {};
         dev.push({ family: 'BOOK_DEV', code: b.code, side, line: t.line, odds: side === 'over' ? tq.over : tq.under,
           p_coherent: r4(side === 'over' ? cohOverCons : 1 - cohOverCons), p_market: r4(side === 'over' ? t.p_over : 1 - t.p_over),
-          edge_pp: r2(Math.abs(e)), delta_goals: r4(t.lambda_total - c.lambda_total), n_books: c.n_books,
+          edge_pp: r2(Math.abs(e)), unc_pp: 0.5, delta_goals: r4(t.lambda_total - c.lambda_total), n_books: c.n_books,
           basis: `total de ${b.code} → λ ${t.lambda_total} vs mediana de ${c.n_books} casas → λ ${r4(c.lambda_total)}` });
       }
     }

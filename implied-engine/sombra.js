@@ -18,8 +18,9 @@ const path = require('path');
 const CL = require('./closes');
 
 const RULE = {
-  version: 'implicito_v2',
-  frozen_at: '2026-09-09',   // v1 vivió una hora: base GLOBAL del tablero; v2 = base por PARTIDO (≥ 3 casas)
+  version: 'implicito_v3',
+  frozen_at: '2026-09-09',   // v1: base GLOBAL (1 h). v2: base por PARTIDO (1 h). v3: + puerta edge ≥ 0,75 × incertidumbre de la inversión
+  unc_ratio: 0.75,           // la puerta de TT: la ventaja tiene que superar el ruido de precio amplificado por la inversión
   edge_min_pp: 3,          // ventaja mínima entre el precio coherente y el cotizado
   edge_cap_pp: 15,         // por encima es un error nuestro o una casa rota, no una señal
   odds_min: 1.25, odds_max: 6.0,
@@ -66,7 +67,7 @@ function updateBaseline(st, key, obs) {
 function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
   const st = rd(sport);
   st.picks = st.picks || {};
-  const out = { evaluadas: theses.length, nuevas: 0, bajo_liston: 0, vetadas: 0, fuera_de_cuota: 0, ya_existian: 0, anuladas_regla: 0, por_familia: {} };
+  const out = { evaluadas: theses.length, nuevas: 0, bajo_liston: 0, bajo_incertidumbre: 0, vetadas: 0, fuera_de_cuota: 0, ya_existian: 0, anuladas_regla: 0, por_familia: {} };
   // una tesis viva nacida con OTRA versión de la regla no se mezcla con las nuevas: se anula con motivo
   for (const p of Object.values(st.picks)) if (p.status === 'ACTIVE' && p.rule_version !== RULE.version) { p.status = 'VOID'; p.result = 'VOID'; p.void_why = `regla ${p.rule_version} sustituida por ${RULE.version}`; p.settled_at = new Date(ahora).toISOString(); out.anuladas_regla++; }
   let nuevas = 0;
@@ -79,6 +80,7 @@ function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
     if (!(t.odds >= RULE.odds_min && t.odds <= RULE.odds_max)) { out.fuera_de_cuota++; continue; }
     if (!(t.edge_pp >= RULE.edge_min_pp)) { out.bajo_liston++; continue; }
     if (t.edge_pp > RULE.edge_cap_pp) { out.vetadas++; continue; }
+    if (Number.isFinite(t.unc_pp) && t.edge_pp < RULE.unc_ratio * t.unc_pp) { out.bajo_incertidumbre++; continue; }
     if (/^BOOK_DEV/.test(fam) && !(t.n_books >= RULE.dev_min_books)) { out.bajo_liston++; continue; }
     if (st.picks[t.key]) { out.ya_existian++; continue; }
     if (nuevas >= RULE.max_new_per_pass) break;
@@ -87,6 +89,7 @@ function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
       kickoff_at: t.kickoff_at || null,
       family: fam, side: t.side, line: t.line != null ? t.line : null, odds: r4(t.odds), book: t.book,
       p_coherent: r4(t.p_coherent), p_market: r4(t.p_market), edge_pp: r2(t.edge_pp), n_books: t.n_books || null,
+      unc_pp: Number.isFinite(t.unc_pp) ? r2(t.unc_pp) : null, unc: Number.isFinite(t.unc_pp) ? { unc_pp: r2(t.unc_pp), ratio: RULE.unc_ratio, passes: true, margin_pp: r2(t.edge_pp - RULE.unc_ratio * t.unc_pp) } : null,
       basis: t.basis || null, baseline: baseline != null ? r4(baseline) : null, meta: t.meta || null,
       rule_version: RULE.version, born_at: new Date(ahora).toISOString(), status: 'ACTIVE',
       closes: { buckets: {}, last: null }, close_own: null, close_best: null, clv_own_pct: null, clv_best_pct: null,

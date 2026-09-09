@@ -14073,6 +14073,46 @@
       '<span class="gx-spacer"></span><span class="gx-dim gx-mono">' + esc(fmtDateTime(r.start_at)) + '</span>' + (dtIsLive(r) ? '<span class="gx-live-pill">' + dtInt(r.live.legs_a) + '–' + dtInt(r.live.legs_b) + '</span>' : '') +
       '<span class="gx-badge gx-b-watch">' + n + ' ' + esc(t('dt_theses_shadow')) + '</span><span class="gx-dim">' + ic('chevron-right') + '</span></div>';
   }
+  // ── TABLERO SIN PARTIDOS (9-sep) ────────────────────────────────────────────────────────────────────
+  // Los dardos tienen huecos REALES de agenda: la PDC publica el cuadro dos dias antes del torneo y el
+  // circuito diario solo aparece cuando las casas lo cotizan, asi que hay ratos con cero partidos. Hasta
+  // hoy eso dejaba la pantalla en blanco con una sola card, y despues del correo masivo esa pantalla es
+  // lo primero que ve alguien que entra por primera vez. No se inventa nada: se enseña lo que SI hay —
+  // el calendario que ya viene en el propio tablero (con los partidos ya sorteados de cada torneo) y el
+  // ranking propio, que existe siempre— y se dice en una linea cuando se llena solo.
+  function dtEmptyBoard(d) {
+    var out = dtNextPdc(d);
+    var hoy = new Date().toISOString().slice(0, 10);
+    var tours = ((d && d.tournaments) || []).filter(function (x) { return !x.start || String(x.end || x.start) >= hoy; })
+      .sort(function (a, b) { return String(a.start || '').localeCompare(String(b.start || '')); });
+    if (tours.length) {
+      out += '<div class="gx-dt-sech"><span class="gx-label">' + esc(t('dt_nav_tours')) + '</span>' +
+        '<span class="gx-dim">' + esc(esT('lo que viene, con el cuadro que ya se conoce', 'what is coming, with the draw already known')) + '</span></div>' +
+        '<div class="gx-est-grid">' + tours.map(dtTourCard).join('') + '</div>';
+    }
+    var rk = dtGet('rank', '/api/darts/ranking', 600000);
+    var rows = (rk && !rk._err && rk.rows) ? rk.rows.slice(0, 8) : [];
+    if (rows.length) {
+      out += '<div class="gx-dt-sech"><span class="gx-label">' + esc(t('dt_nav_rank')) + '</span>' +
+        '<span class="gx-dim">' + esc(esT('el nivel GP de los de arriba, mientras no hay partidos', 'the GP level at the top, while there are no matches')) + '</span>' +
+        '<span class="gx-spacer"></span><span class="gx-mcard-cta" data-nav="dtrank">' + esc(t('dt_nav_rank')) + ' &rarr;</span></div>' +
+        '<div class="gx-panel gx-esr-panel"><div class="gx-perf-scroll"><table class="gx-t gx-esr-t"><thead><tr>' +
+        '<th class="r">#</th><th>' + esc(esT('Jugador', 'Player')) + '</th><th class="r">' + esc(esT('Nivel GP', 'GP level')) + '</th>' +
+        '<th class="r">' + esc(esT('Media', 'Avg')) + '</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr data-dtplayer="' + esc(r.id) + '"><td class="r gx-mono gx-esr-rank">' + dtInt(r.pos) + '</td>' +
+            '<td><div class="gx-esr-team">' + dtFace(r) + '<b>' + esc(r.name || '—') + '</b>' +
+            (r.country ? ' <span class="gx-dim" style="font-size:10.5px">' + esc(dtCountry(r.country)) + '</span>' : '') + '</div></td>' +
+            '<td class="r gx-mono"><b>' + dtInt(r.elo) + '</b></td>' +
+            '<td class="r gx-mono gx-dim">' + dtNum(r.avg, 1) + '</td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+    }
+    out += '<div class="gx-dim gx-es-trunc">' + esc(esT(
+      'El tablero se llena solo: los emparejamientos de la PDC entran en cuanto se publican, y el circuito diario aparece cuando las casas lo cotizan.',
+      'The board fills on its own: the PDC pairings load as soon as they are published, and the daily circuit shows up when the books price it.')) + '</div>';
+    return out;
+  }
+
   function renderDtOpps() {
     var d = dtGet('board', '/api/darts/board', 120000);
     if (!d) { dtShell(t('nav_opps'), dtLoading()); return; }
@@ -14088,7 +14128,7 @@
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f']];
     var head = '<div class="gx-ohead"><h1>' + esc(t('nav_opps')) + '</h1><div class="gx-seg">' + tabs.map(function (x) { return '<button data-dtofilt="' + x[0] + '"' + (filt === x[0] ? ' class="on"' : '') + '>' + esc(t(x[1])) + '</button>'; }).join('') + '</div>' +
       '<span class="gx-spacer"></span><span class="gx-dim" style="font-size:11.5px">' + theses.length + ' ' + esc(t('dt_theses_shadow')) + ' · ' + vis.length + ' ' + esc(t('dt_matches')) + (d.odds_at ? ' · ' + esc(t('dt_odds_at')) + ' ' + esc(fmtDateTime(d.odds_at)) : '') + '</span></div>';
-    if (!rows.length) { dtShell(null, head + dtNextPdc(d) + dtShadowNote(d)); return; }
+    if (!rows.length) { dtShell(null, head + dtEmptyBoard(d) + dtShadowNote(d)); return; }
     var main = '';
     // tesis del día: la card de la casa de la mayor ventaja
     var top = theses[0];
@@ -14782,20 +14822,24 @@
     var m = { live: [esT('en juego', 'live'), 'live'], upcoming: [esT('próximo', 'upcoming'), 'up'], done: [esT('terminado', 'done'), 'done'] }[st] || [dtStr(st), ''];
     return '<span class="gx-dt-state ' + m[1] + '">' + esc(m[0]) + '</span>';
   }
-  function renderDtTours() {
-    var d = dtGet('tours', '/api/darts/tournaments', 300000);
-    if (!d) { dtShell(t('dt_nav_tours'), dtLoading()); return; }
-    if (d._err) { dtShell(t('dt_nav_tours'), dtErr()); return; }
-    var rows = (d.rows || []).slice().sort(function (x, y) { var o = { live: 0, upcoming: 1, done: 2 }; return (o[x.state] != null ? o[x.state] : 3) - (o[y.state] != null ? o[y.state] : 3) || String(x.start || '').localeCompare(String(y.start || '')); });
-    var card = function (tq) {
-      var modus = tq.circuit === 'modus' || String(tq.id) === 'modus';
+  // La card de torneo la comparten la lista de torneos y el tablero cuando no hay partidos: es la misma
+  // pieza, y duplicarla era garantizar que una de las dos se quedara vieja.
+  function dtTourCard(tq) {
+    var modus = tq.circuit === 'modus' || String(tq.id) === 'modus';
       return '<div class="gx-panel gx-est-card gx-dt-tourcard' + (modus ? ' modus' : '') + '" data-dttour="' + esc(tq.id) + '">' +
         '<div class="gx-est-top">' + dtTourCrest(tq, 'big') +
           '<div class="gx-est-id"><b>' + esc(tq.name || '—') + '</b><span>' + esc([tq.venue, tq.city].filter(Boolean).join(', ')) + (modus ? (tq.venue || tq.city ? ' · ' : '') + esc(t('dt_modus_tag')) : '') + '</span></div><span class="gx-spacer"></span><div class="gx-dt-tourcard-r">' + dtCirc(modus ? 'modus' : 'pdc') + dtStateChip(tq.state) + '</div></div>' +
         '<div class="gx-est-meta"><span class="gx-mono">' + esc([tq.start ? dtDate8(tq.start) : null, tq.end ? dtDate8(tq.end) : null].filter(Boolean).join(' → ')) + '</span>' + dtTv(tq.tv) + (tq.ranked ? '<span class="gx-dim">ranking</span>' : '') + (tq.double_in ? '<span class="gx-dt-fchip di">double-in</span>' : '') +
           '<span class="gx-spacer"></span><span class="gx-dim">' + (tq.fixtures != null ? '<span class="gx-mono">' + dtInt(tq.fixtures) + '</span> ' + esc(t('dt_matches')) : '—') + '</span></div>' +
         (modus && tq.note ? '<div class="gx-dim gx-dt-tour-note">' + esc(tq.note) + '</div>' : '') + '</div>';
-    };
+  }
+
+  function renderDtTours() {
+    var d = dtGet('tours', '/api/darts/tournaments', 300000);
+    if (!d) { dtShell(t('dt_nav_tours'), dtLoading()); return; }
+    if (d._err) { dtShell(t('dt_nav_tours'), dtErr()); return; }
+    var rows = (d.rows || []).slice().sort(function (x, y) { var o = { live: 0, upcoming: 1, done: 2 }; return (o[x.state] != null ? o[x.state] : 3) - (o[y.state] != null ? o[y.state] : 3) || String(x.start || '').localeCompare(String(y.start || '')); });
+    var card = dtTourCard;
     var body = rows.length ? '<div class="gx-est-grid">' + rows.map(card).join('') + '</div>' : '<div class="gx-panel"><div class="gx-empty">' + illo('radar') + '<b>' + esT('Sin torneos en la base.', 'No tournaments in the base.') + '</b></div></div>';
     dtShell(t('dt_nav_tours'), body + dtShadowNote(d));
   }

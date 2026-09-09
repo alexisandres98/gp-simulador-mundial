@@ -20138,6 +20138,37 @@
     [' gana ', ' wins '],
     ['Gana ', 'Winner: '],
   );
+  // Los NODOS COMPUESTOS (9-sep): la doctrina, la nota del ranking y las del mapa de competiciones no viajan
+  // solas — el render las pega a la atribución de las fuentes, así que la coincidencia EXACTA de EN_X nunca
+  // dispara y hay que atacarlas como subcadena. Van con `unshift` a propósito: EN_FRAG se aplica en orden y
+  // una entrada corta de más arriba (por ejemplo "en sombra") partiría estas frases por la mitad antes de que
+  // les llegara el turno. Aquí van también las dos notas del brief, que nacen en el servidor y no en el motor.
+  EN_FRAG.unshift(
+    // los dos formatos del simulador de dardos: viven en un `var` de módulo, evaluado al cargar, así que
+    // envolverlos en esT() los congelaría en el idioma de arranque. Se traducen al pintar, como el resto.
+    ['BO19 · dos de diferencia (Matchplay)', 'BO19 · two clear (Matchplay)'],
+    ['BO35 · dos de diferencia (final Matchplay)', 'BO35 · two clear (Matchplay final)'],
+    ['todas las familias de dardos están EN SOMBRA: el motor compila el 501 visita a visita con reglas exactas (ganador, legs, sets, 180s y checkout salen del mismo estado), pero contra el MERCADO no hay prueba todavía — eso es lo que la sombra va a medir, familia por familia, con CLV contra el cierre capturado. El ganador se registra como familia de referencia, jamás como pick.',
+     'every darts family is IN SHADOW: the engine compiles the 501 visit by visit with the exact rules (winner, legs, sets, 180s and checkout all come out of the same state), but against the MARKET there is no proof yet — that is what the shadow is there to measure, family by family, with CLV against the captured close. The winner is logged as a benchmark family, never as a pick.'],
+    ['todas las familias de tenis de mesa están EN SOMBRA: el motor compila el partido punto a punto con las reglas exactas (11 puntos, dos de diferencia, saque en bloques de dos, alternancia desde 10–10), así que ganador, marcador, games, puntos y los mercados del primer game salen del MISMO estado y no pueden contradecirse; contra el MERCADO no hay prueba todavía',
+     'every table tennis family is IN SHADOW: the engine compiles the match point by point with the exact rules (11 points, two clear, serve in blocks of two, alternating from 10–10), so winner, score, games, points and the first-game markets all come out of the SAME state and cannot contradict each other; against the MARKET there is no proof yet'],
+    ['ranking por Elo propio de GP (resultados de la PDC, todos los circuitos) — no es el Order of Merit, que aparece al lado. La flecha compara contra la foto semanal anterior.',
+     "GP's own Elo ranking (PDC results, every circuit) — this is not the Order of Merit, which sits next to it. The arrow compares against last week's snapshot."],
+    ['ranking por Elo propio de GP (todos los partidos de mayores con puntos por game) — no es el ranking WTT, que aparece al lado. La flecha compara contra la foto semanal anterior.',
+     "GP's own Elo ranking (every senior match with points per game) — this is not the WTT ranking, which sits next to it. The arrow compares against last week's snapshot."],
+    ['circuito diario fuera de la PDC: fixtures de las casas, jugadores resueltos contra la base propia, resultado por Flashscore. Sin estadística de partido: 180s y checkout no se liquidan aquí.',
+     'daily circuit outside the PDC: fixtures from the books, players resolved against our own base, results from Flashscore. No match statistics: 180s and checkout do not settle here.'],
+    ['todas las familias de dardos corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.',
+     'every darts family runs in shadow: the projection is informative, and the private register is what decides whether there are ever public picks.'],
+    ['todas las familias de tenis de mesa corren en sombra: la proyección es informativa y el registro privado decide si algún día hay picks públicas.',
+     'every table tennis family runs in shadow: the projection is informative, and the private register is what decides whether there are ever public picks.'],
+    ['organizador oficial (WTT/ITTF) con resultado publicado: el modelo la compila y la sombra la registra.',
+     'official organiser (WTT/ITTF) with a published result: the model compiles it and the shadow logs it.'],
+    ['liga privada creada para el mercado de apuestas, sin cuerpo oficial ni resultado independiente: solo display con aviso; jamás modelo ni sombra.',
+     'private league built for the betting market, with no governing body and no independent result: display only, with a warning; never the model, never the shadow.'],
+    ['solo VERIFIED_SCOPE entra al modelo y a la sombra; el resto se enseña con su aviso.',
+     'only VERIFIED_SCOPE enters the model and the shadow; everything else is shown with its warning.'],
+  );
   var EN_MARK = /[áéíóúñÁÉÍÓÚÑ¿«]|\b(el|la|los|las|de|del|un|una|que|con|sin|por|para|se|no|ya|más|es|son|hay|hoy|en|sem)\b|partid|liquidad|abiert|ventaja|cuota|sombra|mapa|ronda|pelea|juego|casas|muestra|prórroga|puntúa|activ/i;
   function enTxt(txt) {
     if (!txt) return null;

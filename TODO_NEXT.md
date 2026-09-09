@@ -9,8 +9,11 @@ Desplegado el 9-sep (HANDOFF §🔁). Todo es medición o sombra nueva; ninguna 
    pedía ("edge al cierre por familia y casa, no ROI"); (c) `curve` por cubo — si el CLV propio es positivo en T−60 y
    negativo en T−1 la casa nos sigue: el edge es de MOMENTO y la regla es de hora, no de modelo.
 2. **Proceso implícito** (`/api/internal/implicito?key=`): la línea de base de fútbol (`baseline.delta_goals`) tiene que
-   estabilizarse (esperable −0,2 a −0,4 goles: la forma DC "ve" más goles que el mercado de totales); si oscila
-   mucho entre pasadas, subir `baseline_ema`. En baloncesto `baseline.sigma_implied` debería caer cerca de 11-13; si no,
+   estabilizarse. Primera pasada en prod (9-sep 00:37Z): **−0,62 goles** con 2.144 observaciones (109 partidos, 72 con
+   1X2 y total en la misma casa, 6.070 tesis evaluadas, 40 nacidas: 26 over / 12 under / 2 del 1X2, en 22 casas,
+   Champions y MLS). Más grande de lo esperado: la forma DC "ve" bastantes más goles que el mercado de totales. Si
+   oscila mucho entre pasadas, subir `baseline_ema`. v1 mide **solo medias líneas** (x,5): las de cuarto y enteras se
+   anulan al arrancar. En baloncesto `baseline.sigma_implied` debería caer cerca de 11-13; si no,
    las casas no cotizan hándicap y ganador con una sola normal y hay que revisar el modelo antes de leer tesis.
    Con ≥ 150 liquidadas por familia: `clv_own` decide. Las espejo (IMPLIED_TOTAL vs IMPLIED_1X2, IMPLIED_ML vs
    IMPLIED_SPREAD) dirán cuál de los dos mercados de la casa dice la verdad.

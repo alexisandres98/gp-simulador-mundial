@@ -12,6 +12,18 @@ const S = require('./sombra');
 
 const SPORT = 'futbol';
 const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
+const isHalf = (L) => Number.isFinite(L) && Math.abs(L * 2 - Math.round(L * 2)) < 1e-9 && Math.abs(L - Math.round(L)) > 1e-9;
+
+// anula las tesis de total nacidas con línea entera o de cuarto antes de la regla de medias líneas (idempotente)
+function voidNonHalf(ahora = Date.now()) {
+  const st = S.rd(SPORT); let n = 0;
+  for (const p of Object.values(st.picks || {})) {
+    if (p.status !== 'ACTIVE' || p.family === 'IMPLIED_1X2' || isHalf(p.line)) continue;
+    p.status = 'VOID'; p.result = 'VOID'; p.void_why = 'línea no .5: v1 solo mide medias líneas'; p.settled_at = new Date(ahora).toISOString(); n++;
+  }
+  if (n) S.wr(SPORT, st);
+  return n;
+}
 
 async function loadBooks(dbc, ids) {
   const q = await dbc.query(
@@ -35,7 +47,10 @@ async function loadBooks(dbc, ids) {
   for (const [ceid, ev] of byEv) {
     const books = [];
     for (const b of ev.values()) {
-      const totals = Object.values(b.totals).filter((t) => t.over > 1 && t.under > 1);
+      // SOLO medias líneas (x,5) en v1: la entera devuelve en el empate y la de cuarto (x,25/x,75) reparte el stake
+      // en dos líneas — el inversor calcula P(total > L) puro y la liquidación no sabe medias ganancias. La primera
+      // pasada en prod nació con 2, 2,25, 3, 3,75… y esas tesis se anulan al arrancar (`voidNonHalf`).
+      const totals = Object.values(b.totals).filter((t) => t.over > 1 && t.under > 1 && isHalf(t.line));
       if (!(b.x2.home > 1 && b.x2.draw > 1 && b.x2.away > 1) || !totals.length) continue;   // hacen falta los DOS mercados
       books.push({ code: b.code, x2: b.x2, totals, seen: b.seen });
     }
@@ -48,6 +63,7 @@ async function loadBooks(dbc, ids) {
 async function run({ dbc, qevents = {}, ahora = Date.now(), horizonH = 48 } = {}) {
   const out = { sport: SPORT, eventos: 0, con_casas: 0, tesis_evaluadas: 0 };
   if (!dbc) return { ...out, why: 'sin base de cuotas' };
+  try { out.anuladas_linea = voidNonHalf(ahora); } catch { out.anuladas_linea = null; }
   const ids = Object.keys(qevents).filter((id) => { const k = Date.parse((qevents[id] || {}).kickoff || 0); return Number.isFinite(k) && k > ahora && k < ahora + horizonH * 3600e3; });
   out.eventos = ids.length;
   if (!ids.length) return { ...out, why: 'sin partidos futuros con cuotas' };

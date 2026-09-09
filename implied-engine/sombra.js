@@ -26,7 +26,7 @@ const RULE = {
   dev_min_books: 3,        // BOOK_DEV exige mediana de ≥ 3 casas
   baseline_min_obs: 8,     // la línea de base del tablero se estima con ≥ 8 observaciones de la pasada
   baseline_ema: 0.7,       // memoria de la línea de base entre pasadas (0,7 de lo guardado + 0,3 de lo nuevo)
-  max_new_per_pass: 40,
+  max_new_per_pass: 60,
   note: 'sombra pura de precio: ninguna probabilidad del modelo entra; la incoherencia se mide con la línea de base del tablero descontada; cierre = la MISMA casa por cubo T−60/−30/−10/−5/−1.',
 };
 
@@ -68,7 +68,10 @@ function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
   st.picks = st.picks || {};
   const out = { evaluadas: theses.length, nuevas: 0, bajo_liston: 0, vetadas: 0, fuera_de_cuota: 0, ya_existian: 0, por_familia: {} };
   let nuevas = 0;
-  for (const t of theses) {
+  // con tope por pasada, primero las de más ventaja (la primera pasada en prod evaluó 6.070 y el tope se llenó
+  // por orden de evento y casa, que es arbitrario); las que se quedan fuera vuelven a evaluarse en 20 min
+  const ordered = theses.slice().sort((a, b) => (Number(b.edge_pp) || 0) - (Number(a.edge_pp) || 0));
+  for (const t of ordered) {
     const fam = t.family; out.por_familia[fam] = out.por_familia[fam] || { evaluadas: 0, nuevas: 0 };
     out.por_familia[fam].evaluadas++;
     if (!(t.odds >= RULE.odds_min && t.odds <= RULE.odds_max)) { out.fuera_de_cuota++; continue; }

@@ -64,6 +64,9 @@ intocables** (`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`, `corners_ov
    SERIE→mapa), unc de nacimiento por n_eff de la celda, cierres del archivo de esports por cubo, liquidación con
    `settleOne` de la casa sobre Leaguepedia (con el giro de orientación del 2-sep). Nada toca `lol.js` ni
    `lol_kills_hcp_v1`. Leer `calibracion.brier_generador` vs `brier_mercado` y `clv_own` por familia.
+   Prod 9-sep 08:40Z (lol-gen-2, tras corregir el casado de liga: "LCK Challengers League" → LCK CL, y liga desconocida
+   con n_eff 20 ≈ 8 pp): 2 eventos con kills cotizados, 90 pares evaluados, 7 tesis (KILLS over 31,5/32,5 en LCK CL
+   con 4-5 pp de ventaja y 1,85 de incertidumbre), 12 muertas por incertidumbre (Ultraliga, que la base no tiene).
 Pendiente de la primera semana: leer `tt_transfer.gate` en fútbol/esports/baloncesto (¿la puerta 0,75×unc habría
 ahorrado?) y `clv_own` por familia y casa antes de proponer cambiar nada. Lo que sigue en la lista (chat 9-sep): motor
 generativo de kills en LoL (duración × tasa por liga/parche desde la base propia de 535k filas).

@@ -36,8 +36,15 @@ intocables** (`cards_under_v1`, `cs2_rounds_v1`, `lol_kills_hcp_v1`, `corners_ov
      entre sus ≥ 3 casas; en baloncesto la σ implícita mediana del partido): lo común a todas es forma, lo que
      queda es lo que ESA casa hace distinto. Las 87 tesis v1 se anularon con motivo (`anuladas_regla`). Solo
      medias líneas (x,5) en totales. Selftests incluyen "3 casas coherentes → edge 0".
-   - Puertas: edge 3-15 pp, cuota 1,25-6, ≤ 60 nuevas/pasada por ventaja descendente. Cierre = MISMA casa por
-     cubo. Vara: `clv_own` por familia y casa; listón ~150 liquidadas por familia.
+   - **v3 (02:20Z), la puerta de TT aplicada al inversor**: aun con base por partido salían +14 pp en MLS, porque el
+     empate es casi plano en goles cuando hay muchos goles y medio punto de precio del empate mueve λ un gol entero.
+     Cada tesis nace con `unc_pp` = ruido de precio (0,5 pp) × sensibilidad de la inversión (∂T/∂pD · ∂P(over)/∂T;
+     en baloncesto φ(z) del hándicap y del ganador; BOOK_DEV 0,5 pp) y la regla exige **edge ≥ 0,75 × unc_pp**.
+     Primera pasada v3 en prod: 4.647 evaluadas → 25 nacidas (19 IMPLIED_TOTAL, 5 BOOK_DEV, 1 IMPLIED_1X2), 3.806 bajo
+     listón, 13 bajo incertidumbre, 22 vetadas por > 15 pp; ventajas 4-10 pp con unc ≈ 2-2,4 pp. Las 767 tesis v1/v2
+     quedaron VOID con motivo (`anuladas_regla`): el archivo las conserva, el track las excluye.
+   - Puertas: edge 3-15 pp, cuota 1,25-6, edge ≥ 0,75×unc, ≤ 60 nuevas/pasada por ventaja descendente. Cierre =
+     MISMA casa por cubo. Vara: `clv_own` por familia y casa; listón ~150 liquidadas por familia.
    - Sonda: `/api/internal/implicito?key=[&run=1&hoops=1&buckets=1&snaps=1]` (tracks de las dos sombras, selftests
      de los dos inversores y los `tt_transfer` de clubes y baloncesto).
 4. **Autocomprobaciones**: `football.selfTest()` (1X2 generado por la Poisson vuelve a sus λ; casa coherente → edge 0),

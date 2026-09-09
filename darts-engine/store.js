@@ -668,7 +668,10 @@ function playerProfile(id) {
   const o = orakel();
   const form = Object.keys(o.windows || {}).filter((k) => k.endsWith('|90') && o.windows[k][String(id)] && o.windows[k][String(id)]['25']).sort().slice(-14).map((k) => ({ to: k.split('|')[0], avg: o.windows[k][String(id)]['25'][2], darts: o.windows[k][String(id)]['25'][1], x180: (o.windows[k][String(id)]['26'] || [])[2] || null }));
   return {
-    available: true, id: String(id), name: p.name, country: p.country, photo: p.photo || null, nickname: p.nickname || null, dob: p.dob || null, age, hometown: p.hometown || null, darts: p.darts || null, dart_weight: p.dart_weight || null, started: p.started || null, tour_card: !!p.tour_card, oom_rank: p.oom_rank || null, prize: p.prize || null, nine_darters: p.nine_darters || null,
+    available: true, id: String(id), name: p.name, country: p.country, photo: p.photo || null,
+    // 9-sep: de donde salio el retrato y a quien hay que acreditar. Wikimedia Commons exige credito por
+    // archivo (autor + licencia), y las de la PDC se enlazan bajo la atribucion general del pie.
+    photo_src: p.photo_src || null, photo_credit: p.photo_credit || null, nickname: p.nickname || null, dob: p.dob || null, age, hometown: p.hometown || null, darts: p.darts || null, dart_weight: p.dart_weight || null, started: p.started || null, tour_card: !!p.tour_card, oom_rank: p.oom_rank || null, prize: p.prize || null, nine_darters: p.nine_darters || null,
     elo: Math.round(T.elo.get(String(id)) || 1500), wl: { w: prof.w, l: prof.l }, legs: { won: prof.legsWon, lost: prof.legsLost }, titles: prof.titles, best_avg: r2(prof.bestAvg) || null, x180_total: prof.x180Total,
     skill: { avg: r2(sk.avg), per180_visit: sk.per180Visit != null ? r3(sk.per180Visit) : null, checkout_pct: r3(sk.checkoutPct), exposure_darts: sk.exposure_darts, source: sk.source, cold: sk.cold, as_of: sk.as_of, windows: sk.windows },
     kernel: { fitted: { avg3: r2(kk.fitted.avg3), x180_leg: r3(kk.fitted.exp180), darts_leg: r2(kk.fitted.expDarts) }, identified: kk.identified, doubles: kk.leg.dbl.slice(0, 8).map(([k, pr]) => [k, r3(pr)]), checkout_pmf: kk.leg.checkout.filter(([, pr]) => pr > 0.004).map(([k, pr]) => [k, r3(pr)]), visits_pmf: Array.from(kk.leg.visits).map((pr, i) => [i, r3(pr)]).filter(([, pr]) => pr > 0.002), nine_dart_pct: r3(100 * kk.leg.visits[3]),

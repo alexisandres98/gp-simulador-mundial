@@ -11593,6 +11593,7 @@
           '</div></div>' +
         '<span class="gx-spacer"></span>' +
         '<button class="gx-btn gx-btn-p gx-est-simbtn" data-essim="' + esc(tm.name) + '">' + ic('arrows-shuffle') + 'Simular contra…</button></div>' +
+      credito +
       '<div class="gx-est-hero-stats">' +
         '<div><b>' + (tm.elo != null ? Math.round(tm.elo) : '—') + '</b><span>Nivel GP</span></div>' +
         '<div><b>' + (tm.wr != null ? Math.round(100 * tm.wr) + '%' : '—') + '</b><span>' + 'victorias por ' + esUnit().replace(/s$/, '') + '</span></div>' +
@@ -14698,6 +14699,19 @@
     if (d.available === false) { dtShell(t('sr_players'), bk + '<div class="gx-panel"><div class="gx-empty">' + ic('alert-triangle') + '<b>' + esc(d.why || esT('Fuera de la base', 'Outside the base')) + '</b></div></div>'); return; }
     var sk = d.skill || {}, k = d.kernel || {};
     var kern = Object.assign({}, sk, k);
+    // CREDITO DE LA FOTO (9-sep): las de Wikimedia Commons viajan con autor y licencia, y la licencia
+    // obliga a nombrarlos donde se ve la imagen. Las de la PDC no llevan linea propia: van bajo la
+    // atribucion general que ya cierra la pantalla.
+    var credito = '';
+    if (d.photo && d.photo_credit && d.photo_credit.license) {
+      var cr = d.photo_credit;
+      var quien = [cr.author, cr.license].filter(Boolean).join(' · ');
+      credito = '<div class="gx-dim" style="font-size:11px;margin-top:6px">' + esc(esT('Foto: ', 'Photo: ')) +
+        (cr.page ? '<a href="' + esc(cr.page) + '" target="_blank" rel="noopener nofollow">' + esc(quien) + '</a>' : esc(quien)) +
+        ' · Wikimedia Commons</div>';
+    } else if (d.photo && d.photo_src === 'wikipedia') {
+      credito = '<div class="gx-dim" style="font-size:11px;margin-top:6px">' + esc(esT('Foto: Wikipedia', 'Photo: Wikipedia')) + '</div>';
+    }
     var hero = '<div class="gx-panel gx-est-hero"><div class="gx-est-hero-main">' + dtFace(d, 'big') +
       '<div class="gx-est-id"><b style="font-size:19px">' + esc(d.name || '—') + (d.nickname ? ' <span class="gx-dim" style="font-weight:500;font-size:13px">“' + esc(d.nickname) + '”</span>' : '') + '</b>' +
       '<span class="gx-dim">' + esc([dtCountry(d.country), d.age != null ? d.age + esT(' años', ' y/o') : null, d.hometown, d.darts ? d.darts + (d.dart_weight ? ' ' + d.dart_weight + ' g' : '') : (d.dart_weight ? d.dart_weight + ' g' : null), d.tour_card ? 'Tour Card' : null].filter(Boolean).join(' · ')) + '</span></div>' +

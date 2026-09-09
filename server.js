@@ -2434,6 +2434,63 @@ Estimaciones de un modelo estadístico, no consejo financiero. Apostá con respo
   return { subject, text, html };
 }
 
+// ── DARDOS Y TENIS DE MESA (9-sep, orden de Alexis: "email masivo anunciando esos dos deportes") ─────────
+// Mismo molde que `gpNineEmail`, que es el que mejor entregabilidad midió: remitente persona, texto plano,
+// sin un solo <a>, asunto en minúsculas y sin emoji, y termina con una pregunta. DOS diferencias por orden
+// expresa: NO lleva línea de baja al final (como `sportsClosedEmail`), y el inglés sale primero y el
+// español seis horas después — por eso son dos variantes fijas y no una que mira el idioma del usuario.
+function dartsTtEmail(lang) {
+  const en = lang === 'en';
+  const hasta = new Date(dartsTtFreeUntil() - 1);
+  const dia = (l) => { try { return hasta.toLocaleDateString(l, { day: 'numeric', month: 'long', timeZone: 'UTC' }); } catch (e) { return hasta.toISOString().slice(0, 10); } };
+  if (en) {
+    const subject = 'two new sports: darts and table tennis';
+    const text = `Hi,
+
+Alexis here, from GP Simulador. Two sports went live today and I want you to have them before anyone writes a post about it.
+
+Darts and table tennis. That makes eleven, and as always neither of them is an old model wearing a new name. Darts is compiled visit by visit: three darts, what is left of the 501, the checkout when the number finally allows it, and from there the leg, the set and the match. Table tennis is compiled point by point, with serve and receive kept apart, deuce solved rather than guessed, and the game and the match built on top of that.
+
+Why these two. Because their markets are thin and slow. A book prices a table tennis total from a template and does not move it until the first serve. That is not a promise of profit, it is where a model has room to disagree with a price.
+
+Both are open on every plan until ${dia('en-US')}. Nothing to pay, no card, no changing your subscription. After that they follow the same split as the rest: the intelligence stays free — schedule, player cards, GP ranking, projections — and the theses, the daily brief, the simulator and Ask GP live in Pro and Sharp.
+
+One thing I would rather say myself: every family in both sports runs in shadow. The register is public and it settles in front of you, won or lost, but nothing there is a tip. The bar we are watching is whether we beat the closing line, not whether last week looked good.
+
+Open one of the two and tell me what you find missing. I read every reply, and what repeats is what gets built next.
+
+Alexis
+GP Simulador
+
+Estimates from a statistical model, not financial advice. Bet responsibly. 18+.`;
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+      text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+    return { subject, text, html };
+  }
+  const subject = 'dos deportes nuevos: dardos y tenis de mesa';
+  const text = `Hola,
+
+Soy Alexis, de GP Simulador. Hoy entraron dos deportes y prefiero que los tengas vos antes de que alguien escriba una publicación sobre eso.
+
+Dardos y tenis de mesa. Con eso son once, y como siempre ninguno es un modelo viejo con nombre nuevo. Dardos se compila visita a visita: tres dardos, lo que queda de los 501, el checkout cuando el número por fin lo permite, y de ahí el leg, el set y el partido. Tenis de mesa se compila punto a punto, con el saque y la recepción separados, el deuce resuelto en vez de estimado, y el game y el partido construidos encima.
+
+Por qué estos dos. Porque sus mercados son finos y lentos. Una casa cotiza el total de un partido de tenis de mesa con plantilla y no lo mueve hasta el primer saque. Eso no promete ganancia: es donde un modelo tiene sitio para discutirle el precio.
+
+Los dos están abiertos en todos los planes hasta el ${dia('es-ES')}. Sin pagar nada, sin tarjeta y sin cambiar tu suscripción. Después siguen el reparto del resto: la inteligencia queda libre —calendario, fichas de jugador, ranking GP, proyecciones— y las tesis, el brief del día, el simulador y Pregúntale a GP viven en Pro y Sharp.
+
+Una cosa que prefiero decir yo: todas las familias de los dos deportes corren en sombra. El registro es público y se liquida delante tuyo, ganada o perdida, pero nada de eso es un consejo. La vara que miramos es si le ganamos al cierre del mercado, no si la semana pasada se vio linda.
+
+Abrí uno de los dos y contame qué te falta. Leo todas las respuestas, y lo que se repite es lo próximo que se construye.
+
+Alexis
+GP Simulador
+
+Estimaciones de un modelo estadístico, no consejo financiero. Apostá con responsabilidad. 18+.`;
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
+
 // ── CIERRE DE LA SEMANA ABIERTA (28-ago, pedido de Alexis: correo masivo de conversión) ──────────────────
 // Estilo personal (bandeja Principal): texto plano, sin <a>, sin List-Unsubscribe — el precedente que mejor
 // entregabilidad midió (18-jul). El número de la semana se calcula EN VIVO del registro de combate (familias
@@ -24180,7 +24237,11 @@ async function anotar(pid){
         for (const raw of emails) {
           const e = String(raw || '').trim().toLowerCase();
           if (!db.users[e]) { out.not_found.push(e); continue; }
-          if (on) { db.users[e].no_bulk = true; db.users[e].no_bulk_at = db.users[e].no_bulk_at || new Date().toISOString(); }
+          if (on) { db.users[e].no_bulk = true; db.users[e].no_bulk_at = db.users[e].no_bulk_at || new Date().toISOString();
+        // 9-sep: se cuentan las veces que alguien pide la baja. Hasta hoy solo había un booleano, así que
+        // "excluir a quien se dio de baja dos veces" no se podía aplicar al pasado — el histórico no existe.
+        // De aquí en adelante sí, y el envío masivo excluye a cualquiera con `no_bulk`, se haya bajado una vez o cinco.
+        db.users[e].no_bulk_n = (db.users[e].no_bulk_n || 0) + 1; db.users[e].no_bulk_last = new Date().toISOString(); }
           else { delete db.users[e].no_bulk; delete db.users[e].no_bulk_at; }
           out.updated.push(e);
         }
@@ -25471,6 +25532,8 @@ async function anotar(pid){
                   : (variant === 'features_en') ? () => featuresEmail('en')
                     : (variant === 'gpintel_es') ? () => gpIntelEmail('es')
                       : (variant === 'gpintel_en') ? () => gpIntelEmail('en')
+                        : (variant === 'dartstt_es') ? () => ({ ...dartsTtEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                          : (variant === 'dartstt_en') ? () => ({ ...dartsTtEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                         : (variant === 'gpnine_es') ? () => ({ ...gpNineEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                           : (variant === 'gpnine_en') ? () => ({ ...gpNineEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                         : (variant === 'gpcombat_es') ? () => gpCombatEmail('es')

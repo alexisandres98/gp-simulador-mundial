@@ -1243,24 +1243,27 @@
   // manda: aquí no se decide nada, solo se evita que el día que venza la ventana un usuario Free se coma
   // cinco pantallas rotas a base de 403 en vez de un candado que le explique qué pasó y a dónde ir.
   // Mientras no se sabe quién eres (`S.me` null) NO se bloquea: cada deporte ya tiene su estado de carga.
-  function nuevosLibres() {
-    var t = (S.me && S.me.newSportsFreeUntil) || 0;
+  function nuevosLibres(v) {
+    // 9-sep: dardos y tenis de mesa abren con SU ventana, no con la de los cinco de agosto (ya vencida).
+    // Se pasa la vista para saber de qué deporte se habla; sin vista, la ventana común.
+    var t = (dtTt(v) ? (S.me && S.me.dartsTtFreeUntil) : (S.me && S.me.newSportsFreeUntil)) || 0;
     return t > 0 && Date.now() < t;
   }
+  function dtTt(v) { return !!v && (DT_VIEWS.indexOf(v) >= 0 || TT_VIEWS.indexOf(v) >= 0); }
   // CIERRE DE LA VENTANA (31-ago, orden de Alexis): el candado deja de ser todo-o-nada. El plan efectivo
   // se calcula UNA vez (con el preview admin de gp_asplan, para que la preview no mienta) y cada vista
   // gated pinta su candado con CTA a /plans; las de inteligencia quedan abiertas para free — es el
   // escaparate. El servidor es quien manda (strips + 403); esto solo evita pantallas rotas.
-  function nuevosPlan() {
+  function nuevosPlan(v) {
     if (!S.me) return 'sharp'; // aún no se sabe quién es: no bloquear, cada vista tiene su carga
     if (S.me.isAdmin) { var as = lsGet('gp_asplan') || ''; return (as === 'free' || as === 'pro' || as === 'sharp') ? as : 'sharp'; }
-    if (!S.me.plans_enforced || nuevosLibres()) return 'sharp';
+    if (!S.me.plans_enforced || nuevosLibres(v || S.view)) return 'sharp';
     return S.me.plan || 'free';
   }
-  function nuevosOK() { var pl = nuevosPlan(); return pl === 'pro' || pl === 'sharp'; }
-  function nuevosSharpOK() { return nuevosPlan() === 'sharp'; }
-  function nuevosHasta() {
-    var ms = (S.me && S.me.newSportsFreeUntil) || 0;
+  function nuevosOK(v) { var pl = nuevosPlan(v); return pl === 'pro' || pl === 'sharp'; }
+  function nuevosSharpOK(v) { return nuevosPlan(v) === 'sharp'; }
+  function nuevosHasta(v) {
+    var ms = (dtTt(v || S.view) ? (S.me && S.me.dartsTtFreeUntil) : (S.me && S.me.newSportsFreeUntil)) || 0;
     if (!ms) return '';
     // el corte es a medianoche UTC: se nombra el día ANTERIOR, que es el último completo de la ventana
     var d = new Date(ms - 1);
@@ -1285,8 +1288,8 @@
   // solo el simulador y Pregúntale a GP — pantallas sin tablero propio. Todo lo demás (oportunidades,
   // briefs, props) se canda DENTRO de su vista, conservando chips, tabs y récord como hace combate,
   // con el mensaje de lo que de verdad está bloqueado en ese deporte.
-  var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim', 'dtsim'];
-  var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask', 'dtask'];
+  var NS_SIM_VIEWS = ['bbsim', 'tensim', 'f1sim', 'nflsim', 'dtsim', 'ttsim'];
+  var NS_ASK_VIEWS = ['bbask', 'esask', 'f1ask', 'tenask', 'nflask', 'dtask', 'ttask'];
   // ═══ EN VIVO EN LOS DEPORTES NUEVOS (31-ago, orden de Alexis) ════════════════════════════════════
   // Un solo temporizador: la vista que pintó contenido en vivo se re-renderiza sola cada 30s mientras el
   // usuario siga en ella. `bust` invalida las entradas de caché que alimentan esa vista (por subcadena)
@@ -1318,11 +1321,12 @@
     }, 30000);
   }
   function nsLockHtml(v) {
-    if (!nuevosOK() && NS_SIM_VIEWS.indexOf(v) >= 0) {
+    // el candado se juzga con la ventana DE ESA VISTA (dardos y TT tienen la suya, 9-sep)
+    if (!nuevosOK(v) && NS_SIM_VIEWS.indexOf(v) >= 0) {
       return lockPanelTxt(esT('El simulador es para suscriptores', 'The simulator is for subscribers'),
         esT('Cruzar dos equipos cualesquiera con el motor real es parte de los planes Pro y Sharp.', 'Crossing any two teams with the real engine is part of the Pro and Sharp plans.'));
     }
-    if (!nuevosOK() && NS_ASK_VIEWS.indexOf(v) >= 0) {
+    if (!nuevosOK(v) && NS_ASK_VIEWS.indexOf(v) >= 0) {
       return lockPanelTxt(t('nav_cb_ask'), t('ask_upgrade'));
     }
     return null;
@@ -1354,10 +1358,10 @@
   // El enrutador ya distinguía a los dos, así que aquí basta con no filtrarle la lista.
   // FÚTBOL VUELVE A ENSEÑAR SU RENDIMIENTO (25-ago, orden de Alexis). Es el único deporte con muestra
   // pública que aguanta mirarse: la lista de abajo son los que SIGUEN ocultos. 'perf' sale de ella.
-  var PERF_VIEWS = ['cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf', 'dtperf'];
+  var PERF_VIEWS = ['cbperf', 'bbperf', 'esperf', 'nflperf', 'tenperf', 'f1perf', 'dtperf', 'ttperf'];
   // "El motor" describe CÓMO funciona el modelo, que es justo lo que la caja negra no publica. Se cierra
   // por la misma puerta que Rendimiento. En fútbol el equivalente es 'method', que ya era admin desde antes.
-  var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel', 'dtmodel'];
+  var MODEL_VIEWS = ['esmodel', 'f1model', 'tenmodel', 'nflmodel', 'dtmodel', 'ttmodel'];
   var PERF_VIEWS_ALL = PERF_VIEWS.concat(MODEL_VIEWS);
   function perfOK() { return !!(S.me && S.me.isAdmin); }
   // las listas de nav vienen en dos formas: cadenas ('nflperf') y tuplas (['nflperf', icono, etiqueta])
@@ -1432,6 +1436,17 @@
     // cuándo, en vez del CTA genérico de upgrade. Sin esto la promesa existe en el servidor y en ningún
     // sitio más: nadie usa una puerta que no sabe que está abierta. Lleva a esport porque es el único de
     // los cinco con partidas todos los días del año — la puerta abierta debe dar a una sala con gente.
+    // 9-sep: mientras dure la ventana de dardos y tenis de mesa, el banner los anuncia a ELLOS (la de los
+    // cinco de agosto ya venció). Si algún día vuelven a solaparse, manda la que siga viva más tarde.
+    var dtLibre = !!(S.me.dartsTtFreeUntil && Date.now() < S.me.dartsTtFreeUntil);
+    if (dtLibre) {
+      return '<a class="gx-fbanner gx-freebanner" href="#dtopps">' +
+        '<span class="gx-fbanner-pulse"></span>' +
+        '<b>' + esc(esT('Dardos y tenis de mesa, abiertos para todos', 'Darts and table tennis, open to everyone')) + '</b>' +
+        '<span class="gx-fbanner-sub">' + esc(esT('Los dos deportes nuevos entran en cualquier plan hasta el ' + nuevosHasta('dtopps'), 'Both new sports are in every plan until ' + nuevosHasta('dtopps'))) + '</span>' +
+        '<span class="gx-fbanner-cta">' + esc(t('nw_cta')) + ' ' + ic('arrow-right') + '</span>' +
+        '</a>';
+    }
     if (nuevosLibres()) {
       return '<a class="gx-fbanner gx-freebanner" href="#esopps">' +
         '<span class="gx-fbanner-pulse"></span>' +
@@ -19589,6 +19604,16 @@
     shell(); render();
     var rr = { match: renderMatch, matches: renderMatches, sim: renderSim, teams: renderTeams, team: renderTeam, ask: renderAsk, groups: renderGroups, bracket: renderBracket, evo: renderEvo, registry: renderRegistry, method: renderMethod, admin: renderAdmin, follow: renderFollow, alerts: renderAlerts, refer: renderRefer, perf: renderPerf, calc: renderCalc, sub: renderSub, support: renderSupport, bets: renderBets, books: renderBooks, brief: renderBrief };
     if (CB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderCb(S.view); }
+    // 9-sep: los ocho deportes que llegaron después de combate tenían el MISMO agujero — cambiar de idioma
+    // sobre una de sus vistas no repintaba nada y el usuario se quedaba mirando la pantalla en el idioma
+    // viejo hasta que navegaba a otro sitio. Cada uno tiene un despachador `renderX(vista)`; con eso basta.
+    else if (DT_VIEWS.indexOf(S.view) >= 0) { applyView(); renderDarts(S.view); }
+    else if (TT_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTT(S.view); }
+    else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }
+    else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
+    else if (NFL_VIEWS.indexOf(S.view) >= 0) { applyView(); renderNfl(S.view); }
+    else if (TEN_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTennis(S.view); }
+    else if (F1_VIEWS.indexOf(S.view) >= 0) { applyView(); renderF1(S.view); }
     else if (rr[S.view]) { applyView(); rr[S.view](); }
   }
 
@@ -19772,7 +19797,7 @@
             // shell está desactualizado y se repinta. Sin esto el usuario ve "Próximamente" hasta recargar.
             var barraVieja = (cbSportAllowed() && $('.gx-cbsoon')) ||
               [['hoops', bbAllowed()], ['esports', esAllowed()], ['nfl', nflAllowed()],
-               ['tennis', tenAllowed()], ['f1', f1Allowed()], ['darts', dtAllowed()]].some(function (x) {
+               ['tennis', tenAllowed()], ['f1', f1Allowed()], ['darts', dtAllowed()], ['tt', ttAllowed()]].some(function (x) {
                 return x[1] && !$('[data-sportgo="' + x[0] + '"]');
               });
             if (barraVieja) shell();
@@ -19782,7 +19807,7 @@
             // cuando `me` llegaba. Ese es el "hay que recargar para que aparezcan las cosas". Se repinta la
             // vista actual una sola vez, ya con la sesión en la mano.
             try { showView(S.view); } catch (e) {}
-            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(S.view) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(S.view) >= 0 && !dtAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis' || S.sport === 'f1' || S.sport === 'darts') { S.sport = 'futbol'; shell(); } showView('board'); }
+            if (me.clubs_shadow) { loadClubs(); if (S.view === 'matches') renderMatches(); } if (!me.isAdmin && (['registry', 'method', 'admin'].indexOf(S.view) >= 0 || (CB_VIEWS.indexOf(S.view) >= 0 && !cbCanSee(S.view)) || (BB_VIEWS.indexOf(S.view) >= 0 && !bbAllowed()) || (ES_VIEWS.indexOf(S.view) >= 0 && !esAllowed()) || (NFL_VIEWS.indexOf(S.view) >= 0 && !nflAllowed()) || (TEN_VIEWS.indexOf(S.view) >= 0 && !tenAllowed()) || (F1_VIEWS.indexOf(S.view) >= 0 && !f1Allowed()) || (DT_VIEWS.indexOf(S.view) >= 0 && !dtAllowed()) || (TT_VIEWS.indexOf(S.view) >= 0 && !ttAllowed()) || (S.view === 'sub' && !me.founder_public))) { if (S.sport === 'combat' || S.sport === 'hoops' || S.sport === 'esports' || S.sport === 'nfl' || S.sport === 'tennis' || S.sport === 'f1' || S.sport === 'darts' || S.sport === 'tt') { S.sport = 'futbol'; shell(); } showView('board'); }
             // BALONCESTO: /api/me llega DESPUÉS del primer render por hash, y arriba el shell() se
             // reconstruye — eso VACÍA #gx-matchview. Sin esta rama la vista quedaba en blanco al entrar por
             // enlace directo (mismo bug que ya tenía combate y por eso existe la rama de al lado).
@@ -19792,6 +19817,7 @@
             else if (F1_VIEWS.indexOf(S.view) >= 0) { applyView(); renderF1(S.view); }
             else if (TEN_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTennis(S.view); }
             else if (DT_VIEWS.indexOf(S.view) >= 0) { applyView(); renderDarts(S.view); }
+            else if (TT_VIEWS.indexOf(S.view) >= 0) { applyView(); renderTT(S.view); }
             else if (NFL_VIEWS.indexOf(S.view) >= 0) { applyView(); renderNfl(S.view); }
             else if (ES_VIEWS.indexOf(S.view) >= 0) { applyView(); renderES(S.view); }
             else if (BB_VIEWS.indexOf(S.view) >= 0) { applyView(); renderBB(S.view); }
@@ -19874,6 +19900,243 @@
     ['Calendario, resultados y match cards: ', 'Calendar, results and match cards: '],
     ['Ranking e historial: ', 'Ranking and history: '],
     ['Uso interno de investigación, sin fines comerciales.', 'Internal research use, non-commercial.'],
+  );
+  // DARDOS Y TENIS DE MESA (9-sep). Los dos motores nuevos mandan al navegador TODO su texto en espanol
+  // —motivos de puerta, narrativas de tesis, notas de ficha y de ranking, etiquetas de familia, la
+  // doctrina y los huecos conocidos— porque nacieron admin-only y nadie los escribio pensando en el
+  // ingles. Aqui van esas frases: las que llegan enteras y solas, a EN_X (coincidencia exacta, no puede
+  // romper un nombre propio); las que salen de una plantilla con numeros dentro, a EN_FRAG, de mas larga
+  // a mas corta, que si entra antes la corta parte la larga por la mitad. Medidor: scripts/i18n-darts-tt.js.
+  Object.assign(EN_X, {
+    // ── dardos: doctrina, familias y fuentes ──
+    'todas las familias de dardos están EN SOMBRA: el motor compila el 501 visita a visita con reglas exactas (ganador, legs, sets, 180s y checkout salen del mismo estado), pero contra el MERCADO no hay prueba todavía — eso es lo que la sombra va a medir, familia por familia, con CLV contra el cierre capturado. El ganador se registra como familia de referencia, jamás como pick. Datos de la API pública de la PDC y de Darts Orakel: uso interno de investigación, admin-only.':
+      'every darts family is IN SHADOW: the engine compiles the 501 visit by visit with exact rules (winner, legs, sets, 180s and checkout all come out of the same state), but against the MARKET there is no proof yet — that is what the shadow is going to measure, family by family, with CLV against the captured closing line. The winner is logged as the benchmark family, never as a pick. Data from the PDC public API and Darts Orakel: internal research use, admin-only.',
+    'Total de legs': 'Total legs', 'Hándicap de legs': 'Legs handicap',
+    'Total de 180s': 'Total 180s', 'Más 180s': 'Most 180s', '180s del jugador': 'Player 180s',
+    'Hándicap de 180s': '180s handicap', 'Total de sets': 'Total sets', 'Hándicap de sets': 'Sets handicap',
+    'Empate en 180s': 'Tie on 180s',
+    'brief oficial de la PDC (stages del torneo)': 'official PDC brief (tournament stages)',
+    'stage oficial de la PDC': 'official PDC stage',
+    'reglamento MODUS Super Series (primero a 4 legs)': 'MODUS Super Series rules (first to 4 legs)',
+    'base (EWMA de partidos)': 'base (EWMA of matches)',
+    'cruce sin definir (a la espera de la ronda anterior)': 'matchup not set (waiting on the previous round)',
+    'Modelo de dardos GP': 'GP darts model',
+    'sin partidos MODUS en las casas ahora mismo': 'no MODUS matches at the books right now',
+    'torneo no encontrado': 'tournament not found',
+    'API pública de la PDC (calendario, formato por ronda, resultados)': 'PDC public API (calendar, format by round, results)',
+    'Darts Orakel (media, 180s, dobles por ventana de fechas)': 'Darts Orakel (average, 180s, doubles by date window)',
+    'L1 — estadística de partido: permite perfiles regularizados y kernels agregados; no reconstruye rutas ni misses (blueprint §5.1)':
+      'L1 — match statistics: enough for regularised profiles and aggregate kernels; it does not reconstruct routes or misses (blueprint §5.1)',
+    'una decisión de objetivo y un resultado de lanzamiento; visita de hasta tres dardos con bust exacto (vuelta al inicio de la visita), double-out y double-in':
+      'one target decision and one throw outcome; a visit of up to three darts with exact bust (back to the start of the visit), double-out and double-in',
+    'carrera alternada con absorción: P(A gana | A sale) = Σ P(T_A = k)·P(T_B ≥ k), con 180s y checkout llevados junto a T':
+      'alternating race with absorption: P(A wins | A throws first) = Σ P(T_A = k)·P(T_B ≥ k), carrying 180s and checkout alongside T',
+    'compilador de legs y sets con saque alterno por leg y por set, dos legs de diferencia y muerte súbita':
+      'legs and sets compiler with the throw alternating by leg and by set, two clear legs and sudden death',
+    'la validación walk-forward (Elo cronológico vs compilador vs mezcla, con holdout intocable) se ejecuta con scripts/darts-fit.js y se congela en model-priors.json antes de cualquier lectura de la sombra.':
+      'the walk-forward validation (chronological Elo vs compiler vs blend, with an untouchable holdout) runs from scripts/darts-fit.js and is frozen into model-priors.json before any read of the shadow.',
+    '180s y checkout solo liquidables donde Orakel publica el partido (Players Championship); en el resto la tesis se anota y queda a la espera de fuente':
+      '180s and checkout can only be settled where Orakel publishes the match (Players Championship); everywhere else the thesis is logged and waits for a source',
+    'arrastre dentro de la visita (rho) identificado solo con tasa de 180s; sin ella, prior de población':
+      'within-visit carry (rho) identified only from the 180s rate; without it, a population prior',
+    'el kernel regional sobreestima el 9-darter ~3×; no afecta a legs/ganador':
+      'the regional kernel overestimates the 9-darter by ~3×; it does not affect legs/winner',
+    'orden de saque del primer leg desconocido: se publica la mezcla 50/50 y los dos escenarios':
+      'the throw order of the first leg is unknown: the 50/50 blend and both scenarios are published',
+    'compilado visita → leg → set → partido con las reglas exactas del 501: ganador, legs, 180s y checkout salen del mismo estado. Estimaciones de un modelo estadístico — no consejo financiero.':
+      'compiled visit → leg → set → match with the exact rules of 501: winner, legs, 180s and checkout all come out of the same state. Estimates from a statistical model — not financial advice.',
+    'media, 180s por visita y % de dobles: medidos en ventanas de 365 y 90 días; el kernel se calibra sobre ellos y produce la distribución de dobles, checkouts y visitas por leg. Composición interna reservada.':
+      'average, 180s per visit and double %: measured over 365- and 90-day windows; the kernel is calibrated on them and produces the distribution of doubles, checkouts and visits per leg. Internal composition withheld.',
+    'ranking por Elo propio de GP (resultados de la PDC, todos los circuitos) — no es el Order of Merit, que aparece al lado. La flecha compara contra la foto semanal anterior.':
+      "ranking by GP's own Elo (PDC results, every circuit) — this is not the Order of Merit, which sits alongside. The arrow compares against last week's snapshot.",
+    'la vara es el CLV por familia, no el ROI.': 'the yardstick is CLV by family, not ROI.',
+    'familia sin fuente de liquidación fuera del Players Championship': 'family with no settlement source outside the Players Championship',
+    'sin partidos con cuadro definido en la ventana (la agenda se abre sola con el siguiente torneo)':
+      'no matches with a set draw in the window (the schedule opens by itself with the next tournament)',
+    // ── dardos: puertas de la tesis ──
+    'listón mínimo 3 pp (con signo: solo el lado +EV)': 'minimum bar 3 pp (signed: only the +EV side)',
+    'modelo market-blind por construcción: el precio objetivo jamás es input': 'market-blind model by construction: the target price is never an input',
+    'formato certificado por el brief oficial de la ronda': 'format certified by the official round brief',
+    'formato de plantilla, no certificado para esta edición: sin tesis': 'template format, not certified for this edition: no thesis',
+    'jugador con poca exposición medida: la habilidad es un prior de población (la incertidumbre ya lo descuenta)':
+      'player with little measured exposure: skill is a population prior (the uncertainty already discounts it)',
+    'los dos con exposición suficiente': 'both with enough exposure',
+    'sin fuente de liquidación fiable para esta familia fuera del Players Championship: se anota y se liquidará cuando exista':
+      'no reliable settlement source for this family outside the Players Championship: it is logged and will be settled once one exists',
+    'liquidable con el resultado oficial': 'settleable with the official result',
+    // ── tenis de mesa: doctrina, familias y fuentes ──
+    'todas las familias de tenis de mesa están EN SOMBRA: el motor compila el partido punto a punto con las reglas exactas (11 puntos, dos de diferencia, saque en bloques de dos, alternancia desde 10–10), así que ganador, marcador, games, puntos y los mercados del primer game salen del MISMO estado y no pueden contradecirse; contra el MERCADO no hay prueba todavía — eso es lo que la sombra va a medir, familia por familia, con CLV contra el cierre capturado. El ganador se registra como referencia, jamás como pick. Solo competiciones VERIFICADAS (WTT/ITTF); las ligas privadas de apuestas se enseñan con aviso y nunca se modelan. Datos de la WTT y la ITTF: uso interno de investigación, admin-only.':
+      'every table tennis family is IN SHADOW: the engine compiles the match point by point with the exact rules (11 points, two clear, serve in blocks of two, alternating from 10–10), so winner, score, games, points and the first-game markets all come out of the SAME state and cannot contradict each other; against the MARKET there is no proof yet — that is what the shadow is going to measure, family by family, with CLV against the captured closing line. The winner is logged as the benchmark, never as a pick. Verified competitions only (WTT/ITTF); private betting leagues are shown with a warning and never modelled. WTT and ITTF data: internal research use, admin-only.',
+    'Total de games': 'Total games', 'Hándicap de games': 'Games handicap', 'Hándicap de puntos': 'Points handicap',
+    'Ganador del 1er game': '1st game winner', 'Puntos del 1er game': '1st game points',
+    'Hándicap del 1er game': '1st game handicap', 'Deuce en el 1er game': 'Deuce in the 1st game',
+    'El 1er game llega a deuce (10–10)': '1st game goes to deuce (10–10)',
+    'El 1er game no llega a deuce': '1st game does not reach deuce',
+    'Modelo de tenis de mesa GP': 'GP table tennis model',
+    'sede sin zona conocida': 'venue with no known time zone',
+    'tabla de sedes (sin certificar)': 'venue table (uncertified)',
+    'match card oficial de la WTT': 'official WTT match card',
+    'match card en vivo de la WTT': 'live WTT match card',
+    'evento no encontrado': 'event not found',
+    'ITTF: ranking semanal e historial de partidos por jugador con los puntos de cada game':
+      'ITTF: weekly ranking and per-player match history with the points of every game',
+    'L1 — puntos por game de cada partido: rating de punto identificado; el reparto saque/recepción (L2) es un prior de población (blueprint §5.2)':
+      'L1 — points per game of each match: the point rating is identified; the serve/return split (L2) is a population prior (blueprint §5.2)',
+    'L1 — puntos por game de cada partido; sin reparto saque/recepción': 'L1 — points per game of each match; no serve/return split',
+    'un punto: P(A lo gana) depende de quién sirve (a si sirve A, b si sirve B); saque en bloques de dos y alternancia punto a punto desde 10–10':
+      'one point: P(A wins it) depends on who serves (a if A serves, b if B serves); serve in blocks of two and point-by-point alternation from 10–10',
+    'recursión exacta sobre el marcador con la cola de deuce analítica: u = ab, v = (1−a)(1−b), P(A | deuce) = u/(u+v), E[puntos extra] = 2/(u+v)':
+      'exact recursion over the score with the analytic deuce tail: u = ab, v = (1−a)(1−b), P(A | deuce) = u/(u+v), E[extra points] = 2/(u+v)',
+    'convolución de games al mejor de 5 o 7 con primer servidor alterno; por cada estado se llevan la distribución de puntos totales y la de margen':
+      'convolution of games, best of 5 or 7, with an alternating first server; every state carries both the total-points and the margin distribution',
+    'la tabla sintética del blueprint (12.3) se reproduce a 6 decimales': 'the blueprint synthetic table (12.3) reproduces to 6 decimals',
+    'FALLA la tabla sintética': 'the synthetic table FAILS',
+    'la validación walk-forward (Elo de partido vs compilador desde el rating de punto vs mezcla, con holdout intocable) se ejecuta con scripts/tt-fit.js y se congela en model-priors.json.':
+      'the walk-forward validation (match Elo vs compiler from the point rating vs blend, with an untouchable holdout) runs from scripts/tt-fit.js and is frozen into model-priors.json.',
+    'saque/recepción no identificados: la fuente da puntos por game, no por saque (δ de población)':
+      'serve/return not identified: the source gives points per game, not per serve (population δ)',
+    'primer servidor del partido desconocido antes de empezar: se promedian los dos sorteos y se publican ambos':
+      'the match first server is unknown before the start: both draws are averaged and both are published',
+    'formatos de ronda no certificados hasta que la WTT publica el match card (se usa la frecuencia histórica por nivel × ronda y se dice)':
+      'round formats are not certified until WTT publishes the match card (the historical frequency by level × round is used, and said so)',
+    'ligas privadas de apuestas (Liga Pro, Setka Cup, TT Cup…) sin cuerpo oficial: solo display, jamás modelo':
+      'private betting leagues (Liga Pro, Setka Cup, TT Cup…) with no governing body: display only, never model',
+    'las fechas anteriores a 2021 son por año (la WTT no publica fecha de evento): el orden cronológico fino empieza en 2021':
+      'dates before 2021 are by year (WTT publishes no event date): fine chronological order starts in 2021',
+    'solo VERIFIED_SCOPE entra al modelo y a la sombra; el resto se enseña con su aviso.':
+      'only VERIFIED_SCOPE enters the model and the shadow; the rest is shown with its warning.',
+    'compilado punto → game → partido con las reglas exactas: ganador, marcador, games y puntos salen del mismo estado. Estimaciones de un modelo estadístico — no consejo financiero.':
+      'compiled point → game → match with the exact rules: winner, score, games and points all come out of the same state. Estimates from a statistical model — not financial advice.',
+    'ranking por Elo propio de GP (todos los partidos de mayores con puntos por game) — no es el ranking WTT, que aparece al lado. La flecha compara contra la foto semanal anterior.':
+      "ranking by GP's own Elo (every senior match with points per game) — this is not the WTT ranking, which sits alongside. The arrow compares against last week's snapshot.",
+    'la vara es el CLV por familia y casa, no el ROI.': 'the yardstick is CLV by family and book, not ROI.',
+    'sin partidos WTT en la ventana (la agenda se abre sola con el siguiente evento)':
+      'no WTT matches in the window (the schedule opens by itself with the next event)',
+    'rival del top-100 GP': 'top-100 GP opponent', 'rival del top-10 GP': 'top-10 GP opponent',
+    // ── tenis de mesa: puertas y proceso implícito ──
+    'cuadro sin definir: falta un jugador': 'draw not set: a player is missing',
+    'el partido ya empezó': 'the match has already started',
+    'cuota demasiado larga': 'odds too long', 'cuota demasiado corta': 'odds too short',
+    'fuera del rango que el modelo identifica': 'outside the range the model identifies',
+    'jugador sin partidos en 8 meses': 'player with no matches in 8 months',
+    'solo el primer game se anota antes del partido': 'only the first game is logged before the match',
+    'línea en vivo': 'live line',
+    'probabilidad de punto que reproduce el consenso del ganador': 'point probability that reproduces the winner consensus',
+    'desigualdad de punto |p−0,5| que hace la línea de puntos una moneda al aire': 'point imbalance |p−0.5| that makes the points line a coin flip',
+    'desigualdad de punto que hace la línea de games una moneda al aire': 'point imbalance that makes the games line a coin flip',
+    'la línea de total cotiza un duelo MÁS desigual que el ganador: hay masa de puntos que el ML no identifica':
+      'the total line is pricing a MORE lopsided duel than the winner does: there is points mass the ML does not identify',
+    'la línea de total cotiza un duelo MÁS parejo que el ganador (cola de deuce cargada)':
+      'the total line is pricing a CLOSER duel than the winner does (loaded deuce tail)',
+    'ganador y totales cotizan el mismo proceso': 'winner and totals price the same process',
+    'la fuente entrega puntos por game, no por saque: a = p + δ y b = p − δ con δ de población; la mezcla saque/recepción (L2) no está identificada y se dice.':
+      'the source delivers points per game, not per serve: a = p + δ and b = p − δ with a population δ; the serve/return split (L2) is not identified, and it is said so.',
+    // ── comunes a los dos motores ──
+    'ese partido ya no está en la agenda': 'that match is no longer on the schedule',
+    'jugador fuera de la base propia': 'player outside our own base',
+    'los dos nombres resuelven al mismo jugador': 'both names resolve to the same player',
+    'sin partidos recientes en la base: la incertidumbre del rating es alta': 'no recent matches in the base: rating uncertainty is high',
+    'línea no cotizada al cierre': 'line not quoted at the close',
+    'familia de referencia (benchmark), jamás pick': 'benchmark family, never a pick',
+    'referencia (benchmark), jamás pick': 'benchmark, never a pick',
+    'estimaciones de un modelo estadístico, no consejo financiero.': 'estimates from a statistical model, not financial advice.',
+  });
+  EN_FRAG.push(
+    // narrativas de tesis: se unen con un espacio en un solo nodo, asi que EN_X no las ve nunca
+    ['Los 180s no son una tasa por leg multiplicada: se acumulan visita a visita con la duración del partido y con el hecho de que el que cierra el leg le quita visitas al otro. Media conjunta ',
+      'The 180s are not a per-leg rate multiplied out: they pile up visit by visit with the length of the match and with the fact that whoever closes the leg takes visits away from the other. Joint mean '],
+    ['El primer game se compila con la alternancia real del saque (bloques de dos, punto a punto desde 10–10) sin saber quién sirve primero: se promedian los dos sorteos. ',
+      'The first game is compiled with the real serve alternation (blocks of two, point by point from 10–10) without knowing who serves first: both draws are averaged. '],
+    ['Un game no puede acabar 11–10 ni sumar 21 puntos: la curva de puntos del primer game tiene su masa en 11–x y una cola geométrica desde 10–10 (',
+      'A game cannot end 11–10 nor add up to 21 points: the first-game points curve keeps its mass on 11–x plus a geometric tail from 10–10 ('],
+    ['Modelo market-blind por construcción: el precio no entra nunca al cálculo, así que la diferencia con la casa es una discrepancia real y no un eco de su propia línea.',
+      'Market-blind model by construction: the price never enters the calculation, so the gap against the book is a real disagreement and not an echo of its own line.'],
+    ['Modelo market-blind por construcción: el precio no entra nunca al cálculo. El reparto saque/recepción es un prior de población (nivel L1: la fuente da puntos por game, no por saque) y así se declara.',
+      'Market-blind model by construction: the price never enters the calculation. The serve/return split is a population prior (level L1: the source gives points per game, not per serve) and it is declared as such.'],
+    ['EN SOMBRA: todas las familias de tenis de mesa se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.',
+      'IN SHADOW: every table tennis family is logged and settled to build sample, but none is published as a pick — against the market there is no proof yet.'],
+    ['EN SOMBRA: todas las familias de dardos se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.',
+      'IN SHADOW: every darts family is logged and settled to build sample, but none is published as a pick — against the market there is no proof yet.'],
+    ['Esta familia solo se puede liquidar con estadística de partido, que hoy existe para el Players Championship: en el resto queda anotada a la espera de fuente.',
+      'This family can only be settled with match statistics, which today exist for the Players Championship: everywhere else the thesis stays logged, waiting for a source.'],
+    ['El motor compila el 501 visita a visita —precisión al triple, dobles y arrastre de cada uno— y corre el partido ',
+      'The engine compiles the 501 visit by visit —treble accuracy, doubles and the within-visit carry of each— and runs the match '],
+    ['Los 180s del jugador dependen de cuántas visitas de puntuación le deja el partido, no solo de su tasa: media ',
+      "A player's 180s depend on how many scoring visits the match leaves them, not just on their rate: mean "],
+    ['"Más 180s" se resuelve sobre la distribución CONJUNTA de los dos conteos, con su masa de empate (',
+      '"Most 180s" is settled on the JOINT distribution of both counts, with its tie mass ('],
+    ['Los games no son un promedio: salen de la distribución completa del compilador (media ',
+      "Games are not an average: they come out of the compiler's full distribution (mean "],
+    ['Los puntos totales acumulan game a game la cola de deuce (P(deuce por game) ',
+      'Total points pile up the deuce tail game by game (P(deuce per game) '],
+    ['El hándicap se lee sobre la distribución de MARGEN del compilador, no sobre el ganador: ',
+      "The handicap is read off the compiler's MARGIN distribution, not off the winner: "],
+    ['El hándicap se lee sobre la distribución del MARCADOR en games, no sobre el ganador: ',
+      'The handicap is read off the SCORE distribution in games, not off the winner: '],
+    ['El margen de puntos del partido sale de la misma compilación que el ganador: ',
+      'The points margin of the match comes out of the same compilation as the winner: '],
+    ['El margen de un game es 11−x antes del deuce y exactamente 2 después: ',
+      'The margin of a game is 11−x before deuce and exactly 2 after: '],
+    ['), que sabe que el que gana el leg deja de tirar y que salir primero vale ',
+      '), which knows that whoever wins the leg stops throwing and that throwing first is worth '],
+    ['La probabilidad de deuce sale de la recursión exacta del game (',
+      'Deuce probability comes out of the exact game recursion ('],
+    ['La duración no es un promedio: sale de la distribución completa de ',
+      'Length is not an average: it comes out of the full distribution of '],
+    ['El motor compila el partido punto a punto (al mejor de ',
+      'The engine compiles the match point by point (best of '],
+    ['): equivale a "más de 20,5 puntos" y a "más de 21,5", que son la misma apuesta.',
+      '): the same bet as "over 20.5 points" and as "over 21.5".'],
+    ['Resultados y calendario: API pública de la PDC. Estadística de jugador: Darts Orakel.',
+      'Results and calendar: PDC public API. Player statistics: Darts Orakel.'],
+    ['Circuito MODUS: fixtures de las casas, resultado por Flashscore.',
+      'MODUS circuit: fixtures from the books, results from Flashscore.'],
+    [' liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.',
+      ' settled EVERYTHING is noise: this screen is building the record, it cannot be read yet.'],
+    [' pp (exposición de los dos jugadores + desacuerdo Elo/compilador)',
+      ' pp (exposure of both players + Elo/compiler disagreement)'],
+    ['), que sabe cuánto pesa cada game en el marcador ', '), which knows how much each game weighs in the score '],
+    [' del compilador (media ', ' from the compiler (mean '],
+    [') desde la probabilidad de punto de cada uno: ', ") from each player's point probability: "],
+    // la red ya traducia "fuera de la base" antes de llegar a la frase larga y dejaba spanglish: se repara
+    ['jugador outside the base propia', 'player outside our own base'],
+    [' puntos esperados si llega): media ', ' expected points if it gets there): mean '],
+    ['. Un ganador bien cotizado no fija esta curva.', '. A well-priced winner does not pin this curve.'],
+    [' en este formato y contra este rival.', ' in this format and against this opponent.'],
+    [' de los partidos compilados.', ' of compiled matches.'],
+    [' del primer game compilado.', ' of the compiled first game.'],
+    [' de las veces contra el ', ' of the time against the '],
+    ['jugador frío: menos de', 'cold player: fewer than'],
+    ['sin resultado casado en', 'no matched result in'],
+    ['sin resultado oficial en', 'no official result in'],
+    [' puntos en el 1er game', ' points in the 1st game'],
+    ['formato no certificado (', 'format not certified ('],
+    ['prior de población (δ =', 'population prior (δ ='],
+    [' que implica la cuota.', ' implied by the odds.'],
+    [' puntos en el partido', ' points in the match'],
+    ['; sobre esa curva el ', '; on that curve the '],
+    [' del modelo contra ', ' from the model against '],
+    [': el modelo no entra', ': the model does not enter'],
+    ['–x. Sobre esa curva el ', '–x. On that curve the '],
+    [' gana el 1er game', ' wins the 1st game'],
+    [' 180s en el partido', ' 180s in the match'],
+    [' con dos de diferencia', ' with two clear legs'],
+    ['pp vs incertidumbre', 'pp vs uncertainty'],
+    ['Checkout más alto', 'Highest checkout'],
+    [' en el partido; el ', ' in the match; the '],
+    [' tira más 180s', ' throws more 180s'],
+    ['por encima de', 'above'], ['por debajo de', 'below'],
+    [' de llegar). El ', ' of getting there). The '],
+    ['competición ', 'competition '],
+    ['al mejor de ', 'best of '],
+    [' del precio.', ' from the price.'],
+    [' lo gana ', ' wins it '],
+    ['Menos de', 'Under'],
+    [' cubre ', ' covers '],
+    ['Más de', 'Over'],
+    [' pesa ', ' is worth '],
+    [' gana ', ' wins '],
+    ['Gana ', 'Winner: '],
   );
   var EN_MARK = /[áéíóúñÁÉÍÓÚÑ¿«]|\b(el|la|los|las|de|del|un|una|que|con|sin|por|para|se|no|ya|más|es|son|hay|hoy|en|sem)\b|partid|liquidad|abiert|ventaja|cuota|sombra|mapa|ronda|pelea|juego|casas|muestra|prórroga|puntúa|activ/i;
   function enTxt(txt) {

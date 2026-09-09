@@ -29,7 +29,7 @@ const parseAt = (s) => Date.parse(String(s || '').replace(' ', 'T') + (String(s 
 
 // Constantes congeladas del ajuste (scripts/lol-gen-fit.js las valida; cambiarlas sin re-validar es mentir)
 const CONST = {
-  version: 'lol-gen-1',
+  version: 'lol-gen-2',       // 2: casado de liga por alias (LCK Challengers League → LCK CL) y liga desconocida = n_eff 20
   window_days: 365,        // ventana de la celda liga×parche
   league_days: 240,        // ventana de la liga (sin parche)
   shrink_k: 30,            // partidas de prior: celda → liga → circuito
@@ -204,11 +204,14 @@ function fitCached(games, dataAt) {
   _fitCache = { key: String(dataAt) + '|' + games.length, fit: f };
   return f;
 }
-function analyze({ games, dataAt, league, patch = null, pMapA = 0.5, sims } = {}) {
+function analyze({ games, dataAt, league, patch = null, pMapA = 0.5, sims, unknownLeague = false } = {}) {
   const F = fitCached(games, dataAt);
   const mp = patch || F.current_patch;
   const P = paramsFor(F, league, mp);
   if (!P) return null;
+  // una liga que la base no conoce cae al circuito: la forma es la del circuito, pero la MUESTRA de esa liga es cero.
+  // La incertidumbre tiene que decirlo (n_eff 20 → ≈ 8 pp), no fingir las 400 partidas del prior.
+  if (unknownLeague || P.source === 'circuito') P.n_eff = Math.min(P.n_eff, 20);
   const sim = simulateCalibrated(P, pMapA, { sims });
   return { version: CONST.version, league, patch: mp, params: P, sim, unc_pp: uncPp(P.n_eff), p_map_a: pMapA,
     chain: [
@@ -219,4 +222,4 @@ function analyze({ games, dataAt, league, patch = null, pMapA = 0.5, sims } = {}
     ] };
 }
 
-module.exports = { CONST, stats, fit, paramsFor, simulate, simulateCalibrated, price, uncPp, analyze, majorPatch, leagueKey, parseAt, negHist };
+module.exports = { CONST, stats, fit, fitCached, paramsFor, simulate, simulateCalibrated, price, uncPp, analyze, majorPatch, leagueKey, parseAt, negHist };

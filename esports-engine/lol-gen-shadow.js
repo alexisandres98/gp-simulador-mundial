@@ -25,12 +25,20 @@ const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const median = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
 const devig2 = (oa, ob) => (oa > 1 && ob > 1 ? (1 / oa) / (1 / oa + 1 / ob) : null);
 
-// liga de la base propia a partir de la competición que trae la casa (LD.tempoFor ya hace el casado parcial)
-function leagueOf(competition) {
+// liga de la base propia a partir de la competición que trae la casa. Primero exacto, luego alias (la casa dice
+// "LCK Challengers League" y la base "LCK CL"; `LD.tempoFor` lo casaba con LCK, que corre a otro ritmo), luego
+// el nombre conocido más largo contenido en la competición. Si nada casa, la liga es DESCONOCIDA para la base.
+const normL = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/challengers league/g, 'cl').replace(/challengers/g, 'cl').replace(/[^a-z0-9]+/g, ' ').trim();
+function leagueOf(competition, known = []) {
+  const c = normL(competition);
+  if (!c) return { league: 'default', known: false };
+  const table = known.map((k) => ({ k, n: normL(k) })).filter((x) => x.n.length >= 3);
+  const exact = table.find((x) => x.n === c); if (exact) return { league: exact.k, known: true };
+  const contained = table.filter((x) => (' ' + c + ' ').includes(' ' + x.n + ' ') || (' ' + x.n + ' ').includes(' ' + c + ' ')).sort((a, b) => b.n.length - a.n.length);
+  if (contained.length) return { league: contained[0].k, known: true };
   const t = LD.tempoFor(competition);
-  if (t && t.league) return t.league;
-  const up = String(competition || '').trim();
-  return up.split(/[\s:|-]/)[0] || 'default';
+  if (t && t.league) return { league: t.league, known: true };
+  return { league: String(competition || '').trim().split(/[\s:|-]/)[0] || 'default', known: false };
 }
 
 // P(A gana el mapa) anclada al mercado: MAPA si alguna casa lo cotiza, si no SERIE → mapa por bo
@@ -46,6 +54,9 @@ async function run({ ahora = Date.now(), withinMin = 720, cap = 12 } = {}) {
   const out = { sport: SPORT, eventos: 0, con_mercado: 0, tesis_evaluadas: 0, por_liga: {} };
   const data = LD.load();
   if (!data || !data.available) return { ...out, why: 'base propia de LoL no disponible' };
+  const known = Object.keys(G.fitCached(data.games, data.at).leagues || {});
+  // tesis vivas de una versión anterior del generador: fuera con motivo (no se mezclan muestras)
+  { const st = S.rd(SPORT); let n = 0; for (const p of Object.values(st.picks || {})) if (p.status === 'ACTIVE' && (!p.meta || p.meta.model_version !== G.CONST.version)) { p.status = 'VOID'; p.result = 'VOID'; p.void_why = `generador ${(p.meta && p.meta.model_version) || 'sin versión'} sustituido por ${G.CONST.version}`; p.settled_at = new Date(ahora).toISOString(); n++; } if (n) { S.wr(SPORT, st); out.anuladas_version = n; } }
   const s = await ES.slate('lol', { days: 2 }).catch(() => null);
   const evs = ((s && s.events) || []).filter((e) => { if (!e.start_at) return false; const m = (Date.parse(e.start_at) - ahora) / 60000; return m > 5 && m < withinMin; })
     .sort((a, b) => Date.parse(a.start_at) - Date.parse(b.start_at)).slice(0, cap);
@@ -58,11 +69,11 @@ async function run({ ahora = Date.now(), withinMin = 720, cap = 12 } = {}) {
     if (!kills.length) continue;
     out.con_mercado++;
     const bo = ES.boOf(mk, 3, ev);
-    const league = leagueOf(ev.competition);
-    out.por_liga[league] = (out.por_liga[league] || 0) + 1;
+    const lg = leagueOf(ev.competition, known); const league = lg.league;
+    out.por_liga[league + (lg.known ? '' : ' (desconocida)')] = (out.por_liga[league + (lg.known ? '' : ' (desconocida)')] || 0) + 1;
     const anchor = pMapFrom(rows, bo);
     let gen = null;
-    try { gen = G.analyze({ games: data.games, dataAt: data.at, league, pMapA: anchor.p, sims: 12000 }); } catch { gen = null; }
+    try { gen = G.analyze({ games: data.games, dataAt: data.at, league, pMapA: anchor.p, sims: 12000, unknownLeague: !lg.known }); } catch { gen = null; }
     if (!gen) continue;
     const home = ev.home && ev.home.name || ev.home, away = ev.away && ev.away.name || ev.away;
     for (const r of kills) {
@@ -80,7 +91,7 @@ async function run({ ahora = Date.now(), withinMin = 720, cap = 12 } = {}) {
         p_coherent: r4(pGen), p_market: r4(pMkt), edge_pp: r2(Math.abs(edge)), unc_pp: gen.unc_pp,
         n_books: new Set(kills.map((x) => x.book)).size,
         basis: `${gen.params.source} ${league}${gen.patch ? ' · parche ' + gen.patch : ''} (n_eff ${gen.params.n_eff}): ${gen.sim.mean_kills} ± ${gen.sim.sd_kills} kills, mapa ${r.map}, pMap ${anchor.p} (${anchor.from})`,
-        meta: { map: r.map, team: r.team || null, bo, p_map_a: anchor.p, anchor: anchor.from, mean_kills: gen.sim.mean_kills, sd_kills: gen.sim.sd_kills, handicap_mean: gen.sim.handicap_mean, source: gen.params.source, n_eff: gen.params.n_eff, patch: gen.patch, competition: ev.competition, edge_signed_pp: r2(edge) },
+        meta: { model_version: G.CONST.version, league_known: lg.known, map: r.map, team: r.team || null, bo, p_map_a: anchor.p, anchor: anchor.from, mean_kills: gen.sim.mean_kills, sd_kills: gen.sim.sd_kills, handicap_mean: gen.sim.handicap_mean, source: gen.params.source, n_eff: gen.params.n_eff, patch: gen.patch, competition: ev.competition, edge_signed_pp: r2(edge) },
       });
     }
   }

@@ -21,7 +21,13 @@ corre **en sombra**. Las autorizaciones son triestado y UNKNOWN falla cerrado.
 - QUARANTINED / BLOCKED: reservados para una competición verificada que muestre anomalías o una orden explícita.
 
 ## Consecuencias
-- Nada de esto autoriza abrir el deporte al público ni cobrar por él: `GP_TT_PUBLIC_ENABLED` se queda sin poner.
+- **9-sep-2026 — decisión del dueño (Alexis), riesgo asumido y anotado**: el deporte se abre al público con
+  ventana libre de siete días y después por plan. La tabla no lo autoriza: WTT da `display` con atribución pero
+  `commercial` sigue en UNKNOWN. Mitigación aplicada: `/api/tt/model` y las vistas de motor y rendimiento quedan
+  admin-only, la doctrina se le quita a quien no es admin, y los retratos se enlazan al blob de la WTT sin
+  rehospedarlos. Si la fuente reclama, se apaga con `GP_TT_PUBLIC_ENABLED=0` sin desplegar. Contexto y plan:
+  `PLAN_LANZAMIENTO_DARDOS_TT.md`.
+- (histórico, superado por la línea anterior) Nada de esto autorizaba abrir el deporte al público ni cobrar por él: `GP_TT_PUBLIC_ENABLED` se quedaba sin poner.
 - Un modelo entrenado con el historial de la ITTF hereda la restricción: research-only. Antes de un producto comercial hay que
   licenciar la fuente (WTT/ITTF data partner o Sportradar) o negociar.
 - Revocación: si una fuente pide retirada, se apaga su proveedor, se invalidan las cachés y se reconstruye la base desde lo

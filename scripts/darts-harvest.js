@@ -55,7 +55,73 @@ function wikiPhotoOf(j) {
   if (!j || j.type !== 'standard' || !/darts?\b/i.test(String(j.description || ''))) return null;
   const src = (j.thumbnail && j.thumbnail.source) || (j.originalimage && j.originalimage.source) || null;
   if (!src) return { title: j.title, url: null };
-  return { title: j.title, url: src.replace(/\/\d+px-/, '/400px-') };
+  return { title: j.title, url: src.replace(/\/\d+px-/, '/400px-'), src: 'wikipedia' };
+}
+
+// ── WIKIMEDIA COMMONS (9-sep): la segunda red, y la que más cubre ────────────────────────────────────────
+// Wikipedia solo tiene ARTÍCULO de los jugadores conocidos; Commons tiene FOTOS de cualquiera que haya
+// pasado por un European Tour, porque hay fotógrafos (Sven Mandel y compañía) que suben la galería entera
+// con licencia CC. El precio es que la búsqueda casa por texto y devuelve basura: "Danny Jansen" trae al
+// receptor de los Blue Jays, y una foto de Daryl Gurney aparece buscando a su rival. Por eso el filtro es
+// duro y se apoya en dos cosas: el TÍTULO DEL ARCHIVO tiene que llevar el nombre completo del jugador, y
+// el archivo tiene que estar PROBADO como de dardos por sus categorías (o por su título o su descripción).
+// La categoría es la prueba buena: "Danny Jansen in 2022.png" no dice dardos en el título pero está en
+// "Category:Darts players from the Netherlands", y sin ella se habría descartado un retrato válido. Con la
+// convención de esos fotógrafos ("Partido - SUJETO - id fecha torneo - num.jpg") el nombre en el título
+// deja fuera al rival y a los planos de ambiente ("Miscellaneous - ..."). Solo licencias libres
+// (CC*/dominio público) y siempre con crédito: autor, licencia y página del archivo viajan en
+// `photo_credit` hasta la ficha del jugador. Se ENLAZA la miniatura, jamás se rehospeda.
+const COMMONS_OK_LIC = /^(cc[ -]|cc0|public domain|pd-|pdm)/i;
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+async function commonsSearch(name, soloNombre) {
+  const q = soloNombre ? `"${name}"` : `"${name}" darts`;
+  const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6'
+    + '&gsrsearch=' + encodeURIComponent(q) + '&gsrlimit=10&cllimit=30'
+    + '&prop=imageinfo%7Ccategories&iiprop=url%7Cextmetadata%7Cmime&iiurlwidth=400';
+  for (let intento = 0; intento < 3; intento++) {
+    const r = await fetch(u, { headers: { 'User-Agent': WIKI_UA, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
+    if (r.status === 429 || r.status >= 500) { await sleep(15000 * (intento + 1)); continue; }
+    if (!r.ok) return [];
+    const j = await r.json();
+    return Object.values((j.query && j.query.pages) || {});
+  }
+  throw new Error('429/5xx tras 3 intentos');
+}
+function commonsPick(pages, name) {
+  const n = norm(name);
+  const partes = n.split(/\s+/).filter((x) => x.length > 2);
+  let mejor = null;
+  for (const p of pages) {
+    const ii = (p.imageinfo || [])[0] || {};
+    if (!/^image\/(jpeg|png|webp)$/i.test(String(ii.mime || ''))) continue;
+    const em = ii.extmetadata || {};
+    const lic = String((em.LicenseShortName || {}).value || '').trim();
+    if (!COMMONS_OK_LIC.test(lic)) continue;
+    const titulo = String(p.title || '').replace(/^File:/i, '').replace(/\.(jpe?g|png|webp)$/i, '');
+    const t = norm(titulo);
+    if (!t.includes(n) || !partes.every((x) => t.includes(x))) continue;   // el nombre COMPLETO, en el título
+    const cats = norm((p.categories || []).map((c) => c.title).join(' '));
+    const desc = norm(String((em.ImageDescription || {}).value || '').replace(/<[^>]*>/g, ''));
+    if (!/dart/.test(t) && !/dart/.test(cats) && !/dart/.test(desc)) continue;  // y la prueba de que es de dardos
+    if (/\b(logo|signature|autograph|dartboard|trophy|scoreboard|crowd)\b/.test(t)) continue;
+    // la convención "Partido - SUJETO - id ...": el sujeto es el 2º segmento; si el nombre está ahí solo,
+    // la foto es de él y de nadie más. Se puntúa para quedarse con la mejor de las diez.
+    const segs = t.split(' - ');
+    const suj = segs.length > 1 ? segs[1].trim() : '';
+    let score = 1;
+    if (t.startsWith(n)) score = 4;
+    else if (suj === n) score = 3;
+    else if (suj.includes(n)) score = 2;
+    if (/\(cropped\)/.test(t)) score += 0.5;                              // los recortes suelen ser retratos
+    if (!mejor || score > mejor.score) {
+      const url = String(ii.thumburl || ii.url || '').split('?')[0].replace('//thumb.wikimedia.org', '//upload.wikimedia.org');
+      if (!url) continue;
+      mejor = { score, url, title: p.title, src: 'commons',
+        credit: { author: String((em.Artist || {}).value || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) || null,
+          license: lic, page: ii.descriptionurl || null } };
+    }
+  }
+  return mejor;
 }
 async function harvestPhotos(max) {
   const players = rd(path.join(OUT, 'players.json')) || rd(path.join(REPO_OUT, 'players.json')) || {};
@@ -74,17 +140,24 @@ async function harvestPhotos(max) {
   const cands = Object.entries(players)
     .filter(([id, p]) => !p.photo && p.name && !(cache[id] && (cache[id].url || now - Date.parse(cache[id].at || 0) < WIKI_TTL_NEG)))
     .sort((a, b) => (activo(b[0]) - activo(a[0])) || (b[1].n - a[1].n)).slice(0, max);
-  log(`fotos: ${cands.length} jugadores sin retrato a buscar en Wikipedia (tope ${max}; activos primero: ${cands.filter(([id]) => activo(id)).length})`);
-  let hits = 0, done = 0, r429 = 0;
+  log(`fotos: ${cands.length} jugadores sin retrato a buscar (tope ${max}; activos primero: ${cands.filter(([id]) => activo(id)).length})`);
+  let hits = 0, done = 0, r429 = 0, porFuente = { wikipedia: 0, commons: 0 };
   for (const [id, p] of cands) {
     let hit = null;
     try {
       hit = wikiPhotoOf(await wikiSummary(p.name));
       if (!hit) { await sleep(500); hit = wikiPhotoOf(await wikiSummary(`${p.name} (darts player)`)); }
+      // Wikipedia no tiene artículo (o lo tiene sin foto) → Commons, que es donde están las galerías CC.
+      // Dos pasadas: con "darts" en la consulta y, si el índice de texto no lo casa (pasa con retratos
+      // sueltos cuya página no escribe la palabra), solo con el nombre. El filtro de dardos es el mismo en
+      // las dos, así que la segunda no relaja nada: solo busca en más sitios.
+      if (!hit || !hit.url) { await sleep(500); hit = commonsPick(await commonsSearch(p.name), p.name) || hit; }
+      if (!hit || !hit.url) { await sleep(500); hit = commonsPick(await commonsSearch(p.name, true), p.name) || hit; }
     } catch (e) { if (/429/.test(e.message)) r429++; log(`  foto ${p.name}: ${e.message}`); }
-    cache[id] = { url: hit && hit.url ? hit.url : null, title: hit ? hit.title : null, at: new Date().toISOString() };
-    if (hit && hit.url) hits++;
-    if (++done % 25 === 0) { wr(WIKI_F(), cache); aplicar(); log(`  fotos ${done}/${cands.length} · ${hits} encontradas${r429 ? ` · ${r429} con 429` : ''}`); }
+    cache[id] = { url: hit && hit.url ? hit.url : null, title: hit ? hit.title : null, at: new Date().toISOString(),
+      src: hit && hit.url ? (hit.src || 'wikipedia') : null, credit: (hit && hit.credit) || null };
+    if (hit && hit.url) { hits++; porFuente[hit.src || 'wikipedia'] = (porFuente[hit.src || 'wikipedia'] || 0) + 1; }
+    if (++done % 25 === 0) { wr(WIKI_F(), cache); aplicar(); log(`  fotos ${done}/${cands.length} · ${hits} encontradas (wiki ${porFuente.wikipedia}, commons ${porFuente.commons})${r429 ? ` · ${r429} con 429` : ''}`); }
     if (r429 >= 10) { log('fotos: demasiados 429 seguidos, se corta la pasada (reanudable)'); break; }
     await sleep(500);
   }
@@ -98,9 +171,9 @@ function mergeWikiPhotos(players) {
   for (const [id, p] of Object.entries(players)) {
     if (p.photo) { if (!p.photo_src) p.photo_src = 'pdc'; continue; }
     const c = cache[id];
-    if (c && c.url) { p.photo = c.url; p.photo_src = 'wikipedia'; n++; }
+    if (c && c.url) { p.photo = c.url; p.photo_src = c.src || 'wikipedia'; if (c.credit) p.photo_credit = c.credit; n++; }
   }
-  if (n) log(`fotos de Wikipedia aplicadas: ${n}`);
+  if (n) log(`fotos de Wikipedia/Commons aplicadas: ${n}`);
   return n;
 }
 
@@ -274,8 +347,13 @@ function build() {
     if (!players[id]) continue;
     const prof = (p.media || []).find((m) => m.type === 'profile');
     // la foto de la PDC manda; si la PDC no la tiene, se conserva la de Wikipedia que ya hubiera (7-sep)
-    const keep = players[id].photo_src === 'wikipedia' ? players[id].photo : null;
-    Object.assign(players[id], { dob: p.dob || null, nickname: p.nickname || null, slug: p.participantSlug || null, photo: prof ? PDC.IMG(prof.image) : keep, photo_src: prof ? 'pdc' : (keep ? 'wikipedia' : null), tour_card: !!p.isCurrentTourCardHolder, oom_rank: p.ranking || null, prize: p.prizeMoney || null, hometown: (p.meta || {}).homeTown || null, darts: (p.meta || {}).makeOfDart || null, dart_weight: (p.meta || {}).weightOfDart || null, started: (p.meta || {}).startedPlayingYear || null, nine_darters: (p.statistics || {}).nineDartCount || null });
+    // lo traído de Wikipedia/Commons sobrevive a una re-cosecha de la PDC (que solo tiene retrato de los de
+    // tarjeta): si la PDC no da imagen, se conserva la de fuera CON su fuente y su crédito.
+    const fuera = players[id].photo_src === 'wikipedia' || players[id].photo_src === 'commons';
+    const keep = fuera ? players[id].photo : null;
+    const keepSrc = fuera ? players[id].photo_src : null;
+    const keepCred = fuera ? (players[id].photo_credit || null) : null;
+    Object.assign(players[id], { dob: p.dob || null, nickname: p.nickname || null, slug: p.participantSlug || null, photo: prof ? PDC.IMG(prof.image) : keep, photo_src: prof ? 'pdc' : keepSrc, photo_credit: prof ? null : keepCred, tour_card: !!p.isCurrentTourCardHolder, oom_rank: p.ranking || null, prize: p.prizeMoney || null, hometown: (p.meta || {}).homeTown || null, darts: (p.meta || {}).makeOfDart || null, dart_weight: (p.meta || {}).weightOfDart || null, started: (p.meta || {}).startedPlayingYear || null, nine_darters: (p.statistics || {}).nineDartCount || null });
   }
   mergeWikiPhotos(players);
   // ORAKEL → estadística por partido (Players Championship) casada por nombres + fecha + marcador

@@ -1,4 +1,20 @@
-# HANDOFF — estado al 9-sep-2026 (lo de tenis de mesa, transferido a las familias que pierden)
+# HANDOFF — estado al 9-sep-2026 (dardos y tenis de mesa, abiertos al público)
+
+## 🚀 9-sep — DARDOS Y TENIS DE MESA SALEN AL PÚBLICO (orden de Alexis; plan completo en `PLAN_LANZAMIENTO_DARDOS_TT.md`)
+Los dos deportes dejan de ser admin-only. `pubOn(env)` invierte la regla —abierto salvo que la env diga `0`— y
+`dartsTtFreeUntil()` les da SU ventana (`GP_DARTS_TT_FREE_UNTIL`, 17-sep): siete días abiertos para todos los
+planes y después el reparto de siempre (free = agenda, fichas, ranking y proyecciones; pro = tesis, brief,
+lectura, simulador y sombra; sharp = lo que sale de precios entre casas). `nsPlanCtx` y `newSportsPlanOk` toman
+la ventana como argumento, así que la de agosto —vencida— ya no arrastra a los deportes nuevos.
+**Caja negra reforzada al abrir**: `/api/darts/model` y `/api/tt/model` devuelven 404 a quien no es admin, la
+`doctrine` se le quita a quien no es admin en board, match, torneo y track, y en la pestaña `ttperf` y `ttmodel`
+entran por fin en las listas cerradas (estaban fuera desde que nació el deporte: el motor de tenis de mesa era
+visible para cualquiera). Tres fallos más de la pestaña de tenis de mesa, arreglados de paso: la barra no se
+repintaba al llegar la sesión, un enlace directo a una vista de TT se quedaba en el cargando, y cambiar de
+idioma sobre una vista de cualquiera de los ocho deportes nuevos no repintaba nada.
+**Derechos**: ninguna fuente lo autoriza y está anotado con fecha y dueño en los dos `RIGHTS.md`. Cierre de
+emergencia sin desplegar: `GP_DARTS_PUBLIC_ENABLED=0` / `GP_TT_PUBLIC_ENABLED=0`.
+
 
 ## 💸 9-sep 09:00Z — TENIS DE MESA AL DINERO REAL (orden de Alexis: "total points en Cloudbet, siempre $5, ya")
 `real-executor/tt.js`: canal APARTE del perímetro de tarjetas (store.js no cambia salvo exportar `frenos`). Señal =

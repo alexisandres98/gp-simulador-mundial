@@ -1549,11 +1549,23 @@ function newSportsFreeUntil() {
   const t = Date.parse(process.env.GP_NEWSPORTS_FREE_UNTIL || '2026-08-31T00:00:00Z');
   return Number.isFinite(t) ? t : 0;
 }
+// VENTANA DE DARDOS Y TENIS DE MESA (9-sep, orden de Alexis): los dos últimos deportes salen al público
+// con su PROPIA fecha de cierre — la de los cinco de agosto ya venció, y colgarlos de ella los dejaría
+// cerrados el mismo día que abren. Siete días completos desde el 10-sep; se mueve por env sin desplegar.
+function dartsTtFreeUntil() {
+  const t = Date.parse(process.env.GP_DARTS_TT_FREE_UNTIL || '2026-09-17T00:00:00Z');
+  return Number.isFinite(t) ? t : 0;
+}
+// VISIBILIDAD DE UN DEPORTE (9-sep): abierto salvo que la env diga explícitamente que no. Antes era al
+// revés (cerrado salvo que la env dijera que sí) y por eso dardos y tenis de mesa nacieron admin-only.
+// La env se queda como INTERRUPTOR DE EMERGENCIA: `GP_DARTS_PUBLIC_ENABLED=0` los cierra sin desplegar.
+function pubOn(name) { return !/^(0|false|no|off)$/i.test(String(process.env[name] || 'on').trim()); }
 // true = este usuario puede entrar a un deporte nuevo. Admin y pre-lanzamiento de pagos pasan siempre.
-function newSportsPlanOk(u) {
+// `hasta` permite que un deporte traiga su propia ventana (dardos y TT) en vez de la común de agosto.
+function newSportsPlanOk(u, hasta) {
   if (!u) return false;
   if (u.isAdmin || !plansEnforced()) return true;
-  if (Date.now() < newSportsFreeUntil()) return true;
+  if (Date.now() < (hasta == null ? newSportsFreeUntil() : hasta)) return true;
   return ['pro', 'sharp'].indexOf(effectivePlan(u.email)) >= 0;
 }
 // CIERRE DE LA VENTANA (31-ago, orden de Alexis): la semana gratis venció y los cinco deportes dejan el
@@ -1563,12 +1575,13 @@ function newSportsPlanOk(u) {
 // arbitraje, caídas, middles, props). El monitor privado (picks hoops, POSTs de liquidación) es solo
 // admin: no es producto de ningún plan. El admin previsualiza con ?asplan=free|pro|sharp como en combate,
 // y en preview los strips se aplican de verdad (si no, la preview mentiría justo donde importa).
-function nsPlanCtx(u, url) {
+function nsPlanCtx(u, url, hasta) {
   const as = String(url.searchParams.get('asplan') || '');
   const preview = !!(u && u.isAdmin && ['free', 'pro', 'sharp'].indexOf(as) >= 0);
+  const libre = hasta == null ? newSportsFreeUntil() : hasta;   // 9-sep: cada deporte puede traer su ventana
   const plan = preview ? as
     : (u && u.isAdmin) ? 'sharp'
-      : (!plansEnforced() || Date.now() < newSportsFreeUntil()) ? 'sharp'
+      : (!plansEnforced() || Date.now() < libre) ? 'sharp'
         : (u ? effectivePlan(u.email) : 'free');
   return { plan, pro: plan === 'pro' || plan === 'sharp', sharp: plan === 'sharp', admin: !!(u && u.isAdmin && !preview) };
 }
@@ -17407,7 +17420,7 @@ function getUser(req) {
   const beta = gpProduct.resolveForUser({ email, isAdmin: admin, entitled: ent.access });
   beta.beta = beta.beta || ent.access;       // betaGuard usa esto → entitled accede a /x
   beta.entitled = ent.access;
-  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', dartsPublic: String(process.env.GP_DARTS_PUBLIC_ENABLED || '') === 'true', ttPublic: String(process.env.GP_TT_PUBLIC_ENABLED || '') === 'true', newSportsFreeUntil: newSportsFreeUntil() };
+  return { email, ...db.users[email], isAdmin: admin, lang: (db.users[email] && db.users[email].lang) || null, uiFlags: ui, beta, beta_access: ent.access, beta_entitlement: ent, execUi: !!execUi, execPublic: !!xf.publicEnabled, execCalc: !!xf.calculatorEnabled, execGeo: !!xf.geoFilterEnabled, registryUi: !!registryUi, registryPublic: !!srf.publicEnabled, metricsUi: !!metricsUi, metricsPublic: !!mf.publicEnabled, valueUi: !!valueUi, valuePublic: !!vf.valuePublic, picksUi: !!picksUi, picksPublic: !!vf.picksPublic, affiliatesOn: affiliatesOn(), combatPublic: String(process.env.GP_COMBAT_PUBLIC_ENABLED || '') === 'true', hoopsPublic: String(process.env.GP_HOOPS_PUBLIC_ENABLED || '') === 'true', esportsPublic: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true', nflPublic: String(process.env.GP_NFL_PUBLIC_ENABLED || '') === 'true', tennisPublic: String(process.env.GP_TENNIS_PUBLIC_ENABLED || '') === 'true', f1Public: String(process.env.GP_F1_PUBLIC_ENABLED || '') === 'true', dartsPublic: pubOn('GP_DARTS_PUBLIC_ENABLED'), ttPublic: pubOn('GP_TT_PUBLIC_ENABLED'), newSportsFreeUntil: newSportsFreeUntil(), dartsTtFreeUntil: dartsTtFreeUntil() };
 }
 // ===== VERIFICACIÓN DEL ID TOKEN DE GOOGLE (25-jul) ========================================================
 // Sin librerías: JWKS de Google + RS256 con crypto nativo (Node 18 soporta importar una JWK directamente).
@@ -18634,13 +18647,11 @@ const server = http.createServer(async (req, res) => {
         if (!(u.isAdmin || f1Pub)) return json(res, 404, { error: 'No encontrado' });
         if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'darts') {
-        const dtPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_DARTS_PUBLIC_ENABLED || '').trim());
-        if (!(u.isAdmin || dtPub)) return json(res, 404, { error: 'No encontrado' });
-        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+        if (!(u.isAdmin || pubOn('GP_DARTS_PUBLIC_ENABLED'))) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u, dartsTtFreeUntil())) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'tt') {
-        const ttPub = /^(1|true|yes|on)$/i.test(String(process.env.GP_TT_PUBLIC_ENABLED || '').trim());
-        if (!(u.isAdmin || ttPub)) return json(res, 404, { error: 'No encontrado' });
-        if (!newSportsPlanOk(u)) return json(res, 403, { error: 'upgrade', need: 'pro' });
+        if (!(u.isAdmin || pubOn('GP_TT_PUBLIC_ENABLED'))) return json(res, 404, { error: 'No encontrado' });
+        if (!newSportsPlanOk(u, dartsTtFreeUntil())) return json(res, 403, { error: 'upgrade', need: 'pro' });
       } else if (sport === 'combat') {
         // combate hereda su gate público + PLAN (Punto 3, 12-ago): Ask combate es Pro — mismo 403 de fútbol,
         // con la ventana de lanzamiento de combate (GP_COMBAT_FREE_UNTIL) en lugar de la de fútbol.
@@ -20491,26 +20502,31 @@ const server = http.createServer(async (req, res) => {
         return json(res, 404, { error: 'ruta de tenis desconocida' });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
-    // ── DARDOS (6-sep, blueprint 8.0): admin-only hasta que haya fuente licenciada; tiers como tenis ──────
+    // ── DARDOS (6-sep, blueprint 8.0; PÚBLICO desde el 9-sep con ventana libre de 7 días) ────────────────
     if (p.startsWith('/api/darts/')) {
       const uD = getUser(req);
-      const dtPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_DARTS_PUBLIC_ENABLED || '').trim());
-      if (!uD || !(uD.isAdmin || dtPublic)) return json(res, 404, { error: 'No encontrado' });
-      const nsD = nsPlanCtx(uD, url);
+      if (!uD || !(uD.isAdmin || pubOn('GP_DARTS_PUBLIC_ENABLED'))) return json(res, 404, { error: 'No encontrado' });
+      const nsD = nsPlanCtx(uD, url, dartsTtFreeUntil());
       if (['/api/darts/sim', '/api/darts/read', '/api/darts/brief', '/api/darts/track'].indexOf(p) >= 0 && !nsD.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      // CAJA NEGRA (HANDOFF "3. REGLA DE CAJA NEGRA"): la ficha del motor cuenta el MECANISMO —el átomo, la
+      // fórmula del leg, las constantes—, que es exactamente lo que no se publica. Se cierra por la misma
+      // puerta que Rendimiento en la UI. Y la `doctrine` que viaja en board/match/torneo/track es del mismo
+      // material: se le quita a quien no es admin. La evidencia (muestras, validación, incertidumbre) se queda.
+      if (p === '/api/darts/model' && !nsD.admin) return json(res, 404, { error: 'No encontrado' });
       const dtStrip = (row) => { if (!row || nsD.pro) return row; const n = (row.picks || []).length; delete row.picks; delete row.candidates; if (n || row.shadow_n) { row.picks_locked = n || row.shadow_n || 0; row.shadow_n = 0; } return row; };
+      const sinReceta = (out) => { if (out && !nsD.admin && out.doctrine) delete out.doctrine; return out; };
       const DT = require('./darts-engine/store');
       try {
         if (p === '/api/darts/board') {
           const out = await DT.board();
           if (out && out.rows && !nsD.pro) out.rows = out.rows.map(dtStrip);
-          return json(res, 200, out);
+          return json(res, 200, sinReceta(out));
         }
         if (p === '/api/darts/agenda') return json(res, 200, await DT.agenda());
         if (p === '/api/darts/match') {
           const out = await DT.matchDetail(url.searchParams.get('id') || '');
           if (out && out.a && out.b) out.senales = [...obsSenales('darts', [obsClave(out.a.name)], { lado: 'a' }), ...obsSenales('darts', [obsClave(out.b.name)], { lado: 'b' })];
-          return json(res, 200, dtStrip(out));
+          return json(res, 200, sinReceta(dtStrip(out)));
         }
         if (p === '/api/darts/live') {
           const out = DT.liveProb(url.searchParams.get('id') || '', { legs_a: +(url.searchParams.get('legs_a') || 0), legs_b: +(url.searchParams.get('legs_b') || 0), starter_next: ['a', 'b'].includes(url.searchParams.get('starter')) ? url.searchParams.get('starter') : null });
@@ -20526,33 +20542,34 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/darts/player') { const idD = url.searchParams.get('id'); if (!idD) return json(res, 400, { error: 'falta id' }); return json(res, 200, DT.playerProfile(idD)); }
         if (p === '/api/darts/ranking') return json(res, 200, DT.rankingBoard());
         if (p === '/api/darts/tournaments') return json(res, 200, await DT.tournamentsList());
-        if (p === '/api/darts/tournament') { const idT = url.searchParams.get('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, await DT.tournamentBoard(idT)); }
+        if (p === '/api/darts/tournament') { const idT = url.searchParams.get('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, sinReceta(await DT.tournamentBoard(idT))); }
         if (p === '/api/darts/sim') {
           const a = String(url.searchParams.get('a') || ''), b2 = String(url.searchParams.get('b') || '');
           if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });
           return json(res, 200, DT.simMatch(a, b2, { format: String(url.searchParams.get('format') || 'bo11'), starter: ['a', 'b'].includes(url.searchParams.get('starter')) ? url.searchParams.get('starter') : null }));
         }
-        if (p === '/api/darts/track') return json(res, 200, DT.track({ limit: Math.max(1, Math.min(5000, Number(url.searchParams.get('limit')) || 40)) }));
+        if (p === '/api/darts/track') return json(res, 200, sinReceta(DT.track({ limit: Math.max(1, Math.min(5000, Number(url.searchParams.get('limit')) || 40)) })));
         if (p === '/api/darts/model') return json(res, 200, DT.modelCard());
         if (p === '/api/darts/brief') return json(res, 200, await dartsBrief({ force: url.searchParams.get('force') === '1' }));
         if (p === '/api/darts/search') { const DD = require('./darts-engine/data'); const pl = DD.resolvePlayer(String(url.searchParams.get('q') || '')); return json(res, 200, { hit: pl ? { id: pl.id, name: pl.name } : null }); }
         return json(res, 404, { error: 'ruta de dardos desconocida' });
       } catch (e) { return json(res, 500, { error: e.message }); }
     }
-    // ── TENIS DE MESA (8-sep, blueprint 9.0): admin-only hasta que haya fuente licenciada; tiers como dardos ──
+    // ── TENIS DE MESA (8-sep, blueprint 9.0; PÚBLICO desde el 9-sep con la misma ventana que dardos) ────
     if (p.startsWith('/api/tt/')) {
       const uT = getUser(req);
-      const ttPublic = /^(1|true|yes|on)$/i.test(String(process.env.GP_TT_PUBLIC_ENABLED || '').trim());
-      if (!uT || !(uT.isAdmin || ttPublic)) return json(res, 404, { error: 'No encontrado' });
-      const nsT = nsPlanCtx(uT, url);
+      if (!uT || !(uT.isAdmin || pubOn('GP_TT_PUBLIC_ENABLED'))) return json(res, 404, { error: 'No encontrado' });
+      const nsT = nsPlanCtx(uT, url, dartsTtFreeUntil());
       if (['/api/tt/sim', '/api/tt/read', '/api/tt/brief', '/api/tt/track'].indexOf(p) >= 0 && !nsT.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      if (p === '/api/tt/model' && !nsT.admin) return json(res, 404, { error: 'No encontrado' });   // caja negra: el mecanismo no se publica
+      const ttSinReceta = (out) => { if (out && !nsT.admin && out.doctrine) delete out.doctrine; return out; };
       const ttStrip = (row) => { if (!row || nsT.pro) return row; const n = (row.picks || []).length; delete row.picks; delete row.candidates; if (n || row.shadow_n) { row.picks_locked = n || row.shadow_n || 0; row.shadow_n = 0; } return row; };
       const TT = require('./tt-engine/store');
       const qp = (k, d) => { const v = url.searchParams.get(k); return v == null || v === '' ? d : v; };
       try {
-        if (p === '/api/tt/board') { const b = await TT.board({ daysAhead: Math.max(1, Math.min(14, +qp('days', 6))) }); b.rows = b.rows.map(ttStrip); return json(res, 200, b); }
+        if (p === '/api/tt/board') { const b = await TT.board({ daysAhead: Math.max(1, Math.min(14, +qp('days', 6))) }); b.rows = b.rows.map(ttStrip); return json(res, 200, ttSinReceta(b)); }
         if (p === '/api/tt/agenda') return json(res, 200, await TT.agenda());
-        if (p === '/api/tt/match') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); const out = ttStrip(await TT.matchDetail(id)); if (out && out.a && out.b && out.a.name) out.senales = [...obsSenales('tt', [obsClave(out.a.name)], { lado: 'a' }), ...obsSenales('tt', [obsClave(out.b.name)], { lado: 'b' })]; return json(res, 200, out); }
+        if (p === '/api/tt/match') { const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' }); const out = ttStrip(await TT.matchDetail(id)); if (out && out.a && out.b && out.a.name) out.senales = [...obsSenales('tt', [obsClave(out.a.name)], { lado: 'a' }), ...obsSenales('tt', [obsClave(out.b.name)], { lado: 'b' })]; return json(res, 200, ttSinReceta(out)); }
         if (p === '/api/tt/live') {
           const id = qp('id'); if (!id) return json(res, 400, { error: 'falta id' });
           const out = TT.liveProb(id, { ga: +qp('ga', 0) || 0, gb: +qp('gb', 0) || 0, i: +qp('i', 0) || 0, j: +qp('j', 0) || 0, server: ['a', 'b'].includes(qp('server')) ? qp('server') : null });
@@ -20563,13 +20580,13 @@ const server = http.createServer(async (req, res) => {
         if (p === '/api/tt/player') { const idP = qp('id'); if (!idP) return json(res, 400, { error: 'falta id' }); return json(res, 200, TT.playerProfile(idP)); }
         if (p === '/api/tt/ranking') return json(res, 200, TT.rankingBoard({ gender: qp('gender') === 'W' ? 'W' : 'M' }));
         if (p === '/api/tt/tournaments') return json(res, 200, await TT.tournamentsList());
-        if (p === '/api/tt/tournament') { const idT = qp('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, await TT.tournamentBoard(idT)); }
+        if (p === '/api/tt/tournament') { const idT = qp('id'); if (!idT) return json(res, 400, { error: 'falta id' }); return json(res, 200, ttSinReceta(await TT.tournamentBoard(idT))); }
         if (p === '/api/tt/sim') {
           const a = String(qp('a', '')), b2 = String(qp('b', ''));
           if (!a || !b2) return json(res, 400, { error: 'faltan jugadores', need: ['a', 'b'] });
           return json(res, 200, TT.simMatch(a, b2, { best_of: +qp('best_of', 5) === 7 ? 7 : 5, first: ['a', 'b'].includes(qp('first')) ? qp('first') : null }));
         }
-        if (p === '/api/tt/track') return json(res, 200, TT.track({ limit: Math.max(1, Math.min(5000, Number(qp('limit')) || 40)) }));
+        if (p === '/api/tt/track') return json(res, 200, ttSinReceta(TT.track({ limit: Math.max(1, Math.min(5000, Number(qp('limit')) || 40)) })));
         if (p === '/api/tt/model') return json(res, 200, TT.modelCard());
         if (p === '/api/tt/competitions') return json(res, 200, TT.competitionMap());
         if (p === '/api/tt/brief') return json(res, 200, await ttBrief({ force: qp('force') === '1' }));

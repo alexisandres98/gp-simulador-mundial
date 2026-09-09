@@ -88,7 +88,9 @@
   (`pdc.js` API pública de la PDC: formato POR RONDA certificado y resultados; `orakel.js` Darts Orakel:
   media/180s/dobles por ventana; `books.js` Pinnacle (deporte 10) · Bovada (180s, marcador exacto) ·
   Polymarket · Kalshi · Cloudbet; `flashscore.js` legs en vivo, display). Rutas `/api/darts/*` tras
-  `GP_DARTS_PUBLIC_ENABLED` (sin poner = solo admin); sonda `/api/internal/darts?key=` (`&odds=1` refresca y
+  `GP_DARTS_PUBLIC_ENABLED` (**público desde el 9-sep**: la env solo sirve para CERRARLO, `=0`; ventana libre
+  para todos los planes hasta `GP_DARTS_TT_FREE_UNTIL`, 17-sep, y después free/pro/sharp como los demás; el
+  motor y el rendimiento siguen siendo admin por caja negra); sonda `/api/internal/darts?key=` (`&odds=1` refresca y
   enseña las claves crudas de Cloudbet, `&rec=1`, `&settle=1`). Jobs: `dartsJob` cada 10 min (agenda PDC +
   cuotas + sombra + liquidación), `dartsTailJob` diario (cola de la base en proceso aparte;
   `GP_DARTS_TAIL=false` la apaga). **TODAS las familias en SOMBRA**; el ganador es referencia. Modelo
@@ -99,7 +101,8 @@
 - **Tenis de mesa (11º deporte, admin-only, 8-sep, blueprint 9.0):** `tt-engine/` (rules, compiler EXACTO punto → game →
   partido con cola de deuce analítica, data con Elo + rating de punto, store) + `data-providers/tt/{wtt,flashscore,books}.js` +
   `scripts/tt-harvest.js` (crudo ITTF/WTT en `/data/tt-raw`, compacto en `data/tt/`) + `scripts/tt-fit.js` (walk-forward →
-  `data/tt/model-priors.json`). Rutas `/api/tt/*` tras `GP_TT_PUBLIC_ENABLED` (sin poner = solo admin); sonda
+  `data/tt/model-priors.json`). Rutas `/api/tt/*` tras `GP_TT_PUBLIC_ENABLED` (**público desde el 9-sep**, misma ventana y mismas reservas
+  de caja negra que dardos); sonda
   `/api/internal/tt?key=`. TODAS las familias en SOMBRA; ganador = referencia. Solo competiciones WTT/ITTF (VERIFIED_SCOPE):
   las ligas privadas de apuestas (Liga Pro, Setka Cup, TT Cup…) se enseñan con aviso y jamás se modelan. `selfTest()` del
   compilador reproduce la tabla sintética del blueprint a 6 decimales — si se toca el compilador, correrlo. Derechos: `data/tt/RIGHTS.md`.

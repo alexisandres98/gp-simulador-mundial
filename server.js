@@ -921,6 +921,15 @@ async function ttJob() {
     const rec = await TT.recordShadow().catch((e) => ({ error: e.message }));
     const set = await TT.settleShadow().catch((e) => ({ error: e.message }));
     TT.snapshotRanks();
+    // 9-sep (orden de Alexis): TOTAL DE PUNTOS de tenis de mesa al dinero real en Cloudbet, $5 planos. Canal
+    // aparte (`real-executor/tt.js`), mismos frenos y mismo libro; confirmar/liquidar los hace el barrido general.
+    try {
+      const REx = require('./real-executor/store');
+      if (REx.CFG().enabled) {
+        const tr = await require('./real-executor/tt').sweep({ picks: TT.openPicks() });
+        if (tr && (tr.nuevas || tr.colocadas || tr.revisadas)) opsLog('tt_real', tr);
+      }
+    } catch (e) { opsLog('tt_real', { error: e.message }); }
     const venc = (set && set.diag && set.diag.vencidas) || 0;
     if ((rec && rec.recorded) || (set && set.settled) || venc || (rec && rec.error) || (set && set.error)) {
       opsLog('tt_job', { recorded: (rec && rec.recorded) || 0, settled: (set && set.settled) || 0, vencidas: venc, diag: (set && set.diag) || null, err: (rec && rec.error) || (set && set.error) || null });
@@ -21762,6 +21771,17 @@ const server = http.createServer(async (req, res) => {
       const D = require('./futbol-derivadas');
       const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
       return json(res, 200, { pasada: run, track: D.track() });
+    }
+    // 9-sep: tenis de mesa al dinero real (total de puntos, Cloudbet, $5). `?run=1` fuerza el barrido ahora.
+    if (p === '/api/internal/real-tt') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const TR = require('./real-executor/tt'), TT = require('./tt-engine/store');
+      const out = { at: new Date().toISOString(), cfg: { enabled: require('./real-executor/store').CFG().enabled, dry: require('./real-executor/store').CFG().dry } };
+      if (url.searchParams.get('run') === '1') out.barrido = await TR.sweep({ picks: TT.openPicks() }).catch((e) => ({ error: e.message }));
+      out.senales_abiertas = TT.openPicks().filter((q) => q.family === 'POINTS_TOTAL' && q.book === 'cloudbet').map((q) => ({ key: q.key, match: q.a + ' vs ' + q.b, side: q.side, line: q.line, odds: q.odds, start_at: q.start_at, cb_event_id: q.cb_event_id || null, max_stake: q.max_stake }));
+      out.resumen = TR.resumen();
+      return json(res, 200, out);
     }
     // 9-sep: la sombra del generador de kills de LoL. `?run=1` fuerza la pasada (agenda + mercado + cierres + liquidación).
     if (p === '/api/internal/lol-gen') {

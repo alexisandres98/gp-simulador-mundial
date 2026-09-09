@@ -844,4 +844,32 @@ function competitionMap() {
   return { at: G.odds ? new Date(G.odds.at).toISOString() : null, states: Object.values(states).sort((x, y) => Object.keys(R.INTEGRITY).indexOf(x.state) - Object.keys(R.INTEGRITY).indexOf(y.state)), doctrine: 'solo VERIFIED_SCOPE entra al modelo y a la sombra; el resto se enseña con su aviso.' };
 }
 
-module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, slate, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentsList, tournamentBoard, simMatch, agenda, liveProb, modelCard, modelSnapshot, competitionMap, fetchResult, nameIs };
+// ── LAS TESIS ABIERTAS, CON SU EVENTO EN CLOUDBET (9-sep, para el canal de dinero real de tenis de mesa) ──
+// El ejecutor necesita el id del evento en la casa y la clave del mercado. Las filas de Cloudbet ya los traen
+// (`event_id`, `market_key`, `params`, `max_stake`); aquí se cuelgan de la tesis, casando el partido por nombre
+// contra la agenda de cuotas viva (misma regla que `matchFixture`) y la fila exacta por familia/lado/línea/game.
+// Se persiste para no volver a casarlo en cada barrido. Solo lee; ninguna regla de la sombra cambia.
+function openPicks() {
+  const st = rd('picks.json') || { picks: [] };
+  const odds = G.odds, fixtures = (G.slate && G.slate.fixtures) || [];
+  let dirty = false;
+  for (const p of st.picks) {
+    if (p.status !== 'OPEN' || p.cb_event_id || !odds || String(p.book || '').toLowerCase() !== 'cloudbet') continue;
+    const fx = fixtures.find((f) => String(f.id) === String(p.event_id));
+    if (!fx || !fx.a || !fx.b) continue;
+    const t = Date.parse(p.start_at || 0);
+    const e = (odds.events || []).find((ev) => ev.book === 'cloudbet' && (ev.rows || []).length && ev.provider_id
+      && (!t || !ev.start_at || Math.abs(Date.parse(ev.start_at) - t) <= 36 * 3600e3)
+      && ((nameIs(ev.a, fx.a) && nameIs(ev.b, fx.b)) || (nameIs(ev.a, fx.b) && nameIs(ev.b, fx.a))));
+    if (!e) continue;
+    const r = (e.rows || []).find((x) => x.family === p.family && x.side === p.side && (x.line == null ? null : +x.line) === (p.line == null ? null : +p.line) && (x.game || null) === (p.game || null));
+    p.cb_event_id = String(e.provider_id);
+    p.cb_flipped = !(nameIs(e.a, fx.a) && nameIs(e.b, fx.b));
+    if (r) { p.market_key = r.market_key || null; p.params = r.params || null; p.max_stake = r.max_stake != null ? r.max_stake : null; }
+    dirty = true;
+  }
+  if (dirty) wr('picks.json', st);
+  return st.picks.filter((p) => p.status === 'OPEN');
+}
+
+module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, slate, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentsList, tournamentBoard, simMatch, agenda, liveProb, modelCard, modelSnapshot, competitionMap, fetchResult, nameIs, openPicks };

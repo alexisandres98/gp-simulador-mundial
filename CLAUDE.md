@@ -145,6 +145,12 @@ curl -s "https://api.render.com/v1/services/srv-d8krl8flk1mc73c9hbi0/deploys?lim
 ## Co-autoría de commits
 Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` (convención usada en la sesión).
 
+## Dinero real: canales
+- Tarjetas under (`real-executor/store.js`, perímetro en piedra), CS2 rondas (pausado, `GP_REAL_CS2_ENABLED=false`) y
+  **tenis de mesa total de puntos en Cloudbet a $5 planos** (`real-executor/tt.js`, desde el 9-sep por orden de Alexis;
+  `GP_REAL_TT_ENABLED`, `GP_REAL_TT_STAKE`; sonda `/api/internal/real-tt?key=`). Todos comparten libro, frenos,
+  confirmación y liquidación por referencia.
+
 ## Ejecutor en la sombra (paper-trading del edge)
 Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (regla congelada), sweep 10min,
 **reporte email al admin cada lunes** + revisión semanal con Alexis. Estado: `/api/internal/shadow?key=<GP_EXPORT_KEY>`.

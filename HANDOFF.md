@@ -1,5 +1,20 @@
 # HANDOFF — estado al 9-sep-2026 (lo de tenis de mesa, transferido a las familias que pierden)
 
+## 💸 9-sep 09:00Z — TENIS DE MESA AL DINERO REAL (orden de Alexis: "total points en Cloudbet, siempre $5, ya")
+`real-executor/tt.js`: canal APARTE del perímetro de tarjetas (store.js no cambia salvo exportar `frenos`). Señal =
+tesis abiertas de la sombra de tenis de mesa con familia **POINTS_TOTAL** (total de puntos del PARTIDO,
+`table_tennis.totals`) y casa Cloudbet; lado el de la tesis (over/under); **stake plano $5** (`GP_REAL_TT_STAKE`), o
+el máximo de la casa si es menor, nunca más. `tt-engine/store.openPicks()` cuelga de cada tesis el id del evento
+en Cloudbet y la fila exacta (`cb_event_id`, `market_key`, `params`, `max_stake`). Colocación: evento crudo →
+`CB.selectionFor(ev, 'table_tennis.totals', línea, lado)` → precio vivo, deslizamiento ≤ 3 %, `frenos()` de cartera
+(los mismos: apagado maestro, parada diaria, exposición, cortafuegos, fondos) → `placeBet` con referencia
+idempotente; PLACED / EN_ACEPTACION / rechazo con la misma lógica que tarjetas. Confirmar y liquidar los hace el
+barrido general por referencia contra el estado de la casa. Barrido en `ttJob` (cada 10 min).
+Llaves: `GP_REAL_TT_ENABLED` (por defecto ENCENDIDO), `GP_REAL_TT_STAKE` (5). Sonda: `/api/internal/real-tt?key=[&run=1]`.
+Por qué esta familia (chat 9-sep): Cloudbet cotiza el total con plantilla (73,5/75,5) y no lo mueve hasta el saque
+(CLV propio plano en los cinco cubos); el compilador lo saca del proceso de punto validado. Muestra al arrancar: 19
+liquidadas en sombra — es una apuesta de estructura, no de resultados; la vara sigue siendo `clv_own` a 150.
+
 ## 🔁 9-sep — LO INNOVADOR DE TENIS DE MESA Y DARDOS, TRASPLANTADO A LAS FAMILIAS QUE PIERDEN (orden de Alexis: "procede")
 Pregunta de Alexis: qué hicimos distinto en TT/dardos que sirva a los modelos que pierden. Respuesta (chat 9-sep) y lo
 construido, TODO medición o sombra nueva — **ninguna regla de apuesta cambió, las cuatro familias congeladas siguen

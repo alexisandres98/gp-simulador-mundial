@@ -1341,4 +1341,5 @@ function board({ limit = 40 } = {}) {
 }
 
 module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
-  SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion };
+  SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
+  frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */ };

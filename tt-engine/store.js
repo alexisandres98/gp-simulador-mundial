@@ -506,7 +506,7 @@ async function matchDetail(fixtureId) {
 }
 
 // ══ 6. LA SOMBRA ════════════════════════════════════════════════════════════════════════════════════════
-const CLOSE_BUCKETS = [60, 30, 10, 5, 1];
+const CL = require('../implied-engine/closes');
 function snapshotCloses(rows) {
   const st = rd('closes.json') || { closes: {} };
   const now = Date.now(); let dirty = false;
@@ -516,8 +516,18 @@ function snapshotCloses(rows) {
     const minsTo = (t - now) / 60e3;
     const c = st.closes[r.id] = st.closes[r.id] || { a: r.a, b: r.b, start_at: r.start_at, series: {} };
     const rows2 = (r._mk_rows || []).map((x) => ({ book: x.book, family: x.family, side: x.side, line: x.line, odds: x.odds, game: x.game || null }));
-    c.at = new Date().toISOString(); c.rows = rows2;
-    for (const bkt of CLOSE_BUCKETS) if (minsTo <= bkt && !c.series[bkt]) { c.series[bkt] = { at: c.at, rows: rows2 }; }
+    // EL CIERRE SE CONGELA EN EL SAQUE (11-sep). Antes `rows` se machacaba en cada pasada, incluida la hora
+    // POSTERIOR al saque que esta ventana admite — o sea con precios en vivo. La liquidación busca ahí la
+    // línea exacta de la tesis y en vivo esa línea ya no existe (el total se re-linea con cada punto), así que
+    // las familias con línea se quedaban sin CLV: POINTS_TOTAL 4 de 62, GAMES_HCP 0 de 26. Pasado el saque se
+    // siguen leyendo cuotas para nada más: el cierre ya está escrito.
+    if (minsTo >= 0) { c.at = new Date().toISOString(); c.rows = rows2; }
+    // y cada cubo solo acepta la lectura que cae DENTRO de su ventana (`bucketFor` tiene suelo). Con el
+    // `minsTo <= bkt` de antes, un partido visto por primera vez a T−10 rellenaba T60, T30 y T10 con la MISMA
+    // foto: las 264 tesis vivas tenían dos o más cubos con idéntico sello de tiempo y la curva salía plana
+    // por construcción, no por ausencia de movimiento.
+    const bkt = CL.bucketFor(r.start_at, now);
+    if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date().toISOString(), rows: rows2 };
     dirty = true;
   }
   for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.start_at) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
@@ -604,7 +614,9 @@ async function settleShadow({ voidDays = 10 } = {}) {
         p.close_series = Object.fromEntries(Object.entries(cl.series || {}).map(([k, s]) => {
           const same2 = (s.rows || []).filter((y) => y.family === p.family && y.side === p.side && (y.game || null) === (p.game || null) && (p.line == null || y.line === p.line));
           const bst = same2.reduce((b2, y) => (!b2 || y.odds > b2.odds ? y : b2), null), ownS = same2.find((y) => y.book === p.book), pinS = same2.find((y) => y.book === 'pinnacle');
-          return ['T' + k, { at: s.at, own: ownS ? ownS.odds : null, best: bst ? bst.odds : null, pinnacle: pinS ? pinS.odds : null }];
+          // las claves antiguas son numéricas (60, 30…) y las nuevas ya vienen con prefijo ('T60'): se acepta
+          // cualquiera de las dos para no perder los cierres que ya están en disco
+          return [/^T/.test(k) ? k : 'T' + k, { at: s.at, own: ownS ? ownS.odds : null, best: bst ? bst.odds : null, pinnacle: pinS ? pinS.odds : null }];
         }));
       }
       p.settled_at = new Date().toISOString(); settled++; diag.ok++;
@@ -619,6 +631,9 @@ function track({ limit = 40 } = {}) {
   const settleDiag = rd('settle-diag.json') || null;
   const mine = st.picks;
   const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  // el CLV que la liquidación no pudo calcular se reconstruye aquí desde los cubos congelados (ver
+  // `implied-engine/closes.js` → `rescatar`). Es en memoria: `rd` relee el archivo cada vez, no se escribe nada.
+  try { const CLr = require('../implied-engine/closes'); for (const p of done) CLr.rescatar(p); } catch { }
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
@@ -635,7 +650,7 @@ function track({ limit = 40 } = {}) {
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: fam(agg((p) => p.family)), by_family_book: fam(agg((p) => p.family + ' · ' + (p.book || 'sin_casa'), (p) => ({ family: p.family, book: p.book || 'sin_casa' }))), by_tier: fam(agg((p) => p.tier || 'otro')), by_sub: fam(agg((p) => p.sub || '—')),
-    clv_curve: curve,
+    clv_curve: curve, clv_salud: (() => { try { return CL.salud(done); } catch { return null; } })(),
     recent: done.slice(-limit).reverse(),
     reading: done.length < 40 ? `con ${done.length} liquidadas TODO es ruido: esta pantalla acumula el registro, no se lee todavía.` : 'la vara es el CLV por familia y casa, no el ROI.',
     settle_diag: settleDiag,

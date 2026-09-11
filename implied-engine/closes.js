@@ -89,4 +89,49 @@ function summarize(items) {
   return out;
 }
 
-module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize };
+// EL RESCATE DEL CLV (11-sep). Las sombras guardan DOS cosas en el archivo de cierres: los cubos, que se
+// congelan, y `rows`, la última foto vista, que NO se congelaba y se seguía machacando hasta 60 min DESPUÉS
+// del saque — es decir, con precios en vivo. La liquidación calculaba el CLV buscando la línea EXACTA de la
+// tesis dentro de `rows`; en vivo esa línea ya no existe (un total de puntos se re-linea con cada punto), así
+// que la familia entera se quedaba sin CLV. Se veía clarísimo en el reparto: las familias SIN línea sobrevivían
+// (ML 16/35) y las que llevan línea se desplomaban (GAMES_HCP 0/26, POINTS_TOTAL 4/62) — con el precio ahí
+// mismo, en el cubo congelado, para 23 y 40 de ellas.
+//
+// Este rescate lo reconstruye desde los cubos, que sí están bien: coge el más tardío con precio (T−1 primero,
+// T−60 el último) y anota de qué cubo salió. Es retroactivo por construcción — `close_series` ya vive dentro
+// de cada tesis — así que arregla el histórico sin re-liquidar nada ni tocar un solo resultado.
+const RESCATE_ORD = ['T1', 'T5', 'T10', 'T30', 'T60'];
+function rescatar(p) {
+  const cs = p && p.close_series; if (!cs) return p;
+  const busca = (ref) => { for (const k of RESCATE_ORD) { const b = cs[k]; if (b && Number(b[ref]) > 1) return { odds: +b[ref], bkt: k }; } return null; };
+  const pon = (campoClv, campoCierre, ref) => {
+    if (p[campoClv] != null) return null;
+    const h = busca(ref); if (!h) return null;
+    p[campoClv] = clvPct(p.odds, h.odds); p[campoCierre] = h.odds; return h.bkt;
+  };
+  const b1 = pon('clv_pct', 'close_price', 'best');
+  const b2 = pon('clv_own_pct', 'close_own', 'own');
+  const b3 = pon('clv_pin_pct', 'close_pin', 'pinnacle');
+  const bkt = b1 || b2 || b3;
+  if (bkt) { p.clv_rescatado = bkt; if (p.close_missing) p.close_missing = null; }
+  return p;
+}
+
+// LA SALUD DEL REGISTRO DE CIERRES, para que la pantalla no presuma de una curva que no se puede leer.
+// `cubos_en_bloque` cuenta las tesis con dos o más cubos escritos en la MISMA pasada: en ellas la curva no
+// mide movimiento de precio, sino la misma foto repetida. Son las nacidas antes del arreglo del 11-sep.
+function salud(items) {
+  let n = 0, bloque = 0, rescatadas = 0, conClv = 0;
+  for (const p of items || []) {
+    n++;
+    if (p.clv_pct != null) conClv++;
+    if (p.clv_rescatado) rescatadas++;
+    const cs = p.close_series || {};
+    const ats = Object.values(cs).map((b) => b && b.at).filter(Boolean);
+    if (ats.length > 1 && new Set(ats).size < ats.length) bloque++;
+  }
+  return { n, con_clv: conClv, rescatadas, cubos_en_bloque: bloque,
+    lectura: bloque ? `${bloque} de ${n} tesis tienen cubos escritos en la misma pasada (antes del 11-sep): en esas la CURVA no se puede leer, el CLV sí.` : 'curva limpia: cada cubo, una lectura propia.' };
+}
+
+module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize, rescatar, salud };

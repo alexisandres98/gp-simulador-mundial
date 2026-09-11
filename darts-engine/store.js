@@ -475,9 +475,13 @@ function snapshotCloses(rows) {
     // todas las líneas cotizadas, con la mejor cuota por lado y casa (la liquidación busca la línea exacta)
     const rows2 = (r._mk_rows || []).map((x) => ({ book: x.book, family: x.family, side: x.side, line: x.line, odds: x.odds, participant: x.participant }));
     const c = st.closes[r.id] = st.closes[r.id] || { a: r.a, b: r.b, start_at: r.start_at, series: {} };
-    c.at = new Date().toISOString(); c.rows = rows2;
+    // 11-sep: el cierre se congela en el saque. La ventana de arriba admite partidos empezados hace hasta una
+    // hora (para no perder el cubo T−1 de un partido que arranca entre pasadas), pero seguir machacando `rows`
+    // con precios en vivo deja a la liquidación sin la línea exacta de la tesis y la familia entera se queda
+    // sin CLV. Los cubos ya iban por `CL.bucketFor`, que tiene suelo; esto le pone el mismo suelo a `rows`.
+    if (t >= now) { c.at = new Date().toISOString(); c.rows = rows2; }
     // 9-sep (traído de tenis de mesa): la primera lectura dentro de cada cubo T−60/−30/−10/−5/−1 se congela
-    try { const CL = require('../implied-engine/closes'); const bkt = CL.bucketFor(r.start_at, now); c.series = c.series || {}; if (bkt && !c.series[bkt]) c.series[bkt] = { at: c.at, rows: rows2 }; } catch { }
+    try { const CL = require('../implied-engine/closes'); const bkt = CL.bucketFor(r.start_at, now); c.series = c.series || {}; if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date(now).toISOString(), rows: rows2 }; } catch { }
     dirty = true;
   }
   for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.start_at) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
@@ -589,6 +593,9 @@ function track({ limit = 40 } = {}) {
   const settleDiag = rd('settle-diag.json') || null;
   const mine = st.picks;
   const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  // mismo rescate que en tenis de mesa: el CLV que la liquidación no encontró en `rows` sale de los cubos
+  // congelados. En memoria — `rd` relee el archivo en cada llamada y aquí no se escribe nada.
+  try { const CLr = require('../implied-engine/closes'); for (const p of done) CLr.rescatar(p); } catch { }
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
@@ -618,6 +625,7 @@ function track({ limit = 40 } = {}) {
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: fam(byFam), by_family_book: fam(byFB), clv_curve: clvCurve,
+    clv_salud: (() => { try { return require('../implied-engine/closes').salud(done); } catch { return null; } })(),
     by_circuit: Object.fromEntries(Object.entries(byCirc).map(([k, Cc]) => [k, { circuit: Cc.circuit, family: Cc.family, n: Cc.n, hit_pct: Cc.n ? r2(100 * Cc.w / Cc.n) : null, units: r2(Cc.units), clv_avg_pct: Cc.clv.length ? r2(Cc.clv.reduce((a, b) => a + b, 0) / Cc.clv.length) : null, clv_n: Cc.clv.length, clv_sd: sd(Cc.clv) }])),
     open_by_circuit: mine.filter((p) => p.status === 'OPEN').reduce((m, p) => { const c = p.circuit || 'pdc'; m[c] = (m[c] || 0) + 1; return m; }, {}),
     recent: done.slice(-limit).reverse(),

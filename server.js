@@ -24723,8 +24723,12 @@ async function anotar(pid){
         if (!items || items.length < minN) return;
         const mg = opt.margen || null;
         fam[clave] = V.familia(items, { fecha: opt.fecha, clv: opt.clv, cuotaMedia: opt.cuotaMedia || 2,
-          margenLadoPct: mg ? mg.margen_lado_pct : null, nMargen: mg ? mg.n : 0, bankroll: bank });
+          margenLadoPct: mg ? mg.margen_lado_pct : null, nMargen: mg ? mg.n : 0, bankroll: bank,
+          // las dos pruebas de método: si el cierre no aporta, el CLV no aplica y manda la prueba directa
+          odds: opt.odds, cierre: opt.cierre, gano: opt.gano, pModelo: opt.pModelo });
       };
+      // el resultado se llama distinto en cada sombra; aquí se normaliza a true/false/null
+      const ganoDe = (x) => { const r = x.result_code || x.result; return r === 'WIN' ? true : (r === 'LOSS' ? false : null); };
       const jsread = (dir, file) => { try { return require('./lib/jsonstore').readJson(path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, 'db.json')), dir), file, 'vara'); } catch { return null; } };
       const filasDeCierres = (cl) => { const out = []; for (const c of Object.values((cl && cl.closes) || {})) for (const r of (c.rows || [])) out.push(r); return out; };
       // ── esports: el archivo de cierres guarda las dos caras, así que aquí el margen SÍ se puede medir
@@ -24739,7 +24743,8 @@ async function anotar(pid){
           const bk = (v[0].book || '?'), fm = v[0].family;
           mete(`${game} · ${k}`, v.filter((x) => x.clv_pct != null), {
             fecha: (x) => Date.parse(x.settled_at || x.born_at || x.start_at || 0), clv: (x) => x.clv_pct,
-            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null });
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null,
+            odds: (x) => x.odds, cierre: (x) => x.close_odds, gano: ganoDe, pModelo: (x) => x.p_gp });
         }
       }
       // ── tenis de mesa y dardos: mismo trato, con el CLV ya rescatado por `closes.rescatar`
@@ -24753,7 +24758,8 @@ async function anotar(pid){
           mete(`${dep} · ${k}`, v.filter((x) => x.clv_own_pct != null || x.clv_pct != null), {
             fecha: (x) => Date.parse(x.settled_at || x.created_at || x.start_at || 0),
             clv: (x) => (x.clv_own_pct != null ? x.clv_own_pct : x.clv_pct),
-            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null });
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null,
+            odds: (x) => x.odds, cierre: (x) => (x.close_own || x.close_price), gano: ganoDe, pModelo: (x) => x.p_model });
         }
       }
       // ── el ejecutor en la sombra: por segmento. Aquí NO hay archivo de cierres con las dos caras, así que
@@ -24764,19 +24770,25 @@ async function anotar(pid){
         for (const b of (Sv.bets || [])) if (b.clv_exec != null) (porSeg[b.segment] = porSeg[b.segment] || []).push(b);
         for (const [k, v] of Object.entries(porSeg)) {
           mete(`sombra · ${k}`, v, { fecha: (x) => Date.parse(x.settled_at || x.placed_at || 0), clv: (x) => x.clv_exec,
-            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: null });
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: null,
+            odds: (x) => x.odds, cierre: (x) => x.closing, gano: ganoDe, pModelo: (x) => x.model_prob });
         }
       } catch (e) { avisos.push(`sombra: ${e.message}`); }
       const orden = Object.entries(fam).sort((a, b) => {
-        const rk = (x) => ({ invertible: 0, en_observacion: 1, muestra_corta: 2, sin_margen_medido: 3, no_invertible: 4 }[x.veredicto] ?? 5);
+        const rk = (x) => ({ invertible: 0, invertible_por_acierto: 0, en_observacion: 1, sin_evidencia: 2, muestra_corta: 3, clv_no_aplica: 3, sin_margen_medido: 4, no_invertible: 5, cerrar: 6 }[x.veredicto] ?? 7);
         return rk(a[1]) - rk(b[1]) || (b[1].clv_neto_pct ?? -99) - (a[1].clv_neto_pct ?? -99);
       });
       return json(res, 200, {
         at: new Date().toISOString(), bankroll: bank, min_muestra: minN,
-        regla: `invertible = CLV recortado al 10 % MENOS el margen por lado > 0, con t >= ${V.MIN_T} y n >= ${V.MIN_N}. Sin las dos caras del mercado guardadas no hay margen que medir y no se invierte.`,
+        regla: `PRIMERO se comprueba si el CLV sirve: si el cierre no predice mejor que nuestra entrada (t < ${V.MIN_T}), esa familia no se juzga por CLV. Si el CLV vale: invertible = CLV recortado al 10 % MENOS el margen por lado > 0, con t >= ${V.MIN_T} y n >= ${V.MIN_N}. Si no vale: prueba directa — el modelo tiene que acertar mas que el precio (t >= ${V.MIN_T}) Y el ROI ser positivo con t >= ${V.MIN_T}. El ROI ya viene neto de margen.`,
         resumen: orden.map(([k, v]) => ({ familia: k, veredicto: v.veredicto, n: v.n,
           clv_crudo_pct: v.media_pct, clv_recortado_pct: v.media_recortada_pct, t: v.t_recortada,
           margen_lado_pct: v.margen_lado_pct, clv_neto_pct: v.clv_neto_pct,
+          cierre_t: v.cierre_aporta ? v.cierre_aporta.t : null,
+          sin_mover_pct: v.cierre_aporta ? v.cierre_aporta.sin_mover_pct : null,
+          modelo_t: v.modelo_vs_precio ? v.modelo_vs_precio.t : null,
+          roi_pct: v.modelo_vs_precio ? v.modelo_vs_precio.roi_pct : null,
+          t_roi: v.modelo_vs_precio ? v.modelo_vs_precio.t_roi : null,
           stake_usd: v.tamano ? v.tamano.stake_usd : null, razon: v.razon })),
         familias: Object.fromEntries(orden), margenes, avisos,
       });

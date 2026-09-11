@@ -24700,6 +24700,87 @@ async function anotar(pid){
         return res.end(bodyE.slice(0, 2_000_000));
       } catch (e) { return json(res, 502, { error: e.message }); }
     }
+    // LA VARA (11-sep). Una sola pantalla para la única pregunta que decide si entra dinero: ¿esta familia
+    // le gana al cierre DESPUÉS de descontar lo que cobra la casa? Hasta hoy el CLV se leía a secas, y a
+    // secas miente por dos sitios: la media cruda la destrozan cuatro cierres rotos (el crudo de CS2 en
+    // Pinnacle decía +0,05 % y el recortado +0,55 % con t 2,72), y el cierre contra el que se mide LLEVA EL
+    // MARGEN DENTRO, así que ganarle no es ganar dinero. Aquí se junta todo: margen medido emparejando las
+    // dos caras del mercado, CLV recortado por semana y rodante, el neto, el veredicto por regla escrita y
+    // el tamaño de ¼ Kelly que sale de esa ventaja. `?bankroll=` para ver el tamaño en dólares.
+    if (p === '/api/internal/vara') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const adminV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!adminV && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      const V = require('./lib/vara'), MG = require('./lib/margen');
+      const bank = Number(url.searchParams.get('bankroll')) || null;
+      const minN = Math.max(20, Number(url.searchParams.get('min')) || 60);
+      const fam = {}, margenes = {}, avisos = [];
+      // el margen se mide UNA vez por archivo de cierres y se indexa por "casa · familia"
+      const comeMargen = (rows, etiqueta) => {
+        try { const r = MG.resumen(rows); for (const [k, v] of Object.entries(r)) margenes[etiqueta + '|' + k] = v; return r; } catch (e) { avisos.push(`${etiqueta}: ${e.message}`); return {}; }
+      };
+      const mete = (clave, items, opt) => {
+        if (!items || items.length < minN) return;
+        const mg = opt.margen || null;
+        fam[clave] = V.familia(items, { fecha: opt.fecha, clv: opt.clv, cuotaMedia: opt.cuotaMedia || 2,
+          margenLadoPct: mg ? mg.margen_lado_pct : null, nMargen: mg ? mg.n : 0, bankroll: bank });
+      };
+      const jsread = (dir, file) => { try { return require('./lib/jsonstore').readJson(path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, 'db.json')), dir), file, 'vara'); } catch { return null; } };
+      const filasDeCierres = (cl) => { const out = []; for (const c of Object.values((cl && cl.closes) || {})) for (const r of (c.rows || [])) out.push(r); return out; };
+      // ── esports: el archivo de cierres guarda las dos caras, así que aquí el margen SÍ se puede medir
+      for (const game of ['cs2', 'lol', 'valorant', 'dota2']) {
+        let ES = null; try { ES = require('./esports-engine/store'); } catch { break; }
+        let tr = null; try { tr = ES.track(game, { limit: 100000 }); } catch (e) { avisos.push(`esports ${game}: ${e.message}`); continue; }
+        const mg = comeMargen(filasDeCierres(jsread('esports', `closes-${game}.json`)), game);
+        const done = (tr && tr.recent) || [];
+        const porFB = {};
+        for (const x of done) (porFB[`${x.family} · ${x.book || '?'}`] = porFB[`${x.family} · ${x.book || '?'}`] || []).push(x);
+        for (const [k, v] of Object.entries(porFB)) {
+          const bk = (v[0].book || '?'), fm = v[0].family;
+          mete(`${game} · ${k}`, v.filter((x) => x.clv_pct != null), {
+            fecha: (x) => Date.parse(x.settled_at || x.born_at || x.start_at || 0), clv: (x) => x.clv_pct,
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null });
+        }
+      }
+      // ── tenis de mesa y dardos: mismo trato, con el CLV ya rescatado por `closes.rescatar`
+      for (const [dep, mod, dir] of [['tt', './tt-engine/store', 'tt'], ['dardos', './darts-engine/store', 'darts']]) {
+        let tr = null; try { tr = require(mod).track({ limit: 100000 }); } catch (e) { avisos.push(`${dep}: ${e.message}`); continue; }
+        const mg = comeMargen(filasDeCierres(jsread(dir, 'closes.json')), dep);
+        const porFB = {};
+        for (const x of (tr.recent || [])) (porFB[`${x.family} · ${x.book || '?'}`] = porFB[`${x.family} · ${x.book || '?'}`] || []).push(x);
+        for (const [k, v] of Object.entries(porFB)) {
+          const bk = (v[0].book || '?'), fm = v[0].family;
+          mete(`${dep} · ${k}`, v.filter((x) => x.clv_own_pct != null || x.clv_pct != null), {
+            fecha: (x) => Date.parse(x.settled_at || x.created_at || x.start_at || 0),
+            clv: (x) => (x.clv_own_pct != null ? x.clv_own_pct : x.clv_pct),
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: mg[`${bk} · ${fm}`] || null });
+        }
+      }
+      // ── el ejecutor en la sombra: por segmento. Aquí NO hay archivo de cierres con las dos caras, así que
+      // el margen sale null y el veredicto lo dice — que es justo el punto de este endpoint.
+      try {
+        const Sv = shadowInit();
+        const porSeg = {};
+        for (const b of (Sv.bets || [])) if (b.clv_exec != null) (porSeg[b.segment] = porSeg[b.segment] || []).push(b);
+        for (const [k, v] of Object.entries(porSeg)) {
+          mete(`sombra · ${k}`, v, { fecha: (x) => Date.parse(x.settled_at || x.placed_at || 0), clv: (x) => x.clv_exec,
+            cuotaMedia: V.media(v.map((x) => x.odds).filter((o) => o > 1)) || 2, margen: null });
+        }
+      } catch (e) { avisos.push(`sombra: ${e.message}`); }
+      const orden = Object.entries(fam).sort((a, b) => {
+        const rk = (x) => ({ invertible: 0, en_observacion: 1, muestra_corta: 2, sin_margen_medido: 3, no_invertible: 4 }[x.veredicto] ?? 5);
+        return rk(a[1]) - rk(b[1]) || (b[1].clv_neto_pct ?? -99) - (a[1].clv_neto_pct ?? -99);
+      });
+      return json(res, 200, {
+        at: new Date().toISOString(), bankroll: bank, min_muestra: minN,
+        regla: `invertible = CLV recortado al 10 % MENOS el margen por lado > 0, con t >= ${V.MIN_T} y n >= ${V.MIN_N}. Sin las dos caras del mercado guardadas no hay margen que medir y no se invierte.`,
+        resumen: orden.map(([k, v]) => ({ familia: k, veredicto: v.veredicto, n: v.n,
+          clv_crudo_pct: v.media_pct, clv_recortado_pct: v.media_recortada_pct, t: v.t_recortada,
+          margen_lado_pct: v.margen_lado_pct, clv_neto_pct: v.clv_neto_pct,
+          stake_usd: v.tamano ? v.tamano.stake_usd : null, razon: v.razon })),
+        familias: Object.fromEntries(orden), margenes, avisos,
+      });
+    }
     if (p === '/api/internal/observer') {
       const u = getUser(req); if (!u || !u.isAdmin) return json(res, 403, { error: 'Solo el administrador' });
       if (req.method === 'POST') { const r = await runObserver().catch(e => ({ error: e.message })); return json(res, 200, r); }

@@ -5037,12 +5037,19 @@ async function cloudbetCercania() {
   }
   if (!dentro.length) return { skipped: 'ningún partido en ventana', ligas: [...ligas] };
   _cercaniaUlt = Date.now();
+  const t0 = Date.now();
   const cb = await cloudbetSweep({ force: true }).catch((e) => ({ error: e.message }));
-  const pk = await evaluateClubDailyPicks().catch((e) => ({ error: e.message }));
-  _cercaniaOut = { at: new Date().toISOString(), ligas: [...ligas], en_ventana: dentro.slice(0, 12), n_en_ventana: dentro.length,
-    cloudbet: cb && { matched: cb.matched, quotes: cb.quotes, cards: cb.por_familia && cb.por_familia.cards_total, skipped: cb.skipped },
-    picks: pk && { build: pk.build, skipped: pk.skipped } };
-  console.log('[cercania]', JSON.stringify({ n: dentro.length, ligas: [...ligas], cards: cb && cb.por_familia && cb.por_familia.cards_total }));
+  // SI EL BARRIDO NO TRAJO NADA NUEVO, NO SE RECONSTRUYEN PICKS. Las dos llamadas tardan minutos y el tick
+  // es de cuatro: encadenarlas a ciegas apila trabajo sobre trabajo y el proceso —que es uno solo— se
+  // arrastra. Cuando `cloudbetSweep` sale por `running` (el barrido anterior sigue vivo) los precios son los
+  // mismos de hace un momento y construir picks encima no puede descubrir nada.
+  const corrio = cb && !cb.skipped;
+  const pk = corrio ? await evaluateClubDailyPicks().catch((e) => ({ error: e.message })) : null;
+  _cercaniaOut = { at: new Date().toISOString(), ms: Date.now() - t0, ligas: [...ligas],
+    en_ventana: dentro.slice(0, 12), n_en_ventana: dentro.length,
+    cloudbet: cb && { matched: cb.matched, quotes: cb.quotes, cards: cb.por_familia && cb.por_familia.cards_total, skipped: cb.skipped, error: cb.error },
+    picks: pk ? { build: pk.build, skipped: pk.skipped } : 'no se reconstruyo: el barrido no trajo precios nuevos' };
+  console.log('[cercania]', JSON.stringify({ n: dentro.length, ms: Date.now() - t0, cb: cb && (cb.skipped || cb.matched), cards: cb && cb.por_familia && cb.por_familia.cards_total }));
   return _cercaniaOut;
 }
 function cloudbetKeyName(s) { // normalización tolerante para matchear nombres de equipo entre proveedores

@@ -269,6 +269,28 @@ async function refrescarSaldo() {
 // llena, el reenviador vuelve, el precio se recupera. Lo único definitivo es que el modelo no le vea valor
 // —eso no cambia— y que se acabe el tiempo.
 const REINTENTOS_MAX = 80;                 // freno de bucle, no de política: 80 barridos son ~13 horas
+// ESPERAR NO ES FALLAR (12-sep). El 11-sep se perdieron tres picks de Brasileirão —Mirassol vs Vitória,
+// Flamengo vs Corinthians, Santos vs Cruzeiro— por `demasiados_intentos` CON EL SAQUE TODAVÍA POR DELANTE:
+// dos y tres días por delante. La cuenta estaba en 5,75 USDT, el freno de fondos las paraba cada diez
+// minutos, y cada parada gastaba un reintento. A las trece horas se acabó el contador y caducaron solas,
+// aunque la oportunidad seguía viva y el depósito llegó después.
+//
+// El fallo es de concepto: el tope cuenta BARRIDOS (tiempo) y la ventana real es HASTA EL SAQUE (que en
+// fútbol puede ser de tres días). Un intento frenado por saldo o por exposición no es un intento fallido
+// —no llegó a hablar con la casa— es una espera a que cambie una condición que sí cambia. Contarlo gasta
+// una bala por no hacer nada.
+//
+// Se arregla por los dos lados: estos frenos no gastan reintento, y el tope se estira con el tiempo que
+// queda hasta el saque para que una fila de tres días no muera por el reloj de una tarde.
+const FRENOS_QUE_ESPERAN = new Set(['sin_fondos', 'exposicion_maxima', 'parada_diaria']);
+function topeReintentos(kickoffAt) {
+  const ko = kickoffAt ? Date.parse(kickoffAt) : null;
+  if (!ko || !Number.isFinite(ko)) return REINTENTOS_MAX;
+  const horas = (ko - Date.now()) / 3600e3;
+  if (!(horas > 0)) return REINTENTOS_MAX;
+  // 6 barridos/hora, con el tope de siempre como suelo y un techo por si un saque viene mal fechado
+  return Math.max(REINTENTOS_MAX, Math.min(1200, Math.ceil(horas * 6) + REINTENTOS_MAX));
+}
 // `fuera_de_ventana` es DEFINITIVO: el tiempo solo va hacia adelante, así que un partido que ya cae
 // fuera del corte no va a volver a entrar. Reintentarlo 80 veces sería ruido con dinero al lado.
 // `banda_eficiente` también es DEFINITIVO: la banda de una liga no cambia entre dos barridos.
@@ -423,7 +445,7 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   // se para porque no da tiempo, no porque el intento fallara: la distinción importa para el informe.
   const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : null;
   if (ko && ko <= Date.now()) { fila.status = 'CADUCADA'; save(); return fila; }
-  if (fila.intentos > REINTENTOS_MAX) { fila.status = 'CADUCADA'; fila.motivo = 'demasiados_intentos'; save(); return fila; }
+  if (fila.intentos > topeReintentos(fila.kickoff_at)) { fila.status = 'CADUCADA'; fila.motivo = 'demasiados_intentos'; save(); return fila; }
 
   const parar = (motivo, extra) => {
     Object.assign(fila, { motivo, ...(extra || {}) });
@@ -460,7 +482,12 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   if (stakeFijo > 0) fila.stake_fijado = +stakeFijo;
 
   const f = frenos(stake, fila.kickoff_at);
-  if (f) return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
+  if (f) {
+    // un freno que espera (saldo, exposición, parada diaria) devuelve el reintento que acaba de gastar:
+    // la fila no ha fallado, solo no le tocaba todavía. Los demás frenos sí cuentan.
+    if (FRENOS_QUE_ESPERAN.has(f.freno)) fila.intentos = Math.max(0, (fila.intentos || 1) - 1);
+    return parar(f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
+  }
 
   // 1b) UNA POSICIÓN, UNA APUESTA. Si otra fila con dinero ya ocupa este partido+línea+lado, esta no sale.
   //     Cubre la re-emisión de la señal con otro pick_id (misma línea, otra pick) y cualquier camino que

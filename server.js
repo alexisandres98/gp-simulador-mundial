@@ -4980,6 +4980,71 @@ async function hoopsQuotesSweep({ force = false } = {}) {
 // sportsbook_code='cloudbet' y el MISMO canonical_event_id → value/arbitraje/best-odds/picks la ven sin tocar
 // nada. GATED tras CLOUDBET_API_KEY: sin key = no-op absoluto (jamás toca la DB). Fallback graceful total.
 let _cloudbetRunning = false, _cloudbetLast = 0, _cloudbetOut = null;
+
+// ══ LA PASADA DE CERCANÍA (12-sep) ══════════════════════════════════════════════════════════════════════
+// Por qué. Medido sobre 628 picks de tarjetas, las horas entre que nace la pick y el saque: Liga MX 1,5 ·
+// Argentina 1,4 · Brasil B 1,7 · Rusia 1,0 · Serie B 1,3, contra Premier 71 · Ligue 1 59 · Championship 30.
+// En las cinco primeras el 100 % de las picks nace a menos de SEIS horas del saque: la casa abre el mercado
+// de tarjetas a hora y media y antes no existe.
+//
+// Y esas cinco son justo donde más ventaja tenemos sobre el mercado — Liga MX +0,281 (t 2,82), Argentina
+// +0,237 (t 2,66) — mientras que las de ventana larga son las peores: Premier va en −0,122 y está disponible
+// tres días enteros. Resultado: la cartera se llena por defecto de las ligas donde no ganamos, porque son las
+// únicas cuyo mercado está abierto cuando barremos. La descomposición dice que ese cambio de mezcla explica
+// el 26 % de la caída de ROI de las dos últimas semanas.
+//
+// Qué hace. Cuando hay partidos de ligas de ventana corta a menos de tres horas del saque, fuerza el barrido
+// de Cloudbet (que es quien cosecha tarjetas y se auto-frena a 20 min) y construye picks detrás. NO cambia
+// ninguna regla: mismo modelo, misma puerta, misma banda, mismo listón de ventaja. Solo deja de llegar tarde.
+//
+// Las ligas no van a mano: se DERIVAN del histórico de picks, así que si una casa cambia su horario de
+// apertura la lista se corrige sola.
+let _cercaniaUlt = 0, _cercaniaOut = null, _cercaniaLigas = { at: 0, set: null };
+function ligasVentanaCorta({ maxH = 6, minN = 5 } = {}) {
+  if (Date.now() - _cercaniaLigas.at < 6 * 3600e3 && _cercaniaLigas.set) return _cercaniaLigas.set;
+  const h = {};
+  for (const pk of (db.clubDailyPicks || [])) {
+    if (pk.family !== 'CARDS' || pk.side !== 'under') continue;
+    const ko = pk.event && pk.event.kickoff_at ? Date.parse(pk.event.kickoff_at) : 0;
+    const cr = Date.parse(pk.created_at || 0);
+    if (!ko || !cr) continue;
+    const d = (ko - cr) / 3600e3;
+    if (d > -2 && d < 400) (h[pk.league] = h[pk.league] || []).push(d);
+  }
+  const set = new Set();
+  for (const [lg, a] of Object.entries(h)) {
+    if (a.length < minN) continue;
+    const b = a.slice().sort((x, y) => x - y), med = b.length % 2 ? b[b.length >> 1] : (b[(b.length >> 1) - 1] + b[b.length >> 1]) / 2;
+    if (med <= maxH) set.add(lg);
+  }
+  _cercaniaLigas = { at: Date.now(), set };
+  return set;
+}
+async function cloudbetCercania() {
+  if (/^(0|false|no|off)$/i.test(String(process.env.GP_CERCANIA || 'on').trim())) return { skipped: 'apagado' };
+  // suelo propio: por muy cerca que esté el saque, no se pide a la casa más de una vez cada 3 minutos
+  const suelo = Math.max(1, Number(process.env.GP_CERCANIA_MIN || 3)) * 60e3;
+  if (Date.now() - _cercaniaUlt < suelo) return { skipped: 'suelo' };
+  const ligas = ligasVentanaCorta();
+  if (!ligas.size) return { skipped: 'sin ligas de ventana corta todavía' };
+  const horas = Math.max(0.5, Number(process.env.GP_CERCANIA_H || 3));
+  const ahora = Date.now(), dentro = [];
+  for (const m of Object.values(db.clubsQuoteEvents || {})) {
+    if (!ligas.has(m.league)) continue;
+    const k = m.kickoff ? +new Date(m.kickoff) : 0;
+    if (!k || k < ahora || k > ahora + horas * 3600e3) continue;
+    dentro.push({ liga: m.league, partido: `${m.home} vs ${m.away}`, en_h: +((k - ahora) / 3600e3).toFixed(2) });
+  }
+  if (!dentro.length) return { skipped: 'ningún partido en ventana', ligas: [...ligas] };
+  _cercaniaUlt = Date.now();
+  const cb = await cloudbetSweep({ force: true }).catch((e) => ({ error: e.message }));
+  const pk = await evaluateClubDailyPicks().catch((e) => ({ error: e.message }));
+  _cercaniaOut = { at: new Date().toISOString(), ligas: [...ligas], en_ventana: dentro.slice(0, 12), n_en_ventana: dentro.length,
+    cloudbet: cb && { matched: cb.matched, quotes: cb.quotes, cards: cb.por_familia && cb.por_familia.cards_total, skipped: cb.skipped },
+    picks: pk && { build: pk.build, skipped: pk.skipped } };
+  console.log('[cercania]', JSON.stringify({ n: dentro.length, ligas: [...ligas], cards: cb && cb.por_familia && cb.por_familia.cards_total }));
+  return _cercaniaOut;
+}
 function cloudbetKeyName(s) { // normalización tolerante para matchear nombres de equipo entre proveedores
   return normName(s).replace(/\b(fc|cf|cd|sc|ac|afc|club|deportivo|atletico|athletic|the|de|do|da)\b/g, '').replace(/[^a-z0-9]/g, '');
 }
@@ -22679,6 +22744,19 @@ const server = http.createServer(async (req, res) => {
     //
     // Esta sonda pone número a lo que hasta hoy no se registraba: partidos que vienen, ventana histórica de
     // cada liga, y cuáles están dentro de su ventana AHORA sin que haya mercado. Solo lee.
+    // estado de la pasada de cercanía; POST la fuerza (salta el suelo de 3 min)
+    if (p === '/api/internal/cercania') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const admC = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!admC && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') { _cercaniaUlt = 0; return json(res, 200, await cloudbetCercania().catch((e) => ({ error: e.message }))); }
+      return json(res, 200, {
+        encendida: !/^(0|false|no|off)$/i.test(String(process.env.GP_CERCANIA || 'on').trim()),
+        ligas_ventana_corta: [...ligasVentanaCorta()],
+        cada_min: 4, suelo_min: Number(process.env.GP_CERCANIA_MIN || 3), ventana_h: Number(process.env.GP_CERCANIA_H || 3),
+        ultima: _cercaniaOut, ultima_hace_min: _cercaniaUlt ? Math.round((Date.now() - _cercaniaUlt) / 60000) : null,
+      });
+    }
     if (p === '/api/internal/ventana-tarjetas') {
       const xk = process.env.GP_EXPORT_KEY || '';
       const admV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
@@ -27184,6 +27262,10 @@ server.listen(PORT, () => {
     setInterval(() => { clubsSeedEventsAF().catch(e => console.error('[clubs-seed-af]', e.message)); }, 3 * 3600 * 1000);
     setTimeout(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 210 * 1000);
     setInterval(() => { cloudbetSweep().catch(e => console.error('[cloudbet]', e.message)); }, 10 * 60 * 1000);
+    // la pasada de cercanía va aparte y más rápido: solo hace algo cuando hay un partido de liga de ventana
+    // corta a menos de tres horas, así que en la mayoría de los ticks sale por `sin partidos en ventana`
+    setTimeout(() => { cloudbetCercania().catch(e => console.error('[cercania]', e.message)); }, 240 * 1000);
+    setInterval(() => { cloudbetCercania().catch(e => console.error('[cercania]', e.message)); }, 4 * 60 * 1000);
     setTimeout(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 240 * 1000);
     setInterval(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 15 * 60 * 1000);
     setTimeout(() => { polymarketSweep().catch(e => console.error('[polymarket]', e.message)); }, 270 * 1000);

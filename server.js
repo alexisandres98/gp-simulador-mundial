@@ -22666,6 +22666,61 @@ const server = http.createServer(async (req, res) => {
         })(),
       });
     }
+    // LA VENTANA DE MERCADO DE TARJETAS (12-sep). Alexis preguntó por qué no salían picks de tarjetas de la
+    // Liga MX, siendo la liga con MÁS ventaja sobre el mercado de todas (+0,281 de acierto por encima de lo
+    // que el mercado pagaba, t 2,82). La respuesta no estaba en el motor —la puerta dice `approved` y la banda
+    // es blanda— sino en la OFERTA: la casa abre el mercado de tarjetas de la Liga MX a hora y media del
+    // saque, y si en ese rato no pasa un barrido, el partido no existe para nosotros.
+    //
+    // Y eso sesga la cartera entera. Las ligas de ventana corta (Liga MX 1,5 h · Argentina 1,4 h · Brasil B
+    // 1,7 h) son justo las de más ventaja; las de ventana larga (Premier 71 h · Ligue 1 59 h · Championship
+    // 30 h) son las de menos —Premier va en −0,122— y están SIEMPRE disponibles, así que dominan la mezcla
+    // por defecto. No elegimos mal: pescamos donde el mercado está abierto, que no es donde está el dinero.
+    //
+    // Esta sonda pone número a lo que hasta hoy no se registraba: partidos que vienen, ventana histórica de
+    // cada liga, y cuáles están dentro de su ventana AHORA sin que haya mercado. Solo lee.
+    if (p === '/api/internal/ventana-tarjetas') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const admV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!admV && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      const horas = Math.max(1, Math.min(240, Number(url.searchParams.get('h')) || 48));
+      const mediana = (a) => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); const h = b.length >> 1; return b.length % 2 ? b[h] : (b[h - 1] + b[h]) / 2; };
+      // ventana histórica por liga: horas entre la creación de la pick y el saque
+      const hist = {};
+      for (const pk of (db.clubDailyPicks || [])) {
+        if (pk.family !== 'CARDS' || pk.side !== 'under') continue;
+        const ko = pk.event && pk.event.kickoff_at ? Date.parse(pk.event.kickoff_at) : 0;
+        const cr = Date.parse(pk.created_at || 0);
+        if (!ko || !cr) continue;
+        const h = (ko - cr) / 3600e3;
+        if (h > -2 && h < 400) (hist[pk.league] = hist[pk.league] || []).push(h);
+      }
+      const ventana = {};
+      for (const [lg, a] of Object.entries(hist)) if (a.length >= 5) ventana[lg] = { n: a.length, mediana_h: +mediana(a).toFixed(1), p90_h: +a.slice().sort((x, y) => x - y)[Math.floor(0.9 * a.length)].toFixed(1) };
+      // partidos que vienen, por liga
+      const ahora = Date.now(), prox = {};
+      for (const m2 of Object.values(db.clubsQuoteEvents || {})) {
+        const k = m2.kickoff ? +new Date(m2.kickoff) : 0;
+        if (!k || k < ahora || k > ahora + horas * 3600e3) continue;
+        const o = prox[m2.league] = prox[m2.league] || { partidos: 0, dentro_de_ventana: 0, proximo_en_h: null, muestra: [] };
+        o.partidos++;
+        const faltan = (k - ahora) / 3600e3;
+        if (o.proximo_en_h == null || faltan < o.proximo_en_h) o.proximo_en_h = +faltan.toFixed(1);
+        const v = ventana[m2.league];
+        if (v && faltan <= v.mediana_h) o.dentro_de_ventana++;
+        if (o.muestra.length < 4) o.muestra.push({ partido: `${m2.home} vs ${m2.away}`, en_h: +faltan.toFixed(1) });
+      }
+      const filas = Object.keys({ ...prox, ...ventana }).map((lg) => ({
+        liga: lg, ...(prox[lg] || { partidos: 0, dentro_de_ventana: 0, proximo_en_h: null, muestra: [] }),
+        ventana_mediana_h: ventana[lg] ? ventana[lg].mediana_h : null, ventana_n: ventana[lg] ? ventana[lg].n : 0,
+      })).sort((a, b) => (a.ventana_mediana_h ?? 999) - (b.ventana_mediana_h ?? 999));
+      return json(res, 200, {
+        at: new Date().toISOString(), horizonte_h: horas,
+        lectura: 'ventana_mediana_h = a cuántas horas del saque aparece de media el mercado de tarjetas de esa liga. Una ventana corta no es un fallo: es que la casa abre tarde y hay que estar mirando. `dentro_de_ventana` son los partidos que YA deberían tener mercado.',
+        ligas: filas,
+        ventana_corta: filas.filter((x) => x.ventana_mediana_h != null && x.ventana_mediana_h <= 6).map((x) => x.liga),
+      });
+    }
     if (p === '/api/internal/clubs-picks') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

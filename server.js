@@ -5038,7 +5038,7 @@ async function cloudbetCercania() {
   if (!dentro.length) return { skipped: 'ningún partido en ventana', ligas: [...ligas] };
   _cercaniaUlt = Date.now();
   const t0 = Date.now();
-  const cb = await cloudbetSweep({ force: true }).catch((e) => ({ error: e.message }));
+  const cb = await cloudbetSweep({ force: true, soloHasta: ahora + horas * 3600e3 }).catch((e) => ({ error: e.message }));
   // SI EL BARRIDO NO TRAJO NADA NUEVO, NO SE RECONSTRUYEN PICKS. Las dos llamadas tardan minutos y el tick
   // es de cuatro: encadenarlas a ciegas apila trabajo sobre trabajo y el proceso —que es uno solo— se
   // arrastra. Cuando `cloudbetSweep` sale por `running` (el barrido anterior sigue vivo) los precios son los
@@ -5047,7 +5047,7 @@ async function cloudbetCercania() {
   const pk = corrio ? await evaluateClubDailyPicks().catch((e) => ({ error: e.message })) : null;
   _cercaniaOut = { at: new Date().toISOString(), ms: Date.now() - t0, ligas: [...ligas],
     en_ventana: dentro.slice(0, 12), n_en_ventana: dentro.length,
-    cloudbet: cb && { matched: cb.matched, quotes: cb.quotes, cards: cb.por_familia && cb.por_familia.cards_total, skipped: cb.skipped, error: cb.error },
+    cloudbet: cb && { matched: cb.matched, en_cercania: cb.en_cercania || 0, quotes: cb.quotes, cards: cb.por_familia && cb.por_familia.cards_total, skipped: cb.skipped, error: cb.error },
     picks: pk ? { build: pk.build, skipped: pk.skipped } : 'no se reconstruyo: el barrido no trajo precios nuevos' };
   console.log('[cercania]', JSON.stringify({ n: dentro.length, ms: Date.now() - t0, cb: cb && (cb.skipped || cb.matched), cards: cb && cb.por_familia && cb.por_familia.cards_total }));
   return _cercaniaOut;
@@ -5412,7 +5412,12 @@ async function cbResolveEvent(pick) {
   } catch { return null; }
 }
 
-async function cloudbetSweep({ force = false, dryRun = false } = {}) {
+// `soloHasta` (12-sep): marca de tiempo; los partidos que saquen DESPUÉS de ella no escriben cuotas. El coste
+// de este barrido no está en pedirle la agenda a la casa —es una llamada— sino en los miles de upserts que
+// vienen detrás, y son los que lo vuelven lento y lo dejan bloqueado minutos. La pasada de cercanía solo
+// necesita los cuatro o cinco partidos que están a punto de sacar, así que con el filtro termina en segundos
+// y deja de chocar con el barrido completo.
+async function cloudbetSweep({ force = false, dryRun = false, soloHasta = 0 } = {}) {
   const apiKey = process.env.CLOUDBET_API_KEY || '';
   if (!apiKey) return { skipped: 'no_key' };
   const dbc = require('./database/client'); if (!dbc.isConfigured()) return { skipped: 'db_off' };
@@ -5461,6 +5466,11 @@ async function cloudbetSweep({ force = false, dryRun = false } = {}) {
           kickoff: cb.kickoff || meta.kickoff || null, at: Date.now() };
       }
       if (dryRun) continue;
+      if (soloHasta) {
+        const koCb = Date.parse(cb.kickoff || meta.kickoff || 0);
+        if (!Number.isFinite(koCb) || koCb > soloHasta) { out.fuera_de_cercania = (out.fuera_de_cercania || 0) + 1; continue; }
+        out.en_cercania = (out.en_cercania || 0) + 1;
+      }
       const eid = 'cloudbet-' + ceid;
       const q = (fam, mid, odds, max, extra) => grepo.upsertGoalQuote({
         data_provider: 'cloudbet', sportsbook_code: 'cloudbet', external_event_id: eid, canonical_event_id: ceid,
@@ -22762,6 +22772,10 @@ const server = http.createServer(async (req, res) => {
         ligas_ventana_corta: [...ligasVentanaCorta()],
         cada_min: 4, suelo_min: Number(process.env.GP_CERCANIA_MIN || 3), ventana_h: Number(process.env.GP_CERCANIA_H || 3),
         ultima: _cercaniaOut, ultima_hace_min: _cercaniaUlt ? Math.round((Date.now() - _cercaniaUlt) / 60000) : null,
+        barrido_cloudbet: _cloudbetOut ? { started: _cloudbetOut.started, finished: _cloudbetOut.finished,
+          segundos: _cloudbetOut.finished ? Math.round((Date.parse(_cloudbetOut.finished) - Date.parse(_cloudbetOut.started)) / 1000) : null,
+          matched: _cloudbetOut.matched, quotes: _cloudbetOut.quotes } : null,
+        corriendo_ahora: _cloudbetRunning,
       });
     }
     if (p === '/api/internal/ventana-tarjetas') {

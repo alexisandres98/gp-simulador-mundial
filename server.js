@@ -23201,6 +23201,9 @@ async function anotar(pid){
           precio: url.searchParams.get('precio'), costo: url.searchParams.get('costo') }));
         // borrón de la sombra de Polymarket (1-sep): solo a mano, para renacer con reglas nuevas
         if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset());
+        // ¿puede este servidor colocar una orden en Polymarket? La lectura funciona desde el 1-sep y eso no
+        // dice nada: el bloqueo por región es SOLO de trading. Se comprueba antes de construir el ejecutor.
+        if (runPf === 'poly_geo') return json(res, 200, await require('./propfirm/polyshadow').sondaGeo().catch((e) => ({ error: e.message })));
         // liquidación a demanda de la sombra de Polymarket (3-sep): tras el arreglo del recurso de gamma,
         // para no esperar al barrido de 10 min. Solo lee gamma y escribe el archivo de la sombra.
         if (runPf === 'poly_settle') return json(res, 200, await require('./propfirm/polyshadow').liquidarPoly().catch((e) => ({ error: e.message })));

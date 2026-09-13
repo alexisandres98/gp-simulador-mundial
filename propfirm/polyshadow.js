@@ -291,6 +291,39 @@ function estado() {
   };
 }
 
+// ── ¿PODEMOS SIQUIERA OPERAR DESDE AQUÍ? (13-sep) ───────────────────────────────────────────────────────
+// Antes de construir un ejecutor hay que saber si el servidor puede enviar una orden, y eso NO se deduce de
+// que las lecturas funcionen: Polymarket bloquea el TRADING por región y deja la lectura abierta. Nuestra
+// sombra lleva desde el 1-sep leyendo libros sin problema, y eso no dice absolutamente nada sobre si podría
+// colocar. Render corre en Oregón (EE. UU.), que es justo la región bloqueada.
+//
+// La sonda manda un POST vacío y sin firma a /order: no puede colocar nada —no lleva orden, ni firma, ni
+// credenciales— y lo único que se mira es el código y el mensaje. 403 con "Trading restricted" significa que
+// el ejecutor no puede vivir en este servidor, por muy bien que esté escrito.
+async function sondaGeo() {
+  const out = { at: new Date().toISOString() };
+  try {
+    const r = await fetch(`${CLOB}/markets`, { signal: AbortSignal.timeout(12000) });
+    out.lectura = { status: r.status, ok: r.ok };
+  } catch (e) { out.lectura = { error: e.message }; }
+  try {
+    const r = await fetch(`${CLOB}/order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: '{}', signal: AbortSignal.timeout(12000) });
+    const t = await r.text().catch(() => '');
+    out.trading = { status: r.status, cuerpo: t.slice(0, 300) };
+    out.bloqueado_por_region = /restricted in your region|geoblock/i.test(t);
+  } catch (e) { out.trading = { error: e.message }; }
+  try {
+    const r = await fetch('https://api.ipify.org', { signal: AbortSignal.timeout(8000) });
+    out.ip_de_salida = (await r.text().catch(() => '')).trim();
+  } catch { out.ip_de_salida = null; }
+  out.lectura_dice = out.lectura && out.lectura.ok ? 'las lecturas funcionan' : 'ni siquiera lee';
+  out.veredicto = out.bloqueado_por_region
+    ? 'NO se puede operar desde este servidor: el trading está bloqueado por región aunque la lectura funcione. Un ejecutor aquí no colocaría ni una orden.'
+    : (out.trading && out.trading.status === 403 ? 'prohibido por otra razón (mira el cuerpo)' : 'el trading NO está bloqueado por región desde esta IP');
+  return out;
+}
+
 // borrón y cuenta nueva (solo por orden humana): el experimento nace de cero con las reglas vigentes
 function reset() {
   const st = { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: new Date().toISOString(), reset_at: new Date().toISOString() };
@@ -300,4 +333,4 @@ function reset() {
 
 // exportación completa de posiciones (3-sep, solo lectura): para el desglose por familia/mercado
 function posiciones() { const st = rd(); return { banco_inicial: st.banco_inicial, efectivo: st.efectivo, at: st.at, posiciones: Object.values(st.posiciones || {}) }; }
-module.exports = { sincronizar, liquidarPoly, estado, reset, posiciones, DIR };
+module.exports = { sincronizar, liquidarPoly, estado, reset, posiciones, sondaGeo, DIR };

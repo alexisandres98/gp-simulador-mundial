@@ -488,14 +488,17 @@ function tabla() {
 
     let aporta = null, modelo = null, ve = null, clvRec = null, tRec = null;
     if (vara) {
+      // `odds`, `cierre` y `pModelo` son FUNCIONES ACCESORAS, no nombres de campo. Pasarle cadenas hacía que
+      // `odds(it)` lanzara, el try/catch se lo tragaba y las dos pruebas salían nulas — una tabla con huecos
+      // en vez de un error. De ahí la regla: un catch que devuelve null esconde tanto como protege.
       try {
         aporta = vara.cierreAporta(cerradas.filter((p) => Number.isFinite(p.close_odds) && gano(p) != null),
-          { odds: 'odds', cierre: 'close_odds', gano, overPct: medOver || 0 });
-      } catch { aporta = null; }
+          { odds: (p) => p.odds, cierre: (p) => p.close_odds, gano, overPct: medOver || 0 });
+      } catch (e) { aporta = { error: e.message }; }
       try {
         modelo = vara.modeloContraPrecio(cerradas.filter((p) => gano(p) != null),
-          { odds: 'odds', pModelo: 'p_gp', gano });
-      } catch { modelo = null; }
+          { odds: (p) => p.odds, pModelo: (p) => p.p_gp, gano });
+      } catch (e) { modelo = { error: e.message }; }
       // CLV RECORTADO AL 10 %, no crudo: la media cruda la destroza un cierre roto, y en este almacén los
       // hay. Es el mismo recorte que se aplica a todas las demás familias del sistema.
       try {

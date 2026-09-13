@@ -312,10 +312,29 @@ function mismoPartido(a, b) {
   return !!(a.match && b.match && a.match === b.match && a.kickoff_at && b.kickoff_at
     && Date.parse(a.kickoff_at) === Date.parse(b.kickoff_at));
 }
+// UNA POSICIÓN POR PARTIDO (13-sep, tras la autopsia del libro real). La regla del 5-sep decía "dos veces
+// al mismo partido sí, a la misma línea no", y sobre el papel es razonable: under 4,5 y under 5,5 son dos
+// apuestas distintas con dos precios distintos. En el resultado no lo son. Si el partido acaba con siete
+// tarjetas, las dos pierden; si acaba con tres, las dos ganan. La correlación es casi total, así que apilar
+// líneas no diversifica nada: multiplica el riesgo del mismo partido sin que nadie lo haya decidido.
+//
+// Lo que costó, sobre las 139 liquidadas del libro real:
+//   · una sola apuesta en el partido → 62,7 % de acierto, +106,12, ROI +3,85 %
+//   · partido con dos apuestas       → 48,0 % de acierto, −303,72, ROI −17,63 %
+//   · partido con tres o más         → 33,3 % de acierto, −110,00, ROI −45,83 %
+// En doce partidos se perdieron TODAS las apuestas apiladas a la vez: −847,65. El 12-sep, tres partidos de
+// Brasileirão con dos líneas cada uno se llevaron el día entero. Las apuestas sueltas ganan dinero; el
+// agujero completo está en las apiladas.
+//
+// Desde hoy la identidad de una posición es PARTIDO + LADO, sin la línea. La primera que llega se queda con
+// el partido; la segunda se para con `linea_ya_apostada` y se ve en el informe. Con `GP_REAL_UNA_POR_PARTIDO=off`
+// se vuelve al criterio viejo sin desplegar, por si hay que revertir en caliente.
+function unaPorPartido() { return !/^(0|false|no|off)$/i.test(String(process.env.GP_REAL_UNA_POR_PARTIDO || 'on').trim()); }
 function mismaPosicion(a, b) {
   if (!a || !b || a === b) return false;
   if (String(a.side || '').toLowerCase() !== String(b.side || '').toLowerCase()) return false;
-  if (a.line == null || b.line == null || Number(a.line) !== Number(b.line)) return false;
+  // el lado y el partido bastan: la línea ya no distingue dos apuestas, porque el resultado las une
+  if (!unaPorPartido() && (a.line == null || b.line == null || Number(a.line) !== Number(b.line))) return false;
   return mismoPartido(a, b);
 }
 // la fila con dinero que ya ocupa la misma posición que `fila`, o null
@@ -494,7 +513,9 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   //     llegue aquí dos veces para la misma posición. Se mira antes de tocar a la casa y otra vez después
   //     de resolver el id del partido, que es la identidad más fiable.
   const ocupada1 = posicionOcupada(L, fila);
-  if (ocupada1) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada1.status} a ${fila.side} ${fila.line} en este partido (pick ${ocupada1.pick_id}, ref ${ocupada1.ref_id || 's/r'})`, ocupada_por: ocupada1.pick_id });
+  // el detalle nombra la línea de LA QUE OCUPA, no la nuestra: desde el 13-sep pueden ser distintas y saber
+  // cuál se quedó con el partido es justo lo que hace falta para auditarlo
+  if (ocupada1) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada1.status} a ${ocupada1.side} ${ocupada1.line} en este partido (esta era ${fila.side} ${fila.line}; pick ${ocupada1.pick_id}, ref ${ocupada1.ref_id || 's/r'})`, ocupada_por: ocupada1.pick_id });
 
   // 2) el id del partido en la casa
   let idx = fila.ceid ? (cbIdx || {})[fila.ceid] : null;
@@ -509,7 +530,7 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   }
   fila.cb_event_id = idx.cb_id;
   const ocupada2 = posicionOcupada(L, fila);
-  if (ocupada2) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada2.status} a ${fila.side} ${fila.line} en el evento ${idx.cb_id} (pick ${ocupada2.pick_id})`, ocupada_por: ocupada2.pick_id });
+  if (ocupada2) return parar('linea_ya_apostada', { detalle: `ya hay una apuesta ${ocupada2.status} a ${ocupada2.side} ${ocupada2.line} en el evento ${idx.cb_id} (esta era ${fila.side} ${fila.line}; pick ${ocupada2.pick_id})`, ocupada_por: ocupada2.pick_id });
 
   // 3) el precio VIVO y sus coordenadas de colocación
   const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', idx.cb_id).catch(() => null);

@@ -22140,6 +22140,11 @@ const server = http.createServer(async (req, res) => {
         const datos = cuerpo ? JSON.stringify(cuerpo) : null;
         const rq = httpsW.request(base + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(rk), {
           method: cuerpo ? 'POST' : 'GET', rejectUnauthorized: false, timeout: 25000,
+          // conexión nueva en cada sonda. Con la reutilización de Node, `getPeerCertificate()` devuelve
+          // vacío en las llamadas que van por un socket ya abierto, y la huella salía unas veces sí y otras
+          // no. Una huella que no se puede repetir no vale para comparar: quien la comprueba abandonaría
+          // creyendo que hay alguien en medio. Esta es una sonda de administración, no el camino caliente.
+          agent: false,
           headers: datos ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(datos) } : {},
         }, (rs) => {
           // La huella del certificado del brazo. No sirve para verificar nada aquí —ya aceptamos el

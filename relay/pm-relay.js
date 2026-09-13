@@ -34,7 +34,9 @@ const GEO = require('./geo-polymarket');
 
 const PK = () => String(process.env.PM_PRIVATE_KEY || '').trim();
 const MAKER = () => String(process.env.PM_MAKER_ADDRESS || '').trim();          // la wallet con los fondos
-const TIPO_FIRMA = () => String(process.env.PM_SIG_TYPE || 'proxy').trim();     // proxy | safe | eoa | deposito
+// Por defecto `deposito`: toda cuenta de Polymarket creada desde el 4-may-2026 lo es, así que los tres
+// tipos antiguos son la excepción, no la norma. El defecto era `proxy` de cuando creíamos lo contrario.
+const TIPO_FIRMA = () => String(process.env.PM_SIG_TYPE || 'deposito').trim();  // deposito | proxy | safe | eoa
 const MAX_USD = () => Number(process.env.PM_MAX_USD || 25);                     // tope por orden, en dólares
 
 // Las credenciales de trading se derivan UNA vez de la clave y se guardan en memoria. Si la casa las
@@ -272,7 +274,20 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
     } catch (e) { intentos.push({ tipo, error: e.message }); continue; }
     const id = r.json && (r.json.orderID || r.json.orderId || r.json.id);
     const aceptada = !!(r.ok && r.json && r.json.success !== false && id);
-    intentos.push({ tipo, status: r.status, aceptada, mensaje: (r.json && (r.json.errorMsg || r.json.error)) || (r.json ? undefined : (r.texto || '').slice(0, 160)) });
+    const mensaje = (r.json && (r.json.errorMsg || r.json.error)) || (r.json ? undefined : (r.texto || '').slice(0, 160));
+    // «NO HAY SALDO» ES UN SÍ. Si la casa se queja del dinero es porque ya validó todo lo demás: la firma,
+    // el tipo, la identidad y el cuerpo. Tratarlo como un fallo más haría que una cuenta bien configurada
+    // pero sin fondear diera «ningún tipo de firma fue aceptado» — que es exactamente el diagnóstico que
+    // manda a buscar el problema donde no está. Lo sabemos porque nos pasó: la cuenta de pruebas tenía
+    // 0,0081 $ y el mensaje fue «balance: 8100, order amount: 50000».
+    const porSaldo = /balance|allowance/i.test(String(mensaje || ''));
+    intentos.push({ tipo, status: r.status, aceptada, firma_validada: aceptada || porSaldo, mensaje });
+    if (!aceptada && porSaldo) {
+      return { ok: true, tipo_firma: tipo, mercado: mk, orden_de_prueba: null, cancelada: null, intentos,
+        nota: 'la firma es CORRECTA: la casa solo se queja del saldo, que es lo último que mira',
+        falta: 'fondear la cuenta',
+        siguiente_paso: `pon PM_SIG_TYPE=${tipo} en el brazo y fondea la cuenta` };
+    }
     if (aceptada) {
       // ACEPTADA: este es el tipo. Se cancela inmediatamente — la orden nunca se iba a cruzar, pero dejarla
       // ahí sería dejar capital comprometido por una prueba.
@@ -283,7 +298,7 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
     }
   }
   return { ok: false, why: 'ningún tipo de firma fue aceptado', intentos,
-    pista: 'si la cuenta es una Deposit Wallet hace falta implementar el envoltorio ERC-7739 antes de colocar' };
+    pista: 'mira el mensaje de cada intento: «maker address not allowed» en todos significa que la cuenta es de un tipo que no estamos probando' };
 }
 
 const estadoOrden = async (id) => {

@@ -175,12 +175,35 @@ const colocador = (registro) => async (o) => { registro.push(o); return { ok: tr
   };
 
   await t('con todo en orden, los cinco escalones pasan', () => {
-    const r = EJ.pasosAlta({ diag: diagBueno, tipoFirma: { ok: true, tipo_firma: 'proxy', cancelada: true } });
+    const r = EJ.pasosAlta({ diag: diagBueno, tipoFirma: { ok: true, tipo_firma: 'deposito', tipo_en_uso: 'deposito', coincide: true, cancelada: true } });
     assert.strictEqual(r.alta_completa, true, JSON.stringify(r.paso.filter((p) => !p.ok)));
     assert.strictEqual(r.paso.length, 5);
-    assert.strictEqual(r.paso[3].tipo_firma, 'proxy');
+    assert.strictEqual(r.paso[3].tipo_firma, 'deposito');
     // encendido está en 1 en estas pruebas, así que el veredicto tiene que ser el de "colocará"
     assert.match(r.veredicto, /LISTO Y ENCENDIDO/);
+  });
+
+  // ESTA ES LA PRUEBA QUE FALTABA. El alta salía en VERDE mientras el brazo firmaba con un tipo distinto
+  // del que la casa había dicho, así que todas las órdenes se habrían rechazado una a una con el alta
+  // diciendo que todo estaba listo. Medir una cosa y usar otra da confianza justo donde no la hay.
+  await t('si el brazo firma con un tipo distinto del medido, el alta NO pasa', () => {
+    const r = EJ.pasosAlta({ diag: diagBueno,
+      tipoFirma: { ok: true, tipo_firma: 'deposito', tipo_en_uso: 'proxy', coincide: false,
+        AVISO: 'la casa dice «deposito» pero el brazo firma como «proxy»' } });
+    assert.strictEqual(r.alta_completa, false, 'no puede darse por buena');
+    const p4 = r.paso.find((p) => p.n === 4);
+    assert.strictEqual(p4.ok, false);
+    assert.match(p4.AVISO, /deposito/);
+    assert.strictEqual(p4.tipo_en_uso, 'proxy');
+  });
+
+  await t('sin saldo pero con la firma validada, el escalón 4 pasa y dice qué falta', () => {
+    const r = EJ.pasosAlta({ diag: diagBueno,
+      tipoFirma: { ok: true, tipo_firma: 'deposito', tipo_en_uso: 'deposito', coincide: true,
+        nota: 'la firma es CORRECTA: la casa solo se queja del saldo', falta: 'fondear la cuenta' } });
+    const p4 = r.paso.find((p) => p.n === 4);
+    assert.strictEqual(p4.ok, true, 'una firma válida sin fondos es un sí');
+    assert.strictEqual(p4.falta, 'fondear la cuenta');
   });
 
   await t('un diagnóstico vacío NO puede dar el alta por buena', () => {

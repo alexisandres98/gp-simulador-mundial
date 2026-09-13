@@ -249,6 +249,22 @@ async function ensayo(b) {
 // 4-may-2026 es una Deposit Wallet. Probar los tres legados antes era gastar tres órdenes rechazadas para
 // llegar al que casi siempre va a ser el bueno.
 const TIPOS_A_PROBAR = ['deposito', 'proxy', 'safe', 'eoa'];
+
+// EL TIPO QUE MIDE EL ALTA TIENE QUE SER EL QUE USA EL BRAZO, Y ESO HAY QUE COMPROBARLO (13-sep).
+// Fallo encontrado en la prueba de punta a punta: la sonda dijo `deposito` —y era verdad— pero la máquina
+// tenía `PM_SIG_TYPE=proxy` fijado, así que las órdenes de verdad se firmaban como Proxy y la casa las
+// rechazaba una a una. El alta salía en verde. Medir una cosa y usar otra es la peor combinación posible:
+// da confianza justo donde no la hay. Ahora el alta compara y lo dice.
+function avisoDeTipo(detectado) {
+  const puesto = TIPO_FIRMA();
+  if (puesto === detectado) return { tipo_en_uso: puesto, coincide: true };
+  return { tipo_en_uso: puesto, coincide: false,
+    AVISO: `la casa dice que esta cuenta es «${detectado}» pero el brazo está firmando como «${puesto}». ` +
+      `Mientras no coincidan, TODAS las órdenes serán rechazadas.`,
+    siguiente_paso: detectado === 'deposito'
+      ? 'quita PM_SIG_TYPE del entorno del brazo (el valor por defecto ya es «deposito») y reinicia'
+      : `pon PM_SIG_TYPE=${detectado} en el entorno del brazo y reinicia` };
+}
 async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {}) {
   const pk = PK(); if (!pk) return { ok: false, why: 'falta PM_PRIVATE_KEY' };
   const maker = MAKER(); if (!maker) return { ok: false, why: 'falta PM_MAKER_ADDRESS' };
@@ -285,16 +301,14 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
     if (!aceptada && porSaldo) {
       return { ok: true, tipo_firma: tipo, mercado: mk, orden_de_prueba: null, cancelada: null, intentos,
         nota: 'la firma es CORRECTA: la casa solo se queja del saldo, que es lo último que mira',
-        falta: 'fondear la cuenta',
-        siguiente_paso: `pon PM_SIG_TYPE=${tipo} en el brazo y fondea la cuenta` };
+        falta: 'fondear la cuenta', ...avisoDeTipo(tipo) };
     }
     if (aceptada) {
       // ACEPTADA: este es el tipo. Se cancela inmediatamente — la orden nunca se iba a cruzar, pero dejarla
       // ahí sería dejar capital comprometido por una prueba.
       const cancel = await C.cancelar({ id, credenciales: c.credenciales, direccion: signer });
       return { ok: true, tipo_firma: tipo, mercado: mk, orden_de_prueba: id,
-        cancelada: !!(cancel.ok), cancel_status: cancel.status, intentos,
-        siguiente_paso: `pon PM_SIG_TYPE=${tipo} en el relay y reinicia` };
+        cancelada: !!(cancel.ok), cancel_status: cancel.status, intentos, ...avisoDeTipo(tipo) };
     }
   }
   return { ok: false, why: 'ningún tipo de firma fue aceptado', intentos,

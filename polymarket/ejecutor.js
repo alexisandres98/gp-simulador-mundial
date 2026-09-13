@@ -261,9 +261,14 @@ function pasosAlta({ diag, tipoFirma, transporteDiag, transporteTipo } = {}) {
   const listo3 = paso.every((x) => x.ok);
   if (listo3 && tipoFirma !== undefined) {
     const tf = tipoFirma || {};
-    paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: !!tf.ok,
-      tipo_firma: tf.tipo_firma, cancelada: tf.cancelada, intentos: tf.intentos, mercado: tf.mercado,
-      why: tf.why, siguiente: tf.siguiente_paso, transporte: transporteTipo });
+    // NO basta con que la casa nos diga el tipo: el brazo tiene que estar FIRMANDO con ese tipo. Si mide
+    // uno y firma otro, todas las órdenes se rechazan y el alta habría salido en verde — que fue justo lo
+    // que pasó la primera vez que se probó esto entero.
+    paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta, y es el que usa el brazo?',
+      ok: !!(tf.ok && tf.coincide !== false),
+      tipo_firma: tf.tipo_firma, tipo_en_uso: tf.tipo_en_uso, coincide: tf.coincide,
+      AVISO: tf.AVISO, cancelada: tf.cancelada, intentos: tf.intentos, mercado: tf.mercado,
+      nota: tf.nota, falta: tf.falta, why: tf.why, siguiente: tf.siguiente_paso, transporte: transporteTipo });
   } else if (listo3) {
     paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: false,
       falta: 'pásame `&token=<token_id de un mercado abierto>` y lo averiguo con una orden que no puede llenarse (coste cero)' });

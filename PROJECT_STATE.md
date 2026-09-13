@@ -129,5 +129,18 @@ hasta que una familia cruce el listón de `real-executor/parada.js`. Punto de de
 | `lib/vara.js` | CLV recortado + semanal + rodante + neto de margen + veredicto + ¼ Kelly. `cierreAporta()` decide si el CLV sirve; `modeloContraPrecio()` es la vara de repuesto |
 | `implied-engine/closes.js` | cubos T−60…T−1 + `rescatar()` (reconstruye el CLV perdido) + `salud()` |
 | `real-executor/parada.js` | las 4 líneas de parada, calculadas por Monte Carlo. Mide y avisa; no apaga |
+| `goal-engine/mitades.js` | el reparto del gol entre mitades (0,446, medido) + **el error de calibración de cada familia, que entra en su listón de ventaja** + el vocabulario de ids y el giro local/visita, en un solo sitio |
+| `goal-engine/descanso.js` | el marcador al descanso reconstruido de los goles con su tiempo (ESPN), con doble puerta para que un lado invertido nunca liquide |
 
 Rutas: `/api/internal/vara` · `/api/internal/parada` · `/api/internal/ventana-tarjetas` · `/api/internal/cercania`
+· `/api/internal/futbol-derivadas?tabla=1` (una fila por familia: n, ROI, CLV, listón, error de calibración, veredicto)
+
+## ⚽ SOMBRA DE FAMILIAS DE FÚTBOL (`futbol-derivadas.js`) — dos reglas conviviendo
+- **`derivadas_v1`** (20-ago, congelada): doble oportunidad, empate no válido, hándicap asiático, total de
+  equipo, ambos marcan. Listón único de 3 pp. **Apila** varias líneas del mismo partido, así que su n
+  efectivo es menor que su n nominal — leerla con esa advertencia.
+- **`derivadas_v2`** (13-sep): las catorce familias de mitad más marcador exacto, portería a cero y ganar a
+  cero. **Listón por familia** = 3 pp + su error de calibración medido (de 3,8 pp en «ambos marcan del 1T» a
+  8,8 pp en «total del 1T»). **Una posición por partido y familia.**
+- Cada pick guarda su `rule_version` y su `market_basis`, así que las dos muestras se separan para siempre.
+- Sombra pura: no publica picks, no toca el feed y no toca dinero.

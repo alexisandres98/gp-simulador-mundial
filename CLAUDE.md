@@ -148,8 +148,27 @@ Tres módulos, en este orden. **No juzgues una familia por su ROI ni por su CLV 
   60.000 corridas (no opinadas). Corre cada hora, manda UN correo al admin la primera vez que cada línea
   cruza, y **NO APAGA NADA**: apagar es decisión de Alexis (`GP_REAL_ENABLED=false`).
 
+- **`goal-engine/mitades.js`** (13-sep) — **el error de calibración de cada familia entra en su listón.**
+  Calculable no es calibrada. Antes de abrir un mercado hay que medir cuánto se desvía su probabilidad
+  contra resultados reales, y ese error se SUMA al listón base de ventaja: una familia que se desvía 5,8 pp
+  no puede cobrar 3 pp, porque esos 3 pp caben enteros dentro de su error. El suelo de ruido del método son
+  las familias de control que ya publicamos (3,4 y 2,9 pp). Aplíquese a cualquier familia nueva, de
+  cualquier deporte.
+
 Sondas: `/api/internal/vara?key=&bankroll=` · `/api/internal/parada?key=` · `/api/internal/ventana-tarjetas?key=&h=`
-· `/api/internal/cercania?key=`
+· `/api/internal/cercania?key=` · `/api/internal/futbol-derivadas?key=&tabla=1`
+
+## ⚽ MERCADOS DE FÚTBOL: EL CENSO (13-sep)
+Cloudbet publica **43 mercados distintos por partido** y leíamos **9**. De los 34 que faltaban se abrieron
+**15 en sombra** (`derivadas_v2`): las catorce de mitad —con el reparto del gol medido sobre 33.364 partidos,
+cuota del 1T = **0,446**, y **sin Dixon-Coles**, que a media lambda sobrestima el empate 2,6-3,6 pp— más
+marcador exacto, portería a cero y ganar a cero, que la matriz ya calculaba y nadie leía. Motor en
+`goal-engine/mitades.js` (constante, medición y errores por familia) y `goal-engine/descanso.js` (marcador al
+descanso desde ESPN, con doble puerta: nombre resuelto Y las dos mitades tienen que sumar el final conocido).
+**Siguen fuera con motivo escrito** (`FUERA` en `futbol-derivadas.js`): momento y orden del gol, goleadores y
+las derivadas de córners y tarjetas — medido que los córners local/visita van correlacionados **−0,249** y
+las tarjetas **+0,201**, así que dos Poisson independientes no valen para ninguna de las dos.
+Interruptores: `GP_DERIV_NUEVAS` (on) · `GP_DERIV_NUEVAS_HORAS` (48).
 
 ## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
 - **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son

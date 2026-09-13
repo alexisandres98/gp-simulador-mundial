@@ -103,6 +103,36 @@ function valida(b) {
   return null;
 }
 
+// ── LOS PARÁMETROS DEL MERCADO SE PREGUNTAN, NO SE SUPONEN (13-sep) ─────────────────────────────────────
+// Fallo encontrado probando contra la cuenta real: el ejecutor mandaba solo (token, lado, precio, tamaño) y
+// el brazo asumía `tick 0.01` y `riesgo negativo: no`. Las dos suposiciones son falsas a menudo — el primer
+// mercado que probé era de RIESGO NEGATIVO (se firma contra OTRO contrato, así que la firma habría sido
+// inválida) y hay mercados con tick 0.001 (un precio que no encaja en el tick lo rechaza la casa). Ninguna
+// de las dos cosas da un error entendible: dan "orden rechazada" a secas.
+//
+// El libro del token trae los tres datos de una sola llamada: `tick_size`, `neg_risk` y `min_order_size`.
+// Se consultan SIEMPRE antes de firmar, y lo que venga en la petición solo sirve de respaldo si la casa no
+// contesta. Una llamada más por orden a cambio de no firmar a ciegas.
+async function paramsDeMercado(tokenId, respaldo = {}) {
+  const r = await C.libro(String(tokenId));
+  const j = r && r.json;
+  if (j && (j.tick_size || j.neg_risk != null)) {
+    return { tick: String(j.tick_size || respaldo.tick || '0.01'),
+      negRisk: j.neg_risk != null ? !!j.neg_risk : !!respaldo.negRisk,
+      min_order_size: Number(j.min_order_size) || null, de: 'el libro de la casa' };
+  }
+  // respaldo: los recursos sueltos, por si el libro viniera vacío (mercado sin liquidez)
+  const [t, n] = await Promise.all([C.tickSize(String(tokenId)), C.negRisk(String(tokenId))]);
+  const tick = t && t.json && (t.json.minimum_tick_size || t.json.tick_size);
+  const neg = n && n.json && n.json.neg_risk;
+  if (tick != null || neg != null) {
+    return { tick: String(tick || respaldo.tick || '0.01'),
+      negRisk: neg != null ? !!neg : !!respaldo.negRisk, min_order_size: null, de: 'tick-size + neg-risk' };
+  }
+  return { tick: String(respaldo.tick || '0.01'), negRisk: !!respaldo.negRisk, min_order_size: null,
+    de: 'NO se pudo consultar: se usa lo que vino en la petición' };
+}
+
 async function colocar(b) {
   const mal = valida(b);
   if (mal) return { ok: false, rechazado_por_el_brazo: mal };
@@ -116,17 +146,21 @@ async function colocar(b) {
     return { ok: false, rechazado_por_el_brazo: `la orden cuesta ${coste.toFixed(2)} y el tope de este brazo es ${MAX_USD()}` };
   }
 
+  const mk = await paramsDeMercado(b.tokenId, b);
+  if (mk.min_order_size && Number(b.size) < mk.min_order_size) {
+    return { ok: false, rechazado_por_el_brazo: `la casa exige un mínimo de ${mk.min_order_size} acciones y se pidieron ${b.size}`, mercado: mk };
+  }
   let orden, firma;
   try {
     orden = O.construir({
       tokenId: String(b.tokenId), lado: String(b.side).toUpperCase(),
       precio: String(b.price), tamano: String(b.size),
-      tick: String(b.tick || '0.01'), riesgoNegativo: !!b.negRisk,
+      tick: mk.tick, riesgoNegativo: mk.negRisk,
       maker, signer, tipoFirma: TIPO_FIRMA(),
       expiracion: String(b.expiration || '0'), orderType: String(b.orderType || 'GTC'),
     });
     firma = O.firmar(orden, pk);          // esto ya comprueba que la firma recupera al firmante
-  } catch (e) { return { ok: false, rechazado_por_el_brazo: 'no se pudo construir/firmar: ' + e.message }; }
+  } catch (e) { return { ok: false, rechazado_por_el_brazo: 'no se pudo construir/firmar: ' + e.message, mercado: mk }; }
 
   const c = await credenciales();
   if (!c.ok) return { ok: false, rechazado_por_el_brazo: 'sin credenciales de trading', detalle: c.why || c.texto };
@@ -139,7 +173,10 @@ async function colocar(b) {
     enviado: { tokenId: cuerpo.order.tokenId, side: cuerpo.order.side, makerAmount: cuerpo.order.makerAmount,
       takerAmount: cuerpo.order.takerAmount, precio: orden.importes.precio, tamano: orden.importes.tamano,
       coste_usd: orden.importes.dinero_texto, signatureType: cuerpo.order.signatureType,
-      digest: firma.digest, ref: b.ref || null },
+      digest: firma.digest, ref: b.ref || null,
+      // de dónde salieron el tick y el contrato: si una orden se rechaza, esto dice si fue por suponerlos
+      mercado: { tick: mk.tick, riesgo_negativo: mk.negRisk, min_order_size: mk.min_order_size, dato_de: mk.de },
+      contrato: orden.dominio.verifyingContract },
   };
 }
 
@@ -151,12 +188,15 @@ async function ensayo(b) {
   const maker = MAKER() || '0x' + '0'.repeat(40);
   const signer = S.direccionDe(pk);
   const coste = Number(b.price) * Number(b.size);
+  const mk = await paramsDeMercado(b.tokenId, b);
   const orden = O.construir({ tokenId: String(b.tokenId), lado: String(b.side).toUpperCase(),
-    precio: String(b.price), tamano: String(b.size), tick: String(b.tick || '0.01'),
-    riesgoNegativo: !!b.negRisk, maker, signer, tipoFirma: TIPO_FIRMA(),
+    precio: String(b.price), tamano: String(b.size), tick: mk.tick,
+    riesgoNegativo: mk.negRisk, maker, signer, tipoFirma: TIPO_FIRMA(),
     expiracion: String(b.expiration || '0'), orderType: String(b.orderType || 'GTC') });
   const firma = O.firmar(orden, pk);
   return { ok: true, ensayo: true, dentro_del_tope: coste <= MAX_USD(), coste_usd: +coste.toFixed(4),
+    mercado: mk, contrato: orden.dominio.verifyingContract,
+    cumple_minimo: mk.min_order_size ? Number(b.size) >= mk.min_order_size : null,
     cuerpo: O.cuerpo(orden, firma.firma), digest: firma.digest, firmante: signer };
 }
 
@@ -181,8 +221,11 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
   const c = await credenciales();
   if (!c.ok) return { ok: false, why: 'sin credenciales de trading', detalle: c.why || c.texto };
 
+  // los parámetros reales del mercado: firmar la prueba contra el contrato equivocado haría fallar TODOS
+  // los tipos y nos haría concluir que ninguno vale
+  const mk = await paramsDeMercado(tokenId);
   // 5 acciones a 0,01 = 5 céntimos comprometidos, y a ese precio no se cruza nunca
-  const size = String(tamano || 5);
+  const size = String(tamano || mk.min_order_size || 5);
   const intentos = [];
   for (const tipo of TIPOS_A_PROBAR) {
     if (tipo === 'deposito') {
@@ -192,7 +235,7 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
     let r;
     try {
       const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,
-        tick: '0.01', maker, signer, tipoFirma: tipo, orderType: 'GTC' });
+        tick: mk.tick, riesgoNegativo: mk.negRisk, maker, signer, tipoFirma: tipo, orderType: 'GTC' });
       const firma = O.firmar(orden, pk);
       r = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma), credenciales: c.credenciales, direccion: signer });
     } catch (e) { intentos.push({ tipo, error: e.message }); continue; }
@@ -203,7 +246,7 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
       // ACEPTADA: este es el tipo. Se cancela inmediatamente — la orden nunca se iba a cruzar, pero dejarla
       // ahí sería dejar capital comprometido por una prueba.
       const cancel = await C.cancelar({ id, credenciales: c.credenciales, direccion: signer });
-      return { ok: true, tipo_firma: tipo, orden_de_prueba: id,
+      return { ok: true, tipo_firma: tipo, mercado: mk, orden_de_prueba: id,
         cancelada: !!(cancel.ok), cancel_status: cancel.status, intentos,
         siguiente_paso: `pon PM_SIG_TYPE=${tipo} en el relay y reinicia` };
     }
@@ -221,4 +264,4 @@ const cancelar = async (id) => {
   return C.cancelar({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
 };
 
-module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, valida, CLAVES };
+module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, paramsDeMercado, valida, CLAVES };

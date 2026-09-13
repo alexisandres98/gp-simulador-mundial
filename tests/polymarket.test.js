@@ -137,6 +137,43 @@ t('el brazo rechaza lo que no entiende', () => {
   assert.match(PM.valida({ tokenId: '1', side: 'LAY', price: 0.5, size: 1 }), /BUY o SELL/);
 });
 
+// ── EL ALTA: LA ÚNICA PUERTA POR DONDE PASA LA CLAVE PRIVADA ────────────────────────────────────────────
+// Alexis va a ejecutar esto UNA vez, con la clave de verdad, desde su ordenador. Si la comprobación deja
+// pasar algo que no debe, el fallo se descubre con dinero encima; si rechaza algo que sí vale, hay que
+// entrar por la consola a arreglarlo. Se prueba entera.
+t('el alta comprueba la forma y devuelve el firmante ANTES de escribir nada', () => {
+  const PM = require('../relay/pm-relay');
+  const v = PM.validaAlta({ clave: PK, maker: MAKER });
+  assert.strictEqual(v.ok, true, JSON.stringify(v));
+  assert.match(v.firmante, /^0x[0-9a-f]{40}$/);
+  // el firmante SALE de la clave, no de lo que nos digan: es lo que permite comparar con lo que muestra
+  // la casa y cazar una clave de otra cuenta, que tiene la forma perfecta
+  assert.strictEqual(v.firmante, require('../lib/secp256k1').direccionDe(PK));
+  assert.strictEqual(v.firmante_igual_maker, false, 'esta pareja es de cuentas distintas');
+  assert.strictEqual(PM.validaAlta({ clave: PK, maker: require('../lib/secp256k1').direccionDe(PK) }).firmante_igual_maker, true);
+});
+
+t('el alta rechaza, sin escribir, todo lo que no tiene la forma exacta', () => {
+  const PM = require('../relay/pm-relay');
+  const mal = [
+    [{}, 'nada'],
+    [{ clave: PK }, 'sin dirección'],
+    [{ maker: MAKER }, 'sin clave'],
+    [{ clave: PK.slice(2), maker: MAKER }, 'clave sin el 0x'],
+    [{ clave: PK + 'ff', maker: MAKER }, 'clave demasiado larga'],
+    [{ clave: PK.slice(0, -2), maker: MAKER }, 'clave demasiado corta'],
+    [{ clave: PK.slice(0, -1) + 'z', maker: MAKER }, 'clave con un carácter que no es hex'],
+    [{ clave: PK, maker: MAKER + '00' }, 'dirección demasiado larga'],
+    [{ clave: PK, maker: '0x' }, 'dirección vacía'],
+    [{ clave: '0x' + '0'.repeat(64), maker: MAKER }, 'clave cero: tiene la forma pero no deriva nada'],
+  ];
+  for (const [caso, por] of mal) {
+    const v = PM.validaAlta(caso);
+    assert.strictEqual(v.ok, false, 'debería haber rechazado: ' + por);
+    assert.ok(v.why && v.why.length > 10, 'y decir por qué: ' + por);
+  }
+});
+
 // ── EL MAPA DE PAÍSES DE LA CASA ────────────────────────────────────────────────────────────────────────
 // Este mapa decide DÓNDE puede vivir el brazo, así que un error aquí no se ve: se traduce en un servidor
 // alquilado que no puede colocar. Las subdivisiones son la parte fácil de equivocar — la casa bloquea

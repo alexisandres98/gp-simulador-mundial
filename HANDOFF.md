@@ -36,11 +36,35 @@ Ahora `paramsDeMercado()` pregunta al libro del token antes de firmar — de una
 defecto, así que en un mercado de riesgo negativo habrían fallado **todos** los tipos y habríamos concluido
 que ninguno vale. Comprobado en vivo: `{tick 0.01, negRisk true, min 5}`, contrato `0xe2222d…310F59`.
 
-**DÓNDE ESTÁ LA RAYA HOY.** `diag` contra Helsinki devuelve **404**, no un error de red: la máquina está
-viva y responde, pero corre el `cb-relay.js` de antes, sin las rutas `/pm/*`. Confirmado sin ambigüedad —
-el `/diag` de Cloudbet sí contesta 200 desde ese mismo host y con esa misma llave, con el saldo real
-(369,49 USDT) y `cf_ray …-ARN`. O sea: llave buena, máquina viva, código viejo. Falta traer el código y
-poner cuatro variables (`relay/DESPLIEGUE-PM.md` tiene el paso a paso). El camino de Cloudbet no se tocó.
+**EL BRAZO YA ESTÁ EN PIE, Y LA CASA LO DEJA COLOCAR.** Alexis abrió un proyecto de Hetzner aparte («GP
+simulador polymarket») con su propia llave. El token de Hetzner es POR PROYECTO, así que esa llave no ve la
+máquina de Cloudbet — y eso, que parecía un estorbo, resultó mejor que el plan: el brazo tiene **máquina
+propia**, `gp-pm-hel1` (Helsinki, CX23, 6,49 €/mes). La razón es de seguridad, no de comodidad: en Helsinki
+vive la llave de Cloudbet, y meter ahí también la clave privada de la cartera sería juntar en una sola
+máquina la capacidad de apostar la cuenta de la casa Y la de firmar transferencias. Además el camino que
+lleva dinero real desde agosto no se toca.
+
+**LA MEDICIÓN QUE LO DECIDE TODO:**
+
+| desde | `POST /order` |
+|---|---|
+| Render, Oregón | **403** «Trading restricted in your region» |
+| **gp-pm-hel1, Helsinki** | **401** «missing address header» |
+
+La casa ya solo se queja de que no nos identificamos. **La puerta está abierta.**
+
+**EL CÓDIGO NO VIVE EN LA MÁQUINA: SE LO TRAE.** `traer.sh` le pide los ocho ficheros a
+`/api/internal/pm-bundle` antes de cada arranque, así que **reiniciar es actualizar**, y reiniciar se hace
+desde la API de Hetzner sin entrar por SSH. Esto no es elegancia: es la cicatriz del problema de esta misma
+tarde — el servidor de Cloudbet lleva desde agosto con código que no se podía tocar porque el token de
+aquella sesión se fue con su contenedor. Si el servidor principal no contesta, arranca con la copia que ya
+tiene: un brazo que se cae cada vez que desplegamos no sirve.
+
+**LO ÚNICO QUE FALTA ES LA CLAVE PRIVADA**, y está sin poner a propósito: no puede ir por el chat (queda en
+el historial) ni en el `cloud-init` (Hetzner lo guarda y lo lee cualquiera con el token del proyecto). Dos
+caminos, ambos en `relay/DESPLIEGUE-PM.md`: una llamada desde el ordenador de Alexis verificando el
+certificado (la máquina lo emite con su IP como `subjectAltName`, y la huella se contrasta por dos caminos
+independientes), o la consola de Hetzner con `poner-clave.sh`. La puerta de alta vale **una sola vez**.
 
 **EL MAPA DE PAÍSES, QUE RESULTÓ QUE PUBLICA LA CASA.** Buscando cómo desplegar sin el token de Hetzner
 apareció lo que había que haber mirado primero: Polymarket publica su lista de jurisdicciones
@@ -60,9 +84,11 @@ La lista puede cambiar, así que el `diag` no la usa para decidir: **mide**. Y m
 cortafuegos geográfico salta **antes** que la autenticación: un `POST /order` con cuerpo vacío y sin
 credenciales ya devuelve el 403 de región. Cualquier servidor candidato se puede evaluar antes de alquilarlo.
 
-⚠️ **EL TOKEN DE HETZNER NO ESTÁ.** Lo busqué en todo el historial de esta sesión, en el disco y en las
-variables de Render: no aparece. Mis propias notas de agosto dicen que vivía en el scratchpad de **otra**
-sesión, y esos contenedores se borran. No es recuperable desde aquí; tiene que darlo Alexis.
+⚠️ **EL TOKEN DE HETZNER DEL PROYECTO VIEJO SIGUE SIN APARECER.** Lo busqué en todo el historial de esta
+sesión, en el disco y en las variables de Render. Mis notas de agosto dicen que vivía en el scratchpad de
+**otra** sesión, y esos contenedores se borran. Consecuencia práctica: **la máquina de Cloudbet sigue sin
+poder actualizarse** hasta que Alexis dé un token de aquel proyecto. El brazo de Polymarket ya no depende de
+eso.
 
 ⚠️ **DOS CLAVES QUEMADAS.** La clave privada de la cuenta de pruebas y la clave del relayer se enviaron por
 chat: quedan en la conversación, en los registros y en el almacén de imágenes. **Ninguna de las dos puede

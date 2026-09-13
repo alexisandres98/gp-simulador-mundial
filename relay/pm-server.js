@@ -105,19 +105,14 @@ const manejar = async (req, res) => {
       return j(res, 409, { ok: false, why: 'ya hay una clave configurada. Esta puerta solo vale una vez; para cambiarla, desde la consola con /opt/gp-pm/poner-clave.sh' });
     }
     let b; try { b = await cuerpoJson(req, 4096); } catch (e) { return j(res, 400, { ok: false, why: 'cuerpo ilegible: ' + e.message }); }
-    const clave = String((b && b.clave) || '').trim();
-    const maker = String((b && b.maker) || '').trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(clave)) return j(res, 400, { ok: false, why: 'la clave no tiene la forma 0x + 64 hex. No se ha escrito nada.' });
-    if (!/^0x[0-9a-fA-F]{40}$/.test(maker)) return j(res, 400, { ok: false, why: 'la dirección no tiene la forma 0x + 40 hex. No se ha escrito nada.' });
-    let firmante;
-    try { firmante = require('../lib/secp256k1').direccionDe(clave); }
-    catch (e) { return j(res, 400, { ok: false, why: 'esa clave no deriva una dirección: ' + e.message }); }
+    const v = PM.validaAlta(b || {});
+    if (!v.ok) return j(res, 400, v);
     try {
-      fs.writeFileSync('/opt/gp-pm/secreto', `PM_PRIVATE_KEY=${clave}\nPM_MAKER_ADDRESS=${maker}\n`, { mode: 0o600 });
+      fs.writeFileSync('/opt/gp-pm/secreto', `PM_PRIVATE_KEY=${v.clave}\nPM_MAKER_ADDRESS=${v.maker}\n`, { mode: 0o600 });
       fs.chmodSync('/opt/gp-pm/secreto', 0o600);
     } catch (e) { return j(res, 500, { ok: false, why: 'no se pudo escribir el secreto: ' + e.message }); }
-    j(res, 200, { ok: true, firmante, maker,
-      firmante_igual_maker: firmante.toLowerCase() === maker.toLowerCase(),
+    j(res, 200, { ok: true, firmante: v.firmante, maker: v.maker,
+      firmante_igual_maker: v.firmante_igual_maker,
       comprueba: 'que `firmante` sea la "Dirección del firmante" que muestra Polymarket en Ajustes',
       siguiente: 'el servicio se reinicia solo en un segundo; luego el alta de cinco escalones desde el servidor principal' });
     // salir para que systemd lo levante con el fichero de secreto ya puesto. Recargar variables de entorno

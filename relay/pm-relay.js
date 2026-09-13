@@ -92,6 +92,26 @@ async function diag() {
   return out;
 }
 
+// ── LO QUE SE COMPRUEBA ANTES DE ESCRIBIR LA CLAVE PRIVADA ──────────────────────────────────────────────
+// Vive aquí, y no dentro del manejador de la ruta, para poder probarlo: es el único sitio del sistema por
+// donde pasa la clave privada de la cartera, y una comprobación que nadie ha ejercitado no es una
+// comprobación. Devuelve `{ok:false, why}` o `{ok:true, firmante}` — y NO escribe nada: quien llama decide.
+//
+// Comprueba la forma de las dos cosas Y que la clave derive una dirección, que es lo que de verdad pilla el
+// error típico: una clave de otra cuenta tiene la forma perfecta. Por eso se devuelve el firmante, para
+// poder compararlo con el que muestra Polymarket ANTES de mandar un céntimo.
+function validaAlta({ clave, maker } = {}) {
+  const k = String(clave || '').trim();
+  const m = String(maker || '').trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(k)) return { ok: false, why: 'la clave no tiene la forma 0x + 64 hex. No se ha escrito nada.' };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(m)) return { ok: false, why: 'la dirección no tiene la forma 0x + 40 hex. No se ha escrito nada.' };
+  let firmante;
+  try { firmante = S.direccionDe(k); }
+  catch (e) { return { ok: false, why: 'esa clave no deriva una dirección: ' + e.message }; }
+  return { ok: true, clave: k, maker: m, firmante,
+    firmante_igual_maker: firmante.toLowerCase() === m.toLowerCase() };
+}
+
 // ── COLOCAR ─────────────────────────────────────────────────────────────────────────────────────────────
 // Validación campo a campo. Lo que no se entiende, no sale de aquí: un brazo que acepta cualquier JSON es
 // un agujero por el que se puede pedir cualquier cosa con la clave de Alexis.
@@ -270,4 +290,4 @@ const cancelar = async (id) => {
   return C.cancelar({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
 };
 
-module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, paramsDeMercado, valida, CLAVES };
+module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, paramsDeMercado, valida, validaAlta, CLAVES };

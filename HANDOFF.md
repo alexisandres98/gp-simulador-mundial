@@ -1,6 +1,51 @@
 # HANDOFF — estado al 13-sep-2026 (la vara, las líneas de parada, y la decisión de NO meter más dinero)
 
-## 🆕 ÚLTIMO TRABAJO (13-sep, tarde): LAS MITADES DE FÚTBOL, MEDIDAS Y ABIERTAS EN SOMBRA
+## 🆕 ÚLTIMO TRABAJO (13-sep, noche): EL EJECUTOR DE POLYMARKET, PROBADO CONTRA LA CASA DE VERDAD
+
+Alexis pidió el bot de Polymarket con $200 y, después, «constrúyelo todo, dime si funciona y **pruébalo**
+con esta cuenta de pruebas». Está construido y está probado. El resumen honesto es: **la parte difícil
+funciona y está verificada contra la casa; lo único que falta es un `git pull` en Helsinki.**
+
+**QUÉ SE VERIFICÓ CONTRA POLYMARKET, NO CONTRA MI PROPIA IDEA DE POLYMARKET.** Todo el criptográfico se
+escribió desde cero (el repo no tiene dependencias npm y no iba a empezar ahora): keccak-256, secp256k1 con
+id de recuperación, EIP-712. Pasan los vectores públicos, pero eso no prueba nada sobre esta casa. Lo que sí
+lo prueba:
+
+| comprobación | resultado |
+|---|---|
+| la clave privada deriva una dirección | `0x0bcaaf…d95aa` — **exactamente** la «Dirección del firmante» que muestra Polymarket |
+| `/auth/derive-api-key` con nuestra firma EIP-712 | **ACEPTADA** — la casa validó nuestra firma |
+| tres GET autenticados con HMAC L2 (`/data/orders`, `/auth/api-keys`, `/data/trades`) | **200** |
+| `POST /order` desde Render (Oregón) | **403 «Trading restricted in your region»** — lo esperado |
+
+Ese 403 es el motivo de que exista el brazo en Helsinki, y es la única razón por la que no hay una orden
+real puesta. No es un fallo del código: es geografía.
+
+**EL FALLO QUE LA PRUEBA ENCONTRÓ, Y QUE NINGUNA PRUEBA DE MESA HABRÍA ENCONTRADO.** El ejecutor manda la
+intención mínima — token, lado, precio, tamaño — y el brazo rellenaba el resto **suponiendo**: `tick 0.01` y
+riesgo negativo «no». Las dos suposiciones son falsas a menudo y las dos fallan mudas:
+
+- **El riesgo negativo cambia el contrato contra el que se firma.** El primer mercado que probé era de
+  riesgo negativo. La firma habría ido dirigida al contrato equivocado y la casa la habría rechazado por
+  inválida, sin decir por qué. Habríamos culpado al `PM_SIG_TYPE`.
+- **Hay mercados con tick 0,001.** Un precio que no encaja en el tick se rechaza, también a secas.
+
+Ahora `paramsDeMercado()` pregunta al libro del token antes de firmar — de una sola llamada salen
+`tick_size`, `neg_risk` y `min_order_size` — y lo que venga en la petición queda solo de respaldo. Lo usan
+`colocar()`, `ensayo()` y, sobre todo, `detectarTipoFirma()`: esa sonda firmaba contra el contrato por
+defecto, así que en un mercado de riesgo negativo habrían fallado **todos** los tipos y habríamos concluido
+que ninguno vale. Comprobado en vivo: `{tick 0.01, negRisk true, min 5}`, contrato `0xe2222d…310F59`.
+
+**DÓNDE ESTÁ LA RAYA HOY.** `diag` contra Helsinki devuelve **404**, no un error de red: la máquina está
+viva y responde, pero corre el `cb-relay.js` de antes, sin las rutas `/pm/*`. Falta traer el código y poner
+cuatro variables (`relay/DESPLIEGUE-PM.md` tiene el paso a paso). El camino de Cloudbet no se tocó.
+
+⚠️ **DOS CLAVES QUEMADAS.** La clave privada de la cuenta de pruebas y la clave del relayer se enviaron por
+chat: quedan en la conversación, en los registros y en el almacén de imágenes. **Ninguna de las dos puede
+tener dinero nunca.** La clave de la cuenta buena **no va por chat** — va directa como variable de entorno
+en Helsinki. (Sigue pendiente, del 7-sep, rotar `GP_REAL_RELAY_TOKEN`.)
+
+## 🆕 TRABAJO ANTERIOR (13-sep, tarde): LAS MITADES DE FÚTBOL, MEDIDAS Y ABIERTAS EN SOMBRA
 
 Alexis preguntó lo obvio que nadie había preguntado: *«hay muchos mercados en fútbol que no estamos
 cubriendo — ambos equipos anotan, gol en la primera mitad, hándicap asiático… ¿no deberíamos generar picks

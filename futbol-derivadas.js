@@ -10,21 +10,36 @@
 // esto vive en su propio archivo y su propio almacén, y no toca `db.clubDailyPicks` ni `curate`: si algo aquí
 // se rompe, el feed que ven los usuarios no se entera.
 //
-// LO QUE NO ENTRA, A PROPÓSITO: los mercados por MITADES (primer tiempo, segundo tiempo). Repartir el gol
-// entre los dos tiempos es una suposición que GP no ha medido, y una familia sin estructura medida no se
-// apuesta — la misma regla que mantiene cerradas las rondas de Valorant sin perfil medido.
+// LO QUE NO ENTRABA, Y POR QUÉ YA ENTRA (13-sep-2026). Hasta hoy este archivo decía: «los mercados por
+// MITADES quedan fuera; repartir el gol entre los dos tiempos es una suposición que GP no ha medido, y una
+// familia sin estructura medida no se apuesta». La regla era buena y sigue siéndolo: lo que ha cambiado es
+// que la estructura YA ESTÁ MEDIDA. 33.364 partidos, 18 divisiones, cinco temporadas, con la validación
+// contra el resultado real — todo en `goal-engine/mitades.js`, con su muestra y su fecha. Se abre porque se
+// midió, no porque hiciera falta inventario.
+//
+// EL CENSO QUE LO DISPARÓ. Se enumeró lo que Cloudbet publica de verdad en un partido de fútbol: 43
+// mercados distintos, y nosotros leíamos 9. De los 34 que faltaban, 15 los sabe valorar el motor hoy (las
+// mitades más tres del partido completo que la matriz ya calculaba y nadie leía). El resto sigue fuera con
+// su motivo escrito en la tabla de abajo.
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const dist = require('./goal-engine/distribution');
 const mk = require('./goal-engine/markets');
+const mitades = require('./goal-engine/mitades');
 const noVig = require('./goal-engine/noVig');
 const settlement = require('./goal-engine/settlement');
 
 // ── LA REGLA, CONGELADA ─────────────────────────────────────────────────────────────────────────────────
 // Mismo criterio que `cards_under_v1` y `props_cs2_v2`: se escribe, se fecha y no se toca mientras se
 // acumula muestra. Cambiarla a mitad de la ventana destruye lo único que la ventana produce.
+//
+// POR ESO HAY DOS REGLAS Y NO UNA. La v1 lleva desde el 20-ago acumulando muestra con un listón de 3 pp
+// para sus cinco familias. Aplicarles ahora el listón por familia sería cambiar la regla a mitad de la
+// ventana y tirar veinticuatro días de muestra. Así que la v1 se queda EXACTAMENTE como está —congelada,
+// intacta, con su 3 pp— y las familias nuevas nacen bajo la v2 con su propio listón. Cada pick guarda la
+// versión con la que nació, así que las dos muestras se pueden leer por separado para siempre.
 const RULE = {
   version: 'derivadas_v1',
   frozen_at: '2026-08-20',
@@ -33,6 +48,39 @@ const RULE = {
   books_min: 1,          // estas líneas cotizan en 1-2 casas hoy; el conteo viaja en la tesis
   familias: ['double_chance', 'draw_no_bet', 'asian_handicap', 'team_total', 'btts'],
   note: 'sombra desde 3 pp contra el precio sin vig; veto por encima de 15 pp. Las probabilidades de empate-no-válido y de hándicap entero son CONDICIONALES (descuentan la devolución), que es la única forma de compararlas con un precio que devuelve.',
+};
+
+// ── LA REGLA NUEVA (v2): EL LISTÓN LO PONE LA PROPIA FAMILIA ────────────────────────────────────────────
+// La v1 pedía 3 pp a todo el mundo por igual. Eso solo vale si todas las familias están igual de bien
+// calibradas, y ahora sabemos que no lo están: el primer tiempo se desvía hasta 5,8 pp y el "ambos marcan"
+// del primer tiempo 0,8 pp. Pedirle 3 pp a la primera es pedirle una ventaja que cabe entera dentro de su
+// propio error — o sea, no es una ventaja, es ruido con nombre. Así que cada familia pide 3 pp MÁS SU ERROR
+// MEDIDO. La de 0,8 pp entra casi a 3,8; la de 5,8 pp tiene que traer 8,8 antes de que la creamos.
+const RULE2 = {
+  version: 'derivadas_v2',
+  frozen_at: '2026-09-13',
+  edge_base: 0.03,
+  edge_cap: 0.15,
+  books_min: 1,
+  familias: ['h1_total', 'h1_1x2', 'h1_btts', 'h1_team_total', 'h1_double_chance', 'h1_draw_no_bet', 'h1_ah',
+    'h2_total', 'h2_1x2', 'h2_team_total', 'h2_ah', 'htft', 'exact_score', 'clean_sheet', 'win_to_nil'],
+  liston_por_familia: Object.fromEntries(['h1_total', 'h1_1x2', 'h1_btts', 'h1_team_total', 'h1_double_chance',
+    'h1_draw_no_bet', 'h1_ah', 'h2_total', 'h2_1x2', 'h2_team_total', 'h2_ah', 'htft', 'exact_score',
+    'clean_sheet', 'win_to_nil'].map((f) => [f, mitades.listonDe(f, 0.03)])),
+  note: 'el listón de cada familia es 3 pp más su error de calibración MEDIDO. Las mitades se derivan de la cuota del primer tiempo (0,446) sin corrección Dixon-Coles, las dos decisiones medidas sobre 33.364 partidos.',
+};
+
+// ── LO QUE SIGUE FUERA Y POR QUÉ ────────────────────────────────────────────────────────────────────────
+// Se escribe para que la próxima sesión no tenga que redescubrirlo — y para que quede claro que no están
+// fuera por olvido. De los 43 mercados del censo, estos son los 19 que no se abren hoy:
+const FUERA = {
+  'when_will_goal_be_scored_intervals': 'necesita la tasa de gol DENTRO de la mitad (cambia con el minuto y con el marcador). No medido.',
+  'goal_nr / last_goalscorer': 'mercados de ORDEN: quién marca el primero o el último. Necesitan el proceso temporal, no solo el conteo.',
+  'anytime_goalscorer': 'nivel jugador: es territorio del prop-engine, no de la matriz de marcador.',
+  'corner_handicap / corner_match_odds / last_corner / 1st_half_total_corners': 'los córners entre local y visitante están correlacionados NEGATIVAMENTE (−0,249 medido) y sobredispersos (var/media 1,18): dos Poisson independientes no valen. Hace falta un modelo bivariante propio.',
+  'booking_match_odds / 12_booking_handicap / booking_nr / total_booking_points': 'las tarjetas van al revés: correlación POSITIVA (+0,201) y el visitante recibe más (cuota local 0,466). Mismo problema, signo contrario.',
+  'exact_total_goals_period_*': 'calculable, pero la casa lo cotiza con márgenes muy anchos; se abrirá si alguna familia de mitad demuestra algo.',
+  'halftime_fulltime (otras casas)': 'abierto aquí solo con Cloudbet; con una sola casa no hay precio sin vig cruzado.',
 };
 
 const DISK = () => {
@@ -49,23 +97,51 @@ const r4 = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
 const r2 = (x) => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 // El par complementario de cada mercado: para el precio sin vig hacen falta los DOS lados.
+// Las familias de mitad reutilizan estas mismas reglas pelando el prefijo H1_/H2_ — el complementario de
+// `H1_AH_HOME_M0_5` es `H1_AH_AWAY_P0_5` por la misma razón que en el partido completo.
 function contrario(id) {
+  const pm = id.match(/^(H[12])_(.+)$/);
+  if (pm) {
+    const x = pm[2].match(/^1X2_(HOME|DRAW|AWAY)$/);
+    if (x) return null;                                          // tres vías: no hay complementario de dos
+    const c = contrario(pm[2]);
+    return c ? `${pm[1]}_${c}` : null;
+  }
   let m = id.match(/^DRAW_NO_BET_(HOME|AWAY)$/);
   if (m) return 'DRAW_NO_BET_' + (m[1] === 'HOME' ? 'AWAY' : 'HOME');
   m = id.match(/^AH_(HOME|AWAY)_(M|P)(\d+)(?:_(\d+))?$/);
   if (m) {
     const otro = m[1] === 'HOME' ? 'AWAY' : 'HOME';
-    const signo = m[2] === 'M' ? 'P' : 'M';                      // el espejo de −0,5 es +0,5
+    const cero = Number(m[4] != null ? `${m[3]}.${m[4]}` : m[3]) === 0;
+    // el espejo de −0,5 es +0,5, PERO el espejo de 0 es 0 y se escribe P0 en los dos lados. Sin esta línea
+    // la línea cero —que es de las que más cotiza la casa en las mitades— se quedaba sin par y se medía
+    // contra la cuota cruda, con el margen entero dentro.
+    const signo = cero ? 'P' : (m[2] === 'M' ? 'P' : 'M');
     return `AH_${otro}_${signo}${m[3]}${m[4] != null ? '_' + m[4] : ''}`;
   }
   m = id.match(/^(HOME|AWAY)_TEAM_TOTAL_(OVER|UNDER)_(.+)$/);
   if (m) return `${m[1]}_TEAM_TOTAL_${m[2] === 'OVER' ? 'UNDER' : 'OVER'}_${m[3]}`;
+  m = id.match(/^TOTAL_GOALS_(OVER|UNDER)_(.+)$/);
+  if (m) return `TOTAL_GOALS_${m[1] === 'OVER' ? 'UNDER' : 'OVER'}_${m[2]}`;
   if (id === 'BTTS_YES') return 'BTTS_NO';
   if (id === 'BTTS_NO') return 'BTTS_YES';
+  // portería a cero y ganar a cero: la casa cotiza los dos lados y desde el 13-sep los guardamos los dos
+  m = id.match(/^((?:HOME|AWAY)_(?:CLEAN_SHEET|WIN_TO_NIL))(_NO)?$/);
+  if (m) return m[2] ? m[1] : m[1] + '_NO';
   // la doble oportunidad no tiene complementario de dos vías (su contrario es el 1X2 restante): se valora
-  // contra el precio de la propia casa con el margen que traiga, y eso se DICE en la tesis.
+  // contra el precio de la propia casa con el margen que traiga, y eso se DICE en la tesis. El marcador
+  // exacto y el descanso/final son de MUCHAS vías y les pasa lo mismo, con más margen todavía.
   return null;
 }
+
+// ── LAS FAMILIAS DE VARIAS VÍAS Y CUÁNTO SUMAN ──────────────────────────────────────────────────────────
+// Cuando un mercado no tiene "lado contrario" pero sí tiene el RESTO de sus salidas cotizadas, el margen se
+// quita normalizando sobre todas ellas. Para eso hay que saber cuánto suman en un mundo sin margen, y eso
+// NO es siempre 1: las tres dobles oportunidades suman 2 (cada resultado cae en dos de ellas). El marcador
+// exacto suma algo MENOS de 1 porque la casa no cotiza la cola de goleadas; normalizar contra 1 sube un
+// poco la probabilidad de mercado y por tanto BAJA nuestra ventaja — se prefiere ese error, que nos quita
+// picks, al contrario, que nos las regala.
+const MASA_MULTIVIA = { h1_1x2: 1, h2_1x2: 1, htft: 1, exact_score: 1, h1_double_chance: 2 };
 
 // ── REGISTRO ────────────────────────────────────────────────────────────────────────────────────────────
 // `deps` inyecta lo que solo el servidor sabe: los eventos con cuotas, cómo sacar las lambdas de un cruce y
@@ -79,12 +155,13 @@ async function record(deps = {}) {
     return Number.isFinite(k) && k > ahora;                      // solo prepartido
   });
   if (!ids.length) return { ...out, why: 'sin eventos futuros con cuotas' };
+  const TODAS_FAMILIAS = RULE.familias.concat(RULE2.familias);
   const q = await dbc.query(
     `SELECT canonical_event_id, market_family, market_id, line::float, side, sportsbook_code, odds_decimal::float o
        FROM sportsbook_goal_quote_current
       WHERE canonical_event_id = ANY($1) AND market_family = ANY($2)
         AND coalesce(quote_status,'open') = 'open' AND observed_at > now() - interval '6 hours'`,
-    [ids, RULE.familias]).catch(() => ({ rows: [] }));
+    [ids, TODAS_FAMILIAS]).catch(() => ({ rows: [] }));
   if (!q.rows.length) return { ...out, why: 'sin cuotas de estas familias' };
 
   // índice por mercado, y cache de la matriz por evento (calcularla una vez por partido, no por línea)
@@ -94,23 +171,56 @@ async function record(deps = {}) {
     if (!porMercado.has(k)) porMercado.set(k, []);
     porMercado.get(k).push(r);
   }
-  const matriz = new Map();
+  // CACHE POR EVENTO, NO POR LÍNEA. Con las familias nuevas un partido pasa de ~20 mercados a más de 100,
+  // y recalcular la matriz en cada uno multiplicaría por cinco el trabajo de cada pasada. Se guarda un
+  // índice market_id → probabilidad por evento, construido UNA vez, con las filas del partido completo y
+  // las nuevas juntas.
+  const indice = new Map();
+  // sobre-redondeo por (evento, familia) para las familias de varias vías: una pasada, no una por mercado
+  const multivia = new Map();
+  {
+    const mejor = new Map();                                     // ceid|familia|market_id → mejor cuota
+    for (const r of q.rows) {
+      const k = r.canonical_event_id + '|' + r.market_family + '|' + r.market_id;
+      if (!mejor.has(k) || r.o > mejor.get(k)) mejor.set(k, r.o);
+    }
+    for (const [k, o] of mejor) {
+      const i = k.lastIndexOf('|');
+      const g = k.slice(0, i);
+      const e = multivia.get(g) || { suma: 0, n: 0 };
+      e.suma += 1 / o; e.n++; multivia.set(g, e);
+    }
+  }
   const st = rd();
   st.picks = st.picks || {};
+  // (partido, familia) que YA tienen una posición viva o liquidada de pasadas anteriores, para no añadir una
+  // segunda de la misma familia en el mismo partido cuando el precio se mueva un poco
+  const yaHay = new Set();
+  for (const p of Object.values(st.picks)) if (p && p.ceid && p.family) yaHay.add(p.ceid + '|' + p.family);
+  const candidatas = new Map();
 
   for (const [k, filas] of porMercado) {
-    const [ceid, marketId] = k.split('|');
+    const i0 = k.indexOf('|');
+    const ceid = k.slice(0, i0), marketId = k.slice(i0 + 1);
     const meta = qevents[ceid]; if (!meta) continue;
-    if (!matriz.has(ceid)) {
-      let m = null;
-      try { const l = lambdasFor(ceid, meta); if (l && l[0] > 0 && l[1] > 0) m = dist.buildMatrix(l[0], l[1]).matrix; } catch { m = null; }
-      matriz.set(ceid, m);
+    if (!indice.has(ceid)) {
+      let idx = null;
+      try {
+        const l = lambdasFor(ceid, meta);
+        if (l && l[0] > 0 && l[1] > 0) {
+          const M = dist.buildMatrix(l[0], l[1]).matrix;
+          idx = new Map();
+          for (const f of dist.marketProbabilities(M)) idx.set(f.market_id, f);
+          for (const f of mk.extendedMarkets(M)) idx.set(f.market_id, f);
+          for (const f of mitades.todas(l[0], l[1])) idx.set(f.market_id, f);
+        }
+      } catch { idx = null; }
+      indice.set(ceid, idx);
     }
-    const M = matriz.get(ceid);
-    if (!M) { out.sin_lambdas++; continue; }
-    const fila = mk.extendedMarkets(M).find((x) => x.market_id === marketId)
-      || dist.marketProbabilities(M).find((x) => x.market_id === marketId);
-    if (!fila) continue;
+    const idx = indice.get(ceid);
+    if (!idx) { out.sin_lambdas++; continue; }
+    const fila = idx.get(marketId);
+    if (!fila) { out.sin_probabilidad = (out.sin_probabilidad || 0) + 1; continue; }
     out.evaluadas++;
 
     const best = filas.slice().sort((a, b) => b.o - a.o)[0];
@@ -122,23 +232,82 @@ async function record(deps = {}) {
       const op = porMercado.get(ceid + '|' + opId);
       if (op && op.length) {
         const bop = op.slice().sort((a, b) => b.o - a.o)[0];
-        const nv = noVig.twoWayNoVig(best.o, bop.o);
-        if (nv && nv.a != null) { pMercado = nv.a; comoMercado = 'sin vig contra el lado contrario'; }
+        // BUG DE ORIGEN, ENCONTRADO EL 13-SEP. `twoWayNoVig` espera OBJETOS de cuota con `odds_decimal`, y
+        // aquí se le pasaban dos números sueltos. `Number(undefined)` es NaN, el guardia `!(oa > 1)`
+        // disparaba, y la función devolvía null SIEMPRE. Resultado: desde el 20-ago ninguna pick de esta
+        // sombra se ha valorado contra el precio sin vig — todas se compararon contra la cuota cruda.
+        //
+        // El error empuja hacia el lado SEGURO, que es la única razón por la que no se notó: la implícita
+        // cruda es MAYOR que la justa (lleva el margen dentro), así que la ventaja salía más pequeña de lo
+        // que era y el listón efectivo era 3 pp más medio margen. O sea: se hicieron MENOS picks de las
+        // debidas, no peores. Aun así la muestra v1 no se generó con la regla que su propia ficha dice.
+        //
+        // La muestra se puede partir sin ambigüedad porque cada pick ya guarda `market_basis`: las de antes
+        // del arreglo dicen "implícita de la casa" y las de después "sin vig contra el lado contrario".
+        const nv = noVig.twoWayNoVig({ odds_decimal: best.o }, { odds_decimal: bop.o });
+        if (nv && nv.a != null) {
+          pMercado = nv.a;
+          comoMercado = `sin vig contra el lado contrario (sobre-redondeo ${r2(100 * nv.overround)} %)`;
+        }
       }
     }
-    if (pMercado == null) pMercado = 1 / best.o;
-    if (!opId) out.sin_par++;
+    // FAMILIAS DE VARIAS VÍAS. El 1X2 de mitad tiene tres salidas, el descanso/final nueve y el marcador
+    // exacto casi treinta: ninguna tiene "el lado contrario", pero TODAS tienen el resto de sus salidas
+    // cotizadas en el mismo partido. Sumar sus implícitas y normalizar quita el margen igual de bien que un
+    // par. Sin esto, estas familias se comparaban contra la cuota cruda —con el margen entero dentro— y su
+    // ventaja salía sistemáticamente baja: no habrían generado casi ninguna pick, que en una sombra cuyo
+    // único producto es la muestra es tan malo como generarlas de más.
+    if (pMercado == null && MASA_MULTIVIA[filas[0].market_family] != null) {
+      // La masa NO siempre es 1: las tres dobles oportunidades de un partido suman 2, porque cada resultado
+      // aparece en dos de ellas. Normalizar contra 1 partiría su probabilidad por la mitad y convertiría a
+      // toda la familia en ventaja falsa. Por eso la masa va declarada por familia y no se supone.
+      const masa = MASA_MULTIVIA[filas[0].market_family];
+      const grupo = multivia.get(ceid + '|' + filas[0].market_family);
+      if (grupo && grupo.n >= 3 && grupo.suma > masa * 1.005) {
+        pMercado = (1 / best.o) * (masa / grupo.suma);
+        comoMercado = `sin vig sobre las ${grupo.n} salidas de la familia (sobre-redondeo ${r2(100 * (grupo.suma / masa - 1))} %)`;
+      }
+    }
+    // CONTAR POR FAMILIA, no solo en total. Un "sin_par: 1756" no dice si falta el complementario de una
+    // familia entera o cuatro líneas sueltas de cada una, y son dos arreglos distintos. Medirlo por familia
+    // fue lo que destapó que el espejo de la línea cero estaba mal escrito.
+    if (pMercado == null) {
+      pMercado = 1 / best.o; out.sin_par++;
+      out.sin_par_por_familia = out.sin_par_por_familia || {};
+      out.sin_par_por_familia[filas[0].market_family] = (out.sin_par_por_familia[filas[0].market_family] || 0) + 1;
+    }
 
     const edge = fila.probability - pMercado;
     const fam = filas[0].market_family;
     out.por_familia[fam] = out.por_familia[fam] || { evaluadas: 0, nuevas: 0 };
     out.por_familia[fam].evaluadas++;
-    if (edge > RULE.edge_cap) { out.vetadas++; continue; }
-    if (edge < RULE.edge_min || casas < RULE.books_min) { out.bajo_listón++; continue; }
+    // QUÉ REGLA GOBIERNA ESTA FAMILIA. Las cinco de siempre siguen bajo la v1 con su 3 pp congelado; las
+    // quince nuevas nacen bajo la v2 con su listón propio. La versión viaja DENTRO de la pick, así que las
+    // dos muestras se pueden separar para siempre aunque mañana cambie cualquiera de las dos reglas.
+    const esNueva = RULE2.familias.includes(fam);
+    const regla = esNueva ? RULE2 : RULE;
+    const liston = esNueva ? mitades.listonDe(fam, RULE2.edge_base) : RULE.edge_min;
+    if (edge > regla.edge_cap) { out.vetadas++; continue; }
+    if (edge < liston || casas < regla.books_min) { out.bajo_listón++; continue; }
 
+    // ── UNA POSICIÓN POR PARTIDO Y FAMILIA ──────────────────────────────────────────────────────────
+    // La lección de card under, aplicada antes de que cueste algo. En un mismo partido, "menos de 1,75 en
+    // el segundo tiempo" y "menos de 2,0 en el segundo tiempo" no son dos apuestas: son la misma apuesta
+    // con dos etiquetas, y se ganan y se pierden juntas. Anotarlas las dos no diversifica nada — lo que
+    // hace es meter observaciones correlacionadas en una muestra que luego se juzga como si fueran
+    // independientes. Eso infla el estadístico y la vara deja de medir. Aquí no hay dinero en juego, así
+    // que el daño no sería la pérdida: sería creerse una ventaja que no existe.
+    //
+    // Se queda la de MÁS ventaja de cada (partido, familia). Las candidatas se acumulan en esta pasada y se
+    // resuelven al final, porque la mejor puede aparecer la última.
+    const claveFam = ceid + '|' + fam;
+    if (yaHay.has(claveFam)) continue;                           // ya hay una de esta familia de otra pasada
+    const prev = candidatas.get(claveFam);
+    if (prev && prev.edge >= edge) { out.apiladas = (out.apiladas || 0) + 1; continue; }
+    if (prev) out.apiladas = (out.apiladas || 0) + 1;
     const key = ceid + '|' + marketId;
     if (st.picks[key]) continue;
-    st.picks[key] = {
+    candidatas.set(claveFam, { edge, key, pick: {
       key, ceid, market_id: marketId, family: fam,
       league: meta.league || null, match: `${meta.home} vs ${meta.away}`,
       home: meta.home, away: meta.away, kickoff_at: meta.kickoff || null,
@@ -146,11 +315,21 @@ async function record(deps = {}) {
       odds: best.o, book: best.sportsbook_code, books: casas,
       p_gp: r4(fila.probability), p_market: r4(pMercado), edge_pp: r2(100 * edge),
       market_basis: comoMercado,
-      rule_version: RULE.version, rule_edge_min: RULE.edge_min,
+      // el error de calibración con el que nació, para poder releer la pick dentro de tres meses y saber
+      // cuánta de su "ventaja" era margen de error del propio modelo
+      error_cal_pp: esNueva ? r2(100 * (mitades.ERROR_CAL[fam] || 0)) : null,
+      rule_version: regla.version, rule_edge_min: liston,
       born_at: new Date().toISOString(), status: 'ACTIVE',
       close_odds: null, close_at: null, clv_pct: null, result: null, settled_at: null,
-    };
-    out.nuevas++; out.por_familia[fam].nuevas++;
+    } });
+  }
+  // se anotan al final las ganadoras de cada (partido, familia)
+  for (const { key, pick } of candidatas.values()) {
+    if (st.picks[key]) continue;
+    st.picks[key] = pick;
+    out.nuevas++;
+    out.por_familia[pick.family] = out.por_familia[pick.family] || { evaluadas: 0, nuevas: 0 };
+    out.por_familia[pick.family].nuevas++;
   }
   if (out.nuevas) { st.at = new Date().toISOString(); wr(st); }
   return out;
@@ -171,7 +350,7 @@ async function closes(deps = {}) {
        FROM sportsbook_goal_quote_current
       WHERE canonical_event_id = ANY($1) AND market_family = ANY($2)
         AND coalesce(quote_status,'open') = 'open' AND observed_at > now() - interval '3 hours'
-      GROUP BY 1,2`, [ids, RULE.familias]).catch(() => ({ rows: [] }));
+      GROUP BY 1,2`, [ids, RULE.familias.concat(RULE2.familias)]).catch(() => ({ rows: [] }));
   const idx = new Map(q.rows.map((r) => [r.canonical_event_id + '|' + r.market_id, r.o]));
   let n = 0;
   for (const p of vivas) {
@@ -189,10 +368,19 @@ async function closes(deps = {}) {
 // El liquidador del motor de goles ya sabe resolver estas familias, incluidas devoluciones y cuartos de
 // línea. Aquí solo hay que traer el marcador y traducir su veredicto a unidades.
 const UNIDADES = { won: (o) => o - 1, lost: () => -1, push: () => 0, half_won: (o) => (o - 1) / 2, half_lost: () => -0.5, void: () => 0 };
-function settle(deps = {}) {
-  const { scoreFor, ahora = Date.now() } = deps;
+
+// Las familias de mitad necesitan ADEMÁS el marcador al descanso, que no está en nuestro archivo de
+// resultados y hay que ir a buscar. Como eso es red, `settle` pasó a ser asíncrona y el descanso se busca
+// UNA vez por partido (no por pick: un partido puede tener diez picks de mitad) y con tope por pasada, para
+// que una tanda grande no convierta el trabajo de fondo en una tormenta de peticiones.
+const NECESITA_DESCANSO = (id) => /^H[12]_/.test(id) || /^HTFT_/.test(id);
+const TOPE_DESCANSOS = Number(process.env.GP_DERIV_TOPE_DESCANSOS) || 30;
+
+async function settle(deps = {}) {
+  const { scoreFor, descansoFor, ahora = Date.now() } = deps;
   const st = rd();
-  let liquidadas = 0, anuladas = 0;
+  let liquidadas = 0, anuladas = 0, esperando_descanso = 0, descansos_buscados = 0;
+  const cacheDescanso = new Map();                               // ceid → {h1Home,h1Away} | null
   for (const p of Object.values(st.picks || {})) {
     if (p.status !== 'ACTIVE') continue;
     const ko = Date.parse(p.kickoff_at || 0);
@@ -203,17 +391,38 @@ function settle(deps = {}) {
       if (ahora - ko > 72 * 3600e3) { p.status = 'VOID'; p.result = 'void'; p.void_why = 'sin marcador a las 72 h'; p.settled_at = new Date().toISOString(); anuladas++; }
       continue;
     }
-    const res = settlement.settle(p.market_id, { homeGoals: sc.homeGoals, awayGoals: sc.awayGoals });
+    const marcador = { homeGoals: sc.homeGoals, awayGoals: sc.awayGoals };
+    if (NECESITA_DESCANSO(p.market_id)) {
+      if (!cacheDescanso.has(p.ceid)) {
+        if (descansos_buscados >= TOPE_DESCANSOS || typeof descansoFor !== 'function') { esperando_descanso++; continue; }
+        descansos_buscados++;
+        let d = null;
+        try { d = await descansoFor(p, marcador); } catch { d = null; }
+        cacheDescanso.set(p.ceid, d && d.h1Home != null ? d : null);
+      }
+      const d = cacheDescanso.get(p.ceid);
+      if (!d) {
+        // sin descanso NO se liquida con el marcador final: eso sería resolver otro mercado. Se espera, y a
+        // las 72 h se anula igual que cualquier pick sin resultado.
+        if (ahora - ko > 72 * 3600e3) { p.status = 'VOID'; p.result = 'void'; p.void_why = 'sin marcador al descanso a las 72 h'; p.settled_at = new Date().toISOString(); anuladas++; }
+        else esperando_descanso++;
+        continue;
+      }
+      marcador.h1Home = d.h1Home; marcador.h1Away = d.h1Away;
+    }
+    const res = settlement.settle(p.market_id, marcador);
     if (!res || res === 'unknown') { p.status = 'VOID'; p.result = 'unknown'; p.void_why = 'el liquidador no reconoce el mercado'; p.settled_at = new Date().toISOString(); anuladas++; continue; }
+    if (res === 'void') { esperando_descanso++; continue; }      // le falta un dato: se reintenta la próxima
     p.result = res;
     p.units = r2((UNIDADES[res] || (() => 0))(p.odds));
     p.final_score = { home: sc.homeGoals, away: sc.awayGoals };
+    if (marcador.h1Home != null) p.ht_score = { home: marcador.h1Home, away: marcador.h1Away };
     p.status = 'SETTLED';
     p.settled_at = new Date().toISOString();
     liquidadas++;
   }
   if (liquidadas || anuladas) { st.at = new Date().toISOString(); wr(st); }
-  return { liquidadas, anuladas };
+  return { liquidadas, anuladas, esperando_descanso, descansos_buscados };
 }
 
 // ── SEGUIMIENTO ─────────────────────────────────────────────────────────────────────────────────────────
@@ -235,23 +444,88 @@ function agrega(list) {
   };
 }
 
+// ── LA TABLA DE RENDIMIENTO ─────────────────────────────────────────────────────────────────────────────
+// Una fila por familia con TODO lo que hace falta para juzgarla, y nada más. La columna que la mayoría de
+// tableros no tiene y esta sí es `error_cal_pp`: cuánto se desvía el modelo de esa familia. Sin ella un ROI
+// del +8 % en una familia que se desvía 5,8 pp parece una mina, cuando lo único que dice es que todavía no
+// hay con qué distinguirlo de su propio error.
+//
+// El veredicto lo pone `lib/vara.js`, la misma que juzga a cards under, CS2 y todo lo demás — empezando por
+// la pregunta que ordena todas las otras: ¿el cierre de esta familia predice mejor que nuestra entrada? Si
+// no, su CLV no es evidencia ni a favor ni en contra, y decirlo es más útil que un número bonito.
+function tabla() {
+  const st = rd();
+  const all = Object.values(st.picks || {});
+  const byFam = {};
+  for (const p of all) (byFam[p.family] = byFam[p.family] || []).push(p);
+  let vara = null;
+  try { vara = require('./lib/vara'); } catch { vara = null; }
+
+  const filas = Object.entries(byFam).map(([fam, v]) => {
+    const a = agrega(v);
+    const cerradas = v.filter((p) => p.status === 'SETTLED');
+    const gano = (p) => (p.result === 'won' ? 1 : p.result === 'half_won' ? 0.75 : p.result === 'lost' ? 0 : p.result === 'half_lost' ? 0.25 : null);
+    let aporta = null, modelo = null, ve = null;
+    if (vara) {
+      try {
+        aporta = vara.cierreAporta(cerradas.filter((p) => Number.isFinite(p.close_odds) && gano(p) != null),
+          { odds: 'odds', cierre: 'close_odds', gano });
+      } catch { aporta = null; }
+      try {
+        modelo = vara.modeloContraPrecio(cerradas.filter((p) => gano(p) != null),
+          { odds: 'odds', pModelo: 'p_gp', gano });
+      } catch { modelo = null; }
+      try { ve = vara.veredicto ? vara.veredicto({ n: a.n, clv: a.clv_avg_pct, aporta, modelo }) : null; } catch { ve = null; }
+    }
+    const esNueva = RULE2.familias.includes(fam);
+    return {
+      familia: fam,
+      regla: esNueva ? RULE2.version : RULE.version,
+      liston_pp: r2(100 * (esNueva ? mitades.listonDe(fam, RULE2.edge_base) : RULE.edge_min)),
+      error_cal_pp: mitades.ERROR_CAL[fam] != null ? r2(100 * mitades.ERROR_CAL[fam]) : null,
+      abiertas: v.filter((p) => p.status === 'ACTIVE').length,
+      anuladas: v.filter((p) => p.status === 'VOID').length,
+      ...a,
+      cierre_aporta: aporta, modelo_contra_precio: modelo, veredicto: ve,
+    };
+  }).sort((x, y) => (y.n - x.n) || String(x.familia).localeCompare(String(y.familia)));
+
+  return {
+    filas,
+    leyenda: {
+      liston_pp: 'ventaja mínima que se le pide a la familia: 3 pp más su error de calibración medido (solo v2; la v1 sigue congelada en 3 pp)',
+      error_cal_pp: 'peor desviación de esa familia medida contra 33.335 partidos con λ resuelta del cierre. El suelo de ruido del método son las familias de control que ya publicamos: 3,4 y 2,9 pp',
+      cierre_aporta: 'si el cierre de la casa predice mejor que nuestra entrada. Si NO, el CLV de esta familia no es evidencia de nada',
+      modelo_contra_precio: 'Brier pareado: ¿acierta más nuestra probabilidad o la del precio? Es el test directo, sin pasar por el cierre',
+      veredicto: 'el de lib/vara.js, el mismo que juzga a todas las demás familias del sistema',
+    },
+  };
+}
+
 function track() {
   const st = rd();
   const all = Object.values(st.picks || {});
   const byFam = {};
   for (const p of all) (byFam[p.family] = byFam[p.family] || []).push(p);
+  const porRegla = {};
+  for (const p of all) (porRegla[p.rule_version || RULE.version] = porRegla[p.rule_version || RULE.version] || []).push(p);
   return {
-    rule: RULE,
+    rule: RULE, rule2: RULE2,
+    medicion_mitades: mitades.MEDICION,
+    fuera_a_proposito: FUERA,
     total: all.length,
     active: all.filter((p) => p.status === 'ACTIVE').length,
     voided: all.filter((p) => p.status === 'VOID').length,
     overall: agrega(all),
+    // las dos ventanas por separado: mezclarlas sería juzgar la regla nueva con la muestra de la vieja
+    por_regla: Object.fromEntries(Object.entries(porRegla).map(([k, v]) => [k, agrega(v)])),
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, v]) => [k, agrega(v)])),
+    tabla: tabla().filas,
     recent: all.filter((p) => p.status === 'SETTLED').sort((a, b) => String(b.settled_at).localeCompare(String(a.settled_at))).slice(0, 40),
     open: all.filter((p) => p.status === 'ACTIVE').sort((a, b) => String(a.kickoff_at).localeCompare(String(b.kickoff_at))).slice(0, 40),
     at: st.at || null,
-    doctrina: 'Familias nuevas EN SOMBRA: se anotan y se liquidan solas, no publican picks y no tocan el feed. Salen de la misma matriz de marcador del motor de goles, así que no hay estructura nueva sin medir; lo que falta es muestra. El tablero de familias las juzga con la misma vara que a todas.',
+    doctrina: 'Familias nuevas EN SOMBRA: se anotan y se liquidan solas, no publican picks, no tocan el feed y no tocan un dólar. Las mitades salen de una estructura MEDIDA (33.364 partidos) y validada contra el resultado real, y cada familia carga su propio error de calibración en su listón de ventaja. Lo que falta ahora es lo único que no se puede acelerar: muestra.',
   };
 }
 
-module.exports = { RULE, record, closes, settle, track, contrario };
+module.exports = { RULE, RULE2, FUERA, record, closes, settle, track, tabla, contrario, NECESITA_DESCANSO };

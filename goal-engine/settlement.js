@@ -8,9 +8,29 @@
 
 const GRID_MAX = 5; // debe coincidir con markets.js (EXACT_SCORE_ANY_OTHER = score fuera de la grilla 0..GRID_MAX)
 
+// ── MITADES (13-sep) ────────────────────────────────────────────────────────────────────────────────────
+// Los market_id de mitad llevan el prefijo H1_/H2_ y por dentro son EXACTAMENTE los mismos que los del
+// partido: `H1_TOTAL_GOALS_OVER_1_5` se liquida con la misma mecánica de medias, enteras y cuartos que
+// `TOTAL_GOALS_OVER_1_5`, solo que contra el marcador de esa mitad. Por eso aquí no se duplica ni una
+// fórmula: se pela el prefijo, se resuelve el resto con el mismo `marketMeta`, y se marca de qué mitad es.
+// Un `settle` que se copia para las mitades es un `settle` que se arreglará una vez y en el otro no.
+const PREFIJO_MITAD = /^H([12])_(.+)$/;
+
 // metadata de cada market_id. Devuelve null si no se reconoce.
 function marketMeta(marketId) {
   const id = String(marketId || '');
+  // descanso/final: no tiene equivalente en el partido completo, así que vive aquí entero
+  let hf = id.match(/^HTFT_(HOME|DRAW|AWAY)_(HOME|DRAW|AWAY)$/);
+  if (hf) return { market_id: id, scope: 'htft', ht: hf[1].toLowerCase(), ft: hf[2].toLowerCase(), period: 'REGULATION', push: false, needs_half: true };
+  const pm = id.match(PREFIJO_MITAD);
+  if (pm) {
+    // el 1X2 de mitad tampoco existe en el partido (allí es MATCH_WINNER), así que se define aquí
+    const x = pm[2].match(/^1X2_(HOME|DRAW|AWAY)$/);
+    if (x) return { market_id: id, scope: 'half_1x2', side: x[1].toLowerCase(), half: Number(pm[1]), period: 'HALF_' + pm[1], push: false, needs_half: true };
+    const base = marketMeta(pm[2]);
+    if (!base) return null;
+    return { ...base, market_id: id, half: Number(pm[1]), period: 'HALF_' + pm[1], needs_half: true };
+  }
   let m = id.match(/^TOTAL_GOALS_(OVER|UNDER)_(\d+)_(\d+)$/);
   if (m) { const line = Number(`${m[2]}.${m[3]}`); return { market_id: id, scope: 'match_total', side: m[1].toLowerCase(), line, period: 'REGULATION', kind: lineKind(line), push: Number.isInteger(line) }; }
   if (id === 'BTTS_YES' || id === 'BTTS_NO') return { market_id: id, scope: 'btts', side: id === 'BTTS_YES' ? 'yes' : 'no', period: 'REGULATION', push: false };
@@ -70,12 +90,31 @@ function settleLine(value, line, side) {
   return legOutcome(value, line, side); // half/whole
 }
 
-// settle(marketId, { homeGoals, awayGoals }) → resultado. Solo marcador reglamentario.
+// settle(marketId, { homeGoals, awayGoals, h1Home, h1Away }) → resultado. Solo marcador reglamentario.
+// Las familias de mitad necesitan además el marcador AL DESCANSO; sin él devuelven 'void' en vez de
+// liquidarse con el marcador final, que sería inventarse el resultado de un mercado distinto.
 function settle(marketId, score = {}) {
   const meta = marketMeta(marketId);
   if (!meta) return 'unknown';
-  const h = score.homeGoals, a = score.awayGoals;
+  let h = score.homeGoals, a = score.awayGoals;
   if (typeof h !== 'number' || typeof a !== 'number') return 'void';
+
+  if (meta.needs_half) {
+    const h1 = score.h1Home, a1 = score.h1Away;
+    if (typeof h1 !== 'number' || typeof a1 !== 'number') return 'void';
+    // coherencia: la primera mitad no puede tener más goles que el partido. Si no cuadra, la reconstrucción
+    // del descanso está mal y liquidar con ella sería peor que no liquidar.
+    if (h1 > h || a1 > a || h1 < 0 || a1 < 0) return 'void';
+    if (meta.scope === 'htft') {
+      const cmp = (x, y) => (x > y ? 'home' : x === y ? 'draw' : 'away');
+      return (cmp(h1, a1) === meta.ht && cmp(h, a) === meta.ft) ? 'won' : 'lost';
+    }
+    if (meta.half === 1) { h = h1; a = a1; } else { h = h - h1; a = a - a1; }
+    if (meta.scope === 'half_1x2') {
+      const cmp = h > a ? 'home' : (h === a ? 'draw' : 'away');
+      return cmp === meta.side ? 'won' : 'lost';
+    }
+  }
   const total = h + a, d = h - a, ad = Math.abs(d);
 
   switch (meta.scope) {
@@ -120,11 +159,18 @@ const COMBO_IDS = new Set([
   'OVER_2_5_AND_BTTS_YES', 'UNDER_3_5_AND_A_TEAM_WINS', 'WIN_TO_NIL_EITHER', 'HOME_WIN_TO_NIL', 'AWAY_WIN_TO_NIL',
   'BTTS_AND_A_TEAM_WINS', 'DRAW_WITH_GOALS', 'HOME_CLEAN_SHEET', 'AWAY_CLEAN_SHEET',
   'HOME_WIN_AND_OVER_1_5', 'AWAY_WIN_AND_OVER_1_5', 'HOME_WIN_AND_OVER_2_5', 'AWAY_WIN_AND_OVER_2_5',
+  // 13-sep: los lados CONTRARIOS de portería a cero y ganar a cero. La casa los cotiza y hasta hoy no se
+  // guardaban, así que estas dos familias no tenían con qué quitarle el margen a su propio precio.
+  'HOME_CLEAN_SHEET_NO', 'AWAY_CLEAN_SHEET_NO', 'HOME_WIN_TO_NIL_NO', 'AWAY_WIN_TO_NIL_NO',
 ]);
 function isComboId(id) { return COMBO_IDS.has(id); }
 
 function settleCombo(id, h, a) {
   const tot = h + a, win = h !== a;
+  // el lado contrario se resuelve negando el suyo, no repitiendo la regla: una regla escrita dos veces es
+  // una regla que alguien arreglará una vez
+  const neg = id.match(/^(.+)_NO$/);
+  if (neg && COMBO_IDS.has(neg[1])) return !settleCombo(neg[1], h, a);
   switch (id) {
     case 'OVER_2_5_AND_BTTS_YES': return tot >= 3 && h >= 1 && a >= 1;
     case 'UNDER_3_5_AND_A_TEAM_WINS': return tot <= 3 && win;
@@ -143,4 +189,4 @@ function settleCombo(id, h, a) {
   }
 }
 
-module.exports = { GRID_MAX, marketMeta, settle, lineKind, legOutcome, combineLegs, settleLine };
+module.exports = { GRID_MAX, PREFIJO_MITAD, marketMeta, settle, lineKind, legOutcome, combineLegs, settleLine };

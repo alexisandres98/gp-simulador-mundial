@@ -5543,6 +5543,35 @@ async function cloudbetSweep({ force = false, dryRun = false, soloHasta = 0 } = 
           out.quotes++;
         }
       }
+      // ── LAS FAMILIAS DEL CENSO DEL 13-SEP (mitades + tres del partido completo) ─────────────────────
+      // El lector las devuelve SIN girar y con la línea ya referida a cada selección; aquí se giran con la
+      // única función de giro que hay (`mitades.gira`) y se nombran con el único generador de ids que hay
+      // (`mitades.idDe`). Que las dos vivan en el motor y no aquí es deliberado: el bloque de arriba, que
+      // gira a mano familia por familia, es exactamente el sitio donde un signo se puede quedar atrás.
+      //
+      // ACOTADO A PROPÓSITO, Y APAGABLE. Son ~100 filas más por partido: con 200 partidos, veinte mil
+      // escrituras secuenciales de más en un barrido que ya tarda 191 s. Aquí no hay una plataforma de
+      // laboratorio, hay usuarios dentro, así que el bloque (1) se puede apagar con una variable sin
+      // desplegar y (2) solo escribe los partidos que arrancan dentro de la ventana — que además son
+      // aquellos cuyo mercado ya está formado y cuyo cierre vamos a poder capturar bien.
+      if (DERIV_NUEVAS && (cb.markets.nuevos || []).length) {
+        const koN = Date.parse(cb.kickoff || meta.kickoff || 0);
+        const dentro = Number.isFinite(koN) && koN - Date.now() < DERIV_NUEVAS_H * 3600e3;
+        if (!dentro) out.nuevas_fuera_ventana = (out.nuevas_fuera_ventana || 0) + 1;
+        else {
+          const MI = require('./goal-engine/mitades');
+          for (const fila0 of cb.markets.nuevos) {
+            if (!(fila0.odds > 1)) continue;
+            const fila = MI.gira(fila0, swapped);
+            const mid = MI.idDe(fila.fam, fila);
+            if (!mid) continue;
+            await q(fila.fam, mid, fila.odds, fila.max,
+              { line: fila.line != null ? fila.line : 0, side: fila.side, team_scope: fila.team || null });
+            out.quotes++;
+            out.nuevas_familias = (out.nuevas_familias || 0) + 1;
+          }
+        }
+      }
       // totales (over/under; simétricos, el swap no afecta) — goles + córners + tarjetas (13-ago: los dos
       // últimos son los mercados EJECUTABLES del ejecutor en la sombra; sin ellos la capacidad real es 0)
       const totFams = [
@@ -5671,6 +5700,11 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 // se registra si AMBOS lados matchean a ids distintos (evita marcadores cruzados). Se guarda en
 // db.clubResults[<liga>|<idA-idB ordenados>] → lo consumen /api/clubs/state y la vista cl-. Gate por
 // GP_CLUBS_SHADOW_ENABLED; ESPN es gratis (0 créditos). Nada de esto toca el Mundial ni el pipeline de picks.
+// 13-sep: interruptor y ventana de las familias nuevas del censo (mitades, marcador exacto, portería a
+// cero, ganar a cero). `GP_DERIV_NUEVAS=off` las apaga sin desplegar si el barrido se resiente.
+const DERIV_NUEVAS = !/^(0|false|no|off)$/i.test(String(process.env.GP_DERIV_NUEVAS || 'on').trim());
+const DERIV_NUEVAS_H = Number(process.env.GP_DERIV_NUEVAS_HORAS) || 48;
+
 const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
   // 5-ago: las 9 nuevas (ESPN cubre las 9 con slug propio; el fallback TSA sigue de red de seguridad)
   championship: 'eng.2', league1: 'eng.3', league2: 'eng.4', serieb: 'ita.2', laliga2: 'esp.2', portugal: 'por.1', belgica: 'bel.1', turquia: 'tur.1', grecia: 'gre.1',
@@ -8062,6 +8096,33 @@ function derivadasScore(p) {
     return row.home_id === hId ? { homeGoals: row.hg, awayGoals: row.ag } : { homeGoals: row.ag, awayGoals: row.hg };
   } catch { return null; }
 }
+// ── EL MARCADOR AL DESCANSO (13-sep) ────────────────────────────────────────────────────────────────────
+// Las familias de mitad no se pueden liquidar con el marcador final, y nuestro archivo de resultados solo
+// guarda ese. Se reconstruye de los goles CON SU TIEMPO que publica ESPN (`keyEvents`, periodo 1 y 2), y
+// solo vale si la suma de las dos mitades da EXACTAMENTE el marcador final que ya teníamos por otra vía.
+// Esa segunda comprobación es la que impide el error caro: aunque el emparejamiento de nombres saliera al
+// revés, un marcador asimétrico no cuadraría y la pick se quedaría sin liquidar en vez de liquidarse
+// invertida. Cachea en memoria por partido (los resultados no cambian) y nunca lanza.
+const _htCache = new Map();
+async function derivadasDescanso(p, marcador) {
+  const slug = CLUB_ESPN[p.league];
+  if (!slug || !p.kickoff_at) return null;
+  const k = p.ceid;
+  if (_htCache.has(k)) return _htCache.get(k);
+  let r = null;
+  try {
+    r = await require('./goal-engine/descanso').buscaDescanso({
+      slug, home: p.home, away: p.away, kickoffAt: p.kickoff_at, finalConocido: marcador,
+      nombresIguales: cloudbetNameMatch,
+      fetchJson: (u) => fetch(u, { signal: AbortSignal.timeout(12000) }).then((x) => (x.ok ? x.json() : null)),
+    });
+  } catch { r = null; }
+  const val = r && r.h1Home != null ? r : null;
+  if (_htCache.size > 4000) _htCache.clear();
+  _htCache.set(k, val);
+  return val;
+}
+
 let _derivRunning = false, _derivLast = 0, _derivOut = null;
 async function derivadasJob({ force = false } = {}) {
   if (_derivRunning) return { skipped: 'running' };
@@ -8077,7 +8138,9 @@ async function derivadasJob({ force = false } = {}) {
     out.record = await D.record({ dbc, qevents, lambdasFor: derivadasLambdas }).catch((e) => ({ error: e.message }));
     out.diag_lambdas = global._derivDiag;
     out.closes = await D.closes({ dbc }).catch((e) => ({ error: e.message }));
-    out.settle = D.settle({ scoreFor: derivadasScore });
+    // `settle` pasó a ser asíncrona el 13-sep: las familias de mitad necesitan ir a buscar el marcador al
+    // descanso. Sin este `await` la pasada terminaría antes que la liquidación y el informe saldría vacío.
+    out.settle = await D.settle({ scoreFor: derivadasScore, descansoFor: derivadasDescanso }).catch((e) => ({ error: e.message }));
     // 9-sep: el PROCESO IMPLÍCITO (1X2 ↔ total por casa + desviación frente al tablero), familia de precio en
     // su propia sombra (`implied-engine/`). Mismo mapa de eventos y mismo marcador que las derivadas.
     try { out.implicito = await require('./implied-engine/run-futbol').job({ dbc, qevents, scoreFor: derivadasScore }); } catch (e) { out.implicito = { error: e.message }; }
@@ -21984,6 +22047,9 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const D = require('./futbol-derivadas');
       const run = url.searchParams.get('run') === '1' ? await derivadasJob({ force: true }) : (_derivOut || null);
+      // `?tabla=1` devuelve SOLO la tabla de rendimiento por familia: es lo que se mira en la revisión
+      // semanal, y el volcado entero pesa demasiado para leerlo de un vistazo.
+      if (url.searchParams.get('tabla') === '1') return json(res, 200, { at: new Date().toISOString(), ...D.tabla() });
       return json(res, 200, { pasada: run, track: D.track() });
     }
     // 9-sep: tenis de mesa al dinero real (total de puntos, Cloudbet, $5). `?run=1` fuerza el barrido ahora.

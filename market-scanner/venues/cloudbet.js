@@ -202,8 +202,78 @@ function normalizeEvent(e) {
     if (rows.length) out.markets.team_totals = rows;
   }
 
+  // ── LAS FAMILIAS DEL CENSO DEL 13-SEP ───────────────────────────────────────────────────────────────
+  // Censo empírico sobre 29 partidos de 8 ligas: Cloudbet publica 43 mercados distintos por partido y
+  // nosotros leíamos 9. De los 34 que faltaban, estos son los que el motor sabe valorar —las mitades, con
+  // su reparto ya medido, y tres del partido completo que la matriz ya calculaba y nadie leía.
+  //
+  // SE DEVUELVEN SIN GIRAR, a propósito. Aquí no se sabe si el local de Cloudbet es nuestro local; eso lo
+  // sabe el barrido. Girar la mitad de las familias aquí y la otra mitad allí es cómo se acaba con un
+  // hándicap invertido que paga al revés y parece un modelo malo. Una función de giro, un sitio.
+  //
+  // Ojo con dos cosas que se comprobaron contra la casa y no se supusieron: (1) las mitades cotizan CUARTOS
+  // y ENTERAS, no solo medias; (2) la clave del submercado del segundo tiempo es `period=2h&period=ft&
+  // period=1h`, o sea que buscarla por igualdad con 'period=2h' no encuentra nada — hay que coger el
+  // submercado que TENGA selecciones, que es lo que hace `subsDe`.
+  const subsDe = (mk, filtro) => {
+    const m = M[mk]; if (!m || !m.submarkets) return [];
+    const out2 = [];
+    for (const [sk, sm] of Object.entries(m.submarkets)) {
+      if (filtro && !filtro(sk)) continue;
+      for (const s of (sm.selections || [])) if (Number(s.price) > 1) out2.push(s);
+    }
+    return out2;
+  };
+  const fila = (fam, s, extra) => ({ fam, odds: Number(s.price),
+    max: Number(s.maxStake) > 0 ? Number(s.maxStake) : null, min: Number(s.minStake) > 0 ? Number(s.minStake) : null,
+    url: s.marketUrl || null, st: s.status || null, ...extra });
+  const par = (s, k) => { const m2 = String(s.params || '').match(new RegExp(k + '=(-?[\\d.]+)')); return m2 ? Number(m2[1]) : null; };
+  const nuevos = [];
+
+  for (const [mitad, kTot, kOdds, kAh, kTt] of [
+    ['h1', 'soccer.total_goals_period_first_half', 'soccer.match_odds_period_first_half', 'soccer.asian_handicap_period_first_half', 'soccer.team_total_goals_period_first_half'],
+    ['h2', 'soccer.total_goals_period_second_half', 'soccer.match_odds_period_second_half', 'soccer.asian_handicap_period_second_half', 'soccer.team_total_goals_period_second_half'],
+  ]) {
+    for (const s of subsDe(kTot)) { const l = par(s, 'total');
+      if (l != null && ['over', 'under'].includes(s.outcome)) nuevos.push(fila(mitad + '_total', s, { side: s.outcome, line: l })); }
+    for (const s of subsDe(kOdds)) if (['home', 'draw', 'away'].includes(s.outcome)) nuevos.push(fila(mitad + '_1x2', s, { side: s.outcome, line: 0 }));
+    // `handicap=X` es la línea del LOCAL DE ELLOS y la del visitante es su espejo — la misma convención que
+    // el hándicap del partido, comprobada en su día contra la casa con un favorito visitante.
+    for (const s of subsDe(kAh)) { const l = par(s, 'handicap');
+      if (l != null && ['home', 'away'].includes(s.outcome)) nuevos.push(fila(mitad + '_ah', s, { side: s.outcome, line: s.outcome === 'home' ? l : -l })); }
+    for (const equipo of ['home', 'away']) {
+      for (const s of subsDe(kTt, (sk) => sk.includes('team=' + equipo))) { const l = par(s, 'total');
+        if (l != null && ['over', 'under'].includes(s.outcome)) nuevos.push(fila(mitad + '_team_total', s, { side: s.outcome, line: l, team: equipo })); }
+    }
+  }
+  for (const s of subsDe('soccer.both_teams_to_score_period_1h')) if (['yes', 'no'].includes(s.outcome)) nuevos.push(fila('h1_btts', s, { side: s.outcome, line: 0 }));
+  // la doble oportunidad de mitad usa OTRO vocabulario que la del partido: `home_or_draw`, no `home_draw`
+  for (const s of subsDe('soccer.double_chance_period_1h')) {
+    const k = { home_or_draw: 'home_draw', home_or_away: 'home_away', draw_or_away: 'draw_away' }[s.outcome];
+    if (k) nuevos.push(fila('h1_double_chance', s, { side: k, line: 0 }));
+  }
+  for (const s of subsDe('soccer.draw_no_bet_period_1h')) if (['home', 'away'].includes(s.outcome)) nuevos.push(fila('h1_draw_no_bet', s, { side: s.outcome, line: 0 }));
+  for (const s of subsDe('soccer.halftime_fulltime_result')) {
+    const m2 = String(s.outcome || '').match(/^(home|draw|away)_(home|draw|away)$/);
+    if (m2) nuevos.push(fila('htft', s, { side: m2[1] + '_' + m2[2], line: 0 }));
+  }
+  // el marcador exacto viaja DENTRO del outcome (`score=1:1`), no en los params
+  for (const s of subsDe('soccer.correct_score')) {
+    const m2 = String(s.outcome || '').match(/^score=(\d+):(\d+)$/);
+    if (m2) nuevos.push(fila('exact_score', s, { side: m2[1] + ':' + m2[2], line: 0 }));
+  }
+  for (const [fam, mk] of [['clean_sheet', 'soccer.team_clean_sheet'], ['win_to_nil', 'soccer.team_win_to_nil']]) {
+    for (const equipo of ['home', 'away']) {
+      for (const s of subsDe(mk, (sk) => sk.includes('team=' + equipo))) {
+        if (['yes', 'no'].includes(s.outcome)) nuevos.push(fila(fam, s, { side: s.outcome, line: 0, team: equipo }));
+      }
+    }
+  }
+  if (nuevos.length) out.markets.nuevos = nuevos;
+
   const hayAlgo = out.markets.h2h || out.markets.totals.length || out.markets.corners.length || out.markets.cards.length
-    || out.markets.dc || out.markets.dnb || out.markets.btts || (out.markets.ah || []).length || (out.markets.team_totals || []).length;
+    || out.markets.dc || out.markets.dnb || out.markets.btts || (out.markets.ah || []).length
+    || (out.markets.team_totals || []).length || (out.markets.nuevos || []).length;
   return hayAlgo ? out : null;
 }
 

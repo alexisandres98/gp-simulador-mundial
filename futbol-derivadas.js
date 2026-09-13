@@ -300,14 +300,21 @@ async function record(deps = {}) {
     //
     // Se queda la de MÁS ventaja de cada (partido, familia). Las candidatas se acumulan en esta pasada y se
     // resuelven al final, porque la mejor puede aparecer la última.
+    //
+    // SOLO PARA LAS FAMILIAS NUEVAS. La v1 lleva 24 días apilando y su muestra está construida así; meterle
+    // el tope ahora cambiaría su comportamiento a mitad de ventana, que es justo lo que esta doctrina
+    // prohíbe. La v1 se queda apilando y ESO SE DICE (su muestra tiene el mismo problema que destapamos en
+    // card under y hay que leerla con esa advertencia); las nuevas nacen ya con el tope puesto.
     const claveFam = ceid + '|' + fam;
-    if (yaHay.has(claveFam)) continue;                           // ya hay una de esta familia de otra pasada
-    const prev = candidatas.get(claveFam);
-    if (prev && prev.edge >= edge) { out.apiladas = (out.apiladas || 0) + 1; continue; }
-    if (prev) out.apiladas = (out.apiladas || 0) + 1;
     const key = ceid + '|' + marketId;
     if (st.picks[key]) continue;
-    candidatas.set(claveFam, { edge, key, pick: {
+    if (esNueva) {
+      if (yaHay.has(claveFam)) continue;                         // ya hay una de esta familia de otra pasada
+      const prev = candidatas.get(claveFam);
+      if (prev && prev.edge >= edge) { out.apiladas = (out.apiladas || 0) + 1; continue; }
+      if (prev) out.apiladas = (out.apiladas || 0) + 1;
+    }
+    candidatas.set(esNueva ? claveFam : key, { edge, key, pick: {
       key, ceid, market_id: marketId, family: fam,
       league: meta.league || null, match: `${meta.home} vs ${meta.away}`,
       home: meta.home, away: meta.away, kickoff_at: meta.kickoff || null,

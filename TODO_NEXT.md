@@ -13,6 +13,13 @@
 
 ## 🔓 ABIERTO, NECESITA ORDEN DE ALEXIS (por prioridad)
 
+0. **🆕 (13-sep) El bug del precio sin vig en `futbol-derivadas`: ¿se reinicia la v1 o se parte la muestra?**
+   `noVig.twoWayNoVig` espera objetos de cuota y se le pasaban números sueltos desde el 20-ago, así que
+   devolvía `null` siempre: **ninguna pick de esa sombra se ha valorado nunca contra el precio sin vig**.
+   Está arreglado. El error empujaba al lado seguro (menos picks de las debidas, no peores), y la muestra se
+   parte sin ambigüedad por `market_basis`. **Decide Alexis**: seguir con la partición (barato, conserva los
+   24 días) o reiniciar la v1 limpia. Recomendación: seguir con la partición y anotar la fecha del corte.
+
 1. **Cerrar las cinco familias con veredicto `cerrar`.** La vara mide que el PRECIO le gana al modelo de
    forma significativa: LoL KILLS_HANDICAP bovada (t −3,42) y cloudbet (t −3,52), CS2 RONDAS_HANDICAP
    cloudbet (t −3,31), TT GAME_POINTS_HCP cloudbet (t −2,95), sombra `lol_kills_hcp_v1` (t −3,65).
@@ -47,9 +54,21 @@
 /api/internal/parada?key=               las 4 líneas de parada (VERDE/VIGILAR/FUERA); POST fuerza
 /api/internal/ventana-tarjetas?key=&h=  a qué hora abre cada liga su mercado de tarjetas
 /api/internal/cercania?key=             la pasada de cercanía; POST la fuerza
+/api/internal/futbol-derivadas?key=&tabla=1   una fila por familia: n, ROI, CLV, listón, error de
+                                        calibración y veredicto de la vara. `&run=1` fuerza una pasada
 ```
 
 **Errores de método que ya cometimos y no hay que repetir:**
+- **Abrir una familia porque es calculable.** Calculable ≠ calibrada. Antes de abrir un mercado nuevo hay que
+  medir cuánto se desvía su probabilidad contra resultados reales, y ese error tiene que ENTRAR en su listón
+  de ventaja (13-sep, mitades). Una familia que se desvía 5,8 pp no puede cobrar una ventaja de 3 pp.
+- **Reutilizar una constante fuera de donde se ajustó.** Dixon-Coles (ρ = −0,13) se ajustó sobre partidos
+  completos; aplicarlo a media lambda sobrestimaba el empate de mitad entre 2,6 y 3,6 pp SIEMPRE en el mismo
+  sentido. Un sesgo de signo fijo fabrica ventaja falsa; una desviación por tramo solo añade ruido.
+- **Fiarse de que una función devuelve lo que parece.** `twoWayNoVig` devolvía `null` desde el 20-ago porque
+  se le pasaban números donde espera objetos, y nadie lo vio porque el fallo era silencioso y empujaba al
+  lado seguro. Si una rama nunca se ejecuta, medir cuántas veces cae en el `else` lo destapa en un minuto
+  (fue el contador `sin_par_por_familia` el que lo encontró).
 - Leer el CLV crudo. La media la destrozan cierres rotos (+148 % en cloudbet). Siempre recortado al 10 %.
 - Usar el CLV donde no aplica. Si el cierre no predice mejor que la entrada (|t| < 2), el CLV no es evidencia
   ni a favor ni en contra. En NUESTRAS diez familias no aplica en ninguna.

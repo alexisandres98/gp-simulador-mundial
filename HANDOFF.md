@@ -1,5 +1,117 @@
 # HANDOFF — estado al 13-sep-2026 (la vara, las líneas de parada, y la decisión de NO meter más dinero)
 
+## 🆕 ÚLTIMO TRABAJO (13-sep, tarde): LAS MITADES DE FÚTBOL, MEDIDAS Y ABIERTAS EN SOMBRA
+
+Alexis preguntó lo obvio que nadie había preguntado: *«hay muchos mercados en fútbol que no estamos
+cubriendo — ambos equipos anotan, gol en la primera mitad, hándicap asiático… ¿no deberíamos generar picks
+ahí?»*. Tenía razón, y la respuesta salió de contar en vez de opinar.
+
+**EL CENSO.** Se enumeró lo que Cloudbet publica de verdad en un partido de fútbol: **43 mercados distintos,
+y leíamos 9.** (Ambos marcan y el hándicap asiático ya estaban desde el 20-ago; las mitades no.) De los 34
+que faltaban, **15 los sabe valorar el motor**: las catorce de mitad más tres del partido completo que la
+matriz ya calculaba y nadie leía (marcador exacto, portería a cero, ganar a cero).
+
+**POR QUÉ ESTABAN CERRADAS Y QUÉ CAMBIÓ.** `futbol-derivadas.js` decía desde agosto: «repartir el gol entre
+los dos tiempos es una suposición que GP no ha medido, y una familia sin estructura medida no se apuesta».
+La regla era buena. Lo que faltaba no era permiso: era la medición. Ahora está hecha —**33.364 partidos, 18
+divisiones, cinco temporadas** (football-data.co.uk)— y vive en `goal-engine/mitades.js` con su fecha y su
+muestra.
+
+**LOS TRES HECHOS QUE LO HACEN POSIBLE SIN INVENTAR NADA:**
+1. **La cuota de gol del primer tiempo es 0,446 y no se mueve.** Entre 18 divisiones que van de 2,37 a 3,18
+   goles por partido, la cuota va de 0,431 a 0,463, y su correlación con lo goleadora que es la liga tiene
+   **t = 1,1** — ninguna. Es una constante, no un parámetro más que ajustar.
+2. **Las mitades son casi independientes** (correlación 0,05; con 33 mil partidos eso sale «significativo»
+   con t 9,2, y por eso el t no es el criterio aquí: 0,05 no mueve un precio).
+3. **La ventaja local es la misma en las dos mitades** (0,556 y 0,552 contra 0,554 del partido). Cero
+   parámetros nuevos.
+
+**DIXON-COLES NO SE APLICA A LAS MITADES, Y ESO TAMBIÉN SE MIDIÓ.** La τ del motor (ρ = −0,13) se ajustó
+sobre partidos completos; aplicarla a media lambda era una suposición. Se probaron ρ = −0,13 / −0,065 / 0
+sobre las mismas 33 mil mitades: con la corrección completa el **empate de mitad se sobrestima entre 2,6 y
+3,6 puntos de forma sistemática**; sin ella el sesgo cae a ±0,006 en los nueve casos. Un sesgo de signo fijo
+fabrica ventaja falsa siempre del mismo lado — es exactamente cómo se generan cientos de picks perdedoras en
+una familia. Mitades sin corrección; partido completo con la del motor.
+
+**LA VALIDACIÓN, QUE ES LO QUE DECIDE.** Para cada partido se resolvieron λ_local y λ_visita del **cierre
+real de Pinnacle** (1X2 sin vig para el reparto, over/under 2,5 sin vig para el ritmo), se derivó la mitad y
+se comparó contra lo que pasó, por tramos de probabilidad. Como vara se usaron **dos familias que ya
+publicamos** (gana el local, más de 2,5): su peor tramo se desvía 3,4 y 2,9 pp, y ese es el **suelo de ruido
+del método**.
+
+**LA REGLA NUEVA: EL LISTÓN LO PONE LA PROPIA FAMILIA.** De ahí sale lo único de esto que es doctrina y no
+código: **cada familia pide 3 pp más su propio error de calibración medido.**
+
+| familia | error medido | listón |
+|---|---|---|
+| ambos marcan 1T | 0,8 pp | **3,8 pp** |
+| 1X2 2T · hándicap 2T | 2,2 pp | 5,2 pp |
+| marcador exacto | 2,3 pp | 5,3 pp |
+| empate no válido 1T | 2,5 pp | 5,5 pp |
+| hándicap 1T | 2,7 pp | 5,7 pp |
+| total equipo 2T | 3,2 pp | 6,2 pp |
+| ganar a cero | 3,4 pp | 6,4 pp |
+| 1X2 1T · doble oportunidad 1T | 3,6 pp | 6,6 pp |
+| total 2T | 3,9 pp | 6,9 pp |
+| total equipo 1T | 4,4 pp | 7,4 pp |
+| portería a cero | 4,5 pp | 7,5 pp |
+| descanso/final | 4,7 pp | **7,7 pp** |
+| total 1T | 5,8 pp | **8,8 pp** |
+
+Una familia que se desvía 5,8 pp no puede cobrar una ventaja de 3 pp: esos 3 pp caben enteros dentro de su
+error. Eso **no existía antes** y es lo que separa abrir catorce mercados de abrir catorce mercados sabiendo
+cuál puede mentir y cuánto.
+
+**DOS REGLAS, NO UNA.** La v1 lleva desde el 20-ago acumulando muestra con 3 pp para sus cinco familias.
+Aplicarles ahora el listón por familia sería cambiar la regla a mitad de ventana y tirar la muestra. La v1 se
+queda **exactamente como está**; las quince nuevas nacen bajo `derivadas_v2` y cada pick guarda su versión.
+
+**🔴 BUG DE ORIGEN ENCONTRADO — DECISIÓN PENDIENTE DE ALEXIS.** `noVig.twoWayNoVig` espera OBJETOS de cuota
+con `odds_decimal`, y desde el 20-ago se le pasaban dos números sueltos. `Number(undefined)` es NaN, el
+guardia disparaba, y **la función devolvía `null` siempre**: ninguna pick de esta sombra se ha valorado nunca
+contra el precio sin vig. Todas se compararon contra la cuota cruda. **El error empuja al lado seguro** —la
+implícita cruda es mayor que la justa, así que la ventaja salía más pequeña y el listón efectivo era 3 pp más
+medio margen— o sea que se hicieron **menos picks de las debidas, no peores**. Está arreglado. La muestra v1
+se puede partir sin ambigüedad porque cada pick ya guardaba `market_basis` (antes: «implícita de la casa»;
+después: «sin vig contra el lado contrario»). **Lo que decide Alexis: si la v1 se reinicia o se sigue con la
+partición.** Menor, del mismo día: el espejo de la línea cero de hándicap estaba mal (el contrario de `P0` es
+`P0`, no `M0`), así que la línea cero se medía contra la cuota cruda.
+
+**UNA POSICIÓN POR PARTIDO Y FAMILIA — SOLO EN LAS NUEVAS.** La lección de card under aplicada *antes* de que
+cueste algo: en un partido, «menos de 1,75 en el 2T» y «menos de 2,0 en el 2T» no son dos apuestas, son la
+misma. Anotar las dos mete observaciones correlacionadas en una muestra que luego se juzga como si fueran
+independientes — infla el estadístico y la vara deja de medir. En la prueba en seco con cuotas reales eso
+bajó de 200 picks a 84 en 29 partidos. **A la v1 NO se le aplica**, porque meterle el tope a los 24 días
+cambiaría su comportamiento a mitad de ventana. Consecuencia que hay que tener presente al leerla: **la
+muestra v1 (5.249 liquidadas, −475 unidades) está apilada**, igual que lo estaba card under, y su n efectivo
+es bastante menor que 5.249.
+
+**LA LIQUIDACIÓN DE LAS MITADES.** No se puede usar el marcador final, y nuestro archivo de resultados solo
+guarda ese. Se reconstruye de los goles **con su tiempo** que publica ESPN (`keyEvents`, periodo 1 y 2), con
+**doble puerta**: (1) el nombre tiene que resolver, y (2) la suma de las dos mitades tiene que dar
+**exactamente** el marcador final que ya teníamos por otra vía. La segunda es la que importa: aunque el
+emparejamiento saliera al revés, un marcador asimétrico no cuadraría y la pick se quedaría sin liquidar en
+vez de liquidarse invertida. Sin descanso NO se liquida con el final: se espera, y a las 72 h se anula.
+
+**OPERACIÓN.** Acotado y apagable, porque son ~100 escrituras más por partido en un barrido que ya tarda
+191 s y hay usuarios dentro: `GP_DERIV_NUEVAS=off` lo apaga sin desplegar, `GP_DERIV_NUEVAS_HORAS` (48)
+limita a los partidos cuyo mercado ya está formado.
+
+**DÓNDE SE MIRA:** `/api/internal/futbol-derivadas?key=$GP_EXPORT_KEY&tabla=1` — una fila por familia con n,
+unidades, ROI, CLV, su listón, su error de calibración y el veredicto de `lib/vara.js`.
+
+**LO QUE SIGUE FUERA Y POR QUÉ** (está en `FUERA` dentro de `futbol-derivadas.js`, para que nadie lo
+redescubra): momento del gol y orden (quién marca primero, último córner) necesitan la tasa DENTRO de la
+mitad, que no está medida; goleadores es nivel jugador; y **las derivadas de córners y tarjetas necesitan un
+modelo bivariante propio** — medido: los córners entre local y visitante están correlacionados **−0,249** y
+sobredispersos (var/media 1,18), y las tarjetas al revés, **+0,201**, con el visitante recibiendo más (cuota
+local 0,466). Dos Poisson independientes no valen para ninguna de las dos.
+
+**Sombra pura: no publica picks, no toca el feed y no toca un dólar.** Lo que falta ahora es lo único que no
+se puede acelerar: muestra.
+
+---
+
 ## 🛑 PUNTO DE RETOMA (13-sep) — LÉEME ANTES DE PROPONER NADA
 
 **Decisión de Alexis del 13-sep, tras tres días de auditoría: NO SE METE MÁS DINERO EN NINGÚN SITIO.**

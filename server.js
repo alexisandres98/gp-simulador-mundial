@@ -8124,14 +8124,20 @@ async function derivadasDescanso(p, marcador) {
 }
 
 // ── EL BRAZO DE POLYMARKET: UNA SOLA PUERTA (13-sep) ────────────────────────────────────────────────────
-// Todo lo que este servidor le pide al relay de Helsinki pasa por aquí. El certificado del brazo es
+// Todo lo que este servidor le pide al brazo de Polymarket pasa por aquí. El certificado del brazo es
 // autofirmado (no hay dominio sobre la IP): se acepta sin verificar CA pero el tráfico va cifrado — misma
 // decisión, y misma deuda pendiente de fijar la huella, que el camino de Cloudbet.
+//
+// MÁQUINA PROPIA (13-sep, tarde). El brazo vive ahora en su propio servidor de Helsinki, en un proyecto de
+// Hetzner aparte, y no dentro del relay de Cloudbet. Por eso hay variables propias: así la clave privada de
+// la cartera y la llave de la casa de apuestas no comparten máquina, y el camino que ya lleva dinero real
+// no se reinicia cada vez que se toca esto. Si no se ponen, cae al relay de Cloudbet — que es donde estaba
+// el plan original y sigue siendo un destino válido.
 function pmRelay(ruta, cuerpo = null) {
   return new Promise((resolve) => {
-    const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
-    const rk = String(process.env.GP_RELAY_KEY || '');
-    if (!base || !rk) return resolve({ error: 'faltan CLOUDBET_RELAY_URL o GP_RELAY_KEY' });
+    const base = String(process.env.GP_PM_RELAY_URL || process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+    const rk = String(process.env.GP_PM_RELAY_KEY || process.env.GP_RELAY_KEY || '');
+    if (!base || !rk) return resolve({ error: 'faltan GP_PM_RELAY_URL/CLOUDBET_RELAY_URL o GP_PM_RELAY_KEY/GP_RELAY_KEY' });
     const httpsW = require('https');
     const datos = cuerpo ? JSON.stringify(cuerpo) : null;
     const rq = httpsW.request(base + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(rk), {
@@ -25147,6 +25153,34 @@ async function anotar(pid){
         return json(res, 200, { relay_status: body.status, diag: j2 || body.text.slice(0, 500) });
       } catch (e) { return json(res, 502, { error: e.message }); }
     }
+    // ── EL CÓDIGO DEL BRAZO, PARA QUE SE LO TRAIGA ÉL SOLO (13-sep) ────────────────────────────────────
+    // El problema que esto resuelve no es teórico: hoy hemos perdido medio día porque el servidor de
+    // Cloudbet en Helsinki corre código de agosto y no había forma de actualizarlo — el token de Hetzner
+    // de aquella sesión se fue con su contenedor. Una máquina a la que solo se le puede meter código a
+    // mano es una máquina que acaba corriendo una versión que nadie recuerda.
+    //
+    // Así que el brazo nuevo no lleva el código dentro: lo pide aquí al arrancar. `systemctl restart` =
+    // actualizar. Y el `cloud-init` que lo crea cabe en unas pocas líneas en vez de ir justo por debajo
+    // del tope de 32 KB de Hetzner, que era la otra opción.
+    //
+    // Qué se entrega y qué no: SOLO los ocho ficheros de esta lista, fijada en el código. No es un lector
+    // de ficheros con un parámetro — un parámetro aquí sería una puerta para leer `db.json`. La llave es
+    // suya (`GP_PM_BUNDLE_KEY`), distinta de la de exportación, porque lo que protege es de otra clase:
+    // esto entrega código fuente nuestro, no las sondas internas de la plataforma.
+    if (p === '/api/internal/pm-bundle') {
+      const bk = process.env.GP_PM_BUNDLE_KEY || '';
+      if (!bk || url.searchParams.get('key') !== bk) return json(res, 404, { error: 'No encontrado' });
+      const FICHEROS = ['lib/keccak.js', 'lib/secp256k1.js', 'lib/eip712.js', 'polymarket/orden.js',
+        'polymarket/clob.js', 'relay/pm-relay.js', 'relay/geo-polymarket.js', 'relay/pm-server.js'];
+      const fsB = require('fs'), pathB = require('path');
+      const out = {};
+      for (const f of FICHEROS) {
+        try { out[f] = fsB.readFileSync(pathB.join(__dirname, f), 'utf8'); }
+        catch (e) { return json(res, 500, { error: 'falta ' + f + ': ' + e.message }); }
+      }
+      return json(res, 200, { at: new Date().toISOString(), ficheros: out });
+    }
+
     // ── sonda ESPN con llave (31-ago): iterar formas de site.api.espn.com desde producción — el sandbox
     // de desarrollo recibe 403 de Akamai y sin esto cada ajuste del vivo era un deploy a ciegas. Solo
     // lectura, allowlist del host por construcción, jamás enlazada desde la UI.

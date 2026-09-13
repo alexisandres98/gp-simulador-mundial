@@ -20,6 +20,14 @@
    parte sin ambigüedad por `market_basis`. **Decide Alexis**: seguir con la partición (barato, conserva los
    24 días) o reiniciar la v1 limpia. Recomendación: seguir con la partición y anotar la fecha del corte.
 
+0b. **🆕 (13-sep) ¿Se cierran las CINCO familias de `derivadas_v1`?** En cuanto el veredicto se calculó de
+   verdad salieron todas perdiendo y todas con el PRECIO ganándole al modelo con significancia:
+   asian_handicap −263,65 u (t −8,07) · team_total −114,15 (t −5,76) · draw_no_bet −50,20 (t −3,47) ·
+   double_chance −29,00 (t −3,36) · btts −18,05 (t −2,35). **Total −475,05 unidades sobre 5.249.** Es dinero
+   simulado, pero es la evidencia que la vara existe para producir. Leerlo sabiendo que la muestra está
+   apilada (n efectivo menor, t inflados) — el signo no cambia por eso. **Es cambio de lógica de picks: no
+   se toca sin la palabra de Alexis.**
+
 1. **Cerrar las cinco familias con veredicto `cerrar`.** La vara mide que el PRECIO le gana al modelo de
    forma significativa: LoL KILLS_HANDICAP bovada (t −3,42) y cloudbet (t −3,52), CS2 RONDAS_HANDICAP
    cloudbet (t −3,31), TT GAME_POINTS_HCP cloudbet (t −2,95), sombra `lol_kills_hcp_v1` (t −3,65).

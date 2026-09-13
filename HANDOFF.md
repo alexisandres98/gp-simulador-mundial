@@ -100,6 +100,30 @@ limita a los partidos cuyo mercado ya está formado.
 **DÓNDE SE MIRA:** `/api/internal/futbol-derivadas?key=$GP_EXPORT_KEY&tabla=1` — una fila por familia con n,
 unidades, ROI, CLV, su listón, su error de calibración y el veredicto de `lib/vara.js`.
 
+### 🔴 LO QUE LA TABLA DESTAPÓ EL MISMO DÍA QUE SE ENCENDIÓ (v1, 13-sep)
+
+En cuanto el veredicto empezó a calcularse de verdad, la sombra v1 —la que lleva 24 días corriendo— salió
+así:
+
+| familia | n | unidades | ROI | prueba directa (modelo vs precio) | veredicto |
+|---|---|---|---|---|---|
+| **asian_handicap** | 2.899 | **−263,65** | −9,09 % | el precio gana, **t −8,07** | (ver nota) |
+| team_total | 1.185 | −114,15 | −9,63 % | el precio gana, t −5,76 | **cerrar** |
+| draw_no_bet | 440 | −50,20 | −11,41 % | el precio gana, t −3,47 | **cerrar** |
+| double_chance | 464 | −29,00 | −6,25 % | el precio gana, t −3,36 | **cerrar** |
+| btts | 261 | −18,05 | −6,92 % | el precio gana, t −2,35 | **cerrar** |
+| | **5.249** | **−475,05** | | | |
+
+**Las cinco pierden, y en las cinco el PRECIO acierta más que el modelo con significancia.** No es varianza:
+t −8,07 en la más grande. Esto es dinero simulado —la sombra nunca ha tenido un dólar— pero es exactamente
+la evidencia que la vara existe para producir. **Decide Alexis si se cierran.** Nota sobre `asian_handicap`:
+su veredicto dice `sin_margen_medido` porque las picks viejas no guardan `over_pct` y el margen aún no se
+puede medir para ella; la prueba directa, que no necesita margen, ya dice t −8,07. El veredicto formal
+llegará cuando acumule picks nuevas.
+
+**Advertencia al leer esos números:** la muestra v1 está apilada (varias líneas del mismo partido), así que
+su n efectivo es menor que 5.249 y los t están inflados. El signo, sin embargo, es inequívoco.
+
 **LO QUE SIGUE FUERA Y POR QUÉ** (está en `FUERA` dentro de `futbol-derivadas.js`, para que nadie lo
 redescubra): momento del gol y orden (quién marca primero, último córner) necesitan la tasa DENTRO de la
 mitad, que no está medida; goleadores es nivel jugador; y **las derivadas de córners y tarjetas necesitan un

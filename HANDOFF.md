@@ -37,8 +37,32 @@ defecto, así que en un mercado de riesgo negativo habrían fallado **todos** lo
 que ninguno vale. Comprobado en vivo: `{tick 0.01, negRisk true, min 5}`, contrato `0xe2222d…310F59`.
 
 **DÓNDE ESTÁ LA RAYA HOY.** `diag` contra Helsinki devuelve **404**, no un error de red: la máquina está
-viva y responde, pero corre el `cb-relay.js` de antes, sin las rutas `/pm/*`. Falta traer el código y poner
-cuatro variables (`relay/DESPLIEGUE-PM.md` tiene el paso a paso). El camino de Cloudbet no se tocó.
+viva y responde, pero corre el `cb-relay.js` de antes, sin las rutas `/pm/*`. Confirmado sin ambigüedad —
+el `/diag` de Cloudbet sí contesta 200 desde ese mismo host y con esa misma llave, con el saldo real
+(369,49 USDT) y `cf_ray …-ARN`. O sea: llave buena, máquina viva, código viejo. Falta traer el código y
+poner cuatro variables (`relay/DESPLIEGUE-PM.md` tiene el paso a paso). El camino de Cloudbet no se tocó.
+
+**EL MAPA DE PAÍSES, QUE RESULTÓ QUE PUBLICA LA CASA.** Buscando cómo desplegar sin el token de Hetzner
+apareció lo que había que haber mirado primero: Polymarket publica su lista de jurisdicciones
+(`docs/developers/CLOB/geoblock`). Está ahora en `relay/geo-polymarket.js` con fecha, fuente y pruebas.
+Dos cosas que decide:
+
+1. **Finlandia no está en ninguna lista.** Helsinki no fue suerte: es de los pocos sitios desde donde se
+   puede ABRIR posición. No hay que buscar otra región.
+2. **Ninguna región de Render puede colocar.** Las cinco son Oregón, Ohio, Virginia (US), Fráncfort (DE) y
+   Singapur (SG), y **las cinco** están en la lista de solo-cerrar. Existe un `gp-relay-eu` en Fráncfort
+   que controlamos entero con la llave de Render y parecía el atajo obvio; no lo es. Medido además en
+   vivo: su `/health` sale con `loc=DE, colo=FRA`. Bloqueadas también GB, FR, IT, BE, PL, SK, BR, AU, TW,
+   TH, RU, VE y cuatro provincias de Canadá — pero **no** Manitoba, ni España, ni Irlanda o Países Bajos
+   (a esos dos la casa solo les restringe la web, no la API).
+
+La lista puede cambiar, así que el `diag` no la usa para decidir: **mide**. Y medir sale gratis, porque el
+cortafuegos geográfico salta **antes** que la autenticación: un `POST /order` con cuerpo vacío y sin
+credenciales ya devuelve el 403 de región. Cualquier servidor candidato se puede evaluar antes de alquilarlo.
+
+⚠️ **EL TOKEN DE HETZNER NO ESTÁ.** Lo busqué en todo el historial de esta sesión, en el disco y en las
+variables de Render: no aparece. Mis propias notas de agosto dicen que vivía en el scratchpad de **otra**
+sesión, y esos contenedores se borran. No es recuperable desde aquí; tiene que darlo Alexis.
 
 ⚠️ **DOS CLAVES QUEMADAS.** La clave privada de la cuenta de pruebas y la clave del relayer se enviaron por
 chat: quedan en la conversación, en los registros y en el almacén de imágenes. **Ninguna de las dos puede

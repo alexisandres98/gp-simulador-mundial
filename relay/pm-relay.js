@@ -30,6 +30,7 @@
 const O = require('../polymarket/orden');
 const C = require('../polymarket/clob');
 const S = require('../lib/secp256k1');
+const GEO = require('./geo-polymarket');
 
 const PK = () => String(process.env.PM_PRIVATE_KEY || '').trim();
 const MAKER = () => String(process.env.PM_MAKER_ADDRESS || '').trim();          // la wallet con los fondos
@@ -70,13 +71,18 @@ async function diag() {
   // ¿lee?
   const lec = await C.pide('/markets');
   out.lectura = { status: lec.status, ok: lec.ok };
-  // ¿coloca? POST vacío y sin firma: no puede colocar nada, y separa "bloqueado por región" de "vivo"
+  // ¿coloca? POST vacío y sin firma: no puede colocar nada, y separa "bloqueado por región" de "vivo".
+  // Comprobado: el cortafuegos geográfico salta ANTES que la autenticación, así que esta sonda no necesita
+  // ni clave ni dinero y sirve para medir CUALQUIER servidor candidato.
   const esc = await C.pide('/order', { metodo: 'POST', cuerpo: {} });
   out.trading = { status: esc.status, cuerpo: (esc.texto || '').slice(0, 200) };
   out.bloqueado_por_region = /restricted in your region|geoblock/i.test(esc.texto || '');
+  // Y el país con nombre y apellidos, más por qué está o no está permitido según la lista de la propia
+  // casa. Sin esto, un `bloqueado_por_region: true` no dice si es cosa de la región o de un fallo de red.
+  out.donde_estamos = await GEO.donde();
   out.veredicto = out.bloqueado_por_region
-    ? 'ESTA REGIÓN TAMPOCO SIRVE: el trading sigue bloqueado. No se puede colocar desde aquí.'
-    : 'la región permite colocar (el 403 de región no aparece)';
+    ? `ESTA REGIÓN NO SIRVE (${out.donde_estamos.pais || '¿?'}): ${out.donde_estamos.por_que || 'el trading está bloqueado'}`
+    : `la región permite colocar (${out.donde_estamos.pais || '¿?'}: ${out.donde_estamos.por_que || 'el 403 de región no aparece'})`;
   // ¿credenciales?
   if (pk && !out.bloqueado_por_region) {
     const c = await credenciales();

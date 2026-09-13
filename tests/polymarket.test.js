@@ -137,4 +137,34 @@ t('el brazo rechaza lo que no entiende', () => {
   assert.match(PM.valida({ tokenId: '1', side: 'LAY', price: 0.5, size: 1 }), /BUY o SELL/);
 });
 
+// ── EL MAPA DE PAÍSES DE LA CASA ────────────────────────────────────────────────────────────────────────
+// Este mapa decide DÓNDE puede vivir el brazo, así que un error aquí no se ve: se traduce en un servidor
+// alquilado que no puede colocar. Las subdivisiones son la parte fácil de equivocar — la casa bloquea
+// cuatro provincias de Canadá y tres regiones de Ucrania, no los países enteros.
+t('el mapa de países distingue subdivisiones, no solo países', () => {
+  const G = require('../relay/geo-polymarket');
+  const abre = (c, r) => G.veredicto(c, r).puede_abrir;
+  assert.strictEqual(abre('FI'), true, 'Finlandia no está en ninguna lista: por eso vale Helsinki');
+  assert.strictEqual(abre('DE'), false, 'Alemania es solo-cerrar: Fráncfort NO sirve');
+  assert.strictEqual(abre('SG'), false, 'Singapur es solo-cerrar: la otra región de Render tampoco');
+  assert.strictEqual(abre('US', 'IA'), false);
+  assert.strictEqual(abre('CA', 'ON'), false, 'Ontario sí está bloqueada');
+  assert.strictEqual(abre('CA', 'MB'), true, 'Manitoba no: bloquear Canadá entero sería un error caro');
+  assert.strictEqual(abre('UA', '43'), false, 'Crimea está sancionada');
+  assert.strictEqual(abre('UA', '30'), true, 'Kiev no lo está');
+  assert.strictEqual(abre('IE'), true, 'Irlanda solo está restringida en la web; la API no');
+  assert.strictEqual(G.veredicto('IE').clase, 'solo_cerrar_web');
+  assert.strictEqual(G.veredicto('IR').clase, 'ofac');
+});
+
+t('NINGUNA región de Render puede colocar en Polymarket', () => {
+  const G = require('../relay/geo-polymarket');
+  // Oregón, Ohio y Virginia son US; luego Fráncfort y Singapur. Medido además en vivo el 13-sep:
+  // gp-relay-eu (Fráncfort) sale con loc=DE. Queda escrito para que nadie —yo el primero— vuelva a
+  // pensar que el servicio que ya tenemos en Europa resuelve esto.
+  for (const [pais, region] of [['US', 'OR'], ['US', 'OH'], ['US', 'VA'], ['DE', ''], ['SG', '']]) {
+    assert.strictEqual(G.veredicto(pais, region).puede_abrir, false, `${pais}-${region} debería estar bloqueada`);
+  }
+});
+
 console.log(`polymarket: ${n} pruebas OK`);

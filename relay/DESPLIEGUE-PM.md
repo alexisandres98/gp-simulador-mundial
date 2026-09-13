@@ -100,12 +100,39 @@ El servidor es el mismo que ya coloca en Cloudbet: **`gp-cb-relay-hel2`, Hetzner
 No hace falta una máquina nueva. Lo que cambia es que el proceso pasa a tener dos brazos y una variable más:
 la clave privada de la wallet de Polymarket.
 
+## DÓNDE SE PUEDE COLOCAR: el mapa lo publica la casa (13-sep)
+
+No hace falta adivinarlo ni medirlo servidor por servidor: Polymarket publica la lista
+(`docs.polymarket.com/developers/CLOB/geoblock`). Está codificada en `relay/geo-polymarket.js` con su fecha
+y su fuente, y con pruebas. Tres grupos:
+
+| grupo | qué significa | quién está |
+|---|---|---|
+| sancionadas (OFAC) | ni abrir ni cerrar | IR, SY, CU, KP, y Crimea / Donetsk / Lugansk |
+| **solo cerrar, web Y API** | se pueden cerrar posiciones, **no abrir ninguna** | **US, DE, GB, FR, IT, BE, PL, SK, SG, BR, AU, NZ, RU, TW, TH, VE**, y CA-BC/ON/AB/QC |
+| solo cerrar en la web | la API **no** está restringida → **sirve para el brazo** | IE, JP, NL, MT |
+
+Dos consecuencias que ahorran tiempo y dinero:
+
+1. **Finlandia no aparece en ninguna lista.** El servidor de Helsinki no fue una suposición afortunada: es
+   de los pocos sitios desde donde se puede abrir posición. No hay que buscar otra región.
+2. **Ninguna región de Render puede colocar.** Render tiene cinco: Oregón, Ohio, Virginia (US), Fráncfort
+   (DE) y Singapur (SG) — las cinco están en la lista de solo-cerrar. Así que el servicio `gp-relay-eu` que
+   ya existe en Fráncfort, y que controlamos entero con la llave de Render, **no sirve para esto**.
+   Comprobado además en vivo: su `/health` sale con `loc=DE, colo=FRA`. Es el atajo evidente y no existe.
+
+La lista puede cambiar. Por eso el `diag` del brazo no la usa para decidir: mide. Dos sondas, las dos
+gratis y sin clave, porque **el cortafuegos geográfico salta antes que la autenticación** (comprobado):
+`GET polymarket.com/api/geoblock` dice el país, y un `POST /order` con cuerpo vacío dice si la puerta está
+abierta. Con eso se puede evaluar cualquier servidor candidato antes de alquilarlo.
+
 ## Por qué la clave va ahí y no en Render
 
 La misma razón que con la llave de Cloudbet, y va escrita en `real-executor/relay.js` desde agosto: el
 servidor principal es público, sirve la plataforma entera a casi mil usuarios y tiene muchísima más
 superficie de ataque. El relay no sirve a nadie más que al ejecutor. Además **Render no puede colocar en
-Polymarket ni aunque quisiera** — está en Oregón y la casa bloquea el trading desde Estados Unidos.
+Polymarket ni aunque quisiera**, y no solo por estar en Oregón: como dice el mapa de arriba, sus cinco
+regiones están bloqueadas.
 
 ## Pasos
 
@@ -166,9 +193,7 @@ curl "https://gpsimulador.com/api/internal/pm-relay?key=$GP_EXPORT_KEY&diag=1"
 ```
 
 Lo que hay que leer de la respuesta:
-- `bloqueado_por_region: false` → Finlandia sirve. Si sale `true`, este brazo tampoco vale y hay que
-  buscar otra región (el mapa de Cloudbet decía que Brasil, Argentina, México, Chile, Colombia y Canadá
-  también pasaban, pero **eso era el mapa de Cloudbet, no el de Polymarket** — habría que volver a medirlo).
+- `bloqueado_por_region: false` y `donde_estamos.pais: "FI"` → Finlandia sirve (ver el mapa de abajo).
 - `firmante` → tiene que ser la "Dirección del firmante" que muestra Polymarket en Ajustes.
 - `maker_igual_firmante: false` → confirma que es Proxy o Safe, no Deposit ni EOA.
 - `credenciales.ok: true` → la casa nos reconoce.

@@ -1,5 +1,67 @@
 # Desplegar el brazo de Polymarket en Helsinki
 
+## LO QUE HAY QUE MANDAR PARA DAR DE ALTA UNA CUENTA
+
+Seis datos. Con eso el ejecutor arranca; todo lo demás lo averigua el sistema.
+
+| dato | dónde sale | ejemplo |
+|---|---|---|
+| **clave privada del firmante** | de la wallet que controla la cuenta | `0x…` (64 hex) |
+| **dirección de la cuenta** | Polymarket → el menú de perfil, arriba | `0x922eeC312…` |
+| **cuánto se fondea** | decisión tuya | `200` |
+| **cuánto por apuesta** | decisión tuya | `5` |
+| **qué familias** | decisión tuya | `futbol:no` |
+| **un `token_id` de cualquier mercado abierto** | para averiguar el tipo de firma | un entero largo |
+
+Lo que **NO** hay que mandar, porque se averigua solo: el tipo de firma de la cuenta, el `tick_size` de cada
+mercado, si un mercado es de riesgo negativo, las credenciales de trading del CLOB y la dirección del
+firmante (sale de la clave).
+
+⚠️ **La clave privada no va por chat.** Se pone directamente como variable de entorno en el relay. Si me la
+mandas por aquí, queda en la conversación y en los logs y hay que rotarla — igual que pasó con la del
+relayer y con `GP_REAL_RELAY_TOKEN` el 7-sep, que sigue pendiente.
+
+## Las variables, de un vistazo
+
+En el **relay de Helsinki** (ahí vive el secreto):
+```
+PM_PRIVATE_KEY     la clave privada del firmante
+PM_MAKER_ADDRESS   la dirección de la cuenta (la que tiene los fondos)
+PM_SIG_TYPE        lo dice el paso 4 del alta
+PM_MAX_USD         25      ← tope duro por orden, la última red
+```
+
+En **Render** (ahí vive la política):
+```
+GP_PM_BANCO            200
+GP_PM_STAKE            5
+GP_PM_MAX_EXPOSICION   100     (si no se pone: la mitad del banco)
+GP_PM_PARADA_DIARIA_PCT 15
+GP_PM_FAMILIAS         futbol:no
+GP_PM_ENABLED          1       ← SIN esto el ejecutor ensaya y no coloca
+```
+
+## El alta, en una sola llamada
+
+```bash
+curl "https://gpsimulador.com/api/internal/pm-relay?key=$GP_EXPORT_KEY&alta=1&token=<token_id>"
+```
+
+Devuelve cinco escalones y se para en el primero que falle:
+
+1. ¿el brazo responde y **la región deja colocar**?
+2. ¿la clave da la dirección del firmante que muestra Polymarket?
+3. ¿la casa nos entrega credenciales de trading?
+4. **¿cuál es el tipo de firma?** — se averigua mandando una orden de compra a 0,01 sobre un token real:
+   si la firma vale, la casa la acepta y la deja descansando en el libro (donde nunca se cruza, porque
+   nadie vende a ese precio), y se cancela al instante. **Coste cero.** Si no vale, se prueba el siguiente.
+5. ¿la política del ejecutor está puesta?
+
+Con los cinco en verde y `GP_PM_ENABLED=1`, el ejecutor coloca en el barrido siguiente (cada 10 minutos).
+
+---
+
+
 El servidor es el mismo que ya coloca en Cloudbet: **`gp-cb-relay-hel2`, Hetzner Helsinki, `2.29.18.155:8443`**.
 No hace falta una máquina nueva. Lo que cambia es que el proceso pasa a tener dos brazos y una variable más:
 la clave privada de la wallet de Polymarket.

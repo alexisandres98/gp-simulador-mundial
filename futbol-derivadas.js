@@ -476,7 +476,14 @@ function tabla() {
   const filas = Object.entries(byFam).map(([fam, v]) => {
     const a = agrega(v);
     const cerradas = v.filter((p) => p.status === 'SETTLED');
-    const gano = (p) => (p.result === 'won' ? 1 : p.result === 'half_won' ? 0.75 : p.result === 'lost' ? 0 : p.result === 'half_lost' ? 0.25 : null);
+    // ACERTÓ O NO ACERTÓ: 1, 0 o fuera. Nada de medias tintas, y por una razón concreta: las dos pruebas de
+    // la vara hacen `g ? 1 : 0`, y en JavaScript 0,25 es VERDADERO. Devolver 0,25 para un medio-perdida la
+    // contaba como acierto, y por eso el test directo del hándicap decía ROI +5,19 % mientras las unidades
+    // decían −263. Un medio-ganada acertó (el resultado ocurrió) y una medio-perdida no; las devoluciones se
+    // quedan fuera porque no hay acierto que medir. El ROI de verdad es el de `units`, no el de esta prueba,
+    // que con líneas de cuarto solo aproxima.
+    const gano = (p) => (p.result === 'won' || p.result === 'half_won' ? 1
+      : (p.result === 'lost' || p.result === 'half_lost' ? 0 : null));
     // EL MARGEN DE LA CASA, MEDIDO POR LA PROPIA FAMILIA. Cada pick guardó el sobre-redondeo de su par en el
     // momento de nacer (`over_pct`); la mediana de esos —no la media, que se la comen cuatro capturas rotas—
     // partida por dos es lo que paga UNA apuesta. Las picks anteriores al 13-sep no lo llevan, así que estas
@@ -535,7 +542,7 @@ function tabla() {
       liston_pp: 'ventaja mínima que se le pide a la familia: 3 pp más su error de calibración medido (solo v2; la v1 sigue congelada en 3 pp)',
       error_cal_pp: 'peor desviación de esa familia medida contra 33.335 partidos con λ resuelta del cierre. El suelo de ruido del método son las familias de control que ya publicamos: 3,4 y 2,9 pp',
       cierre_aporta: 'si el cierre de la casa predice mejor que nuestra entrada. Si NO, el CLV de esta familia no es evidencia de nada',
-      modelo_contra_precio: 'Brier pareado: ¿acierta más nuestra probabilidad o la del precio? Es el test directo, sin pasar por el cierre',
+      modelo_contra_precio: 'Brier pareado: ¿acierta más nuestra probabilidad o la del precio? Es el test directo, sin pasar por el cierre. Su `roi_pct` APROXIMA (trata medias líneas como enteras): el ROI bueno es `roi_pct` de la fila, que sale de las unidades reales',
       veredicto: 'el de lib/vara.js, el mismo que juzga a todas las demás familias del sistema',
     },
   };

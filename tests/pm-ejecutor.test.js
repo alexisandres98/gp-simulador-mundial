@@ -159,6 +159,75 @@ const colocador = (registro) => async (o) => { registro.push(o); return { ok: tr
     process.env.GP_PM_MAX_EXPOSICION = guarda;
   });
 
+  // ── EL ALTA: LA PUERTA DE SALIDA A DINERO REAL ────────────────────────────────────────────────────────
+  // Estas pruebas existen por un fallo real: la ruta leía el diagnóstico un nivel por encima de donde
+  // están los campos, así que los tres primeros escalones salían en ROJO con el brazo perfectamente sano
+  // — y un alta que dice que no cuando todo está bien es peor que una que se rompe, porque manda a buscar
+  // el problema donde no está. Salió probando el alta entera con la cuenta de pruebas.
+  const diagBueno = {
+    clave_presente: true, bloqueado_por_region: false,
+    firmante: '0x0bcaaf8130f073e72ea525ddd0c3af588add95aa',
+    maker_configurado: '0x922eeC312Eeb050184e47b633098A8ABc898F805',
+    maker_igual_firmante: false,
+    donde_estamos: { pais: 'FI', puede_abrir: true },
+    lectura: { status: 200, ok: true }, trading: { status: 401 },
+    credenciales: { ok: true, api_key_cola: 'ef05cd' },
+  };
+
+  await t('con todo en orden, los cinco escalones pasan', () => {
+    const r = EJ.pasosAlta({ diag: diagBueno, tipoFirma: { ok: true, tipo_firma: 'proxy', cancelada: true } });
+    assert.strictEqual(r.alta_completa, true, JSON.stringify(r.paso.filter((p) => !p.ok)));
+    assert.strictEqual(r.paso.length, 5);
+    assert.strictEqual(r.paso[3].tipo_firma, 'proxy');
+    // encendido está en 1 en estas pruebas, así que el veredicto tiene que ser el de "colocará"
+    assert.match(r.veredicto, /LISTO Y ENCENDIDO/);
+  });
+
+  await t('un diagnóstico vacío NO puede dar el alta por buena', () => {
+    for (const d of [undefined, null, {}, { clave_presente: true }, { bloqueado_por_region: false }]) {
+      const r = EJ.pasosAlta({ diag: d, tipoFirma: { ok: true, tipo_firma: 'proxy' } });
+      assert.strictEqual(r.alta_completa, false, 'no debería pasar con: ' + JSON.stringify(d));
+    }
+  });
+
+  await t('cada escalón cae por su propio motivo, y solo por el suyo', () => {
+    const casos = [
+      [{ ...diagBueno, clave_presente: false }, 1],
+      [{ ...diagBueno, bloqueado_por_region: true }, 1],
+      [{ ...diagBueno, firmante: null }, 2],
+      [{ ...diagBueno, credenciales: { ok: false, status: 401 } }, 3],
+    ];
+    for (const [d, n] of casos) {
+      const r = EJ.pasosAlta({ diag: d, tipoFirma: { ok: true, tipo_firma: 'proxy' } });
+      const malos = r.paso.filter((p) => !p.ok).map((p) => p.n);
+      assert.ok(malos.includes(n), `el escalón ${n} debía caer; cayeron ${JSON.stringify(malos)}`);
+      // y el 4 no se intenta si los tres primeros no están: preguntar el tipo de firma manda una orden
+      if (n <= 3) assert.ok(!r.paso.some((p) => p.n === 4 && p.ok), 'no se intenta el 4 sin los tres primeros');
+    }
+  });
+
+  await t('sin token, el escalón 4 dice qué falta en vez de fallar en silencio', () => {
+    const r = EJ.pasosAlta({ diag: diagBueno });
+    const p4 = r.paso.find((p) => p.n === 4);
+    assert.strictEqual(p4.ok, false);
+    assert.match(p4.falta, /token_id/);
+  });
+
+  await t('si el brazo no contesta JSON, el alta dice POR QUÉ y no se lo calla', () => {
+    const r = EJ.pasosAlta({ diag: {}, transporteDiag: { status: 502, texto: 'Bad Gateway' } });
+    assert.strictEqual(r.alta_completa, false);
+    assert.strictEqual(r.paso[0].detalle.transporte.status, 502);
+  });
+
+  await t('el tipo de firma que devuelve la casa se propaga tal cual, sin inventar', () => {
+    const r = EJ.pasosAlta({ diag: diagBueno, tipoFirma: { ok: false, why: 'ningún tipo de firma valió', intentos: [{ tipo: 'proxy' }, { tipo: 'safe' }] } });
+    const p4 = r.paso.find((p) => p.n === 4);
+    assert.strictEqual(p4.ok, false);
+    assert.strictEqual(p4.why, 'ningún tipo de firma valió');
+    assert.strictEqual(p4.intentos.length, 2);
+    assert.strictEqual(r.alta_completa, false);
+  });
+
   fs.rmSync(process.env.GP_PM_DIR, { recursive: true, force: true });
   console.log(`pm-ejecutor: ${n} pruebas OK`);
 })();

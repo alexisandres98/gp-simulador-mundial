@@ -22167,38 +22167,21 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get('alta') === '1') {
         const EJ = require('./polymarket/ejecutor');
         const token = String(url.searchParams.get('token') || '');
-        const paso = [];
-        const d = await pide('/pm/diag');
-        paso.push({ n: 1, pregunta: '¿el brazo responde y la región deja colocar?',
-          ok: !!(d && d.clave_presente && d.bloqueado_por_region === false),
-          detalle: d && { region_bloqueada: d.bloqueado_por_region, lectura: d.lectura, veredicto: d.veredicto } });
-        paso.push({ n: 2, pregunta: '¿la clave da la dirección del firmante que muestra Polymarket?',
-          ok: !!(d && d.firmante), firmante: d && d.firmante, maker: d && d.maker_configurado,
-          nota: d && d.maker_igual_firmante === false ? 'la cuenta y el firmante son distintos: es Proxy o Safe' : null });
-        paso.push({ n: 3, pregunta: '¿la casa nos entrega credenciales de trading?',
-          ok: !!(d && d.credenciales && d.credenciales.ok), detalle: d && d.credenciales });
-        const listo3 = paso.every((x) => x.ok);
-        if (listo3 && token) {
-          // el paso que NO se puede deducir: se pregunta a la casa con una orden que no puede llenarse
-          const tf = await pide('/pm/tipofirma?token=' + encodeURIComponent(token), {});
-          paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: !!(tf && tf.ok),
-            tipo_firma: tf && tf.tipo_firma, cancelada: tf && tf.cancelada, intentos: tf && tf.intentos,
-            siguiente: tf && tf.siguiente_paso });
-        } else if (listo3) {
-          paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: false,
-            falta: 'pásame `&token=<token_id de un mercado abierto>` y lo averiguo con una orden que no puede llenarse (coste cero)' });
+        // `pide()` devuelve { status, json, texto }: la respuesta del brazo va DENTRO de `json`. Este
+        // bloque la leía del nivel de arriba, así que los tres primeros escalones salían en rojo con el
+        // brazo sano. La lógica de los escalones vive ahora en `EJ.pasosAlta`, que se prueba sola.
+        const rd = await pide('/pm/diag');
+        const d = (rd && rd.json) || {};
+        const transporteDiag = rd && rd.json ? undefined : { status: rd && rd.status, error: rd && rd.error, texto: rd && rd.texto };
+        let tf, transporteTipo;
+        const hazTipo = token && d.clave_presente && d.bloqueado_por_region === false
+          && d.firmante && d.credenciales && d.credenciales.ok;
+        if (hazTipo) {
+          const rtf = await pide('/pm/tipofirma?token=' + encodeURIComponent(token), {});
+          tf = (rtf && rtf.json) || {};
+          transporteTipo = rtf && rtf.json ? undefined : { status: rtf && rtf.status, error: rtf && rtf.error, texto: rtf && rtf.texto };
         }
-        const c = EJ.CFG();
-        paso.push({ n: 5, pregunta: '¿la política del ejecutor está puesta?',
-          ok: !!(c.banco > 0 && c.stake > 0 && c.familias.length),
-          politica: { encendido: c.encendido, banco: c.banco, stake: c.stake,
-            exposicion_max: EJ.topeExposicion(c), parada_diaria_pct: c.parada_diaria_pct, familias: c.familias } });
-        const todos = paso.every((x) => x.ok);
-        return json(res, 200, { brazo: base, alta_completa: todos, paso,
-          veredicto: todos
-            ? (c.encendido ? 'LISTO Y ENCENDIDO: el ejecutor colocará en el próximo barrido.'
-              : 'LISTO PERO EN SECO: falta poner GP_PM_ENABLED=1 para que coloque de verdad.')
-            : 'FALTA algo — mira el primer paso con ok:false.' });
+        return json(res, 200, { brazo: base, ...EJ.pasosAlta({ diag: d, tipoFirma: tf, transporteDiag, transporteTipo }) });
       }
       if (url.searchParams.get('estado') === '1') {
         return json(res, 200, { ejecutor: require('./polymarket/ejecutor').estado(), ultima_pasada: _pmOut || null });

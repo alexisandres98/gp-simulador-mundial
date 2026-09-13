@@ -237,4 +237,48 @@ function reset() {
   return { ok: true, banco: c.banco };
 }
 
-module.exports = { CFG, topeExposicion, familiaDe, permitida, barrer, liquidar, estado, reset, DIR };
+// ── LOS CINCO ESCALONES DEL ALTA ────────────────────────────────────────────────────────────────────────
+// Vive aquí, separado de la ruta, porque es la PUERTA DE SALIDA A DINERO REAL: lo que decide si el ejecutor
+// arranca. Y porque ya falló de la forma más tonta posible — la ruta leía los campos del diagnóstico un
+// nivel por encima de donde están, así que los tres primeros escalones salían en rojo con el brazo
+// perfectamente sano. Se descubrió probando el alta entera con la cuenta de pruebas; sin esa prueba habría
+// aparecido el día del dinero de verdad, y con las prisas de ese día.
+//
+// Recibe lo que ya contestaron el brazo y la casa; no llama a nadie. Así se puede probar entera.
+function pasosAlta({ diag, tipoFirma, transporteDiag, transporteTipo } = {}) {
+  const d = diag || {};
+  const paso = [];
+  paso.push({ n: 1, pregunta: '¿el brazo responde y la región deja colocar?',
+    ok: !!(d.clave_presente && d.bloqueado_por_region === false),
+    detalle: { pais: d.donde_estamos && d.donde_estamos.pais, region_bloqueada: d.bloqueado_por_region,
+      lectura: d.lectura, trading: d.trading, veredicto: d.veredicto, transporte: transporteDiag } });
+  paso.push({ n: 2, pregunta: '¿la clave da la dirección del firmante que muestra Polymarket?',
+    ok: !!d.firmante, firmante: d.firmante, maker: d.maker_configurado,
+    comprueba: d.firmante ? 'que este firmante sea el que muestra Polymarket en Ajustes' : null,
+    nota: d.maker_igual_firmante === false ? 'la cuenta y el firmante son distintos: es Proxy o Safe' : null });
+  paso.push({ n: 3, pregunta: '¿la casa nos entrega credenciales de trading?',
+    ok: !!(d.credenciales && d.credenciales.ok), detalle: d.credenciales });
+  const listo3 = paso.every((x) => x.ok);
+  if (listo3 && tipoFirma !== undefined) {
+    const tf = tipoFirma || {};
+    paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: !!tf.ok,
+      tipo_firma: tf.tipo_firma, cancelada: tf.cancelada, intentos: tf.intentos, mercado: tf.mercado,
+      why: tf.why, siguiente: tf.siguiente_paso, transporte: transporteTipo });
+  } else if (listo3) {
+    paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: false,
+      falta: 'pásame `&token=<token_id de un mercado abierto>` y lo averiguo con una orden que no puede llenarse (coste cero)' });
+  }
+  const c = CFG();
+  paso.push({ n: 5, pregunta: '¿la política del ejecutor está puesta?',
+    ok: !!(c.banco > 0 && c.stake > 0 && c.familias.length),
+    politica: { encendido: c.encendido, banco: c.banco, stake: c.stake, exposicion_max: topeExposicion(c),
+      parada_diaria_pct: c.parada_diaria_pct, familias: c.familias } });
+  const todos = paso.every((x) => x.ok);
+  return { alta_completa: todos, paso,
+    veredicto: todos
+      ? (c.encendido ? 'LISTO Y ENCENDIDO: el ejecutor colocará en el próximo barrido.'
+        : 'LISTO PERO EN SECO: falta poner GP_PM_ENABLED=1 para que coloque de verdad.')
+      : 'FALTA algo — mira el primer paso con ok:false.' };
+}
+
+module.exports = { CFG, topeExposicion, familiaDe, permitida, barrer, liquidar, estado, reset, pasosAlta, DIR };

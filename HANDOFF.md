@@ -60,11 +60,46 @@ tarde — el servidor de Cloudbet lleva desde agosto con código que no se podí
 aquella sesión se fue con su contenedor. Si el servidor principal no contesta, arranca con la copia que ya
 tiene: un brazo que se cae cada vez que desplegamos no sirve.
 
-**LO ÚNICO QUE FALTA ES LA CLAVE PRIVADA**, y está sin poner a propósito: no puede ir por el chat (queda en
-el historial) ni en el `cloud-init` (Hetzner lo guarda y lo lee cualquiera con el token del proyecto). Dos
-caminos, ambos en `relay/DESPLIEGUE-PM.md`: una llamada desde el ordenador de Alexis verificando el
-certificado (la máquina lo emite con su IP como `subjectAltName`, y la huella se contrasta por dos caminos
-independientes), o la consola de Hetzner con `poner-clave.sh`. La puerta de alta vale **una sola vez**.
+**PROBADO DE PUNTA A PUNTA CON UNA CUENTA REAL (13-sep, noche).** Alexis pidió que se probara con su cuenta
+de pruebas antes de crear la buena. Se hizo, y la prueba encontró **cuatro cosas que no habrían salido de
+ninguna otra forma**:
+
+1. **La cuenta es una Deposit Wallet, y eso no era un caso raro: es EL caso.** La casa rechazó los tres
+   tipos de firma con «maker address not allowed, please use the deposit wallet flow», y su documentación lo
+   explica: *toda* cuenta creada desde el 4-may-2026 lo es. Estaba sin implementar y marcado como pendiente
+   «por si acaso». Ahora está: `signer` = la propia wallet, orden envuelta en `TypedDataSign` (ERC-7739) y
+   firma con cola de 317 bytes. No se dedujo del estándar —ERC-7739 admite variantes y la casa usa la
+   corta—: se leyó de su propia implementación (`@polymarket/client` 0.10.0) y se cotejó pieza a pieza en
+   `tests/deposito.test.js`.
+2. **El `owner` del cuerpo es la clave de API, un UUID, no una dirección.** Sin él la casa dice «the order
+   owner has to be the owner of the API KEY», que suena a direcciones y no lo es. Costó una ronda de sondas
+   buscando el problema donde no estaba.
+3. **El alta salía en verde con el brazo firmando mal.** La sonda medía `deposito` y la máquina tenía
+   `PM_SIG_TYPE=proxy` fijado: todas las órdenes se habrían rechazado una a una con el alta diciendo que
+   todo estaba listo. Ahora el paso 4 compara lo medido con lo que se usa, y no pasa si difieren.
+4. **El alta nunca había funcionado**: leía el diagnóstico un nivel por encima de donde están los campos, así
+   que los tres primeros escalones salían en rojo con el brazo perfectamente sano.
+
+**DÓNDE TERMINÓ LA PRUEBA.** Alta con los cinco escalones en verde, y una orden real de 4,94 $ por el camino
+de colocación de verdad:
+
+```
+POST /order → 400 "not enough balance: balance: 8100, order amount: 5140070"
+```
+
+La casa validó región, firma, tipo, identidad, `owner` y contrato de riesgo negativo. Lo único que objeta es
+que la cuenta tiene 0,0081 $. **Falta el dinero, no el código.** (Nota: 5,14 $ para una orden de 4,94 — la
+casa añade su comisión, y eso hay que tenerlo en cuenta al mirar el tope de exposición.)
+
+Y el ejecutor, en seco sobre las **437 señales reales** de ese momento: 3 revisadas, 2 fuera de familia, 1
+elegida — 26 acciones a 0,19 = 4,94 $, exactamente el stake configurado.
+
+**LO ÚNICO QUE FALTA ES LA CLAVE Y EL DINERO.** La clave está sin poner a propósito: no puede ir por el chat
+(queda en el historial) ni en el `cloud-init` (Hetzner lo guarda y lo lee cualquiera con el token del
+proyecto). Dos caminos, ambos en `relay/DESPLIEGUE-PM.md`: una llamada desde el ordenador de Alexis
+verificando el certificado (la máquina lo emite con su IP como `subjectAltName`, y la huella se contrasta por
+dos caminos independientes), o la consola de Hetzner con `poner-clave.sh`. La puerta de alta vale **una sola
+vez**. La clave de pruebas está borrada de la máquina y del scratchpad.
 
 **EL MAPA DE PAÍSES, QUE RESULTÓ QUE PUBLICA LA CASA.** Buscando cómo desplegar sin el token de Hetzner
 apareció lo que había que haber mirado primero: Polymarket publica su lista de jurisdicciones

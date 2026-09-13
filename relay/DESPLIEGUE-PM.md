@@ -1,16 +1,33 @@
 # El brazo de Polymarket
 
-**Estado: la máquina existe, está en marcha y la casa la deja colocar. Falta una cosa: la clave privada.**
+**Estado: PROBADO DE PUNTA A PUNTA contra la casa, con una cuenta real. Falta la clave y el dinero.**
 
 | | |
 |---|---|
 | máquina | `gp-pm-hel1` · Hetzner **Helsinki (FI)** · CX23 · **6,49 €/mes** |
 | proyecto | «GP simulador polymarket» (separado del de Cloudbet, a propósito) |
 | dirección | la que diga `GP_PM_RELAY_URL` en Render |
-| comprobado | `POST /order` responde **401 «missing address header»**, no el 403 de región |
 
-Ese 401 es la noticia. Desde Render (Oregón) esa misma llamada devuelve **403 «Trading restricted in your
-region»**. Desde Helsinki la casa ya solo se queja de que no nos identificamos: **la puerta está abierta**.
+## Lo que la casa aceptó (13-sep, cuenta de pruebas)
+
+Con la cuenta de pruebas de Alexis dentro, el alta dio **los cinco escalones en verde** y una orden real de
+4,94 $ llegó hasta el último filtro:
+
+```
+POST /order → 400 "not enough balance / allowance:
+              the balance is not enough -> balance: 8100, order amount: 5140070"
+```
+
+Ese mensaje es el final del camino. La casa validó la región, la firma envuelta de Deposit Wallet, el tipo,
+la identidad, el `owner` y el contrato de riesgo negativo, y lo único que objeta es que la cuenta tiene
+**0,0081 $** y la orden compromete **5,14 $** (los 4,94 de la orden más su comisión). Las dos cifras son
+enteros de seis decimales y cuadran al céntimo.
+
+**Ojo con esa comisión al calcular la exposición**: un stake de 5 $ compromete ~5,14 $ en la casa. Con banco
+de 200 y tope de 100 sobra margen, pero el tope se queda corto en un ~3 % si algún día se apura.
+
+Y el ejecutor, en una pasada en seco sobre las **437 señales reales** de ese momento: 3 revisadas, 2 fuera
+de familia, 1 elegida — comprar 26 acciones a 0,19 = 4,94 $, que es exactamente el stake configurado.
 
 ## Lo único que falta: la clave privada
 
@@ -182,21 +199,38 @@ experimento. Si alguien entrara en el brazo, el techo de la pérdida son esos 20
 caduca a los 180 días—, está **en beta**, funciona **solo con Deposit Wallets** y exige una Builder API key
 que hay que pedir a `builder@polymarket.com`.)
 
-## Cuál es el `PM_SIG_TYPE`
+## El tipo de firma: la Deposit Wallet es EL caso, no un caso raro
 
-| wallet | `PM_SIG_TYPE` | maker | signer |
-|---|---|---|---|
-| Deposit Wallet | `deposito` | la misma dirección | la misma dirección |
-| Proxy Wallet (cuenta por email/magic) | `proxy` | la cuenta | el firmante |
-| Safe Wallet (cuenta por wallet de navegador) | `safe` | la cuenta | el firmante |
-| EOA | `eoa` | la misma dirección | la misma dirección |
+**Toda cuenta de Polymarket creada desde el 4-may-2026 es una Deposit Wallet.** Lo dice su documentación, y
+la casa nos lo confirmó rechazando los tres tipos antiguos con «maker address not allowed, please use the
+deposit wallet flow». La cuenta nueva de Alexis también lo será.
 
-Si la dirección de la cuenta y la del firmante son distintas, es `proxy` o `safe`; cuál de las dos lo
-averigua el paso 4 del alta. Equivocarse hace que la casa rechace **todas** las órdenes sin decir por qué.
+| wallet | cuándo | `PM_SIG_TYPE` |
+|---|---|---|
+| **Deposit Wallet** | **todas las creadas desde el 4-may-2026** | **`deposito` (por defecto, no hace falta ponerlo)** |
+| Proxy Wallet | legado: cuenta por Magic Link o Google | `proxy` |
+| Safe Wallet | legado: cuenta con MetaMask o Rabby | `safe` |
+| EOA | una wallet normal | `eoa` |
 
-⚠️ **La Deposit Wallet necesita además envolver la firma para ERC-7739, y eso NO está implementado.** Está
-escrito en `polymarket/orden.js` de dónde sale. Si la cuenta resulta ser Deposit Wallet, hay que añadirlo
-antes de colocar nada.
+Una Deposit Wallet es un contrato, no una persona: no firma con una clave, **valida** firmas (ERC-1271).
+Eso cambia tres cosas, todas implementadas y cotejadas contra el código de la casa en
+`tests/deposito.test.js`:
+
+1. **El `signer` de la orden es la propia wallet**, al revés que en Proxy y Safe. Quien firma sigue siendo
+   la clave del dueño; lo que cambia es a quién declara la orden como responsable.
+2. **Se firma la orden ENVUELTA** en un `TypedDataSign` (ERC-7739) que mete dentro el dominio de la cuenta,
+   para que una firma hecha para una cuenta no valga en otra.
+3. **La firma lleva cola**: separador de dominio, hash de la orden, el texto del tipo y su longitud. 317
+   bytes en total en vez de 65.
+
+⚠️ **`PM_SIG_TYPE` no se fija en el `cloud-init` a propósito.** El valor por defecto del código ya es
+`deposito`. Fijarlo fue exactamente cómo conseguimos que el alta midiera una cosa (`deposito`) y la máquina
+firmara otra (`proxy`), con los cinco escalones en verde y todas las órdenes rechazadas. Por eso el paso 4
+ahora **compara** lo medido con lo que el brazo usa y no pasa si difieren.
+
+Y un detalle que también nos costó una ronda: el campo **`owner` del cuerpo es la clave de API** (un UUID),
+no una dirección. Sin él la casa contesta «the order owner has to be the owner of the API KEY», que suena a
+direcciones y no lo es.
 
 ## Lo que este brazo NO hace
 

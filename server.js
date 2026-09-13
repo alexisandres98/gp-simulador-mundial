@@ -22041,6 +22041,52 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { out.cobertura_error = e.message; }
       return json(res, 200, out);
     }
+    // ── EL BRAZO DE POLYMARKET EN HELSINKI (13-sep) ────────────────────────────────────────────────
+    // El sandbox no alcanza el relay (su proxy corta los puertos no estándar), así que la verificación se
+    // hace desde aquí, igual que con el brazo de Cloudbet. Tres cosas y en este orden:
+    //   ?diag=1    ¿la región de Helsinki deja colocar en Polymarket? ¿la clave da la dirección esperada?
+    //              ¿la casa nos da credenciales de trading?
+    //   ?ensayo=1  construye y FIRMA una orden real con los parámetros que se le pasen, y NO la envía.
+    //              Es el paso de antes de tocar dinero: se ve exactamente qué se mandaría.
+    //   (POST)     coloca de verdad. Solo por orden humana explícita, nunca desde un job.
+    if (p === '/api/internal/pm-relay') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+      const rk = String(process.env.GP_RELAY_KEY || '');
+      if (!base || !rk) return json(res, 200, { error: 'faltan CLOUDBET_RELAY_URL o GP_RELAY_KEY' });
+      // el brazo usa certificado autofirmado (no hay dominio sobre la IP): se acepta sin verificar CA, pero
+      // el tráfico va cifrado. Misma decisión, y misma deuda, que el camino de Cloudbet.
+      const pide = (ruta, cuerpo = null) => new Promise((resolve) => {
+        const httpsW = require('https');
+        const datos = cuerpo ? JSON.stringify(cuerpo) : null;
+        const rq = httpsW.request(base + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(rk), {
+          method: cuerpo ? 'POST' : 'GET', rejectUnauthorized: false, timeout: 25000,
+          headers: datos ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(datos) } : {},
+        }, (rs) => { let t = ''; rs.on('data', (c) => { t += c; }); rs.on('end', () => {
+          let j = null; try { j = JSON.parse(t); } catch { }
+          resolve({ status: rs.statusCode, json: j, texto: j ? undefined : t.slice(0, 400) }); }); });
+        rq.on('error', (e) => resolve({ error: e.message }));
+        rq.on('timeout', () => { rq.destroy(); resolve({ error: 'timeout' }); });
+        if (datos) rq.write(datos);
+        rq.end();
+      });
+      if (url.searchParams.get('diag') === '1') return json(res, 200, { brazo: base, ...(await pide('/pm/diag')) });
+      const orden = {
+        tokenId: String(url.searchParams.get('token') || ''),
+        side: String(url.searchParams.get('side') || 'BUY').toUpperCase(),
+        price: Number(url.searchParams.get('price')),
+        size: Number(url.searchParams.get('size')),
+        tick: String(url.searchParams.get('tick') || '0.01'),
+        negRisk: url.searchParams.get('negrisk') === '1',
+        ref: String(url.searchParams.get('ref') || ''),
+      };
+      if (url.searchParams.get('ensayo') === '1') return json(res, 200, { brazo: base, ...(await pide('/pm/ensayo', orden)) });
+      if (req.method === 'POST' && url.searchParams.get('colocar') === '1') {
+        return json(res, 200, { brazo: base, ...(await pide('/pm/order', orden)) });
+      }
+      return json(res, 200, { brazo: base, uso: '?diag=1 · ?ensayo=1&token=&side=&price=&size= · POST ?colocar=1&… (solo por orden humana)' });
+    }
     // familias derivadas de fútbol: estado de la sombra nueva. `?run=1` fuerza una pasada.
     if (p === '/api/internal/futbol-derivadas') {
       const xk = process.env.GP_EXPORT_KEY || '';

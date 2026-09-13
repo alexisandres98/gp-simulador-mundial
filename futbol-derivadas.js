@@ -227,7 +227,10 @@ async function record(deps = {}) {
     const casas = new Set(filas.map((x) => x.sportsbook_code)).size;
     // precio sin vig: con el complementario cuando existe; sin él, el implícito crudo y se declara
     const opId = contrario(marketId);
-    let pMercado = null, comoMercado = 'implícita de la casa (sin complementario cotizado)';
+    // EL SOBRE-REDONDEO DE ESTE MERCADO, GUARDADO COMO NÚMERO. Es lo que cobra la casa por cruzar, y sin él
+    // la vara no puede decir si ganarle al cierre es ganar dinero. Se mide aquí, donde las dos caras están
+    // delante; reconstruirlo después, con los precios ya movidos, sería medir otra cosa.
+    let pMercado = null, overPct = null, comoMercado = 'implícita de la casa (sin complementario cotizado)';
     if (opId) {
       const op = porMercado.get(ceid + '|' + opId);
       if (op && op.length) {
@@ -247,7 +250,8 @@ async function record(deps = {}) {
         const nv = noVig.twoWayNoVig({ odds_decimal: best.o }, { odds_decimal: bop.o });
         if (nv && nv.a != null) {
           pMercado = nv.a;
-          comoMercado = `sin vig contra el lado contrario (sobre-redondeo ${r2(100 * nv.overround)} %)`;
+          overPct = r2(100 * nv.overround);
+          comoMercado = `sin vig contra el lado contrario (sobre-redondeo ${overPct} %)`;
         }
       }
     }
@@ -265,7 +269,8 @@ async function record(deps = {}) {
       const grupo = multivia.get(ceid + '|' + filas[0].market_family);
       if (grupo && grupo.n >= 3 && grupo.suma > masa * 1.005) {
         pMercado = (1 / best.o) * (masa / grupo.suma);
-        comoMercado = `sin vig sobre las ${grupo.n} salidas de la familia (sobre-redondeo ${r2(100 * (grupo.suma / masa - 1))} %)`;
+        overPct = r2(100 * (grupo.suma / masa - 1));
+        comoMercado = `sin vig sobre las ${grupo.n} salidas de la familia (sobre-redondeo ${overPct} %)`;
       }
     }
     // CONTAR POR FAMILIA, no solo en total. Un "sin_par: 1756" no dice si falta el complementario de una
@@ -321,7 +326,7 @@ async function record(deps = {}) {
       line: filas[0].line != null ? filas[0].line : null, side: filas[0].side || null,
       odds: best.o, book: best.sportsbook_code, books: casas,
       p_gp: r4(fila.probability), p_market: r4(pMercado), edge_pp: r2(100 * edge),
-      market_basis: comoMercado,
+      market_basis: comoMercado, over_pct: overPct,
       // el error de calibración con el que nació, para poder releer la pick dentro de tres meses y saber
       // cuánta de su "ventaja" era margen de error del propio modelo
       error_cal_pp: esNueva ? r2(100 * (mitades.ERROR_CAL[fam] || 0)) : null,
@@ -472,17 +477,38 @@ function tabla() {
     const a = agrega(v);
     const cerradas = v.filter((p) => p.status === 'SETTLED');
     const gano = (p) => (p.result === 'won' ? 1 : p.result === 'half_won' ? 0.75 : p.result === 'lost' ? 0 : p.result === 'half_lost' ? 0.25 : null);
-    let aporta = null, modelo = null, ve = null;
+    // EL MARGEN DE LA CASA, MEDIDO POR LA PROPIA FAMILIA. Cada pick guardó el sobre-redondeo de su par en el
+    // momento de nacer (`over_pct`); la mediana de esos —no la media, que se la comen cuatro capturas rotas—
+    // partida por dos es lo que paga UNA apuesta. Las picks anteriores al 13-sep no lo llevan, así que estas
+    // familias dirán `sin_margen_medido` hasta que acumulen picks nuevas. Es lo honesto: un margen supuesto
+    // haría pasar por invertible algo que no lo es.
+    const overs = v.map((p) => p.over_pct).filter((x) => Number.isFinite(x)).sort((x, y) => x - y);
+    const medOver = overs.length ? (overs.length % 2 ? overs[overs.length >> 1] : (overs[(overs.length >> 1) - 1] + overs[overs.length >> 1]) / 2) : null;
+    const margenLadoPct = medOver != null ? r2(medOver / 2) : null;
+
+    let aporta = null, modelo = null, ve = null, clvRec = null, tRec = null;
     if (vara) {
       try {
         aporta = vara.cierreAporta(cerradas.filter((p) => Number.isFinite(p.close_odds) && gano(p) != null),
-          { odds: 'odds', cierre: 'close_odds', gano });
+          { odds: 'odds', cierre: 'close_odds', gano, overPct: medOver || 0 });
       } catch { aporta = null; }
       try {
         modelo = vara.modeloContraPrecio(cerradas.filter((p) => gano(p) != null),
           { odds: 'odds', pModelo: 'p_gp', gano });
       } catch { modelo = null; }
-      try { ve = vara.veredicto ? vara.veredicto({ n: a.n, clv: a.clv_avg_pct, aporta, modelo }) : null; } catch { ve = null; }
+      // CLV RECORTADO AL 10 %, no crudo: la media cruda la destroza un cierre roto, y en este almacén los
+      // hay. Es el mismo recorte que se aplica a todas las demás familias del sistema.
+      try {
+        const clvs = cerradas.map((p) => p.clv_pct).filter((x) => Number.isFinite(x));
+        const rec = vara.recorta ? vara.recorta(clvs) : clvs;
+        if (rec.length >= 2) { clvRec = r2(vara.media(rec)); tRec = r2(vara.tDe(rec)); }
+      } catch { clvRec = null; tRec = null; }
+      // los nombres importan: `veredicto` espera exactamente estos, y pasárselos mal es cómo la tabla salía
+      // entera en `sin_margen_medido` sin que nada fallara
+      try {
+        ve = vara.veredicto({ clvRecortadoPct: clvRec, tRecortada: tRec, n: a.clv_n || a.n,
+          margenLadoPct, nMargen: overs.length, cierre: aporta, directo: modelo });
+      } catch (e) { ve = { veredicto: 'error', razon: e.message }; }
     }
     const esNueva = RULE2.familias.includes(fam);
     return {
@@ -493,6 +519,9 @@ function tabla() {
       abiertas: v.filter((p) => p.status === 'ACTIVE').length,
       anuladas: v.filter((p) => p.status === 'VOID').length,
       ...a,
+      clv_recortado_pct: clvRec, clv_t_recortada: tRec,
+      margen_lado_pct: margenLadoPct, n_margen: overs.length,
+      clv_neto_pct: (clvRec != null && margenLadoPct != null) ? r2(clvRec - margenLadoPct) : null,
       cierre_aporta: aporta, modelo_contra_precio: modelo, veredicto: ve,
     };
   }).sort((x, y) => (y.n - x.n) || String(x.familia).localeCompare(String(y.familia)));

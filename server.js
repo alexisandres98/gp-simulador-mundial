@@ -22141,9 +22141,16 @@ const server = http.createServer(async (req, res) => {
         const rq = httpsW.request(base + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(rk), {
           method: cuerpo ? 'POST' : 'GET', rejectUnauthorized: false, timeout: 25000,
           headers: datos ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(datos) } : {},
-        }, (rs) => { let t = ''; rs.on('data', (c) => { t += c; }); rs.on('end', () => {
+        }, (rs) => {
+          // La huella del certificado del brazo. No sirve para verificar nada aquí —ya aceptamos el
+          // autofirmado— pero es el dato que permite que Alexis mande la clave privada a esa máquina
+          // FIJANDO el certificado (`curl --pinnedpubkey`) en vez de con `-k` a ciegas. Sin esto, el único
+          // momento en que la clave viaja sería también el único sin autenticar al otro extremo.
+          let huella = null;
+          try { const c = rs.socket.getPeerCertificate(); huella = (c && c.fingerprint256) || null; } catch { /* sin TLS */ }
+          let t = ''; rs.on('data', (c) => { t += c; }); rs.on('end', () => {
           let j = null; try { j = JSON.parse(t); } catch { }
-          resolve({ status: rs.statusCode, json: j, texto: j ? undefined : t.slice(0, 400) }); }); });
+          resolve({ status: rs.statusCode, huella_cert: huella, json: j, texto: j ? undefined : t.slice(0, 400) }); }); });
         rq.on('error', (e) => resolve({ error: e.message }));
         rq.on('timeout', () => { rq.destroy(); resolve({ error: 'timeout' }); });
         if (datos) rq.write(datos);

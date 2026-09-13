@@ -191,7 +191,11 @@ async function colocar(b) {
   const c = await credenciales();
   if (!c.ok) return { ok: false, rechazado_por_el_brazo: 'sin credenciales de trading', detalle: c.why || c.texto };
 
-  const cuerpo = O.cuerpo(orden, firma.firma);
+  // EL `owner` DEL CUERPO ES LA CLAVE DE API, NO UNA DIRECCIÓN (13-sep). Es un UUID, y la casa lo compara
+  // con la clave con la que viene firmada la petición: si no coincide —o si falta— contesta «the order
+  // owner has to be the owner of the API KEY». Omitirlo nos costó cuatro rondas de sondas buscando el
+  // problema en la identidad de las direcciones, que era donde no estaba.
+  const cuerpo = O.cuerpo(orden, firma.firma, { owner: c.credenciales.apiKey });
   const r = await C.colocar({ cuerpoOrden: cuerpo, credenciales: c.credenciales, direccion: signer });
   return {
     ok: r.ok, status: r.status, respuesta: r.json, texto: r.json ? undefined : (r.texto || '').slice(0, 400),
@@ -223,7 +227,8 @@ async function ensayo(b) {
   return { ok: true, ensayo: true, dentro_del_tope: coste <= MAX_USD(), coste_usd: +coste.toFixed(4),
     mercado: mk, contrato: orden.dominio.verifyingContract,
     cumple_minimo: mk.min_order_size ? Number(b.size) >= mk.min_order_size : null,
-    cuerpo: O.cuerpo(orden, firma.firma), digest: firma.digest, firmante: signer };
+    cuerpo: O.cuerpo(orden, firma.firma, { owner: (await credenciales()).credenciales?.apiKey || null }),
+    digest: firma.digest, firmante: signer };
 }
 
 // ── ALTA DE UNA CUENTA: averiguar lo que no se puede saber preguntando ──────────────────────────────────
@@ -262,7 +267,8 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
       const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,
         tick: mk.tick, riesgoNegativo: mk.negRisk, maker, signer, tipoFirma: tipo, orderType: 'GTC' });
       const firma = O.firmar(orden, pk);
-      r = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma), credenciales: c.credenciales, direccion: signer });
+      r = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma, { owner: c.credenciales.apiKey }),
+        credenciales: c.credenciales, direccion: signer });
     } catch (e) { intentos.push({ tipo, error: e.message }); continue; }
     const id = r.json && (r.json.orderID || r.json.orderId || r.json.id);
     const aceptada = !!(r.ok && r.json && r.json.success !== false && id);
@@ -329,7 +335,8 @@ async function probarIdentidad({ tokenId, precio = '0.01' } = {}) {
       const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,
         tick: mk.tick, riesgoNegativo: mk.negRisk, maker, signer: duenyo, tipoFirma: 'deposito', orderType: 'GTC' });
       const firma = O.firmar(orden, pk);
-      const r2 = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma), credenciales: creds, direccion: c.cabecera });
+      const r2 = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma, { owner: creds.apiKey }),
+        credenciales: creds, direccion: c.cabecera });
       const id = r2.json && (r2.json.orderID || r2.json.orderId || r2.json.id);
       paso.orden = { status: r2.status, aceptada: !!(r2.ok && id),
         dice: (r2.json && (r2.json.error || r2.json.errorMsg)) || (r2.texto || '').slice(0, 160) };

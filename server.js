@@ -22183,6 +22183,12 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { brazo: base, ...EJ.pasosAlta({ diag: d, tipoFirma: tf, transporteDiag, transporteTipo }) });
       }
+      // la sonda de identidad: a nombre de quién van las credenciales frente a a nombre de quién va la
+      // orden. Cuatro combinaciones, cada una con una compra a 0,01 que no puede cruzarse y se cancela.
+      if (url.searchParams.get('identidad') === '1') {
+        const tk = String(url.searchParams.get('token') || '');
+        return json(res, 200, { brazo: base, ...(await pide('/pm/identidad?token=' + encodeURIComponent(tk), {})) });
+      }
       if (url.searchParams.get('estado') === '1') {
         return json(res, 200, { ejecutor: require('./polymarket/ejecutor').estado(), ultima_pasada: _pmOut || null });
       }

@@ -284,9 +284,71 @@ const estadoOrden = async (id) => {
   const c = await credenciales(); if (!c.ok) return { ok: false, why: 'sin credenciales' };
   return C.estadoOrden({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
 };
+// ── ¿A NOMBRE DE QUIÉN VAN LAS CREDENCIALES? (13-sep) ───────────────────────────────────────────────────
+// Con la firma de Deposit Wallet ya correcta, la casa dejó de quejarse del `maker` y pasó a quejarse de
+// otra cosa: «the order owner has to be the owner of the API KEY». O sea: la firma vale y el problema es
+// de IDENTIDAD — las credenciales están a nombre de la clave (el dueño) y la orden va a nombre de la
+// wallet.
+//
+// Hay dos direcciones y tres sitios donde puede ir cada una: el mensaje `ClobAuth` que se firma, la
+// cabecera con la que se piden las credenciales, y la cabecera con la que se manda la orden. Adivinar cuál
+// es cuál cuesta una tarde; preguntárselo a la casa cuesta ocho llamadas. Esto es lo segundo.
+//
+// Cada intento coloca una compra a 0,01 que no puede cruzarse —nadie vende a ese precio— y la cancela en
+// cuanto la casa contesta. Lo que se lee no es si la orden entró, sino QUÉ dijo la casa: los mensajes
+// distintos son el dato.
+async function probarIdentidad({ tokenId, precio = '0.01' } = {}) {
+  const pk = PK(); if (!pk) return { ok: false, why: 'falta PM_PRIVATE_KEY' };
+  const maker = MAKER(); if (!maker) return { ok: false, why: 'falta PM_MAKER_ADDRESS' };
+  if (!/^\d+$/.test(String(tokenId || ''))) return { ok: false, why: 'hace falta un tokenId real de un mercado abierto' };
+  const duenyo = S.direccionDe(pk);
+  const mk = await paramsDeMercado(tokenId);
+  const size = String(mk.min_order_size || 5);
+
+  const combos = [
+    { nombre: 'auth=dueño · cabecera=dueño', authDir: duenyo, cabecera: duenyo },
+    { nombre: 'auth=dueño · cabecera=wallet', authDir: duenyo, cabecera: maker },
+    { nombre: 'auth=wallet · cabecera=wallet', authDir: maker, cabecera: maker },
+    { nombre: 'auth=wallet · cabecera=dueño', authDir: maker, cabecera: duenyo },
+  ];
+  const salida = [];
+  for (const c of combos) {
+    const paso = { ...c };
+    let creds;
+    try {
+      // `esperada: duenyo` siempre: firma la clave que tenemos, diga lo que diga el mensaje
+      let r = await C.credenciales({ clavePrivada: pk, direccion: c.authDir, esperada: duenyo, crear: false });
+      if (!r.ok) r = await C.credenciales({ clavePrivada: pk, direccion: c.authDir, esperada: duenyo, crear: true });
+      paso.credenciales = r.ok ? { ok: true, cola: String(r.credenciales.apiKey).slice(-6) }
+        : { ok: false, status: r.status, dice: (r.texto || '').slice(0, 140) };
+      if (!r.ok) { salida.push(paso); continue; }
+      creds = r.credenciales;
+    } catch (e) { paso.credenciales = { ok: false, error: e.message }; salida.push(paso); continue; }
+
+    try {
+      const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,
+        tick: mk.tick, riesgoNegativo: mk.negRisk, maker, signer: duenyo, tipoFirma: 'deposito', orderType: 'GTC' });
+      const firma = O.firmar(orden, pk);
+      const r2 = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma), credenciales: creds, direccion: c.cabecera });
+      const id = r2.json && (r2.json.orderID || r2.json.orderId || r2.json.id);
+      paso.orden = { status: r2.status, aceptada: !!(r2.ok && id),
+        dice: (r2.json && (r2.json.error || r2.json.errorMsg)) || (r2.texto || '').slice(0, 160) };
+      if (id) {
+        const cancel = await C.cancelar({ id, credenciales: creds, direccion: c.cabecera });
+        paso.orden.id = id; paso.orden.cancelada = !!cancel.ok;
+      }
+    } catch (e) { paso.orden = { error: e.message }; }
+    salida.push(paso);
+    if (paso.orden && paso.orden.aceptada) break;         // encontrado: no se gastan más
+  }
+  const bueno = salida.find((s) => s.orden && s.orden.aceptada);
+  return { ok: !!bueno, mercado: mk, duenyo, wallet: maker, combinaciones: salida,
+    veredicto: bueno ? `la que vale es: ${bueno.nombre}` : 'ninguna combinación fue aceptada — mira qué dijo la casa en cada una' };
+}
+
 const cancelar = async (id) => {
   const c = await credenciales(); if (!c.ok) return { ok: false, why: 'sin credenciales' };
   return C.cancelar({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
 };
 
-module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, paramsDeMercado, valida, validaAlta, CLAVES };
+module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, probarIdentidad, paramsDeMercado, valida, validaAlta, CLAVES };

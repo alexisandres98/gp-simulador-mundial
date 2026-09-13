@@ -133,6 +133,9 @@ const manejar = async (req, res) => {
       return j(res, 200, await fn(body));
     }
     if (p === '/pm/estado') return j(res, 200, await PM.estadoOrden(String(url.searchParams.get('id') || '')));
+    if (p === '/pm/identidad' && req.method === 'POST') {
+      return j(res, 200, await PM.probarIdentidad({ tokenId: String(url.searchParams.get('token') || '') }));
+    }
     if (p === '/pm/tipofirma' && req.method === 'POST') {
       return j(res, 200, await PM.detectarTipoFirma({ tokenId: String(url.searchParams.get('token') || '') }));
     }

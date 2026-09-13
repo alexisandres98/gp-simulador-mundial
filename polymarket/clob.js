@@ -35,7 +35,11 @@ const TIPOS_AUTH = {
 };
 const MENSAJE_AUTH = 'This message attests that I control the given wallet';
 
-function firmaL1({ clavePrivada, direccion, timestamp, nonce = 0 }) {
+// `direccion` es lo que DICE el mensaje; `esperada` es quién debe recuperarse de la firma. Normalmente son
+// la misma —quien firma atestigua sobre sí mismo—, pero en una Deposit Wallet el mensaje puede hablar de la
+// wallet mientras firma la clave de su dueño, que es otra dirección. Si no se separan, la comprobación
+// local impide siquiera intentarlo.
+function firmaL1({ clavePrivada, direccion, esperada = null, timestamp, nonce = 0 }) {
   const ts = String(timestamp != null ? timestamp : Math.floor(Date.now() / 1000));
   const td = {
     domain: { name: 'ClobAuthDomain', version: '1', chainId: CHAIN_ID },   // sin verifyingContract
@@ -46,8 +50,9 @@ function firmaL1({ clavePrivada, direccion, timestamp, nonce = 0 }) {
   const h = digest(td);
   const f = S.firmar(h, clavePrivada);
   const rec = S.recuperar(h, f.r, f.s, f.rec);
-  if (!rec || rec.toLowerCase() !== String(direccion).toLowerCase()) {
-    throw new Error(`la firma L1 recupera ${rec}, no ${direccion}`);
+  const debe = esperada || direccion;
+  if (!rec || rec.toLowerCase() !== String(debe).toLowerCase()) {
+    throw new Error(`la firma L1 recupera ${rec}, no ${debe}`);
   }
   return { firma: f.hex, timestamp: ts, nonce: String(nonce) };
 }
@@ -92,8 +97,8 @@ async function pide(ruta, { metodo = 'GET', cuerpo = null, cabeceras = {}, timeo
 }
 
 // Obtener las credenciales de trading. `derive` devuelve las que ya existen; `create` las crea la primera vez.
-async function credenciales({ clavePrivada, direccion, crear = false, nonce = 0 }) {
-  const l1 = firmaL1({ clavePrivada, direccion, nonce });
+async function credenciales({ clavePrivada, direccion, esperada = null, crear = false, nonce = 0 }) {
+  const l1 = firmaL1({ clavePrivada, direccion, esperada, nonce });
   const ruta = crear ? '/auth/api-key' : '/auth/derive-api-key';
   const r = await pide(ruta, {
     metodo: crear ? 'POST' : 'GET',

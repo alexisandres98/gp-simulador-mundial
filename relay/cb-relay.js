@@ -89,6 +89,28 @@ mkServer(async (req, res) => {
     return j(res, 200, out);
   }
 
+  // ── EL SEGUNDO BRAZO: POLYMARKET (13-sep) ────────────────────────────────────────────────────────────
+  // Mismo proceso, misma región permitida, misma llave de acceso. Se monta aquí y no en un servicio nuevo
+  // porque el problema es idéntico —colocar desde un país que la casa acepta— y un segundo host sería un
+  // segundo sitio donde vive un secreto. Todo el código de Cloudbet de este archivo queda intacto: ese
+  // camino lleva dinero real y no se toca para añadir una función.
+  if (p.startsWith('/pm')) {
+    const PM = require('./pm-relay');
+    if (p === '/pm/diag') return j(res, 200, await PM.diag().catch((e) => ({ error: e.message })));
+    if ((p === '/pm/order' || p === '/pm/ensayo') && req.method === 'POST') {
+      let raw = ''; req.on('data', (c) => { raw += c; if (raw.length > 8192) req.destroy(); });
+      req.on('end', async () => {
+        let body = null; try { body = raw ? JSON.parse(raw) : null; } catch { return j(res, 400, { error: 'cuerpo no es JSON' }); }
+        const fn = p === '/pm/ensayo' ? PM.ensayo : PM.colocar;
+        return j(res, 200, await fn(body).catch((e) => ({ ok: false, error: e.message })));
+      });
+      return;
+    }
+    if (p === '/pm/estado') return j(res, 200, await PM.estadoOrden(String(url.searchParams.get('id') || '')).catch((e) => ({ error: e.message })));
+    if (p === '/pm/cancelar' && req.method === 'POST') return j(res, 200, await PM.cancelar(String(url.searchParams.get('id') || '')).catch((e) => ({ error: e.message })));
+    return j(res, 404, { error: 'No encontrado' });
+  }
+
   if (p === '/cb' && req.method === 'POST') {
     const path = String(url.searchParams.get('path') || '');
     if (!path.startsWith('/pub/')) return j(res, 400, { error: 'path fuera de /pub/' });

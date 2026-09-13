@@ -160,6 +160,58 @@ async function ensayo(b) {
     cuerpo: O.cuerpo(orden, firma.firma), digest: firma.digest, firmante: signer };
 }
 
+// ── ALTA DE UNA CUENTA: averiguar lo que no se puede saber preguntando ──────────────────────────────────
+// El tipo de firma depende de cómo se creó la cuenta y equivocarse hace que la casa rechace TODAS las
+// órdenes sin decir por qué. La documentación da la tabla pero no un endpoint para consultarlo, así que se
+// AVERIGUA — y se averigua SIN GASTAR NADA, con el truco de la orden que no puede llenarse:
+//
+//   se manda una orden de compra a un precio absurdamente bajo (0,01) sobre un token real. Si la firma es
+//   válida, la casa la ACEPTA y la deja descansando en el libro, donde nunca se va a cruzar porque nadie
+//   vende a ese precio. Si la firma es del tipo equivocado, la casa la rechaza. En cuanto contesta, se
+//   cancela. Coste: cero. Certeza: total, porque es la propia casa la que valida.
+//
+// Esto es mejor que deducir el tipo de la dirección: las direcciones proxy se derivan con constantes de
+// contrato que cambiarían sin avisarnos, y una deducción equivocada se descubriría con dinero encima.
+const TIPOS_A_PROBAR = ['proxy', 'safe', 'eoa', 'deposito'];
+async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {}) {
+  const pk = PK(); if (!pk) return { ok: false, why: 'falta PM_PRIVATE_KEY' };
+  const maker = MAKER(); if (!maker) return { ok: false, why: 'falta PM_MAKER_ADDRESS' };
+  if (!/^\d+$/.test(String(tokenId || ''))) return { ok: false, why: 'hace falta un tokenId real de un mercado abierto' };
+  const signer = S.direccionDe(pk);
+  const c = await credenciales();
+  if (!c.ok) return { ok: false, why: 'sin credenciales de trading', detalle: c.why || c.texto };
+
+  // 5 acciones a 0,01 = 5 céntimos comprometidos, y a ese precio no se cruza nunca
+  const size = String(tamano || 5);
+  const intentos = [];
+  for (const tipo of TIPOS_A_PROBAR) {
+    if (tipo === 'deposito') {
+      intentos.push({ tipo, saltado: 'la Deposit Wallet necesita envolver la firma para ERC-7739 y eso aún no está implementado' });
+      continue;
+    }
+    let r;
+    try {
+      const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,
+        tick: '0.01', maker, signer, tipoFirma: tipo, orderType: 'GTC' });
+      const firma = O.firmar(orden, pk);
+      r = await C.colocar({ cuerpoOrden: O.cuerpo(orden, firma.firma), credenciales: c.credenciales, direccion: signer });
+    } catch (e) { intentos.push({ tipo, error: e.message }); continue; }
+    const id = r.json && (r.json.orderID || r.json.orderId || r.json.id);
+    const aceptada = !!(r.ok && r.json && r.json.success !== false && id);
+    intentos.push({ tipo, status: r.status, aceptada, mensaje: (r.json && (r.json.errorMsg || r.json.error)) || (r.json ? undefined : (r.texto || '').slice(0, 160)) });
+    if (aceptada) {
+      // ACEPTADA: este es el tipo. Se cancela inmediatamente — la orden nunca se iba a cruzar, pero dejarla
+      // ahí sería dejar capital comprometido por una prueba.
+      const cancel = await C.cancelar({ id, credenciales: c.credenciales, direccion: signer });
+      return { ok: true, tipo_firma: tipo, orden_de_prueba: id,
+        cancelada: !!(cancel.ok), cancel_status: cancel.status, intentos,
+        siguiente_paso: `pon PM_SIG_TYPE=${tipo} en el relay y reinicia` };
+    }
+  }
+  return { ok: false, why: 'ningún tipo de firma fue aceptado', intentos,
+    pista: 'si la cuenta es una Deposit Wallet hace falta implementar el envoltorio ERC-7739 antes de colocar' };
+}
+
 const estadoOrden = async (id) => {
   const c = await credenciales(); if (!c.ok) return { ok: false, why: 'sin credenciales' };
   return C.estadoOrden({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
@@ -169,4 +221,4 @@ const cancelar = async (id) => {
   return C.cancelar({ id, credenciales: c.credenciales, direccion: S.direccionDe(PK()) });
 };
 
-module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, valida, CLAVES };
+module.exports = { diag, colocar, ensayo, estadoOrden, cancelar, credenciales, detectarTipoFirma, valida, CLAVES };

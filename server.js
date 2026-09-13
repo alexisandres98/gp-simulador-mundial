@@ -8123,6 +8123,74 @@ async function derivadasDescanso(p, marcador) {
   return val;
 }
 
+// ── EL BRAZO DE POLYMARKET: UNA SOLA PUERTA (13-sep) ────────────────────────────────────────────────────
+// Todo lo que este servidor le pide al relay de Helsinki pasa por aquí. El certificado del brazo es
+// autofirmado (no hay dominio sobre la IP): se acepta sin verificar CA pero el tráfico va cifrado — misma
+// decisión, y misma deuda pendiente de fijar la huella, que el camino de Cloudbet.
+function pmRelay(ruta, cuerpo = null) {
+  return new Promise((resolve) => {
+    const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+    const rk = String(process.env.GP_RELAY_KEY || '');
+    if (!base || !rk) return resolve({ error: 'faltan CLOUDBET_RELAY_URL o GP_RELAY_KEY' });
+    const httpsW = require('https');
+    const datos = cuerpo ? JSON.stringify(cuerpo) : null;
+    const rq = httpsW.request(base + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(rk), {
+      method: cuerpo ? 'POST' : 'GET', rejectUnauthorized: false, timeout: 25000,
+      headers: datos ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(datos) } : {},
+    }, (rs) => { let t = ''; rs.on('data', (c) => { t += c; }); rs.on('end', () => {
+      let j = null; try { j = JSON.parse(t); } catch { }
+      resolve(j != null ? { status: rs.statusCode, ...j } : { status: rs.statusCode, texto: t.slice(0, 400) }); }); });
+    rq.on('error', (e) => resolve({ error: e.message }));
+    rq.on('timeout', () => { rq.destroy(); resolve({ error: 'timeout' }); });
+    if (datos) rq.write(datos);
+    rq.end();
+  });
+}
+// El fill que la SOMBRA habría conseguido, con el libro real en el mismo instante. Se guarda al lado del
+// fill real: esa diferencia es lo único que un banco de 200 dólares puede medir de verdad.
+async function pmSimula(s, { shares, precio }) {
+  try {
+    const j = await fetch(`https://clob.polymarket.com/book?token_id=${encodeURIComponent(s.token)}`,
+      { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null));
+    const asks = ((j && j.asks) || []).map((a) => ({ price: +a.price, size: +a.size }))
+      .filter((a) => a.price > 0 && a.size > 0).sort((a, b) => a.price - b.price);
+    let costo = 0, sh = 0;
+    for (const a of asks) {
+      if (a.price > precio) break;
+      const falta = shares - sh; if (falta <= 0) break;
+      const take = Math.min(a.size, falta);
+      sh += take; costo += take * a.price;
+    }
+    return sh >= 1 ? { shares: Math.floor(sh), costo: +costo.toFixed(2), precio_medio: +(costo / sh).toFixed(4) } : null;
+  } catch { return null; }
+}
+// Un barrido del ejecutor de Polymarket. En seco mientras `GP_PM_ENABLED` no esté puesto.
+let _pmRunning = false, _pmLast = 0, _pmOut = null;
+async function pmJob({ force = false, seco = false } = {}) {
+  if (_pmRunning) return { skipped: 'running' };
+  if (!force && Date.now() - _pmLast < 8 * 60e3) return { skipped: 'throttle' };
+  _pmRunning = true;
+  const out = { started: new Date().toISOString() };
+  try {
+    const EJ = require('./polymarket/ejecutor');
+    let senales = {};
+    try { senales = JSON.parse(fs.readFileSync(path.join(require('./propfirm/polyshadow').DIR, 'senales.json'), 'utf8')).senales || {}; } catch { senales = {}; }
+    out.senales = Object.keys(senales).length;
+    out.barrido = await EJ.barrer({ senales, forzarSeco: seco,
+      colocarFn: (orden) => pmRelay('/pm/order', orden),
+      simularFn: pmSimula });
+    out.liquidacion = await EJ.liquidar({ fetchJson: (u) => fetch(u, { signal: AbortSignal.timeout(12000) }).then((r) => (r.ok ? r.json() : null)) });
+    _pmLast = Date.now();
+  } catch (e) { out.error = e.message; }
+  finally { _pmRunning = false; out.finished = new Date().toISOString(); _pmOut = out; }
+  return out;
+}
+// Solo se programa si está encendido. Apagado, ni siquiera hay temporizador.
+if (/^(1|true|si|sí|on|yes)$/i.test(String(process.env.GP_PM_ENABLED || '').trim())) {
+  setTimeout(() => { pmJob().catch((e) => console.error('[pm]', e.message)); }, 7 * 60e3);
+  setInterval(() => { pmJob().catch((e) => console.error('[pm]', e.message)); }, 10 * 60e3);
+}
+
 let _derivRunning = false, _derivLast = 0, _derivOut = null;
 async function derivadasJob({ force = false } = {}) {
   if (_derivRunning) return { skipped: 'running' };
@@ -22071,6 +22139,54 @@ const server = http.createServer(async (req, res) => {
         if (datos) rq.write(datos);
         rq.end();
       });
+      // ── ALTA DE CUENTA: los cinco escalones, en orden, y para en el primero que falle ────────────
+      // Esto es lo que convierte "aquí tienes los datos de la cuenta" en "el ejecutor puede arrancar".
+      // Cada escalón responde una pregunta que, si se salta, se descubre con dinero encima.
+      if (url.searchParams.get('alta') === '1') {
+        const EJ = require('./polymarket/ejecutor');
+        const token = String(url.searchParams.get('token') || '');
+        const paso = [];
+        const d = await pide('/pm/diag');
+        paso.push({ n: 1, pregunta: '¿el brazo responde y la región deja colocar?',
+          ok: !!(d && d.clave_presente && d.bloqueado_por_region === false),
+          detalle: d && { region_bloqueada: d.bloqueado_por_region, lectura: d.lectura, veredicto: d.veredicto } });
+        paso.push({ n: 2, pregunta: '¿la clave da la dirección del firmante que muestra Polymarket?',
+          ok: !!(d && d.firmante), firmante: d && d.firmante, maker: d && d.maker_configurado,
+          nota: d && d.maker_igual_firmante === false ? 'la cuenta y el firmante son distintos: es Proxy o Safe' : null });
+        paso.push({ n: 3, pregunta: '¿la casa nos entrega credenciales de trading?',
+          ok: !!(d && d.credenciales && d.credenciales.ok), detalle: d && d.credenciales });
+        const listo3 = paso.every((x) => x.ok);
+        if (listo3 && token) {
+          // el paso que NO se puede deducir: se pregunta a la casa con una orden que no puede llenarse
+          const tf = await pide('/pm/tipofirma?token=' + encodeURIComponent(token), {});
+          paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: !!(tf && tf.ok),
+            tipo_firma: tf && tf.tipo_firma, cancelada: tf && tf.cancelada, intentos: tf && tf.intentos,
+            siguiente: tf && tf.siguiente_paso });
+        } else if (listo3) {
+          paso.push({ n: 4, pregunta: '¿cuál es el tipo de firma de esta cuenta?', ok: false,
+            falta: 'pásame `&token=<token_id de un mercado abierto>` y lo averiguo con una orden que no puede llenarse (coste cero)' });
+        }
+        const c = EJ.CFG();
+        paso.push({ n: 5, pregunta: '¿la política del ejecutor está puesta?',
+          ok: !!(c.banco > 0 && c.stake > 0 && c.familias.length),
+          politica: { encendido: c.encendido, banco: c.banco, stake: c.stake,
+            exposicion_max: EJ.topeExposicion(c), parada_diaria_pct: c.parada_diaria_pct, familias: c.familias } });
+        const todos = paso.every((x) => x.ok);
+        return json(res, 200, { brazo: base, alta_completa: todos, paso,
+          veredicto: todos
+            ? (c.encendido ? 'LISTO Y ENCENDIDO: el ejecutor colocará en el próximo barrido.'
+              : 'LISTO PERO EN SECO: falta poner GP_PM_ENABLED=1 para que coloque de verdad.')
+            : 'FALTA algo — mira el primer paso con ok:false.' });
+      }
+      if (url.searchParams.get('estado') === '1') {
+        return json(res, 200, { ejecutor: require('./polymarket/ejecutor').estado(), ultima_pasada: _pmOut || null });
+      }
+      if (req.method === 'POST' && url.searchParams.get('run') === 'barrer') {
+        return json(res, 200, await pmJob({ force: true, seco: url.searchParams.get('seco') === '1' }));
+      }
+      if (req.method === 'POST' && url.searchParams.get('run') === 'reset') {
+        return json(res, 200, require('./polymarket/ejecutor').reset());
+      }
       if (url.searchParams.get('diag') === '1') return json(res, 200, { brazo: base, ...(await pide('/pm/diag')) });
       const orden = {
         tokenId: String(url.searchParams.get('token') || ''),
@@ -22085,7 +22201,15 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'POST' && url.searchParams.get('colocar') === '1') {
         return json(res, 200, { brazo: base, ...(await pide('/pm/order', orden)) });
       }
-      return json(res, 200, { brazo: base, uso: '?diag=1 · ?ensayo=1&token=&side=&price=&size= · POST ?colocar=1&… (solo por orden humana)' });
+      return json(res, 200, { brazo: base, uso: {
+        alta: '?alta=1&token=<token_id de un mercado abierto>  → los cinco escalones, en orden',
+        estado: '?estado=1  → banco, exposición, posiciones y fill real contra simulado',
+        diag: '?diag=1  → solo el brazo',
+        ensayo: '?ensayo=1&token=&side=&price=&size=  → firma y NO envía',
+        colocar: 'POST ?colocar=1&…  → una orden suelta, por orden humana',
+        barrer: 'POST ?run=barrer[&seco=1]  → una pasada del ejecutor',
+        reset: 'POST ?run=reset  → el banco a cero y sin posiciones',
+      } });
     }
     // familias derivadas de fútbol: estado de la sombra nueva. `?run=1` fuerza una pasada.
     if (p === '/api/internal/futbol-derivadas') {

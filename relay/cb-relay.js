@@ -107,6 +107,8 @@ mkServer(async (req, res) => {
       return;
     }
     if (p === '/pm/estado') return j(res, 200, await PM.estadoOrden(String(url.searchParams.get('id') || '')).catch((e) => ({ error: e.message })));
+    // alta de cuenta: averigua el tipo de firma con una orden que no puede llenarse, y la cancela
+    if (p === '/pm/tipofirma' && req.method === 'POST') return j(res, 200, await PM.detectarTipoFirma({ tokenId: String(url.searchParams.get('token') || '') }).catch((e) => ({ error: e.message })));
     if (p === '/pm/cancelar' && req.method === 'POST') return j(res, 200, await PM.cancelar(String(url.searchParams.get('id') || '')).catch((e) => ({ error: e.message })));
     return j(res, 404, { error: 'No encontrado' });
   }

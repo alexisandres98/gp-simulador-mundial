@@ -219,6 +219,41 @@ async function liquidarPoly() {
 }
 
 // ── ESTADO: lo que se revisa cada lunes ──────────────────────────────────────────────────────────────────
+// ── EL DESGLOSE (13-sep) ────────────────────────────────────────────────────────────────────────────────
+// `estado()` daba un ROI único de todo el banco, y ese número mezcla cosas que no se parecen: fútbol "No",
+// esports, totales y NFL comparten banco pero no comparten comportamiento. Decidir el tamaño de una apuesta
+// real con el ROI agregado es decidir con el promedio de familias que no vas a apostar.
+//
+// Además de por familia se parte por TRAMO DE VENTAJA, porque ahí está el hallazgo incómodo que ya salió una
+// vez y hay que poder volver a mirar: la ventaja grande rinde PEOR que la pequeña, que es lo contrario de lo
+// que debería pasar si el modelo supiera lo que dice saber.
+function agrupa(cerradas, clave) {
+  const g = {};
+  for (const p of cerradas) {
+    const k = clave(p); if (k == null) continue;
+    (g[k] = g[k] || []).push(p);
+  }
+  return Object.entries(g).map(([k, v]) => {
+    const costo = v.reduce((a, p) => a + (p.costo || 0), 0);
+    const pnl = v.reduce((a, p) => a + (p.pnl || 0), 0);
+    const w = v.filter((p) => p.estado === 'WIN').length;
+    const sl = v.filter((p) => p.slippage_pp != null).map((p) => p.slippage_pp);
+    const pr = v.map((p) => p.precio_fill).filter((x) => x > 0).sort((a, b) => a - b);
+    // t del ROI: el P&L de cada posición normalizado por su coste, que es el rendimiento por dólar puesto
+    const r = v.filter((p) => p.costo > 0).map((p) => (p.pnl || 0) / p.costo);
+    const m = r.length ? r.reduce((a, b) => a + b, 0) / r.length : null;
+    const sd = r.length > 1 ? Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1)) : null;
+    return { k, n: v.length, w, l: v.length - w, costo: +costo.toFixed(2), pnl: +pnl.toFixed(2),
+      roi_pct: costo > 0 ? +(100 * pnl / costo).toFixed(2) : null,
+      t_roi: (sd && r.length > 1) ? +(m / (sd / Math.sqrt(r.length))).toFixed(2) : null,
+      slippage_medio_pp: sl.length ? +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(2) : null,
+      precio_mediano: pr.length ? pr[pr.length >> 1] : null,
+      stake_medio: v.length ? +(costo / v.length).toFixed(2) : null };
+  }).sort((a, b) => b.n - a.n);
+}
+const BANDA = (e) => (e == null ? null : e < 3 ? '0-3pp' : e < 5 ? '3-5pp' : e < 8 ? '5-8pp' : '8pp+');
+const esFutbolNo = (p) => (p.deporte === 'futbol' || /^Will .+ win on /i.test(String(p.mercado || ''))) && String(p.lado || '').toLowerCase() === 'no';
+
 function estado() {
   const st = rd();
   const pos = Object.values(st.posiciones);
@@ -227,7 +262,18 @@ function estado() {
   const conFill = pos.filter((p) => p.slippage_pp != null);
   const pnl = +cerradas.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2);
   const expuesto = +abiertas.reduce((a, p) => a + (p.costo || 0), 0).toFixed(2);
+  const fn = cerradas.filter(esFutbolNo);
+  const desglose = {
+    por_deporte_y_lado: agrupa(cerradas, (p) => `${p.deporte || (/^Will .+ win on /i.test(String(p.mercado || '')) ? 'futbol' : '?')} · ${p.lado || '?'}`),
+    futbol_no: agrupa(fn, () => 'futbol · No')[0] || null,
+    futbol_no_por_banda: agrupa(fn, (p) => BANDA(p.edge_pp)),
+    futbol_no_por_precio: agrupa(fn, (p) => { const x = p.precio_fill; return x == null ? null
+      : x < 0.2 ? 'precio <0,20' : x < 0.35 ? '0,20-0,35' : x < 0.5 ? '0,35-0,50' : x < 0.65 ? '0,50-0,65' : '0,65+'; }),
+    // lo que NO entró también se mide: una señal que no encuentra libro es capacidad que no existe
+    no_entro_futbol_no: pos.filter((p) => p.estado === 'NO_ENTRO' && esFutbolNo(p)).length,
+  };
   return {
+    desglose,
     at: st.at, banco_inicial: st.banco_inicial, banco_vivo: bancoVivo(st), efectivo: st.efectivo,
     expuesto, equity: +(st.efectivo + expuesto).toFixed(2),
     abiertas: abiertas.length,

@@ -84,6 +84,48 @@ const manejar = async (req, res) => {
       configurado: !!(process.env.PM_PRIVATE_KEY && process.env.PM_MAKER_ADDRESS) });
   }
 
+  // ── EL ALTA: meter la clave privada SIN que pase por el chat ni por Hetzner ──────────────────────────
+  // El problema es de canales, no de código. La clave no puede ir por la conversación (queda en el
+  // historial y en los registros: ya hubo que quemar dos así) ni en el `cloud-init` (Hetzner lo guarda y lo
+  // lee cualquiera con el token del proyecto). Lo que sí puede: viajar por TLS directamente del ordenador
+  // de Alexis a esta máquina, en una llamada, una sola vez.
+  //
+  // Tres cosas la hacen aceptable:
+  //   · Vale UNA vez. En cuanto hay clave configurada, esta puerta contesta 409 y no vuelve a abrirse:
+  //     cambiarla exige la consola. Un secreto de alta filtrado DESPUÉS del alta no sirve para nada.
+  //   · No es la llave del brazo. Es un secreto aparte y de un solo uso, así que darlo no da permiso para
+  //     colocar órdenes.
+  //   · Devuelve la dirección que se DEDUCE de la clave, para poder compararla con la que muestra
+  //     Polymarket antes de mandar un céntimo. Una clave equivocada se ve aquí, no tres órdenes después.
+  if (p === '/pm/alta' && req.method === 'POST') {
+    const alta = String(process.env.PM_ALTA_TOKEN || '');
+    if (!alta) return j(res, 404, { error: 'No encontrado' });
+    if (!mismaLlave(String(url.searchParams.get('alta') || ''), alta)) return j(res, 404, { error: 'No encontrado' });
+    if (process.env.PM_PRIVATE_KEY) {
+      return j(res, 409, { ok: false, why: 'ya hay una clave configurada. Esta puerta solo vale una vez; para cambiarla, desde la consola con /opt/gp-pm/poner-clave.sh' });
+    }
+    let b; try { b = await cuerpoJson(req, 4096); } catch (e) { return j(res, 400, { ok: false, why: 'cuerpo ilegible: ' + e.message }); }
+    const clave = String((b && b.clave) || '').trim();
+    const maker = String((b && b.maker) || '').trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(clave)) return j(res, 400, { ok: false, why: 'la clave no tiene la forma 0x + 64 hex. No se ha escrito nada.' });
+    if (!/^0x[0-9a-fA-F]{40}$/.test(maker)) return j(res, 400, { ok: false, why: 'la dirección no tiene la forma 0x + 40 hex. No se ha escrito nada.' });
+    let firmante;
+    try { firmante = require('../lib/secp256k1').direccionDe(clave); }
+    catch (e) { return j(res, 400, { ok: false, why: 'esa clave no deriva una dirección: ' + e.message }); }
+    try {
+      fs.writeFileSync('/opt/gp-pm/secreto', `PM_PRIVATE_KEY=${clave}\nPM_MAKER_ADDRESS=${maker}\n`, { mode: 0o600 });
+      fs.chmodSync('/opt/gp-pm/secreto', 0o600);
+    } catch (e) { return j(res, 500, { ok: false, why: 'no se pudo escribir el secreto: ' + e.message }); }
+    j(res, 200, { ok: true, firmante, maker,
+      firmante_igual_maker: firmante.toLowerCase() === maker.toLowerCase(),
+      comprueba: 'que `firmante` sea la "Dirección del firmante" que muestra Polymarket en Ajustes',
+      siguiente: 'el servicio se reinicia solo en un segundo; luego el alta de cinco escalones desde el servidor principal' });
+    // salir para que systemd lo levante con el fichero de secreto ya puesto. Recargar variables de entorno
+    // en caliente no se puede, y reiniciar es de todos modos lo que vuelve a traer el código más reciente.
+    setTimeout(() => process.exit(0), 300);
+    return;
+  }
+
   if (!RK || !mismaLlave(String(url.searchParams.get('key') || ''), RK)) return j(res, 404, { error: 'No encontrado' });
 
   try {

@@ -22126,9 +22126,13 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/pm-relay') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      const base = String(process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
-      const rk = String(process.env.GP_RELAY_KEY || '');
-      if (!base || !rk) return json(res, 200, { error: 'faltan CLOUDBET_RELAY_URL o GP_RELAY_KEY' });
+      // Mismas variables, y en el mismo orden, que `pmRelay()`: el brazo tiene máquina propia y solo cae al
+      // relay de Cloudbet si no se han puesto. Tenerlo en dos sitios con reglas distintas ya nos costó un
+      // rato de confusión —la sonda seguía preguntándole al servidor viejo mientras el nuevo esperaba—, así
+      // que las dos puertas leen exactamente lo mismo.
+      const base = String(process.env.GP_PM_RELAY_URL || process.env.CLOUDBET_RELAY_URL || '').trim().replace(/\/$/, '');
+      const rk = String(process.env.GP_PM_RELAY_KEY || process.env.GP_RELAY_KEY || '');
+      if (!base || !rk) return json(res, 200, { error: 'faltan GP_PM_RELAY_URL/CLOUDBET_RELAY_URL o GP_PM_RELAY_KEY/GP_RELAY_KEY' });
       // el brazo usa certificado autofirmado (no hay dominio sobre la IP): se acepta sin verificar CA, pero
       // el tráfico va cifrado. Misma decisión, y misma deuda, que el camino de Cloudbet.
       const pide = (ruta, cuerpo = null) => new Promise((resolve) => {

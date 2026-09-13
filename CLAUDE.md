@@ -5,6 +5,21 @@
 ## Qué es
 **GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
 
+## 🛑 LA REGLA DEL DINERO (13-sep-2026) — LA PRIMERA QUE HAY QUE LEER
+**NO SE METE MÁS DINERO EN NINGÚN SITIO** hasta que una familia cruce el listón escrito en
+`real-executor/parada.js`. Decisión de Alexis del 13-sep tras tres días de auditoría. No la re-propongas:
+hoy **no hay una sola familia en todo el sistema de la que se pueda decir con seguridad "mete dinero ahí"**,
+y eso está medido, no opinado (HANDOFF §📊).
+
+**Dónde hay dinero de verdad:** SOLO Cloudbet `cards_under_v1` (~258 USDT) + tenis de mesa a 5 USD.
+**CS2 en Pinnacle NO tiene dinero** (`cs2_real: "pausado"`). **Polymarket TAMPOCO** (banco simulado 2.000).
+Todo lo demás es papel. Si alguien pide "sacar el dinero de CS2 o de Polymarket", no hay nada que sacar.
+
+**El listón, en una línea:** una familia es invertible cuando le gana al precio DESPUÉS de descontar lo que
+cobra la casa, con muestra suficiente. Ni el ROI ni el CLV a secas valen — ver `lib/vara.js`.
+
+**Punto de decisión ≈ 20-oct** (100 liquidadas del núcleo limpio, a 18,7/semana). Antes no hay nada que decidir.
+
 ## REGLAS DURAS (no romper)
 - **El nombre del producto es "GP Simulador". NUNCA "GP Edge" / "GP Markets" / "EDGE Terminal".** (Los mockups decían "GP EDGE" — ignorar; el usuario lo prohibió explícitamente.) Etiquetas internas SÍ permitidas: Model Edge, GP Take, Pure Arb, Market Mover, Oportunidades, Arbitraje puro.
 - **No romper la lógica del modelo, APIs, Monte Carlo, Elo, Polymarket, Kalshi ni rutas existentes** salvo que sea estrictamente necesario.
@@ -115,6 +130,36 @@
   `data/esports/lol/gen-priors.json`), sonda `/api/internal/lol-gen?key=`. No toca `lol.js` ni `lol_kills_hcp_v1`.
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
+
+## 📏 LA VARA — cómo se decide si una familia sirve (11-13-sep)
+Tres módulos, en este orden. **No juzgues una familia por su ROI ni por su CLV a secas: los dos mienten.**
+- **`lib/margen.js`** — el margen de la casa, medido emparejando las DOS caras del mismo mercado en el
+  archivo de cierres. Si solo hay una cara dice `null`: un margen supuesto haría pasar por invertible algo
+  que no lo es. Medidos: pinnacle RONDAS_HANDICAP 2,21 %/lado · cloudbet 3,13 % · bovada KILLS 2,35 % ·
+  total de goles de fútbol **0,69 %** (el más barato = el más eficiente = el peor sitio para buscar ventaja).
+- **`lib/vara.js`** — CLV **recortado al 10 %** (la media cruda la destrozan cierres rotos: hay un +148 % en
+  cloudbet), serie por semana, rodante de 100, neto de margen, veredicto y ¼ Kelly. **Y antes de todo eso
+  pregunta si el CLV sirve**: `cierreAporta()` compara el error del precio de entrada con el del cierre. En
+  NUESTROS mercados el cierre NO predice mejor que la entrada en ninguna familia (|t| < 2 en las diez), y en
+  muchas la línea ni se mueve (TT POINTS_TOTAL 78,8 %, dota2 93,8 %). Cuando el CLV no aplica manda
+  `modeloContraPrecio()`: ¿acierta más la probabilidad del modelo que la del precio? **Ahí NO se resta
+  margen** — el ROI ya está medido contra las cuotas que de verdad pagaron.
+- **`real-executor/parada.js`** — las cuatro líneas de parada del dinero real, calculadas con Monte Carlo de
+  60.000 corridas (no opinadas). Corre cada hora, manda UN correo al admin la primera vez que cada línea
+  cruza, y **NO APAGA NADA**: apagar es decisión de Alexis (`GP_REAL_ENABLED=false`).
+
+Sondas: `/api/internal/vara?key=&bankroll=` · `/api/internal/parada?key=` · `/api/internal/ventana-tarjetas?key=&h=`
+· `/api/internal/cercania?key=`
+
+## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
+- **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son
+  dos apuestas: si hay siete tarjetas pierden las dos. Las sueltas ganan (+3,85 % ROI), las apiladas pierden
+  (−17,63 % con dos, −45,83 % con tres). `GP_REAL_UNA_POR_PARTIDO=off` revierte.
+- **Esperar no es fallar** (12-sep). Un intento frenado por saldo o exposición no gasta reintento, y el tope
+  se estira con las horas que faltan para el saque (`topeReintentos`). Antes se perdían picks vivas con el
+  saque a tres días porque el contador de 13 h se agotaba esperando un depósito.
+- **El veto de bandas llega tarde** y eso ya costó −453,43 en cuatro ligas (premier, bundesliga, mls, rusia)
+  clasificadas como eficientes DESPUÉS de haberlas apostado. Propuesto y sin aprobar: veto por pérdida.
 
 ## Comandos
 ```bash

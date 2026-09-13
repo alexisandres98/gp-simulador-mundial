@@ -1,3 +1,251 @@
+# HANDOFF — estado al 13-sep-2026 (la vara, las líneas de parada, y la decisión de NO meter más dinero)
+
+## 🛑 PUNTO DE RETOMA (13-sep) — LÉEME ANTES DE PROPONER NADA
+
+**Decisión de Alexis del 13-sep, tras tres días de auditoría: NO SE METE MÁS DINERO EN NINGÚN SITIO.**
+No en Cloudbet, no en Pinnacle, no en Polymarket, no los $3.000 que planteó, no los $20k de CS2. Nada, hasta
+que algo cruce el listón que está escrito más abajo. Si en una sesión futura te dan ganas de sugerir "meter
+un poco para probar", la respuesta ya está dada y la razón está medida: **hoy no hay una sola familia en todo
+el sistema de la que se pueda decir con seguridad "mete dinero ahí".**
+
+**Dónde hay dinero de verdad, a día de hoy:** SOLO Cloudbet, segmento `cards_under_v1` (~258 USDT) más las
+apuestas de tenis de mesa a 5 USD. **CS2 en Pinnacle NO tiene dinero** (`cs2_real: "pausado"`, nunca se
+activó) y **Polymarket TAMPOCO** (banco simulado de 2.000). Todo lo que se reporta de esos dos es papel.
+
+**El plan acordado, en siete líneas:**
+1. Dejar correr Cloudbet cards under con el núcleo limpio: ~18,7 apuestas/semana, stake 30 plano.
+2. No meter dinero nuevo en nada.
+3. Todo lo demás sigue en sombra acumulando.
+4. **Punto de decisión ≈ 20-oct**, cuando el núcleo llegue a 100 liquidadas. Antes no hay nada que decidir.
+5. Si salta una línea de parada → correo automático → **apaga Alexis** (`GP_REAL_ENABLED=false`) → esa
+   familia pasa a sombra sin dinero.
+6. El 15-oct, la pregunta del plazo: si el núcleo no llegó a 100, el problema no es perder, es que no se
+   aprende lo bastante rápido para que valga el tiempo.
+7. El tiempo y el dinero de Alexis van a la plataforma y a los usuarios, no a apostar.
+
+---
+
+## 📏 LA VARA (11-sep) — `lib/margen.js` + `lib/vara.js` + `/api/internal/vara`
+
+Llevábamos semanas decidiendo con el CLV a secas, y a secas miente por dos sitios.
+
+**(a) La media cruda la destrozan cuatro cierres rotos.** El CLV de CS2 en Pinnacle decía +0,05 % las dos
+últimas semanas de agosto; recortando el 10 % de cada cola decía +0,55 % con t 2,72, y TODAS las semanas
+salían significativas. Hay un CLV de +148 % en cloudbet que es un cierre roto, no una ganancia. Las dos
+lecturas no se parecen y la decisión de meter dinero dependía de cuál mirabas.
+
+**(b) El cierre contra el que medimos LLEVA EL MARGEN DENTRO.** Ganarle un 0,5 % a un precio que ya viene
+cargado con el 1,2 % que cobra la casa no es estar por encima del precio justo: es estar 0,7 % por debajo.
+
+`lib/margen.js` empareja las dos caras del mismo mercado en el archivo de cierres y saca el sobre-redondeo.
+Si solo hay una cara dice `null`: un margen supuesto haría pasar por invertible algo que no lo es.
+**Márgenes medidos (por lado):** pinnacle RONDAS_HANDICAP **2,21 %** · pinnacle RONDAS 2,83 % · bovada KILLS
+2,35 % · cloudbet RONDAS_HANDICAP 3,13 % · cloudbet GAME_POINTS_HCP (TT) 1,97 % · **el total de goles de
+fútbol 0,69 %** (el más barato de todos, y por eso el más eficiente).
+
+`lib/vara.js` da CLV recortado con su t, serie por semana, rodante de 100, el neto de margen, el veredicto
+por regla escrita y el tamaño de ¼ Kelly. **Regla:** invertible = CLV recortado al 10 % menos el margen por
+lado > 0, con t ≥ 2 y n ≥ 100.
+
+## 🧭 EL DESCUBRIMIENTO DE MÉTODO (11-sep, objeción de Alexis) — EL CLV NO APLICA EN NUESTROS MERCADOS
+
+Alexis preguntó: *"¿estás tomando en cuenta que en alguna de esas familias la línea no se mueve?"*. Tenía
+razón y rompía el instrumento.
+
+**La línea no se mueve:** dota2 KILLS bovada 92,8 % de las veces · TT POINTS_TOTAL **78,8 %** · LoL KILLS_HCP
+bovada 56,9 % · CS2 RONDAS bovada 56,2 % · CS2 RONDAS_HCP pinnacle 19,0 %.
+
+**Y la prueba de fondo:** Brier pareado entrada-vs-cierre sobre las mismas liquidadas. **En NINGUNA de las
+diez familias el cierre predice mejor que nuestro precio de entrada** (|t| < 2 en todas). El CLV solo vale
+como vara si el cierre es mejor estimador de la verdad que el precio que tomaste; aquí no lo es.
+
+`cierreAporta()` mide eso y `modeloContraPrecio()` es la vara de repuesto (¿acierta más la probabilidad del
+modelo que la del precio? más el ROI con su t; **aquí NO se resta margen** porque el ROI ya está medido
+contra las cuotas que de verdad pagaron). Veredictos nuevos: `clv_no_aplica`, `invertible_por_acierto`,
+`sin_evidencia`, `cerrar`.
+
+**Lo que destapó:** cinco familias donde el precio le gana al modelo de forma significativa —
+LoL KILLS_HANDICAP bovada (t −3,42) y cloudbet (t −3,52), CS2 RONDAS_HANDICAP cloudbet (t −3,31),
+TT GAME_POINTS_HCP cloudbet (t −2,95), sombra lol_kills_hcp_v1 (t −3,65). La vara dice **cerrar**. Siguen
+abiertas: es cambio de lógica de picks y Alexis no lo ha ordenado.
+
+## 🔧 EL CLV PERDIDO, RESCATADO (11-sep) — `implied-engine/closes.js`
+
+La liquidación calculaba el CLV buscando la línea EXACTA de la tesis dentro de `rows`, la última foto del
+archivo de cierres. Esa foto no se congelaba: se machacaba en cada pasada, incluida la hora POSTERIOR al
+saque que la ventana admite, o sea con precios en vivo. En vivo un total de puntos se re-linea con cada
+punto, así que la familia entera se quedaba sin CLV.
+
+Se veía en el reparto: las familias SIN línea sobrevivían (ML 16 de 35) y las que llevan línea se
+desplomaban (POINTS_TOTAL 4 de 62, GAMES_HCP 0 de 26) con el precio ahí mismo, en el cubo congelado.
+
+- `rows` solo se escribe antes del saque, en TT y en dardos.
+- TT reparte cubos con `CL.bucketFor`, que tiene suelo. El `minsTo <= bkt` de antes no lo tenía: un partido
+  visto por primera vez a T−10 rellenaba T60, T30 y T10 con la MISMA foto. **Las 321 tesis vivas tenían dos
+  o más cubos con idéntico sello de tiempo y por eso la curva salía plana.**
+- `rescatar` reconstruye el CLV desde los cubos congelados al leer el track. Retroactivo: **38 → 300 de 321
+  en TT, 4 → 15 de 24 en dardos.**
+- `salud` dice cuántas tesis tienen cubos escritos en bloque, para que la pantalla no presuma de una curva
+  que todavía no se puede leer.
+
+## ⏳ ESPERAR NO ES FALLAR (12-sep) — `real-executor/store.js`
+
+El 11-sep se perdieron tres picks de Brasileirão —Mirassol vs Vitória, Flamengo vs Corinthians, Santos vs
+Cruzeiro— por `demasiados_intentos` CON EL SAQUE TODAVÍA POR DELANTE, dos y tres días por delante. La cuenta
+estaba en 5,75 USDT, el freno de fondos las paraba cada diez minutos, y cada parada gastaba un reintento.
+
+El tope contaba BARRIDOS (tiempo) y la ventana real es HASTA EL SAQUE. Ahora los frenos que esperan
+(`sin_fondos`, `exposicion_maxima`, `parada_diaria`) devuelven el reintento, y `topeReintentos(kickoff)` se
+estira con las horas que quedan. Una fila a tres días pasa de 13 h de cobertura a **85 h**.
+
+## 🪟 LA VENTANA DE MERCADO DE TARJETAS (12-sep) — `/api/internal/ventana-tarjetas` + `cloudbetCercania()`
+
+Alexis preguntó por qué no salían picks de Liga MX. **No era el motor** (puerta `approved`, banda blanda,
+última pick de ese mismo día): era la OFERTA.
+
+**Horas entre que nace la pick y el saque, sobre 628 picks:**
+```
+rusia 1,0 · serieb 1,3 · argentina 1,4 · ligamx 1,5 · brasilb 1,7
+mls 18,4 · laliga 24,7 · championship 30,0 · brasileirao 42,8
+seriea 43,1 · bundesliga 46,0 · ligue1 59,1 · premier 71,4
+```
+En Liga MX, Argentina y Brasil B **el 100 % de las picks nace a menos de SEIS horas del saque**: la casa abre
+el mercado de tarjetas a hora y media y antes no existe. En un slate cualquiera, Liga MX tenía 68 mercados
+de props y CERO de tarjetas; en todo el slate había 1.338 de corners contra 30 de tarjetas.
+
+**Y esas cinco son justo donde más ventaja hay** — ligamx +0,281 (t 2,82), argentina +0,237 (t 2,66),
+brasilb +0,164 — mientras las de ventana larga son las peores: **premier −0,122** y está disponible tres días
+enteros. La cartera se llena por defecto de las ligas donde no ganamos, porque son las únicas cuyo mercado
+está abierto cuando barremos. **Ese cambio de mezcla explica el 26 % de la caída de ROI** (−7,36 pp de
+−28,02 pp); el resto es rendimiento dentro de cada liga.
+
+`cloudbetCercania()` corre cada 4 min, solo hace algo cuando hay un partido de liga de ventana corta a menos
+de 3 h, y fuerza el barrido de Cloudbet con `soloHasta` (solo escribe cuotas de esos partidos, así termina
+rápido y no choca con el barrido completo, que tarda ~191 s). Las ligas se DERIVAN del histórico
+(`ligasVentanaCorta()`, mediana ≤ 6 h, n ≥ 5, caché de 6 h). `GP_CERCANIA=off` lo apaga sin desplegar.
+**Verificado en producción:** detectó los 5 partidos en ventana y capturó **110 cuotas de tarjetas**.
+
+## 💥 UNA POSICIÓN POR PARTIDO (13-sep) — EL HALLAZGO QUE EXPLICA LA SANGRÍA
+
+La regla del 5-sep decía "dos veces al mismo partido sí, a la misma línea no". Sobre el papel es razonable.
+En el resultado no: si el partido acaba con siete tarjetas, under 4,5 y under 5,5 pierden las dos.
+
+**Autopsia de las 139 liquidadas del libro real:**
+| corte | n | acierto | pnl | ROI |
+|---|---|---|---|---|
+| **una sola apuesta en el partido** | 83 | **62,7 %** | **+106,12** | **+3,85 %** |
+| partido con 2 apuestas | 50 | 48,0 % | −303,72 | −17,63 % |
+| partido con 3+ | 6 | 33,3 % | −110,00 | −45,83 % |
+
+**Las apuestas sueltas GANAN dinero; todo el agujero está en las apiladas.** En doce partidos se perdieron
+TODAS las apuestas apiladas a la vez: −847,65. El 12-sep, tres partidos de Brasileirão con dos líneas cada
+uno se llevaron el día: ocho apuestas sobre cinco partidos, 1 de 8, −199,50.
+
+La identidad de una posición pasa a ser **PARTIDO + LADO, sin la línea**. `GP_REAL_UNA_POR_PARTIDO=off`
+revierte. Simulado sobre el libro real: 25 apuestas menos (18 %), 919 USD de capital liberado, **+95,66 USD**
+(de −307,60 a −211,94). **La ganancia principal no es esa cifra sino la varianza: 90 USD en un solo partido
+pasan a ser 30.**
+
+## 🚨 LAS CUATRO LÍNEAS DE PARADA (13-sep) — `real-executor/parada.js` + correo
+
+Alexis preguntó *"¿qué tendría que pasar para que me digas saca el dinero?"*. Esa pregunta solo vale si se
+contesta ANTES, con números: el día que duela siempre habrá un motivo para esperar una semana más.
+
+**La frontera se calculó, no se opinó.** Monte Carlo de 60.000 corridas con los parámetros reales del libro
+(stake 30, cuota media 1,81, break-even 55,2 %):
+```
+con ventaja REAL de +7pp   tras 100 apuestas: mediana +367, percentil 1 en -231
+sin NINGUNA ventaja        tras 100 apuestas: mediana  -13, percentil 5 en -448
+```
+Teniendo ventaja de verdad, caer por debajo de −231 en 100 apuestas pasa 1 vez de cada 100.
+
+| # | línea | dispara cuando | hoy |
+|---|---|---|---|
+| 1 | **El núcleo limpio deja de pagar** | acumulado por debajo del percentil 1 (−225 a 60, −231 a 100, −210 a 150; interpolado; no aplica bajo 60) | 0 liquidadas, empieza a contar el 13-sep |
+| 2 | **La ventaja sobre el mercado se apaga** | rodante de 100 picks contra `market_prob` ≤ 0 en **dos** lecturas seguidas | +0,04 |
+| 3 | **El precio le gana al modelo** | Brier pareado con t ≤ −2 sobre 100+ liquidadas | t +0,72 |
+| 4 | **El saldo baja del suelo** | < 100 USDT (`GP_PARADA_SALDO`) | 258,29 |
+
+Y una quinta que **no se automatiza** porque no es estadística: si el núcleo no llega a 100 liquidadas para
+el **15-oct**, el problema no es perder, es que no se puede aprender lo bastante rápido para que valga el
+tiempo. Va en el correo como recordatorio; la lectura la hace Alexis.
+
+`paradaVigila()` corre cada hora y manda **UN correo** la primera vez que cada línea cruza (se recuerda cuál
+para no repetir; si cruza otra distinta, ese correo sí sale). `/api/internal/parada` da el estado
+(VERDE / VIGILAR / FUERA); POST lo fuerza, POST con `?reset=1` olvida los avisos para probar el correo.
+
+**NO APAGA NADA.** Mide y avisa. Apagar es decisión de Alexis (`GP_REAL_ENABLED=false`), y una alarma que
+además ejecuta es una alarma en la que ya no se confía.
+
+## 📊 EL ESTADO DE LA EVIDENCIA, FAMILIA POR FAMILIA (13-sep)
+
+| familia | evidencia | por qué NO cruza el listón |
+|---|---|---|
+| **Cards under, núcleo limpio** | +25,26 % ROI · el motor bate al mercado **+0,135 con t 5,96** sobre 392 | **n = 43** en el núcleo. Y la ventaja se partió por la mitad: +0,221 → +0,151 → +0,063 → +0,074 |
+| **CS2 rondas hándicap Pinnacle** | CLV +0,92 · **t 2,96** · n 450 · **4 semanas seguidas de ROI positivo** (+15,5 / +33,7 / +4,5 / +9,0) | el margen es **2,21 %** y el CLV 0,92 %. Le ganamos al cierre, no a la casa |
+| **LoL KILLS bovada** | CLV +2,00 · t 4,38 · n 124 | margen 2,35 %. Mismo problema |
+| **Polymarket "No" fútbol** | +163,95 | **t 0,79**. Devolvió el 71 % en una semana (+568 → −404). Invertido por ventaja declarada: 3-5pp +9,9 %, 8pp+ −7,9 % |
+| Corners | 1.009 liquidadas | **t −1,99** modelo-vs-precio. ROI −1,48 % |
+| Goles | 165 liquidadas | modelo y mercado dan **la misma probabilidad hasta el tercer decimal** (0,574 vs 0,574). t −1,04. ROI −5,50 % |
+| TT, dardos, LoL hcp, baloncesto, NFL | — | negativo o sin evidencia |
+
+**Corners y goles son la mitad del volumen del feed** (1.174 de 2.354 liquidadas) y ninguna tiene evidencia.
+Que Alexis no meta dinero está resuelto; **que 966 personas sigan viendo picks de familias medidas como
+peores que el mercado es una decisión de producto que sigue ABIERTA.**
+
+## 🩺 LA AUTOPSIA DEL LIBRO REAL (13-sep) — de dónde salió cada dólar
+
+Cruce para no contar dos veces lo mismo, sobre 139 liquidadas:
+| corte | n | acierto | pnl | ROI |
+|---|---|---|---|---|
+| **suelta + liga no eficiente** | 43 | **74,4 %** | **+326,44** | **+23,79 %** |
+| suelta + liga eficiente | 40 | 50,0 % | −220,32 | −15,93 % |
+| **apilada + liga no eficiente** | 27 | 33,3 % | **−361,40** | **−36,88 %** |
+| apilada + liga eficiente | 29 | 58,6 % | −52,32 | −5,32 % |
+
+**No fue varianza sola. Fueron cuatro cosas, y la varianza es la menor:**
+1. **Apilar** — −413,72.
+2. **Ligas eficientes apostadas antes de que el veto las detectara** — −272,64. Premier, Bundesliga, MLS y
+   Rusia se clasificaron el 10 y el 12-sep; las apuestas se hicieron el 3, 4 y 5. **El veto llegó entre
+   cinco y nueve días tarde.** Cuatro ligas: premier −149,80, bundesliga −122,43, mls −118,40, rusia −62,80
+   = **−453,43**. Sin ellas el resto del libro está en **+205,83**.
+3. **La ventaja del modelo se debilitó** — de +0,19 a +0,07. Real, medido, **sigue abierto**.
+4. Varianza encima de todo eso.
+
+**Brasil NO era el problema:** acumulado **+24,62 (+2,20 %)**. Es la liga más volátil, no la que pierde —
+el 24-ago cargó con el 87 % de la ganancia (+193,34) y el 07-sep con el 80 % de la pérdida (−185,40).
+
+**Y el over tampoco era la respuesta:** UNDER 392 liquidadas, 69,1 %, +14,42 % ROI, +0,135 vs mercado (t 5,96).
+OVER 138, 47,8 %, **−18,68 %**, −0,086 vs mercado (t −2,05). Esta semana: under −3,27 %, **over −28,00 %**.
+En las ocho semanas medidas, over no superó a under ni una sola vez.
+
+## ⚠️ LO QUE SIGUE ABIERTO Y NO SE TOCÓ (necesita orden de Alexis)
+
+1. **Cerrar las cinco familias con veredicto `cerrar`** (LoL kills hcp ×3, CS2 rondas hcp cloudbet, TT game
+   points hcp). Es cambio de lógica de picks.
+2. **El veto de bandas tarda demasiado.** Necesitó 80 partidos para clasificar Premier, 48 para Bundesliga,
+   281 para MLS. Propuesto y sin respuesta: **veto por pérdida** (≥10 apuestas reales y pnl < −50 → fuera,
+   la mida como la mida el Brier). Habría sacado Premier el 30-ago en vez del 12-sep. **LaLiga está hoy en
+   brier 0,2292 con −92,68: es el próximo Premier.**
+3. **Corners y goles publicándose a usuarios** sin evidencia. Decisión de producto.
+4. **Partir la vara por banda de liga**, para que `cards blanda+intermedia` salga como su propia fila.
+5. **La ventaja del modelo cayó a la mitad y no sabemos por qué.** Es lo único que puede matar esto de verdad.
+6. Rotar `GP_REAL_RELAY_TOKEN` (impreso en chat el 7-sep) y `API_FOOTBALL_KEY`. **Pendiente de Alexis.**
+
+## 🧮 CUÁNTO FALTA PARA SABER
+
+Ritmo real tras los dos filtros nuevos: **18,7 apuestas/semana**.
+| | semanas |
+|---|---|
+| 60 liquidadas (la línea 1 empieza a aplicar) | 3,2 |
+| **100 (el punto de decisión)** | **5,4** ≈ 20-oct |
+| 200 (certeza razonable) | 10,7 |
+
+**Y el tamaño del premio, para decidir con los ojos abiertos:** a 30 USD por apuesta, un ROI del 10 % son
+**56 USD a la semana**. Aunque cards funcione y aguante, ~240 al mes. Eso paga el hosting, no cambia una vida.
+La pregunta que Alexis se lleva no es "¿funciona cards under?" sino **"aunque funcione, ¿justifica el tiempo
+que le dedico, teniendo 966 usuarios esperando producto?"**
+
 # HANDOFF — estado al 9-sep-2026 (dardos y tenis de mesa, abiertos al público)
 
 ## 🚀 9-sep — DARDOS Y TENIS DE MESA SALEN AL PÚBLICO (orden de Alexis; plan completo en `PLAN_LANZAMIENTO_DARDOS_TT.md`)

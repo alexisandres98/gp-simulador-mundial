@@ -115,3 +115,19 @@ Logged-in nav (bottom en móvil): Oportunidades · Partidos · Equipos · Grupos
 - Costo mensual actual ≈ $28 (Render $7 + Resend $20 + dominio ~$1).
 - Atribución de fuente activa: links `?ref=x / ig / wa / share` → `user.ref`, visible en Admin.
 - Track record en vivo: ~5/13 ganador directo al checkpoint; Brier mejorando. "Modelo vs Mercado" acumulando (empezó tarde, sin histórico de closing lines).
+
+## 🛑 EL PERÍMETRO DEL DINERO (13-sep-2026)
+Solo hay dinero real en **un sitio**: Cloudbet, segmento `cards_under_v1` (~258 USDT) más tenis de mesa a
+5 USD. **CS2 en Pinnacle está `pausado` y nunca se activó. Polymarket tiene banco simulado de 2.000.** Todo
+lo que reportan esos dos es papel. Decisión de Alexis del 13-sep: **no entra dinero nuevo en ningún sitio**
+hasta que una familia cruce el listón de `real-executor/parada.js`. Punto de decisión ≈ 20-oct.
+
+## 📏 LA CAPA DE MEDICIÓN (11-13 sep)
+| archivo | qué hace |
+|---|---|
+| `lib/margen.js` | el margen de la casa, emparejando las dos caras del mercado. `null` si solo hay una |
+| `lib/vara.js` | CLV recortado + semanal + rodante + neto de margen + veredicto + ¼ Kelly. `cierreAporta()` decide si el CLV sirve; `modeloContraPrecio()` es la vara de repuesto |
+| `implied-engine/closes.js` | cubos T−60…T−1 + `rescatar()` (reconstruye el CLV perdido) + `salud()` |
+| `real-executor/parada.js` | las 4 líneas de parada, calculadas por Monte Carlo. Mide y avisa; no apaga |
+
+Rutas: `/api/internal/vara` · `/api/internal/parada` · `/api/internal/ventana-tarjetas` · `/api/internal/cercania`

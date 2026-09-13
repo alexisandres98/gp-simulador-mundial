@@ -1,5 +1,64 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🗓️ 13-sep — EL CALENDARIO QUE MANDA AHORA (lo demás es secundario)
+
+| fecha | qué | quién |
+|---|---|---|
+| **~3,2 semanas (≈4-oct)** | el núcleo limpio llega a 60 liquidadas y la línea 1 empieza a aplicar | automático |
+| **15-oct** | la pregunta del plazo: si el núcleo no llegó a 100, el problema no es perder, es que no se aprende lo bastante rápido | **Alexis** |
+| **~5,4 semanas (≈20-oct)** | 100 liquidadas = **el punto de decisión**. Antes no hay nada que decidir | **Alexis** |
+| cuando salte | correo de línea de parada → **apaga Alexis** `GP_REAL_ENABLED=false` | Alexis |
+
+**Hasta esas fechas no hay nada que proponer sobre dinero.** Ver `CLAUDE.md` §🛑 y `HANDOFF.md` §🛑.
+
+## 🔓 ABIERTO, NECESITA ORDEN DE ALEXIS (por prioridad)
+
+1. **Cerrar las cinco familias con veredicto `cerrar`.** La vara mide que el PRECIO le gana al modelo de
+   forma significativa: LoL KILLS_HANDICAP bovada (t −3,42) y cloudbet (t −3,52), CS2 RONDAS_HANDICAP
+   cloudbet (t −3,31), TT GAME_POINTS_HCP cloudbet (t −2,95), sombra `lol_kills_hcp_v1` (t −3,65).
+   Es cambio de lógica de picks → no se toca sin su palabra.
+
+2. **El veto de bandas llega tarde y ya costó −453,43.** Necesitó 80 partidos para clasificar Premier, 48
+   para Bundesliga, 281 para MLS; las apuestas se hicieron días antes. **Propuesta sin respuesta: veto por
+   pérdida** — cualquier liga con ≥10 apuestas reales y pnl acumulado < −50 sale hasta nueva orden, la mida
+   como la mida el Brier. Habría sacado Premier el 30-ago en vez del 12-sep.
+   **🔴 LaLiga está hoy en brier 0,2292 (justo bajo el umbral) con −92,68 acumulado: es el próximo Premier.**
+
+3. **Corners y goles se siguen publicando a 966 usuarios sin evidencia.** Corners: 1.009 liquidadas,
+   t −1,99 modelo-vs-precio, ROI −1,48 %. Goles: 165 liquidadas, el modelo y el mercado dan la MISMA
+   probabilidad hasta el tercer decimal (0,574 vs 0,574), t −1,04, ROI −5,50 %. Son **la mitad del volumen
+   del feed**. Decisión de producto, no de dinero.
+
+4. **Partir la vara por banda de liga**, para que `cards blanda+intermedia` salga como su propia fila con
+   veredicto propio en vez de esconderse dentro del segmento entero.
+
+5. **🔬 LA PREGUNTA ABIERTA MÁS IMPORTANTE: la ventaja del modelo cayó a la mitad y no sabemos por qué.**
+   +0,221 (17-ago) → +0,151 → +0,063 → +0,074. Sigue siendo positiva todas las semanas, pero ya no es
+   significativa. **Es lo único que puede matar esto de verdad**, y no hay hipótesis todavía. Lo que ya se
+   descartó: no es la mezcla de línea (efecto 0,04-0,57 pp), no es Brasil (+24,62 acumulado), no es el lado
+   under (over va −18,68 %), y la mezcla de liga solo explica el 26 %.
+
+6. **Rotar `GP_REAL_RELAY_TOKEN`** (impreso en chat el 7-sep) y **`API_FOOTBALL_KEY`**. Bloqueado en Alexis.
+
+## 🧰 HERRAMIENTAS NUEVAS (11-13 sep) — úsalas antes de opinar
+
+```
+/api/internal/vara?key=&bankroll=       la vara: margen, CLV recortado, veredicto, ¼ Kelly
+/api/internal/parada?key=               las 4 líneas de parada (VERDE/VIGILAR/FUERA); POST fuerza
+/api/internal/ventana-tarjetas?key=&h=  a qué hora abre cada liga su mercado de tarjetas
+/api/internal/cercania?key=             la pasada de cercanía; POST la fuerza
+```
+
+**Errores de método que ya cometimos y no hay que repetir:**
+- Leer el CLV crudo. La media la destrozan cierres rotos (+148 % en cloudbet). Siempre recortado al 10 %.
+- Usar el CLV donde no aplica. Si el cierre no predice mejor que la entrada (|t| < 2), el CLV no es evidencia
+  ni a favor ni en contra. En NUESTRAS diez familias no aplica en ninguna.
+- Olvidar el margen. Ganarle 0,9 % al cierre de Pinnacle cuando cobra 2,21 % por lado es perder.
+- Dimensionar con el ROI observado. ¼ Kelly sobre +33 % daría el 9,6 % del banco por apuesta; ese 33 % es un
+  ROI de 125 apuestas en cuatro semanas y el valor real está mucho más abajo.
+- Contar apuestas cuando lo que se mueve son partidos. Dos líneas del mismo partido son una sola apuesta.
+
+
 ## 🔁 9-sep — TT → familias que pierden: qué leer y qué falta
 Desplegado el 9-sep (HANDOFF §🔁). Todo es medición o sombra nueva; ninguna regla cambió.
 1. **En una semana, leer antes de tocar nada**: (a) `tt_transfer.<FAMILIA>.gate` en `/api/internal/clubs-picks`,

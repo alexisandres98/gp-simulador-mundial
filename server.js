@@ -14445,6 +14445,64 @@ async function realAvisoApuestaManual() {
 //   · el sombra colocó y el real no  → algo se rompió entre los dos, y hay que mirarlo.
 //   · ninguno de los dos colocó      → no hubo señal ejecutable, y no hay nada que mirar.
 // Sin esto, la única forma de distinguirlo es que alguien sospeche y pregunte, que es justo lo que pasó hoy.
+// ══ LAS LÍNEAS DE PARADA (13-sep) ═══════════════════════════════════════════════════════════════════════
+// Alexis preguntó qué tendría que pasar para que le dijera "saca el dinero". La respuesta solo vale si está
+// escrita ANTES, con números, porque el día que duela siempre habrá un motivo para esperar una semana más.
+// Las cuatro líneas y cómo se calcularon están en `real-executor/parada.js`. Esto las corre cada hora y, la
+// primera vez que una salta, manda UN correo. No apaga nada: apagar es decisión suya.
+function paradaEstado() {
+  const RE = require('./real-executor/store');
+  const P = require('./real-executor/parada');
+  const L = RE.load();
+  L.avisos = L.avisos || {};
+  L.paradaMem = L.paradaMem || {};
+  const out = P.evaluar({ bets: L.bets || [], picks: db.clubDailyPicks || [], saldo: L.saldo, memoria: L.paradaMem });
+  return { out, L, RE };
+}
+async function paradaVigila() {
+  try {
+    const RE0 = require('./real-executor/store');
+    if (!RE0.CFG().enabled) return { skipped: 'ejecutor apagado' };
+    const { out, L, RE } = paradaEstado();
+    RE.save();                                     // la lectura anterior de la línea 2 se persiste siempre
+    if (out.estado !== 'FUERA') return out;
+    // una línea avisa UNA vez: se recuerda cuál saltó para no repetir el correo cada hora. Si salta otra
+    // distinta, ese correo sí sale — es información nueva.
+    const nuevas = out.saltan.filter((id) => !L.avisos['parada:' + id]);
+    if (!nuevas.length) return out;
+    for (const id of nuevas) L.avisos['parada:' + id] = new Date().toISOString();
+    RE.save();
+    const linea = (id) => out.lineas.find((x) => x.id === id) || {};
+    const cuerpo = [
+      'LÍNEA DE PARADA CRUZADA — TOCA SACAR EL DINERO',
+      '',
+      'Se cruzó una de las cuatro condiciones que fijamos el 13-sep, antes de que doliera, justo para no',
+      'tener que decidirlo en caliente. Lo que sigue es la que saltó:',
+      '',
+      ...nuevas.map((id) => { const x = linea(id); return `  ✕ ${x.nombre}\n    ${x.lectura}\n    valor ${x.valor} · límite ${x.limite}`; }),
+      '',
+      'Las otras tres, para contexto:',
+      ...out.lineas.filter((x) => !nuevas.includes(x.id)).map((x) => `  ${x.salta ? '✕' : '·'} ${x.nombre}: ${x.lectura}`),
+      '',
+      'QUÉ SIGNIFICA. La línea del núcleo es el percentil 1 de una corrida que SÍ tiene ventaja: caer ahí',
+      'teniendo edge de verdad pasa 1 vez de cada 100. No es una mala racha dentro de lo normal.',
+      '',
+      'QUÉ NO HACE ESTE CORREO. No se ha apagado nada. El ejecutor sigue como estaba; apagarlo es tu',
+      'decisión. Para pararlo: GP_REAL_ENABLED=false en Render.',
+      '',
+      `Estado completo: /api/internal/parada?key=<GP_EXPORT_KEY>`,
+    ].join('\n');
+    const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+    if (mailer.isConfigured()) {
+      await mailer.sendMail({ to: adminTo, noListUnsub: true,
+        subject: `🛑 GP: línea de parada cruzada (${nuevas.join(', ')}) — toca sacar el dinero`,
+        text: cuerpo,
+        html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` }).catch((e) => console.error('[parada] correo:', e.message));
+    }
+    console.log('[parada] CRUZADA:', JSON.stringify(nuevas));
+    return out;
+  } catch (e) { console.error('[parada]', e.message); return { error: e.message }; }
+}
 async function realAvisoDivergencia() {
   const RE = require('./real-executor/store');
   if (!RE.CFG().enabled) return;
@@ -22778,6 +22836,20 @@ const server = http.createServer(async (req, res) => {
         corriendo_ahora: _cloudbetRunning,
       });
     }
+    // las cuatro lineas de parada del dinero real. GET = estado; POST = fuerza la comprobacion y el correo.
+    if (p === '/api/internal/parada') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const admP = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!admP && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      if (req.method === 'POST') {
+        // ?reset=1 olvida que ya avisó, para poder probar el correo
+        if (url.searchParams.get('reset')) { const RE = require('./real-executor/store'); const L = RE.load();
+          for (const k of Object.keys(L.avisos || {})) if (k.startsWith('parada:')) delete L.avisos[k]; RE.save(); }
+        return json(res, 200, await paradaVigila());
+      }
+      try { const { out, RE } = paradaEstado(); RE.save(); return json(res, 200, out); }
+      catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p === '/api/internal/ventana-tarjetas') {
       const xk = process.env.GP_EXPORT_KEY || '';
       const admV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
@@ -27287,6 +27359,9 @@ server.listen(PORT, () => {
     // corta a menos de tres horas, así que en la mayoría de los ticks sale por `sin partidos en ventana`
     setTimeout(() => { cloudbetCercania().catch(e => console.error('[cercania]', e.message)); }, 240 * 1000);
     setInterval(() => { cloudbetCercania().catch(e => console.error('[cercania]', e.message)); }, 4 * 60 * 1000);
+    // las lineas de parada: cada hora basta. La primera vez que una cruza, sale UN correo.
+    setTimeout(() => { paradaVigila().catch(() => { }); }, 300 * 1000);
+    setInterval(() => { paradaVigila().catch(() => { }); }, 60 * 60 * 1000);
     setTimeout(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 240 * 1000);
     setInterval(() => { myriadSweep().catch(e => console.error('[myriad]', e.message)); }, 15 * 60 * 1000);
     setTimeout(() => { polymarketSweep().catch(e => console.error('[polymarket]', e.message)); }, 270 * 1000);

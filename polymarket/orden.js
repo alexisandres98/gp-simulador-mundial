@@ -18,7 +18,7 @@
 // va en enteros.
 'use strict';
 
-const { digest } = require('../lib/eip712');
+const { digest, separadorDominio, hashEstructura } = require('../lib/eip712');
 const { keccak256 } = require('../lib/keccak');
 const S = require('../lib/secp256k1');
 
@@ -134,8 +134,14 @@ function construir({
   const sal = salt != null ? String(salt) : String(Math.floor(Math.random() * 9007199254740990) + 1);
   const ts = String(timestamp != null ? timestamp : Date.now());
 
+  // EN UNA DEPOSIT WALLET EL `signer` DE LA ORDEN ES LA PROPIA WALLET. Se impone aquí, y no en quien llama,
+  // porque es la clase de detalle que se olvida en uno de los tres sitios que construyen órdenes y entonces
+  // la casa rechaza sin decir por qué. Quien firma sigue siendo la clave del dueño; lo que cambia es a quién
+  // declara la orden como responsable. (Es literalmente lo que hace la implementación de la casa.)
+  const firmanteDeclarado = st === TIPO_FIRMA.deposito ? maker : signer;
+
   const mensaje = {
-    salt: sal, maker, signer, tokenId: String(tokenId),
+    salt: sal, maker, signer: firmanteDeclarado, tokenId: String(tokenId),
     makerAmount: imp.makerAmount, takerAmount: imp.takerAmount,
     side: LADO === 'BUY' ? 0 : 1, signatureType: st,
     timestamp: ts, metadata: CERO32, builder: CERO32,
@@ -147,20 +153,88 @@ function construir({
   return { mensaje, dominio, importes: imp, lado: LADO, expiracion: String(expiracion), orderType };
 }
 
-// El digest que se firma. Para Proxy, Safe y EOA es el de la propia orden; la Deposit Wallet además envuelve
-// la firma para ERC-7739, y eso se hace aparte (`envuelveDeposito`).
-const digestDe = (o) => digest({ domain: o.dominio, types: TIPOS_ORDEN, primaryType: 'Order', message: o.mensaje });
+// ── LA DEPOSIT WALLET: ERC-1271 CON REHASHEO DEFENSIVO (13-sep, medido contra la casa) ──────────────────
+// TODA cuenta de Polymarket creada desde el 4-may-2026 es una Deposit Wallet, así que esto no es un caso
+// raro: es EL caso. Lo dice su propia documentación, y la casa nos lo confirmó rechazando los otros tres
+// tipos de firma con «maker address not allowed, please use the deposit wallet flow».
+//
+// Una Deposit Wallet es un contrato, no una persona: no firma con una clave, valida firmas (ERC-1271). Eso
+// cambia tres cosas a la vez, y las tres hay que acertarlas o la casa contesta que la firma no vale sin
+// decir cuál de las tres falló:
+//
+//   1. **El `signer` de la orden es LA PROPIA WALLET**, no la clave que firma. Es lo contrario de Proxy y
+//      Safe, donde son direcciones distintas. Quien firma de verdad sigue siendo la clave del dueño, pero
+//      la orden declara como firmante al contrato, porque es el contrato quien responde por ella.
+//   2. **No se firma la orden: se firma la orden ENVUELTA** en una estructura `TypedDataSign` (ERC-7739).
+//      El envoltorio mete dentro el dominio de la cuenta — nombre «DepositWallet», versión «1», y la
+//      dirección de la wallet como `verifyingContract` — para que una firma hecha para una cuenta no pueda
+//      reutilizarse en otra. Rehasheo defensivo: eso es todo lo que hace.
+//   3. **La firma que viaja lleva cola**: detrás de los 65 bytes van el separador de dominio de la casa, el
+//      hash de la orden, el texto del tipo `Order(...)` y su longitud en dos bytes. El contrato necesita
+//      esas piezas para rehacer la cuenta por su lado y comprobar que coincide.
+//
+// Todo esto está copiado de la implementación de la propia casa (`@polymarket/client`), no deducido del
+// estándar: ERC-7739 admite variantes —con `fields` y `extensions`— y la que usan es la corta.
+const TIPO_ORDEN_TEXTO = 'Order(uint256 salt,address maker,address signer,uint256 tokenId,uint256 makerAmount,uint256 takerAmount,uint8 side,uint8 signatureType,uint256 timestamp,bytes32 metadata,bytes32 builder)';
+const CUENTA_NOMBRE = 'DepositWallet';
+const CUENTA_VERSION = '1';
+const TIPOS_ENVUELTOS = {
+  Order: TIPOS_ORDEN.Order,
+  TypedDataSign: [
+    { name: 'contents', type: 'Order' },
+    { name: 'name', type: 'string' },
+    { name: 'version', type: 'string' },
+    { name: 'chainId', type: 'uint256' },
+    { name: 'verifyingContract', type: 'address' },
+    { name: 'salt', type: 'bytes32' },
+  ],
+};
+
+const esDeposito = (o) => Number(o.mensaje.signatureType) === TIPO_FIRMA.deposito;
+
+// El digest que se firma. Para Proxy, Safe y EOA es el de la propia orden; para la Deposit Wallet es el de
+// la orden envuelta.
+function digestDe(o) {
+  if (!esDeposito(o)) return digest({ domain: o.dominio, types: TIPOS_ORDEN, primaryType: 'Order', message: o.mensaje });
+  return digest({
+    domain: o.dominio,                                       // el dominio de la CASA, sin cambios
+    types: TIPOS_ENVUELTOS,
+    primaryType: 'TypedDataSign',
+    message: {
+      contents: o.mensaje,
+      name: CUENTA_NOMBRE, version: CUENTA_VERSION,
+      chainId: o.dominio.chainId,
+      verifyingContract: o.mensaje.signer,                    // la wallet: por eso el signer es ella misma
+      salt: CERO32,
+    },
+  });
+}
+
+// La cola que el contrato necesita para rehacer la cuenta: separador de dominio ‖ hash de la orden ‖
+// el texto del tipo ‖ su longitud en dos bytes. Sin ella el contrato no puede validar nada.
+function colaDeposito(o) {
+  const sep = separadorDominio(o.dominio);
+  const hOrden = hashEstructura('Order', o.mensaje, TIPOS_ORDEN);
+  const texto = Buffer.from(TIPO_ORDEN_TEXTO, 'utf8');
+  const largo = Buffer.from(texto.length.toString(16).padStart(4, '0'), 'hex');
+  return Buffer.concat([sep, hOrden, texto, largo]);
+}
 
 function firmar(o, clavePrivada) {
   const h = digestDe(o);
   const f = S.firmar(h, clavePrivada);
-  // COMPROBACIÓN ANTES DE ENVIAR: la firma tiene que recuperar la dirección del firmante declarado. Si no,
-  // la casa tampoco nos va a reconocer y la orden se rechazaría — mejor enterarse aquí que en el log.
+  // COMPROBACIÓN ANTES DE ENVIAR: la firma tiene que recuperar la dirección de quien firma. En Proxy, Safe
+  // y EOA ese es el `signer` declarado en la orden. En una Deposit Wallet NO: ahí el `signer` declarado es
+  // el contrato, y quien firma es la clave del dueño — así que se comprueba contra la dirección de la clave.
   const recuperada = S.recuperar(h, f.r, f.s, f.rec);
-  if (!recuperada || recuperada.toLowerCase() !== String(o.mensaje.signer).toLowerCase()) {
-    throw new Error(`la firma recupera ${recuperada} y el firmante declarado es ${o.mensaje.signer}`);
+  const esperada = esDeposito(o) ? S.direccionDe(clavePrivada) : String(o.mensaje.signer);
+  if (!recuperada || recuperada.toLowerCase() !== esperada.toLowerCase()) {
+    throw new Error(`la firma recupera ${recuperada} y se esperaba ${esperada}`);
   }
-  return { firma: f.hex, digest: '0x' + h.toString('hex'), recuperada };
+  const firma = esDeposito(o)
+    ? '0x' + Buffer.concat([Buffer.from(f.hex.slice(2), 'hex'), colaDeposito(o)]).toString('hex')
+    : f.hex;
+  return { firma, digest: '0x' + h.toString('hex'), recuperada, envuelta: esDeposito(o) };
 }
 
 // El cuerpo que se manda a POST /order, con los nombres exactos de la casa.
@@ -179,5 +253,5 @@ function cuerpo(o, firma, { deferExec = false, owner = null } = {}) {
   return b;
 }
 
-module.exports = { CHAIN_ID, EXCHANGE, TIPO_FIRMA, TIPOS_ORDEN, DECIMALES,
+module.exports = { CHAIN_ID, EXCHANGE, TIPO_FIRMA, TIPOS_ORDEN, TIPOS_ENVUELTOS, TIPO_ORDEN_TEXTO, DECIMALES,
   decimalesDe, aDecimal, aTexto, reescala, importes, construir, digestDe, firmar, cuerpo };

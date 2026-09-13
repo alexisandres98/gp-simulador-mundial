@@ -238,7 +238,10 @@ async function ensayo(b) {
 //
 // Esto es mejor que deducir el tipo de la dirección: las direcciones proxy se derivan con constantes de
 // contrato que cambiarían sin avisarnos, y una deducción equivocada se descubriría con dinero encima.
-const TIPOS_A_PROBAR = ['proxy', 'safe', 'eoa', 'deposito'];
+// EL ORDEN IMPORTA: `deposito` va primero desde el 13-sep porque toda cuenta creada a partir del
+// 4-may-2026 es una Deposit Wallet. Probar los tres legados antes era gastar tres órdenes rechazadas para
+// llegar al que casi siempre va a ser el bueno.
+const TIPOS_A_PROBAR = ['deposito', 'proxy', 'safe', 'eoa'];
 async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {}) {
   const pk = PK(); if (!pk) return { ok: false, why: 'falta PM_PRIVATE_KEY' };
   const maker = MAKER(); if (!maker) return { ok: false, why: 'falta PM_MAKER_ADDRESS' };
@@ -254,10 +257,6 @@ async function detectarTipoFirma({ tokenId, precio = '0.01', tamano = null } = {
   const size = String(tamano || mk.min_order_size || 5);
   const intentos = [];
   for (const tipo of TIPOS_A_PROBAR) {
-    if (tipo === 'deposito') {
-      intentos.push({ tipo, saltado: 'la Deposit Wallet necesita envolver la firma para ERC-7739 y eso aún no está implementado' });
-      continue;
-    }
     let r;
     try {
       const orden = O.construir({ tokenId: String(tokenId), lado: 'BUY', precio: String(precio), tamano: size,

@@ -741,8 +741,36 @@ setTimeout(lolHarvestJob, 6 * 60e3);
 // que V8 aborte a mitad de una petición o de un save() a medias, que es el único desenlace peor que
 // reiniciar. Render lo levanta solo en ~30s. Tope configurable con GP_MEM_RESTART_MB (defecto 2600).
 const MEM_TOPE_MB = Math.max(800, Number(process.env.GP_MEM_RESTART_MB) || 2600);
+// ── LA ZONA MUERTA, CERRADA (14-sep) ────────────────────────────────────────────────────────────────────
+// Autopsia del lunes: el ejecutor real llevaba ONCE HORAS sin colocar una sola apuesta y no había nada roto.
+// El proceso había subido a 1.551 MB de montón (2.133 de RSS) y ahí:
+//   · los guardias de los trabajos (techo de memoria VIVA, 900 MB) saltaban en TODAS las pasadas,
+//   · y el reinicio preventivo, que mira el montón contra 3.350 MB, no llegaba ni de lejos.
+// O sea: entre 900 y 3.350 MB hay una banda donde el servidor sirve peticiones con normalidad pero NO HACE
+// NINGÚN TRABAJO DE FONDO, y nada lo saca de ahí. No se detectó antes porque el domingo se desplegó 33
+// veces: cada despliegue reiniciaba el proceso y la memoria nunca llegaba a subir. En cuanto pararon los
+// despliegues, tardó 3 h 30 min en entrar en la banda y se quedó ahí toda la noche.
+//
+// Un proceso que no puede hacer su trabajo no está sano aunque conteste 200. Así que el vigilante mira
+// ahora las DOS cosas: que no esté a punto de morir (lo de siempre) y que siga sirviendo para algo. Si la
+// memoria viva se queda por encima del techo de los trabajos durante `GP_MEM_INUTIL_MIN` minutos seguidos,
+// reinicia igual: cuesta 30 segundos y el precio de no hacerlo son once horas de nada.
+//
+// Dos frenos para no caer en un bucle de reinicios: no cuenta hasta que el proceso lleva un rato arriba, y
+// exige minutos CONSECUTIVOS — una pasada pesada que baje sola no dispara nada.
+const MEM_INUTIL_MIN = Math.max(5, Number(process.env.GP_MEM_INUTIL_MIN) || 20);
+const MEM_INUTIL_GRACIA_MS = 15 * 60e3;
+const _arranqueMs = Date.now();
+let _minutosInutil = 0;
 const _memSerie = [];
 let _memSaliendo = false;
+function _salirLimpio(motivo) {
+  _memSaliendo = true;
+  console.error('[mem] REINICIO PREVENTIVO:', motivo, '— guardo la base y salgo limpio');
+  try { opsLog('mem_reinicio', { motivo }); } catch { /* el log jamás impide salir */ }
+  try { save(); } catch { /* salir igual: quedarse es morir en 134 */ }
+  setTimeout(() => process.exit(0), 1500);
+}
 setInterval(() => {
   try {
     if (_memSaliendo) return;
@@ -753,11 +781,21 @@ setInterval(() => {
     const delta = hace5 ? mb - hace5.mb : 0;
     if (delta > 120) console.error('[mem] heap', mb, 'MB · +' + delta, 'MB en', Math.max(1, Math.round((Date.now() - hace5.t) / 60000)), 'min');
     else if (mb > MEM_TOPE_MB * 0.8) console.error('[mem] heap alto:', mb, 'MB (tope', MEM_TOPE_MB + ')');
-    if (mb > MEM_TOPE_MB) {
-      _memSaliendo = true;
-      console.error('[mem] REINICIO PREVENTIVO: heap', mb, 'MB > tope', MEM_TOPE_MB, '— guardo la base y salgo limpio');
-      try { save(); } catch { /* salir igual: quedarse es morir en 134 */ }
-      setTimeout(() => process.exit(0), 1500);
+    if (mb > MEM_TOPE_MB) return _salirLimpio(`heap ${mb} MB > tope ${MEM_TOPE_MB}`);
+
+    // ¿puede trabajar? Misma medida exacta que usan los guardias de los trabajos, para que no haya forma de
+    // que uno diga «no paso» y el otro crea que todo va bien.
+    const viva = opsLiveMb();
+    const rss = opsRssMb();
+    const inutil = viva > OPS_LIVE_CEIL || rss > OPS_RSS_HARD;
+    if (!inutil) { _minutosInutil = 0; return; }
+    if (Date.now() - _arranqueMs < MEM_INUTIL_GRACIA_MS) return;   // recién arrancado: ni contar
+    _minutosInutil += 1;
+    if (_minutosInutil === 1 || _minutosInutil % 5 === 0) {
+      console.error('[mem] sin poder trabajar:', _minutosInutil, 'min · viva', viva, 'MB (techo', OPS_LIVE_CEIL + ') · rss', rss, 'MB');
+    }
+    if (_minutosInutil >= MEM_INUTIL_MIN) {
+      _salirLimpio(`${_minutosInutil} min seguidos sin poder correr ningún trabajo (viva ${viva} MB > techo ${OPS_LIVE_CEIL}, rss ${rss} MB)`);
     }
   } catch { /* el vigilante jamás tumba nada */ }
 }, 60e3);
@@ -21548,7 +21586,12 @@ const server = http.createServer(async (req, res) => {
         rss_mb: opsRssMb(), live_mb: opsLiveMb(),
         mem: (() => { const m = process.memoryUsage(); const M = (x) => Math.round(x / 1048576);
           return { rss: M(m.rss), heap_total: M(m.heapTotal), heap_used: M(m.heapUsed), external: M(m.external),
-            techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice() }; })(),
+            techo_vivo: OPS_LIVE_CEIL, guardia_rss: OPS_RSS_HARD, anillo_vivo: LIVE_RING.slice(), anillo_rss: RSS_RING.slice(),
+            // minutos SEGUIDOS sin poder correr ningún trabajo, y a cuántos se reinicia solo. Es el número
+            // que hay que mirar cuando algo "no hace nada sin estar roto": si sube, el proceso está en la
+            // banda muerta y se está saliendo solo de ella.
+            inutil_min: _minutosInutil, inutil_tope_min: MEM_INUTIL_MIN,
+            arriba_min: Math.round((Date.now() - _arranqueMs) / 60e3), tope_reinicio_mb: MEM_TOPE_MB }; })(),
         running: Object.keys(OPS.running).filter(k => OPS.running[k]),
         // LAS MARCAS DE DÍA DE TODOS LOS TRABAJOS DIARIOS, no solo dos (4-sep). Se añadieron baloncesto y
         // NFL y no salían aquí: el sitio donde se comprueba "¿corrió hoy?" tiene que enseñar todo lo que

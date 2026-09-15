@@ -17,12 +17,18 @@
 // que faltan para el inicio. Las ventanas son anchas a propósito: los barridos van cada 10-20 min y una lectura
 // hecha a T−52 vale como T−60; lo que importa es que cada cubo tenga UNA lectura, la más tardía dentro de la
 // ventana no hace falta porque la siguiente pasada cae en el cubo siguiente.
+// EL SUELO DEL ÚLTIMO CUBO ES CERO, NO −2 (15-sep-2026, A11 de la auditoría externa). T1 aceptaba lecturas
+// hasta DOS MINUTOS DESPUÉS del inicio, y un precio tomado con el partido rodando no es un cierre: es un
+// precio en vivo. Con él, el CLV y el EV miden otra cosa —el mercado ya sabe cosas que nosotros no sabíamos
+// al entrar— y encima hacia el lado que nos favorece, porque las líneas que se mueven rápido son justo las
+// de los partidos que empiezan movidos. Cuesta cobertura (la ventana de T1 pasa de 5 a 3 minutos y con
+// barridos de 10-20 min casi nunca cae ahí), y es el precio correcto: un cubo vacío se ve, uno contaminado no.
 const BUCKETS = [
   ['T60', 90, 45],
   ['T30', 45, 20],
   ['T10', 20, 7],
   ['T5', 7, 3],
-  ['T1', 3, -2],
+  ['T1', 3, 0],
 ];
 const KEYS = BUCKETS.map((b) => b[0]);
 
@@ -37,6 +43,102 @@ function bucketFor(startAt, now = Date.now()) {
   if (m == null) return null;
   for (const [k, hi, lo] of BUCKETS) if (m <= hi && m > lo) return k;
   return null;
+}
+
+// ══ EL INICIO REAL MANDA (15-sep-2026, A11) ═════════════════════════════════════════════════════════════
+// "Prepartido" no es "antes de la hora del calendario": es antes de que la pelota (o el saque, o el primer
+// dardo) eche a rodar. Los dos números se separan con facilidad —retrasos de televisión, un partido anterior
+// que se alarga, un cambio de pista— y cuando se separan, todo lo capturado en medio se llamaba cierre
+// siendo precio en vivo. Medido en el código antes de este cambio: fútbol admitía cotizaciones hasta
+// KICKOFF+30 min como "cierre", esports hasta +15, y tenis/NFL/amfoot sobreescribían el cierre hasta +60.
+//
+// De dónde sale el inicio real: DEL MARCADOR, que es la única fuente que sabe si el partido empezó (ESPN en
+// fútbol y baloncesto, WTT/Flashscore en tenis de mesa, Flashscore en dardos, la PDC en resultados). A veces
+// llega como sello de tiempo (`started_at`) y a veces solo como estado ("live", "in", "Result"): las dos
+// formas sirven, porque para excluir una lectura basta con saber que el partido YA había empezado cuando se
+// tomó. Cuando el marcador no dice nada se usa el programado y **se marca** (`inicio_fuente: 'programado'`),
+// que es distinto de saberlo: quien lea el track tiene que poder separar los dos casos.
+const CAMPOS_PROGRAMADO = ['start_at', 'commence_time', 'commence', 'kickoff_at', 'kickoff', 'startAt', 'ko'];
+const CAMPOS_REAL = ['started_at', 'actual_start_at', 'inicio_real', 'real_start_at', 'first_live_at', 'live_at'];
+const ESTADO_EN_JUEGO = /^(live|in|in_play|inplay|post|final|finished|finish|result|running|progress|complete)/i;
+
+const aMs = (x) => {
+  if (x == null) return null;
+  if (typeof x === 'number') return Number.isFinite(x) ? x : null;
+  const t = Date.parse(x);
+  return Number.isFinite(t) ? t : null;
+};
+const primerMs = (ev, campos) => { for (const c of campos) { const v = aMs(ev[c]); if (v != null) return v; } return null; };
+
+// ¿el marcador dice que esto ya rueda AHORA? `live` puede venir como booleano o como el objeto del marcador
+// (tenis de mesa y dardos lo traen así); `status`/`estado` cubren las fuentes que solo publican el estado.
+function enJuegoAhora(ev) {
+  if (!ev || typeof ev !== 'object') return false;
+  if (ev.live === true || (ev.live && typeof ev.live === 'object')) return true;
+  if (ev.completed === true || ev.in_play === true) return true;
+  for (const c of ['status', 'estado', 'state', 'game_state']) if (ESTADO_EN_JUEGO.test(String(ev[c] || ''))) return true;
+  return false;
+}
+
+// `ev` puede ser el evento entero, o directamente la hora programada (número o ISO) para los sitios que aún
+// no tienen marcador. Devuelve SIEMPRE la fuente, porque un inicio supuesto y uno sabido no valen lo mismo.
+function inicioDe(ev) {
+  if (ev == null) return { ms: null, fuente: 'desconocido', en_juego: false, programado: null };
+  if (typeof ev === 'number' || typeof ev === 'string') return { ms: aMs(ev), fuente: 'programado', en_juego: false, programado: aMs(ev) };
+  const prog = primerMs(ev, CAMPOS_PROGRAMADO);
+  const real = primerMs(ev, CAMPOS_REAL);
+  const juego = enJuegoAhora(ev);
+  if (real != null) return { ms: real, fuente: 'marcador', en_juego: juego, programado: prog };
+  if (prog == null) return { ms: null, fuente: 'desconocido', en_juego: juego, programado: null };
+  // sin sello real pero con el marcador diciendo que rueda: el inicio real es ≤ ahora, y eso ya basta
+  return { ms: prog, fuente: juego ? 'marcador (estado, sin sello)' : 'programado', en_juego: juego, programado: prog };
+}
+
+// EL VEREDICTO DE UNA CAPTURA. `prepartido` es la única puerta que abren los motores: exige que el instante
+// de captura sea ANTERIOR al inicio real cuando se conoce, y al programado cuando no, y en ese caso lo marca.
+// Un evento sin ninguna hora no pasa (`sin_inicio`): no se puede afirmar que un precio sea prepartido si no
+// se sabe cuándo empieza el partido.
+function estadoCaptura(ev, now = Date.now()) {
+  const ini = inicioDe(ev);
+  const min = Number.isFinite(ini.ms) ? (ini.ms - now) / 60000 : null;
+  const sinInicio = min == null;
+  const inPlay = !sinInicio && (ini.en_juego || min <= 0);
+  const prepartido = !sinInicio && !inPlay;
+  return {
+    inicio_ms: ini.ms, inicio_at: Number.isFinite(ini.ms) ? new Date(ini.ms).toISOString() : null,
+    inicio_fuente: ini.fuente, inicio_conocido: ini.fuente === 'marcador' || ini.fuente === 'marcador (estado, sin sello)',
+    en_juego: ini.en_juego, min_al_inicio: min == null ? null : Math.round(min * 10) / 10,
+    in_play: inPlay, prepartido, sin_inicio: sinInicio,
+    bucket: prepartido ? bucketFor(ini.ms, now) : null,
+  };
+}
+
+// EL CONTADOR, porque la cifra es un hallazgo en sí misma. Cada motor cuenta sus capturas con su nombre y
+// `diagInPlay()` las publica; es por proceso (se reinicia con el deploy), así que el número duradero vive
+// además en el propio almacén de cierres de cada motor (`in_play_visto`).
+const _cuenta = {};
+function cuenta(motor, est) {
+  const c = _cuenta[motor] = _cuenta[motor] || { intentos: 0, prepartido: 0, in_play: 0, sin_inicio: 0, inicio_por_marcador: 0, inicio_por_programado: 0 };
+  c.intentos++;
+  if (est.sin_inicio) c.sin_inicio++;
+  else if (est.in_play) c.in_play++;
+  else c.prepartido++;
+  if (est.inicio_conocido) c.inicio_por_marcador++; else if (!est.sin_inicio) c.inicio_por_programado++;
+  return est;
+}
+function diagInPlay(motor) {
+  if (motor) return _cuenta[motor] ? { ..._cuenta[motor] } : { intentos: 0, prepartido: 0, in_play: 0, sin_inicio: 0, inicio_por_marcador: 0, inicio_por_programado: 0 };
+  return JSON.parse(JSON.stringify(_cuenta));
+}
+
+// ¿se puede VALORAR con esta lectura? Lo usan la liquidación y los resúmenes: una foto marcada `in_play`, o
+// cuyo sello es posterior al inicio, no entra ni al CLV ni al EV. Se cuenta aparte, no se borra.
+function cierreValorable(snap, inicioMs) {
+  if (!snap) return false;
+  if (snap.in_play === true) return false;
+  const at = aMs(snap.at);
+  if (at != null && Number.isFinite(inicioMs) && at >= inicioMs) return false;
+  return true;
 }
 
 // rec: el registro de cierres de UNA tesis: { buckets: { T60: { at, own, best, pinnacle }, ... }, last: {...} }
@@ -134,4 +236,10 @@ function salud(items) {
     lectura: bloque ? `${bloque} de ${n} tesis tienen cubos escritos en la misma pasada (antes del 11-sep): en esas la CURVA no se puede leer, el CLV sí.` : 'curva limpia: cada cubo, una lectura propia.' };
 }
 
-module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize, rescatar, salud };
+module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize, rescatar, salud,
+  // 15-sep (A11): el inicio REAL manda sobre el programado. Estas piezas están escritas y probadas, pero
+  // todavía NO las llama cada motor: el cambio de bucket T1 (suelo 0 en vez de −2) ya está activo y es el
+  // que impide escribir un "cierre" con el partido rodando. Conectar `estadoCaptura` en cada captura
+  // —fútbol, esports, tenis, tenis de mesa, dardos, baloncesto, NFL y amfoot— queda pendiente y va anotado
+  // en TODO_NEXT: hacerlo a medias en unos motores y no en otros haría incomparables sus cierres.
+  inicioDe, estadoCaptura, cuenta, diagInPlay, cierreValorable };

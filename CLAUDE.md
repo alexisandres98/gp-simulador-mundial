@@ -5,6 +5,25 @@
 ## Qué es
 **GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
 
+## 🔬 LA AUDITORÍA EXTERNA (15-sep-2026) — LO PRIMERO DESPUÉS DE LA REGLA DEL DINERO
+Una auditoría independiente revisó los modelos, los precios y la evidencia. Está íntegra en
+`docs/AUDITORIA_EXTERNA_2026-09-15.md`, el plan de ejecución en `docs/PLAN_TRABAJO_AUDITORIA_2026-09-15.md` y
+el resultado en `docs/METRICAS_RECALCULADAS_2026-09.md`. Tres cosas que cambian cómo se decide aquí:
+
+1. **LA VARA ANTERIOR ESTABA MAL.** Restar el margen por lado a la media del CLV no es el retorno esperado de
+   nada: con cierre 1,905/1,905 y entrada a 1,97 daba +0,925 % y el EV real es −1,50 %. Podía aprobar
+   familias con esperanza negativa. Ahora manda `lib/ev.js`: EV ticket a ticket contra la probabilidad SIN
+   MARGEN del cierre, agregado con incertidumbre por RACIMOS DE EVENTO (`lib/inferencia.js`). El CLV queda
+   como diagnóstico de movimiento de línea, nunca como veredicto.
+2. **CON LA VARA NUEVA NO HAY NINGUNA FAMILIA INVERTIBLE.** Cero. Diez piden cierre. Familias con CLV
+   positivo y significativo tienen EV negativo. Si alguien propone meter dinero, la respuesta está medida.
+3. **UN PRECIO ES UNA TUPLA.** Selección, línea y cuota viajan juntas (`lib/contrato.js`). Valorar la línea
+   del consenso con el precio de otra infla la ventaja siempre en la misma dirección.
+
+Y dos reglas de método que la auditoría dejó por escrito: un resultado que no se encuentra NO es una
+devolución (`DATA_UNRESOLVED`, nunca VOID), y 100 apuestas son un control operativo de riesgo, no una
+certificación estadística — a cuota 1,91 el intervalo del ROI con 100 apuestas mide 19 puntos de ancho.
+
 ## 🛑 LA REGLA DEL DINERO (13-sep-2026) — LA PRIMERA QUE HAY QUE LEER
 **NO SE METE MÁS DINERO EN NINGÚN SITIO** hasta que una familia cruce el listón escrito en
 `real-executor/parada.js`. Decisión de Alexis del 13-sep tras tres días de auditoría. No la re-propongas:

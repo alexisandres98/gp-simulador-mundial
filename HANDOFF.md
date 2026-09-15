@@ -1,4 +1,66 @@
-# HANDOFF — estado al 13-sep-2026 (la vara, las líneas de parada, y la decisión de NO meter más dinero)
+# HANDOFF — estado al 15 de septiembre de 2026
+
+## 🛑 PUNTO DE RETOMA (15-sep, 10:00 UTC) — LÉEME ANTES DE PROPONER NADA
+
+**Hoy se ejecutó la Fase 0 y la mayor parte de la Fase 1 del plan de la auditoría externa.** Los tres
+documentos que mandan ahora son, en este orden:
+
+1. `docs/AUDITORIA_EXTERNA_2026-09-15.md` — la auditoría independiente, íntegra, con sus hallazgos A01-A36.
+2. `docs/PLAN_TRABAJO_AUDITORIA_2026-09-15.md` — el plan por fases y las ocho decisiones, todas aprobadas
+   por Alexis el 15-sep con un "procede con todo".
+3. `docs/METRICAS_RECALCULADAS_2026-09.md` — **el resultado**: familia por familia, el veredicto viejo al
+   lado del nuevo.
+
+### Lo que hay que saber en un minuto
+
+- **Ninguna familia es invertible.** Con la vara nueva: 0 invertibles, 10 a cerrar, 1 no invertible, 4 con
+  muestra corta y 6 que no se pueden juzgar. Familias con CLV positivo y significativo resultan tener
+  retorno esperado negativo: CS2 rondas-hándicap en Pinnacle daba CLV +1,04 % con t 8,19 y su EV real es
+  −3,28 %. Le ganábamos al cierre y perdíamos contra la casa.
+- **La vara estaba mal y ya está corregida.** Restaba el margen por lado a la media del CLV, y eso no es el
+  retorno esperado de nada: podía aprobar familias con esperanza negativa. Ahora se calcula el EV ticket a
+  ticket contra la probabilidad sin margen del cierre (`lib/ev.js`) y se agrega con incertidumbre por
+  racimos de evento (`lib/inferencia.js`).
+- **El saldo de Cloudbet está en 0,00216 USDT.** Entre el 14-sep a las 13:15 y el 15-sep a las 09:05 salieron
+  **563,29 USDT que ninguna apuesta explica** y que no tienen retiro anotado. **Hace falta que Alexis lo
+  confirme**: sin su palabra no se anota nada, porque inventar un movimiento para cuadrar la caja es peor que
+  dejarla abierta. Además, los depósitos acumulados tienen que sumar unos **1.717,63 USDT** y no hay ninguno
+  anotado, así que la ecuación de caja nunca ha cerrado.
+- **La parada ya bloquea.** Con el saldo a cero, la línea de caja está saltada y para órdenes nuevas en los
+  tres canales. Es el comportamiento correcto. `GP_PARADA_BLOQUEA=off` lo levanta sin desplegar.
+- **Tarjetas está pausado** por decisión de Alexis durante las fases 0 y 1 (`GP_REAL_CARDS_ENABLED=false`).
+  Tenis de mesa sigue encendido a 5 USD, pero sin saldo no coloca.
+
+### Lo que se arregló hoy, por orden de gravedad
+
+| # | Qué estaba mal | Dónde | Estado |
+|---|---|---|---|
+| 1 | La vara restaba magnitudes en unidades distintas y podía aprobar esperanzas negativas | `lib/vara.js` | corregido, con `lib/ev.js` nuevo |
+| 2 | Todos los WTT Star Contender salían clasificados como liga privada de apuestas, por un `tt star` que casa dentro de "w·tt star·contender" | `tt-engine/rules.js` | corregido, 23 casos en test |
+| 3 | El ganador de fútbol americano no se liquidaba nunca: todo salía empate con cero unidades | `nfl-engine/`, `amfoot-engine/` | corregido |
+| 4 | "No encontré el resultado" se marcaba como devolución de la casa | ocho motores | corregido, `DATA_UNRESOLVED` |
+| 5 | El canal de tenis de mesa podía colocar dos totales del mismo partido | `real-executor/tt.js` | corregido |
+| 6 | La parada estaba en dólares de un stake concreto, solo miraba tarjetas y no paraba nada | `real-executor/parada.js` | corregido y vinculante |
+| 7 | Con Kelly cero el stake caía al TOPE y se apostaba el máximo sobre EV negativo | `real-executor/store.js` | corregido |
+| 8 | Saldo desconocido o de hace horas no frenaba | `real-executor/store.js` | corregido |
+| 9 | Los cuartos asiáticos promediaban probabilidades en vez de pagos | `goal-engine/markets.js` | corregido |
+| 10 | La incertidumbre se calculaba por tickets, no por eventos | toda la vara | corregido |
+| 11 | La lista de no ejecutables se truncaba y la tasa de ejecución subía sola | sombra | corregido |
+| 12 | Dos puertas de baloncesto existían y no actuaban | `buildHoopsPicks` | corregido |
+| 13 | Con varianza cero el estadístico salía en 10^15 y podía disparar una parada | `parada.js`, `vara.js` | corregido |
+
+### Lo que queda de la Fase 1 (no se ha tocado en producción)
+
+- **T1.2** `lib/contrato.js` está escrito y probado, pero **falta conectarlo**: el tablero, el selector de
+  mejor precio y los dos motores de fútbol americano siguen pudiendo valorar la línea del consenso con el
+  precio de otra línea.
+- **T1.3** El cubo T−1 ya no admite lecturas posteriores al inicio, pero `estadoCaptura` **no está conectado**
+  en los motores: hacerlo a medias haría incomparables sus cierres.
+- **T1.6** El tablero sigue con la etiqueta "confirmada" y ordenando por t de CLV.
+- **T1.11** Las comisiones de Polymarket siguen sin descontarse.
+- **T1.14** Pinnacle devuelve cero eventos de tenis de mesa y no se ha investigado.
+
+---
 
 ## 🆕 ÚLTIMO TRABAJO (13-sep, noche): EL EJECUTOR DE POLYMARKET, PROBADO CONTRA LA CASA DE VERDAD
 

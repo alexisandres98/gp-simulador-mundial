@@ -1,5 +1,24 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🔬 15-sep — LO QUE QUEDA DE LA FASE 1 DE LA AUDITORÍA (lo primero)
+
+Plan completo en `docs/PLAN_TRABAJO_AUDITORIA_2026-09-15.md`. Hecho hoy: la vara nueva, la inferencia por
+racimos, los cuartos asiáticos, los liquidadores, la parada por canal y vinculante, los frenos de saldo y
+Kelly, las puertas de baloncesto, las dos cohortes y el clasificador de tenis de mesa. Queda:
+
+1. **Conectar `lib/contrato.js` (T1.2).** Está escrito y probado; falta usarlo en `edge-board.js`, en
+   `currentBestOddsForPick` de `server.js` y en `amfoot-engine/store.js` y `nfl-engine/store.js`. Hasta que
+   se haga, esos sitios pueden valorar la línea del consenso con el precio de otra línea.
+2. **Conectar `estadoCaptura` de `implied-engine/closes.js` (T1.3)** en cada motor que captura cierres. El
+   cubo T−1 ya no admite lecturas posteriores al inicio, pero el resto de la comprobación no está enchufada.
+   Hacerlo en unos motores y no en otros haría incomparables sus cierres: o todos, o ninguno.
+3. **El tablero (T1.6).** Sigue con la etiqueta "confirmada" y ordenando por t de CLV. Tiene que ordenar por
+   EV al cierre, dar una cohorte por versión de regla y aplicar Benjamini-Hochberg sobre las familias.
+4. **Comisiones de Polymarket (T1.11).** Ni la sombra ni el ejecutor las descuentan.
+5. **Pinnacle no publica eventos de tenis de mesa (T1.14).** La llamada responde bien y viene vacía.
+6. **La caja no cuadra.** Faltan los depósitos acumulados (unos 1.717,63 USDT) y hay 563,29 USDT que salieron
+   entre el 14 y el 15 de septiembre sin apuesta ni retiro anotado que lo explique. **Pendiente de Alexis.**
+
 ## 🗓️ 13-sep — EL CALENDARIO QUE MANDA AHORA (lo demás es secundario)
 
 | fecha | qué | quién |

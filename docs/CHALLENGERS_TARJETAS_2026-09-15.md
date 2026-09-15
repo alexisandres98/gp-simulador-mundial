@@ -175,3 +175,76 @@ rejilla. La rejilla se quedó corta por abajo y hay que ampliarla.
 Que el error de calibración vaya en dirección favorable al under y el error de conteo en dirección
 contraria, y que los dos midan entre 2 y 4 puntos, explica bastante bien por qué `cards_under_v1` lleva
 meses sin ganar ni perder de forma clara: **dos errores de tamaño parecido en sentidos opuestos**.
+
+---
+
+# Apéndice — la autopsia del libro real, con las causas como partición (T2.5, A20)
+
+`node scripts/cards-autopsia.js --libro <export del libro real>`
+
+## Qué estaba mal en la autopsia anterior
+
+Se listaron varias causas de las pérdidas —líneas apiladas, ligas eficientes, apuestas con EV no
+positivo— y se cuantificó cada una **por separado**. Una apuesta puede estar en dos listas a la vez: una
+segunda línea del mismo partido, en la Premier, con EV negativo, aparecía en las tres. Sumando los "costes"
+salía más dinero perdido del que se perdió.
+
+Ahora las causas son una **partición**: cada ticket cae en exactamente un grupo y la suma reproduce el
+libro. La identidad se comprueba y se imprime; si no cuadra a un céntimo, el script se para.
+
+## La partición (155 apuestas liquidadas, P&L −105,70, ROI −2,03 %)
+
+| grupo | n | W-L | apostado | P&L | ROI |
+|---|---:|---:|---:|---:|---:|
+| apilada (2.ª o 3.ª del mismo partido y lado) | 32 | 17-15 | 1.117,68 | −85,00 | −7,61 % |
+| el modelo no le veía ventaja | 13 | 12-1 | 429,87 | **+141,28** | **+32,87 %** |
+| liga clasificada eficiente (a posteriori) | 24 | 7-17 | 861,00 | **−435,33** | **−50,56 %** |
+| **núcleo limpio** | 86 | 55-29 | 2.789,49 | **+273,35** | **+9,80 %** |
+| **suma** | **155** | | **5.198,04** | **−105,70** | |
+
+Cuadra: 155 filas y −105,70 exactos.
+
+## Tres cosas que esto dice, y una que no
+
+**1. El desangre está concentrado en cuatro ligas.** 24 apuestas se llevan −435,33, más de cuatro veces la
+pérdida total del libro. Todo lo demás, junto, gana dinero.
+
+**2. Las apuestas que el modelo NO daba por buenas ganaron un 32,87 %.** Doce de trece. Con n = 13 eso es
+ruido y no se puede concluir nada — pero es exactamente lo contrario de la historia que se venía contando,
+y por eso se apostaron a propósito: para poder mirarlo. Sigue siendo demasiado pronto.
+
+**3. El núcleo limpio da +9,80 %, y su intervalo por racimos de partido es [−8,56 %, +28,30 %].** Contiene
+el cero con holgura. Ese ROI no es una ventaja demostrada: es un número con 37 puntos de incertidumbre
+alrededor.
+
+**Lo que NO dice: cuánto habríamos ahorrado evitando las ligas eficientes.** Esas cuatro ligas se
+clasificaron como eficientes **después** de haberlas apostado, con los datos que generaron esas mismas
+apuestas. Calcular el ahorro es mirar el resultado y decidir con él. La tabla por liga está en la salida del
+script marcada explícitamente como **descripción, no contrafactual**.
+
+## El único contrafactual legítimo
+
+«Una posición por partido y lado» sí se podía aplicar entonces: al colocar la segunda ya sabíamos de la
+primera.
+
+| | n | apostado | P&L | ROI | IC por racimos de partido |
+|---|---:|---:|---:|---:|---|
+| como se apostó | 155 | 5.198,04 | −105,70 | −2,03 % | [−17,71 %, +14,03 %] |
+| una por partido y lado | 123 | 4.080,36 | −20,70 | −0,51 % | [−15,66 %, +14,49 %] |
+
+La mejora son +85,00 en el número, **y los dos intervalos se solapan casi por completo**. La regla sigue
+siendo correcta por su lógica —si hay siete tarjetas pierden las dos posiciones, así que no son dos
+apuestas— pero afirmar "apilar costó 85" sin ese intervalo al lado es precisamente lo que la auditoría vino
+a corregir. La regla se defiende por el argumento, no por este dato.
+
+## T2.4 (¿ventana o mezcla?): no se puede contestar con esta muestra
+
+La tarea pedía reponderar el libro a una mezcla fija de liga × línea × horizonte y separar el cambio dentro
+de estrato del cambio entre estratos. Con 155 apuestas y un intervalo de ROI de **32 puntos de ancho sobre
+el libro entero**, cualquier descomposición reparte ese ruido entre más celdas: los estratos con 3 y 5
+apuestas que se ven en la tabla por liga no sostienen ninguna conclusión.
+
+La respuesta honesta es que **hoy no es contestable**, y el número que lo demuestra es el de arriba: si el
+agregado no distingue −2 % de +14 %, sus partes tampoco. Queda anotado como pendiente de muestra, no como
+pendiente de trabajo — y el preregistro de la v2 ya explica por cuál contador hay que esperar (eventos con
+cierre valorable, no tickets).

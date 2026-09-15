@@ -25420,13 +25420,22 @@ async function anotar(pid){
       const comeMargen = (rows, etiqueta) => {
         try { const r = MG.resumen(rows); for (const [k, v] of Object.entries(r)) margenes[etiqueta + '|' + k] = v; return r; } catch (e) { avisos.push(`${etiqueta}: ${e.message}`); return {}; }
       };
+      // EL EVENTO ES EL RACIMO (15-sep, auditoría externa A30). Dos líneas del mismo partido, dos mapas de la
+      // misma serie o dos piernas del mismo slate no son observaciones independientes: se mueven juntas. Sin
+      // esto el error estándar sale dividido por la raíz del número de TICKETS y el t se infla — medido en
+      // `tests/inferencia.test.js`: con veinte filas por racimo, por 4,4. Se prueban los nombres que usa cada
+      // motor y, si no hay ninguno, se dice en `metodo` en vez de fingir independencia.
+      const eventoDe = (x) => x.event_id || x.series_id || x.match_id || x.ceid || x.game_id
+        || x.cb_event_id || x.fixture_id || x.partido_id || (x.key ? String(x.key).split('|')[0] : null) || null;
       const mete = (clave, items, opt) => {
         if (!items || items.length < minN) return;
         const mg = opt.margen || null;
         fam[clave] = V.familia(items, { fecha: opt.fecha, clv: opt.clv, cuotaMedia: opt.cuotaMedia || 2,
           margenLadoPct: mg ? mg.margen_lado_pct : null, nMargen: mg ? mg.n : 0, bankroll: bank,
           // las dos pruebas de método: si el cierre no aporta, el CLV no aplica y manda la prueba directa
-          odds: opt.odds, cierre: opt.cierre, gano: opt.gano, pModelo: opt.pModelo });
+          odds: opt.odds, cierre: opt.cierre, gano: opt.gano, pModelo: opt.pModelo,
+          // y el retorno esperado al cierre, con su incertidumbre por racimos de evento
+          cierreContraria: opt.cierreContraria || null, evento: opt.evento || eventoDe });
       };
       // el resultado se llama distinto en cada sombra; aquí se normaliza a true/false/null
       const ganoDe = (x) => { const r = x.result_code || x.result; return r === 'WIN' ? true : (r === 'LOSS' ? false : null); };

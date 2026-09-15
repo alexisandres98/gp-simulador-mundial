@@ -1337,6 +1337,44 @@ function movimientosResumen() {
   const ret = ms.filter((x) => x.tipo === 'retiro').reduce((a, x) => a + x.monto, 0);
   return { n: ms.length, depositos: +dep.toFixed(2), retiros: +ret.toFixed(2), lista: ms.slice(-12) };
 }
+// ── DOS COHORTES, NO UNA (15-sep, auditoría externa §12.3) ──────────────────────────────────────────────
+// `L.dias` mezcla dos relojes: `apostado` y `n` se anotan por fecha de COLOCACIÓN y `pnl` por fecha de
+// LIQUIDACIÓN. Dividir uno por otro no es el ROI de nada — el martes 8-sep aparecía con −90 sobre un único
+// stake de 30 porque el P&L era de apuestas colocadas días antes. Sirve para tesorería (cuánto se movió hoy)
+// y NO sirve para rendimiento. Aquí se separan:
+//   · `decision`  → por fecha de colocación: cuántas se colocaron, cuánto se apostó, cuántas ya maduraron y
+//                   qué P&L llevan ESAS MISMAS filas. El ROI de cohorte solo se publica cuando la cohorte
+//                   está madura del todo; si quedan abiertas, se dice cuántas y el ROI va como parcial.
+//   · `caja`      → por fecha de liquidación: el movimiento de dinero del día. Es lo que cuadra con la casa.
+function cohortes({ dias = 30 } = {}) {
+  const L = load();
+  const desde = Date.now() - dias * 864e5;
+  const CON_DINERO = new Set(['PLACED', 'EN_ACEPTACION', 'SETTLED']);
+  const decision = {}, caja = {};
+  for (const b of L.bets || []) {
+    if (CON_DINERO.has(b.status) && b.placed_at && Date.parse(b.placed_at) >= desde) {
+      const k = String(b.placed_at).slice(0, 10);
+      const d = decision[k] = decision[k] || { colocadas: 0, apostado: 0, maduras: 0, abiertas: 0, pnl: 0 };
+      d.colocadas++; d.apostado = +(d.apostado + (b.stake || 0)).toFixed(2);
+      if (b.status === 'SETTLED') { d.maduras++; d.pnl = +(d.pnl + (b.pnl || 0)).toFixed(2); } else d.abiertas++;
+    }
+    if (b.status === 'SETTLED' && b.settled_at && Date.parse(b.settled_at) >= desde) {
+      const k = String(b.settled_at).slice(0, 10);
+      const c = caja[k] = caja[k] || { liquidadas: 0, pnl: 0, devuelto: 0 };
+      c.liquidadas++; c.pnl = +(c.pnl + (b.pnl || 0)).toFixed(2);
+      const o = b.odds_real || b.odds_sombra || 0;
+      c.devuelto = +(c.devuelto + (b.resultado === 'WIN' ? (b.stake || 0) * o : (b.resultado === 'PUSH' || b.resultado === 'VOID' ? (b.stake || 0) : 0))).toFixed(2);
+    }
+  }
+  for (const [k, d] of Object.entries(decision)) {
+    d.roi_pct = d.apostado ? +(100 * d.pnl / d.apostado).toFixed(2) : null;
+    d.madura = d.abiertas === 0;
+    if (!d.madura) d.nota = `${d.abiertas} sin liquidar: el ROI de esta cohorte es parcial`;
+  }
+  return { ventana_dias: dias, decision, caja,
+    nota: 'decision = rendimiento por fecha de colocación, con el P&L de esas mismas filas. caja = movimiento de dinero por fecha de liquidación. No se dividen entre sí: son relojes distintos.' };
+}
+
 function conciliacion() {
   const L = load();
   const mv = movimientosResumen();
@@ -1423,7 +1461,11 @@ function board({ limit = 40 } = {}) {
     })(),
     por_que_pendiente: cuenta(pendientes),
     por_que_caducada: cuenta(caducadas),
+    // `dias` mezcla dos relojes (apostado por colocación, P&L por liquidación): sirve para tesorería y para
+    // la parada diaria, NO para leer rendimiento. Las dos cohortes separadas van al lado.
     dias: L.dias,
+    dias_nota: 'apostado y n van por fecha de COLOCACIÓN y pnl por fecha de LIQUIDACIÓN: no se dividen entre sí. Para rendimiento, mirar `cohortes.decision`.',
+    cohortes: cohortes({ dias: 30 }),
     ultimas: L.bets.slice(-limit).reverse(),
   };
 }
@@ -1435,4 +1477,4 @@ module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crear
   // El canal de tenis de mesa tenía su propia copia y le exigía además que coincidiera la línea, así que
   // dejaba pasar dos totales del mismo partido: justo el patrón que en tarjetas costó −17,63 % con dos
   // líneas y −45,83 % con tres. Se exporta para que ningún canal vuelva a escribir su propia versión.
-  posicionOcupada, mismaPosicion, mismoPartido, unaPorPartido, canalOn };
+  posicionOcupada, mismaPosicion, mismoPartido, unaPorPartido, canalOn, cohortes };

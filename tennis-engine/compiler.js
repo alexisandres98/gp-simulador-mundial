@@ -108,6 +108,15 @@ function matchDist(pa, pb, bestOf, shock) {
   })(0, 0, 1);
 
   let pMatchA = 0; const setScores = {}; const totalGames = new Map();
+  // POR NÚMERO DE SETS (15-sep, T2.15). La distribución de juegos de un partido es una MEZCLA: una joroba
+  // corta (el partido de dos sets) y otra larga (el de tres), y entre las dos hay un valle. El compilador
+  // ya la calculaba bien —camino a camino, con marcadores legales— y luego la calibración de producción la
+  // aplastaba con un desplazamiento lineal, que mueve la mezcla entera y deja masa donde no puede caer
+  // ningún partido (no existe un partido de 11 juegos, ni de 40 al mejor de tres). Exponer la mezcla por
+  // separado es lo que permite calibrar CADA componente sobre su propio soporte legal. No cambia nada de
+  // lo que ya devolvía esta función: es un campo más.
+  const porSets = new Map();            // nº de sets → Map(juegos → prob)
+  const pNSets = new Map();             // nº de sets → prob
   let expGames = 0, pNoTb = 0;
   const pNoTbSet = 1 - tbTot; // prob de que UN set no tenga TB
   // juegos ganados por jugador (para hándicap): acumular dist conjunta (gA, gB) por camino
@@ -133,8 +142,13 @@ function matchDist(pa, pb, bestOf, shock) {
     let acc = [{ g: 0, m: 0, pr: 1 }];
     for (let i = 0; i < ph.sA; i++) acc = conv(acc, scoreW);
     for (let i = 0; i < ph.sB; i++) acc = conv(acc, scoreL);
+    const nSets = ph.sA + ph.sB;
+    if (!porSets.has(nSets)) porSets.set(nSets, new Map());
+    const ps = porSets.get(nSets);
+    pNSets.set(nSets, (pNSets.get(nSets) || 0) + ph.pr);
     for (const st of acc) {
       totalGames.set(st.g, (totalGames.get(st.g) || 0) + ph.pr * st.pr);
+      ps.set(st.g, (ps.get(st.g) || 0) + ph.pr * st.pr);
       margin.set(st.m, (margin.get(st.m) || 0) + ph.pr * st.pr);
       expGames += ph.pr * st.pr * st.g;
     }
@@ -146,6 +160,13 @@ function matchDist(pa, pb, bestOf, shock) {
     totalGames: [...totalGames.entries()].sort((x, y) => x[0] - y[0]),
     margin: [...margin.entries()].sort((x, y) => x[0] - y[0]),
     setScores,
+    // la mezcla, abierta: P(nº de sets) y la distribución de juegos CONDICIONADA a cada número de sets,
+    // ya normalizada. Soporte legal por construcción — sale de marcadores de set que existen.
+    pNSets: [...pNSets.entries()].sort((x, y) => x[0] - y[0]),
+    gamesByNSets: [...porSets.entries()].sort((x, y) => x[0] - y[0]).map(([n, m]) => {
+      const z = pNSets.get(n) || 1;
+      return [n, [...m.entries()].sort((x, y) => x[0] - y[0]).map(([g, p]) => [g, p / z])];
+    }),
   };
 
   function conv(acc, scores) {

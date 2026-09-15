@@ -140,9 +140,57 @@ function skillOf(id) {
     deuce_rate: prof && prof.gamesN ? +(prof.deuce / prof.gamesN).toFixed(3) : null, point_pct: prof && prof.pw + prof.pl ? +(prof.pw / (prof.pw + prof.pl)).toFixed(3) : null, level: n ? 'L1' : 'L0' };
 }
 // incertidumbre de la probabilidad del duelo en puntos porcentuales (exposición de los dos)
+// OJO (T2.10, 15-sep-2026): esto es la incertidumbre del GANADOR y NADA MÁS. Durante meses se usó como
+// listón de ruido de TODAS las familias —incluida POINTS_TOTAL, la única con dinero real— y no es la misma
+// cantidad: la del ganador mide cuánto se mueve P(gana A) con el rating, la de un total mide cuánto se
+// mueve P(más de L), que es otra derivada. Medido sobre 10.118 partidos, la del total es 1,14-1,29 veces
+// MAYOR (`docs/CHALLENGERS_TT_2026-09-15.md`), o sea que el listón de hoy es demasiado BLANDO para totales.
+// La propia se calcula abajo con `uncFamiliaPp`.
 function uncertaintyPp(idA, idB) {
   const d = build(); const nA = d.T.nMatch.get(idk(idA)) || 0, nB = d.T.nMatch.get(idk(idB)) || 0;
   return +(100 * 0.28 * Math.sqrt(1 / (nA + 2) + 1 / (nB + 2))).toFixed(1);
+}
+// ── LA INCERTIDUMBRE DEL RATING, PROPAGADA POR EL COMPILADOR (T2.10) ────────────────────────────────────
+// σ_p es la desviación del rating expresada en probabilidad de PUNTO, que es la entrada del compilador.
+// De ahí, por el método delta, sale la incertidumbre de CUALQUIER selección:
+//     unc(selección) = |∂P(selección)/∂p| · σ_p
+// y las derivadas se calculan recompilando en p ± h, que el compilador ya sabe hacer (y cachea).
+//
+// DE DÓNDE SALE LA CONSTANTE, Y QUÉ NO ES. 0,1064 se midió regresando el exceso de dispersión del total de
+// puntos sobre (∂E[total]/∂p · √(1/(nA+2)+1/(nB+2)))² CON ORDENADA EN EL ORIGEN, sobre 10.118 partidos de
+// 2025-2026 (IC [0,027; 0,149]). La ordenada importa y por eso está separada: al compilador le faltan
+// α ≈ 44 puntos² de anchura A TODO EL MUNDO, dependa o no de la exposición. Eso NO es incertidumbre, es
+// mala especificación del compilador, y se arregla en el compilador — no inflando la puerta de ruido.
+// Ajustando las dos cosas, la razón varianza real / varianza declarada pasa de 1,269 a 1,019 y deja de
+// depender de la exposición (cuartiles 1,038 · 1,015 · 0,991 · 1,034).
+const UNC_PT_C = 0.1064;
+const UNC_FAM_MIN_PP = 0.5;   // suelo: una derivada numéricamente nula no es una certeza
+function pointSigma(idA, idB) {
+  const d = build(); const nA = d.T.nMatch.get(idk(idA)) || 0, nB = d.T.nMatch.get(idk(idB)) || 0;
+  return UNC_PT_C * Math.sqrt(1 / (nA + 2) + 1 / (nB + 2));
+}
+// `model` es lo que devuelve matchModel. Devuelve null si la familia no se puede leer del compilado.
+// OJO CON `model.a` Y `model.b` (mordió al escribir esto): `tt-engine/store.js:eventModel` devuelve
+// `{ ...matchModel(), a: <jugador A>, b: <jugador B> }`, o sea que PISA las dos probabilidades de punto con
+// las fichas de los jugadores. Cualquier cálculo que las lea de ahí sale NaN y, con el suelo puesto, NaN se
+// disfraza de 0,5 pp sin avisar. Las que sobreviven al pisotón son `p_point_dist` y `serve_delta`.
+function uncFamiliaPp(model, fam, side, line, gameNo = 1, { h = 0.02 } = {}) {
+  if (!model || !(model.sigma_pt > 0)) return null;
+  const centro = Number(model.p_point_dist != null ? model.p_point_dist : model.p_point);
+  const delta = Number(model.serve_delta != null ? model.serve_delta : 0);
+  if (!Number.isFinite(centro) || !Number.isFinite(delta)) return null;
+  const first = model.first === 'unknown' ? null : model.first;
+  const compila = (p) => C.compileMatch(+clamp(p + delta, 0.02, 0.98).toFixed(3), +clamp(p - delta, 0.02, 0.98).toFixed(3), { best_of: model.best_of, first });
+  // AVISO para la familia ML: `probOf(..., 'ML')` lee la probabilidad COMPILADA, mientras que la pick usa
+  // la mezcla con el Elo (`matchModel.p_a`). O sea que para el ganador esto mide la incertidumbre de una de
+  // las dos mitades, no la de la mezcla. No importa hoy —el ganador es referencia y jamás pick— pero si
+  // alguna vez se abre, hay que propagar también el canal del Elo.
+  try {
+    const up = C.probOf(compila(centro + h), fam, side, line, gameNo);
+    const dn = C.probOf(compila(centro - h), fam, side, line, gameNo);
+    if (!Number.isFinite(up) || !Number.isFinite(dn)) return null;
+    return +Math.max(UNC_FAM_MIN_PP, 100 * Math.abs((up - dn) / (2 * h)) * model.sigma_pt).toFixed(2);
+  } catch { return null; }
 }
 // el modelo de un duelo: Elo → punto → compilador → mezcla. `first` = quién sirve el primer game (null = mezcla)
 function matchModel(idA, idB, { best_of = 5, first = null } = {}) {
@@ -156,7 +204,7 @@ function matchModel(idA, idB, { best_of = 5, first = null } = {}) {
   const pC = clamp(C.compileMatch(a, b, { best_of, first }).p_a, 1e-4, 1 - 1e-4);
   const mm = C.compileMatch(aD, bD, { best_of, first });
   const p = sig((1 - cst.ensembleU) * logit(pE) + cst.ensembleU * logit(pC));
-  return { p_a: +p.toFixed(4), p_a_elo: +pE.toFixed(4), p_a_compiled: +pC.toFixed(4), p_a_dist: +mm.p_a.toFixed(4), p_point: +pPt.toFixed(4), p_point_dist: +pPtD.toFixed(4), a: aD, b: bD, serve_delta: cst.serveDelta, match: mm, unc_pp: uncertaintyPp(idA, idB), skills: { a: skillOf(idA), b: skillOf(idB) }, model_version: d.priors.model_version, resolution: 'L1', best_of, first: first || 'unknown' };
+  return { p_a: +p.toFixed(4), p_a_elo: +pE.toFixed(4), p_a_compiled: +pC.toFixed(4), p_a_dist: +mm.p_a.toFixed(4), p_point: +pPt.toFixed(4), p_point_dist: +pPtD.toFixed(4), a: aD, b: bD, serve_delta: cst.serveDelta, match: mm, unc_pp: uncertaintyPp(idA, idB), sigma_pt: +pointSigma(idA, idB).toFixed(5), unc_pt_c: UNC_PT_C, skills: { a: skillOf(idA), b: skillOf(idB) }, model_version: d.priors.model_version, resolution: 'L1', best_of, first: first || 'unknown' };
 }
 // formato empírico por nivel × ronda (formats.json) con plantilla de respaldo
 function formatFor(tier, round) {
@@ -215,4 +263,4 @@ function h2h(idA, idB) {
   return { w_a: wA, w_b: wB, games_a: gA, games_b: gB, rows: rows.slice(-12).reverse() };
 }
 
-module.exports = { reset, build, replay, skillOf, eloOf, thetaOf, eloProb, pointProb, uncertaintyPp, matchModel, formatFor, resolvePlayer, playerOf, h2h, norm, REPO_BASE, DISK_BASE, DEFAULT_PRIORS, archivo, sig, logit };
+module.exports = { reset, build, replay, skillOf, eloOf, thetaOf, eloProb, pointProb, uncertaintyPp, pointSigma, uncFamiliaPp, UNC_PT_C, matchModel, formatFor, resolvePlayer, playerOf, h2h, norm, REPO_BASE, DISK_BASE, DEFAULT_PRIORS, archivo, sig, logit };

@@ -1,0 +1,367 @@
+{
+ "generado": "2026-09-15T14:57:42.171Z",
+ "fuente": "contraste de la clave de The Odds API contra la superficie observada en la base propia (Sackmann + cola ESPN)",
+ "nota": "CERTIFICADA = la base propia tiene partidos de ese torneo y su superficie dominante. INFERIDA = solo la expresión regular del nombre. SUPUESTA = ni una cosa ni la otra: cae a dura por defecto y hay que decirlo en la ficha.",
+ "claves": {
+  "tennis_atp_aus_open_singles": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 5,
+   "partidos_base": 1520,
+   "ultimo_en_base": 20260119,
+   "titulo": "ATP Australian Open"
+  },
+  "tennis_atp_barcelona_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 479,
+   "ultimo_en_base": 20260413,
+   "titulo": "ATP Barcelona Open"
+  },
+  "tennis_atp_canadian_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 577,
+   "ultimo_en_base": 20250727,
+   "titulo": "ATP Canadian Open"
+  },
+  "tennis_atp_china_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 246,
+   "ultimo_en_base": 20250925,
+   "titulo": "ATP China Open"
+  },
+  "tennis_atp_cincinnati_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 641,
+   "ultimo_en_base": 20250807,
+   "titulo": "ATP Cincinnati Open"
+  },
+  "tennis_atp_dubai": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 384,
+   "ultimo_en_base": 20260223,
+   "titulo": "ATP Dubai"
+  },
+  "tennis_atp_french_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 5,
+   "partidos_base": 1637,
+   "ultimo_en_base": 20260607,
+   "titulo": "ATP French Open"
+  },
+  "tennis_atp_halle_open": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 308,
+   "ultimo_en_base": 20250616,
+   "titulo": "ATP Halle Open"
+  },
+  "tennis_atp_hamburg_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 365,
+   "ultimo_en_base": 20260517,
+   "titulo": "ATP Hamburg Open"
+  },
+  "tennis_atp_indian_wells": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1033,
+   "ultimo_en_base": 20260304,
+   "titulo": "ATP Indian Wells"
+  },
+  "tennis_atp_italian_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 812,
+   "ultimo_en_base": 20260506,
+   "titulo": "ATP Italian Open"
+  },
+  "tennis_atp_madrid_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 757,
+   "ultimo_en_base": 20260422,
+   "titulo": "ATP Madrid Open"
+  },
+  "tennis_atp_miami_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1037,
+   "ultimo_en_base": 20260318,
+   "titulo": "ATP Miami Open"
+  },
+  "tennis_atp_monte_carlo_masters": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 602,
+   "ultimo_en_base": 20260405,
+   "titulo": "ATP Monte-Carlo Masters"
+  },
+  "tennis_atp_munich": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 304,
+   "ultimo_en_base": 20260413,
+   "titulo": "ATP Munich"
+  },
+  "tennis_atp_paris_masters": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 555,
+   "ultimo_en_base": 20251027,
+   "titulo": "ATP Paris Masters"
+  },
+  "tennis_atp_qatar_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 347,
+   "ultimo_en_base": 20260216,
+   "titulo": "ATP Qatar Open"
+  },
+  "tennis_atp_queens_club_champ": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 307,
+   "ultimo_en_base": 20250616,
+   "titulo": "ATP Queen's Club Championships"
+  },
+  "tennis_atp_shanghai_masters": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 560,
+   "ultimo_en_base": 20251001,
+   "titulo": "ATP Shanghai Masters"
+  },
+  "tennis_atp_us_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 5,
+   "partidos_base": 1391,
+   "ultimo_en_base": 20250825,
+   "titulo": "ATP US Open"
+  },
+  "tennis_atp_washington_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 467,
+   "ultimo_en_base": 20250721,
+   "titulo": "ATP Washington Open"
+  },
+  "tennis_atp_wimbledon": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 5,
+   "partidos_base": 1390,
+   "ultimo_en_base": 20260712,
+   "titulo": "ATP Wimbledon"
+  },
+  "tennis_wta_aus_open_singles": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1522,
+   "ultimo_en_base": 20260119,
+   "titulo": "WTA Australian Open"
+  },
+  "tennis_wta_bad_homburg_open": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 147,
+   "ultimo_en_base": 20250622,
+   "titulo": "WTA Bad Homburg Open"
+  },
+  "tennis_wta_canadian_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 310,
+   "ultimo_en_base": 20250727,
+   "titulo": "WTA Canadian Open"
+  },
+  "tennis_wta_charleston_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 524,
+   "ultimo_en_base": 20260330,
+   "titulo": "WTA Charleston Open"
+  },
+  "tennis_wta_china_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 543,
+   "ultimo_en_base": 20250924,
+   "titulo": "WTA China Open"
+  },
+  "tennis_wta_cincinnati_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 627,
+   "ultimo_en_base": 20250807,
+   "titulo": "WTA Cincinnati Open"
+  },
+  "tennis_wta_dubai": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 542,
+   "ultimo_en_base": 20260215,
+   "titulo": "WTA Dubai Championships"
+  },
+  "tennis_wta_french_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1642,
+   "ultimo_en_base": 20260606,
+   "titulo": "WTA French Open"
+  },
+  "tennis_wta_german_open": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 142,
+   "ultimo_en_base": 20250616,
+   "titulo": "WTA German Open"
+  },
+  "tennis_wta_guadalajara_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 170,
+   "ultimo_en_base": 20250908,
+   "titulo": "WTA Guadalajara Open"
+  },
+  "tennis_wta_indian_wells": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1042,
+   "ultimo_en_base": 20260304,
+   "titulo": "WTA Indian Wells"
+  },
+  "tennis_wta_italian_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 811,
+   "ultimo_en_base": 20260505,
+   "titulo": "WTA Italian Open"
+  },
+  "tennis_wta_madrid_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 814,
+   "ultimo_en_base": 20260421,
+   "titulo": "WTA Madrid Open"
+  },
+  "tennis_wta_miami_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1036,
+   "ultimo_en_base": 20260317,
+   "titulo": "WTA Miami Open"
+  },
+  "tennis_wta_monterrey_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 331,
+   "ultimo_en_base": 20250818,
+   "titulo": "WTA Monterrey Open"
+  },
+  "tennis_wta_qatar_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 512,
+   "ultimo_en_base": 20260208,
+   "titulo": "WTA Qatar Open"
+  },
+  "tennis_wta_queens_club_champ": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 27,
+   "ultimo_en_base": 20250609,
+   "titulo": "WTA Queen's Club Championships"
+  },
+  "tennis_wta_strasbourg": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 352,
+   "ultimo_en_base": 20260517,
+   "titulo": "WTA Internationaux de Strasbourg"
+  },
+  "tennis_wta_stuttgart_open": {
+   "superficie": "arcilla",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 295,
+   "ultimo_en_base": 20260413,
+   "titulo": "WTA Stuttgart Open"
+  },
+  "tennis_wta_us_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1390,
+   "ultimo_en_base": 20250825,
+   "titulo": "WTA US Open"
+  },
+  "tennis_wta_washington_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 263,
+   "ultimo_en_base": 20250721,
+   "titulo": "WTA Washington Open"
+  },
+  "tennis_wta_wimbledon": {
+   "superficie": "hierba",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 1397,
+   "ultimo_en_base": 20260711,
+   "titulo": "WTA Wimbledon"
+  },
+  "tennis_wta_wuhan_open": {
+   "superficie": "dura",
+   "origen": "certificada",
+   "best_of": 3,
+   "partidos_base": 383,
+   "ultimo_en_base": 20251006,
+   "titulo": "WTA Wuhan Open"
+  }
+ }
+}

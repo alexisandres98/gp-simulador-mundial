@@ -136,8 +136,132 @@ Hace falta comprobar si además cobra comisión de retirada, de cambio de divisa
 
 **Pendiente.** Sin verificar el 15-sep-2026. Margen medido: 2,21 % por lado en `RONDAS_HANDICAP`.
 
-## Underdog — comisiones
+## Underdog — el producto, no la comisión (A18 · T2.9)
 
-**Pendiente.** Sin verificar el 15-sep-2026. Es un libro DFS con precio por pierna, así que lo que hay que
-determinar no es una comisión sino **el payout real del ticket** y cómo se degrada al añadir piernas — que
-es justamente lo que la auditoría pide en A18. Hasta entonces, las props de CS2 siguen en sombra propia.
+### Ficha
+
+| campo | valor |
+|---|---|
+| Consultado | **15-sep-2026**, 14:55–15:10 UTC |
+| Qué se buscaba | tipo de entrada, multiplicadores por número de piernas, reglas de anulación, si admite piernas correlacionadas, y cómo se paga |
+| Fuente primaria intentada | `https://underdogfantasy.com/rules` → 301 → `https://www.underdogsports.com/rules` → 301 → `https://app.underdogsports.com/rules` → **403** · `https://help.underdogsports.com/en/articles/13780101-…` → **403** · `https://help.underdogsports.com/en/articles/8974260-…` → **403** |
+| API del producto | `https://api.underdogfantasy.com/beta/v5/over_under_lines` → **426 `upgrade_required`** («A new version is required to continue»). Probado también `beta/v3`, `beta/v4`, `beta/v6` (426) y `v6` (404), con y sin cabeceras de versión de cliente |
+| Estado del veredicto | **NO VERIFICADO CONTRA LA FUENTE PRIMARIA.** Lo de abajo son fuentes secundarias y no se puede usar para decidir dinero |
+
+> **Esto es lo primero que hay que leer de esta ficha.** El sitio de Underdog devuelve 403 a este entorno y
+> su API devuelve 426. No hay cita textual del reglamento de la casa porque no se pudo obtener, y **no se
+> inventa**. Lo que sigue son fuentes de terceros, señaladas una a una, y **se contradicen en el número que
+> decide el signo del EV**.
+
+### El hallazgo de fondo: el feed de props lleva caído
+
+`data-providers/esports/underdog.js` pega contra `beta/v5/over_under_lines`. Ese endpoint responde hoy
+**426 `upgrade_required`**. Comprobado en producción el mismo día: `/api/internal/esports?props=1` devuelve
+`board: { available: false, n: 0 }` y la sombra tiene **0 tesis activas**. Las 472 liquidadas
+(330 de `props_cs2_v2`) son historia; no está naciendo ninguna props nueva y no se estaba diciendo en
+ningún sitio.
+
+### Lo que dicen las fuentes secundarias
+
+**Tipo de entrada.** Pick'em de más/menos por jugador (no hay líneas de ganador, hándicap ni total de
+equipo). Dos modos:
+
+- **Standard** — todo o nada. Mínimo 2 piernas.
+- **Flex** — mínimo 3 piernas; paga también fallando una (y fallando dos a partir de 6 piernas), con
+  multiplicador menor.
+
+Máximo 8 piernas por entrada.
+
+**Multiplicadores. Aquí está el problema, y es el que decide todo.** Las dos familias de fuentes no
+coinciden:
+
+| piernas | tabla A (gamedaymath, «Standard») | tabla B (oddsassist / stokastic, 2026) |
+|---:|---:|---:|
+| 2 | **3×** (+200) | **3,5×** |
+| 3 | 6× (+500) | 6× |
+| 4 | 10× (+900) | 10× |
+| 5 | 20× (+1900) | 20× |
+| 6 | — | 35× |
+| 8 | — | 120× |
+
+Flex (tabla B): todas acertadas de 3× (3 piernas) a 80× (8 piernas); con un fallo, de 1× a 3×; con dos
+fallos, solo de 6 a 8 piernas, de 0,25× a 1×. La reversión por anulación, citada por la fuente:
+
+> *«Entries with a Tie/Void revert down to the next closest entry: 8-pick Flex Entry (80x) → 7-pick Flex
+> Entry (40x), 7-pick Flex Entry (40x) → 6-pick Flex Entry (25x), 6-pick Flex Entry (25x) → 5-pick Flex
+> Entry (10x), 5-pick Flex Entry (10x) → 4-pick Flex Entry (6x).»*
+
+**Anulaciones.** Una pierna anulada no devuelve la entrada: la **degrada** al número de piernas inmediato
+inferior con su multiplicador. Y hay una regla que sí importa para nosotros:
+
+> *«Entries that are reverted down to include only players on one team or just a single player will be void
+> and refunded.»*
+
+O sea: **una entrada que se quede con jugadores de un solo equipo se anula y se devuelve.** Eso mata de
+raíz la idea de montar un ticket con varias piernas del mismo cinco, que es exactamente lo que la
+proyección de GP tiende a producir cuando un equipo tiene el ataque medido por encima.
+
+**Correlación.** No se encontró regla que prohíba combinar piernas del mismo partido — al contrario, la
+propia casa describe el producto como elegir varias props del mismo encuentro. Lo que sí hay es el límite
+de arriba (un solo equipo ⇒ anulada) y, en esports:
+
+> *«A player must play in all games/maps stated in their projection to be considered active.»*
+> *«if an individual map or partial series is played for individual map projections or partial series
+> projections, the picks will grade regardless of if later maps in that series are suspended or delayed.»*
+
+**El `american_price` de la API no es un precio al que se pueda apostar suelto.** La entrada mínima son
+2 piernas. Nuestro `props.js` calcula el listón como `1/price_dec` con el `american_price` de la pierna
+(−112 ⇒ listón 52,83 %), y eso solo sería el listón correcto si existiera la pierna suelta a ese precio.
+No existe.
+
+### Por qué esto cambia el signo, con números
+
+Listón por pierna de una entrada Standard de N piernas con multiplicador M, piernas independientes y con la
+misma probabilidad: `p* = (1/M)^(1/N)`.
+
+| piernas | M (tabla A) | listón por pierna | M (tabla B) | listón por pierna |
+|---:|---:|---:|---:|---:|
+| 2 | 3× | **57,74 %** | 3,5× | **53,45 %** |
+| 3 | 6× | **55,03 %** | 6× | 55,03 % |
+| 4 | 10× | **56,23 %** | 10× | 56,23 % |
+| 5 | 20× | **54,93 %** | 20× | 54,93 % |
+
+Contra el 52,83 % del `american_price`, el listón real está entre **2,1 y 4,9 puntos más arriba**. Y con la
+tasa de acierto que la sombra lleva midiendo —`props_cs2_v2`: 178 de 330, **53,94 %**— el veredicto cambia
+de fuente a fuente:
+
+| ticket | EV con acierto 53,94 % |
+|---|---:|
+| 2 piernas a 3× (tabla A) | `3 × 0,5394² − 1` = **−12,71 %** |
+| 2 piernas a 3,5× (tabla B) | `3,5 × 0,5394² − 1` = **+1,83 %** |
+| 3 piernas a 6× | `6 × 0,5394³ − 1` = **−5,84 %** |
+| 4 piernas a 10× | `10 × 0,5394⁴ − 1` = **−15,35 %** |
+| 5 piernas a 20× | `20 × 0,5394⁵ − 1` = **−8,68 %** |
+
+Con la tabla A **ningún** ticket tiene esperanza positiva. Con la tabla B la tiene uno solo, el de dos
+piernas, y por 1,8 puntos — dentro del error de una muestra de 330 (`lib/inferencia.js`: el IC del ROI de
+330 a cuota equivalente 1,893 va de −8,01 % a +12,35 %, veinte puntos de ancho). La auditoría externa usó la tabla A y llegó
+al mismo sitio: −12,844 % con p = 0,539.
+
+**Conclusión operativa:** el `+2,2 %` por pierna que publica la sombra de props **no es el retorno de nada
+comprable**. Hasta que alguien con cuenta en Underdog copie el reglamento y un comprobante de pago, la
+familia no puede pasar de sombra, y su EV declarado es «no medible», no «positivo».
+
+### Qué falta para cerrar esta ficha
+
+1. La tabla de multiplicadores **de la propia casa**, con fecha y captura (el 403 se salta desde una IP
+   residencial o desde la cuenta).
+2. Un **comprobante de pago** real: entrada, piernas, multiplicador aplicado y liquidación.
+3. La regla de anulación en esports **por escrito de la casa**, en particular qué pasa cuando la serie no
+   llega al mapa 2 y la proyección era «mapas 1-2».
+4. Si la casa limita la apuesta por pierna o por entrada, que es lo que decide si la familia tiene capacidad.
+
+### Fuentes secundarias consultadas el 15-sep-2026
+
+- `gamedaymath.com/blog/underdog-fantasy-payout-math` — tabla A (2 piernas 3×) y los listones.
+- `oddsassist.com/dfs/how-underdog-works/` — tabla B (2 piernas 3,5×, 6 piernas 35×, 8 piernas 120×),
+  mínimos y máximo de 8 piernas.
+- `stokastic.com/articles/dfs-strategy/how-underdog-fantasy-multipliers-work` — Standard vs Flex y la regla
+  de los Scorchers («If a Scorcher is voided or tied, it counts as a loss»).
+- Extractos del centro de ayuda de Underdog servidos por el buscador (`help.underdogsports.com`, artículos
+  13780101, 8974260, 13161362 y 10905524), inaccesibles por fetch directo (403).

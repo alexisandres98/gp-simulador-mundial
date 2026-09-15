@@ -51,6 +51,11 @@ const FAMILIES = {
 };
 
 const G = { events: null, slate: null, odds: null, tz: null, results: null, live: { at: 0, ids: new Map(), cards: new Map() } };
+// interruptor de T2.10: sin poner, el listón de ruido sigue siendo el del ganador y NINGUNA pick cambia
+const UNC_FAMILIA = /^(1|true|on|si|sí)$/i.test(String(process.env.GP_TT_UNC_FAMILIA || ''));
+// interruptor de T2.12: sin poner, las apuestas que pagan igual siguen contándose por separado (como hasta
+// hoy) y solo se ETIQUETAN; con él, solo sobrevive la de mejor cuota de cada clase de pago.
+const DEDUP_EQUIV = /^(1|true|on|si|sí)$/i.test(String(process.env.GP_TT_DEDUP_EQUIV || ''));
 
 // ══ 1. AGENDA (WTT) ═════════════════════════════════════════════════════════════════════════════════════
 const SLATE_TTL = 4 * 60e3;
@@ -349,7 +354,15 @@ function gate(c, model, row) {
   push('cuota', c.odds > 1.15 && c.odds <= ODDS_MAX, c.odds > ODDS_MAX ? 'cuota demasiado larga' : c.odds <= 1.15 ? 'cuota demasiado corta' : null);
   push('probabilidad', c.p_model > 0.05 && c.p_model < 0.95, 'fuera del rango que el modelo identifica');
   push('ventaja', c.edge_pp >= EDGE_MIN_PP, `edge ${c.edge_pp.toFixed(1)} pp < ${EDGE_MIN_PP}`);
-  push('ruido', c.edge_pp >= 0.75 * model.unc_pp, `edge ${c.edge_pp.toFixed(1)} pp < 0,75 × incertidumbre ${model.unc_pp} pp`);
+  // RUIDO (T2.10, 15-sep-2026). `model.unc_pp` es la incertidumbre del GANADOR y se venía usando de listón
+  // para todas las familias, POINTS_TOTAL incluida, que es la que tiene el dinero. No es la misma cantidad:
+  // medida sobre 10.118 partidos, la propia de un total es 1,14-1,29 veces MAYOR, así que el listón de hoy
+  // es demasiado blando justo donde hay dinero (docs/CHALLENGERS_TT_2026-09-15.md).
+  // La propia (`c.unc_fam_pp`) se calcula y se GUARDA SIEMPRE —es medición, no cambia nada— y solo MANDA
+  // con `GP_TT_UNC_FAMILIA` encendido, porque cambiar el listón cambia qué tesis nacen y eso no se hace a
+  // mitad de ventana sin decidirlo (la disciplina que costó la autopsia de agosto).
+  const uncUsada = UNC_FAMILIA && Number.isFinite(c.unc_fam_pp) ? c.unc_fam_pp : model.unc_pp;
+  push('ruido', c.edge_pp >= 0.75 * uncUsada, `edge ${c.edge_pp.toFixed(1)} pp < 0,75 × incertidumbre ${uncUsada} pp${UNC_FAMILIA ? ' (propia de la familia)' : ''}`);
   push('muestra', !model.skills.a.cold && !model.skills.b.cold, 'jugador frío: menos de ' + (D.build().T.cst.warmN) + ' partidos');
   push('frescura', !model.skills.a.stale && !model.skills.b.stale, 'jugador sin partidos en 8 meses');
   const f = model.format || {};
@@ -369,6 +382,11 @@ function evaluateEdges(model, mk, row) {
     if (pModel == null || !Number.isFinite(pModel)) continue;
     const imp = impliedOf(r, mk.rows, mk.devig);
     const c = { family: r.family, side: r.side, line: r.line != null ? r.line : null, game: r.game || null, book: r.book, odds: r.odds, alt: !!r.alt, p_model: r4(pModel), p_implied: r4(imp.p), implied_devig: imp.devig, vig: imp.vig, edge_pp: r2(100 * (pModel - imp.p)), ev_pct: r2(100 * (pModel * r.odds - 1)), unc_pp: model.unc_pp, benchmark: !!fam.benchmark, live: !!r.live };
+    // incertidumbre PROPIA de esta selección: |∂P/∂p|·σ_p, recompilando en p ± h (T2.10). Se anota siempre.
+    c.unc_fam_pp = D.uncFamiliaPp(model, r.family, r.side, r.line, r.game || 1);
+    // clase de equivalencia de pago (T2.12): dos selecciones con la MISMA clave son la misma apuesta aunque
+    // la casa las llame distinto. Se anota siempre; solo agrupa de verdad con GP_TT_DEDUP_EQUIV.
+    c.equiv = R.equivalenceKey(r.family, r.side, r.line, r.game || 1, (model.format && model.format.best_of) || model.best_of);
     c.gates = gate(c, model, row);
     const fail = c.gates.find((g) => !g.pass && !g.informativo);
     c.verdict = fail ? 'NO_PICK' : 'SHADOW_PICK';
@@ -378,7 +396,18 @@ function evaluateEdges(model, mk, row) {
   // por familia+lado+línea: la mejor cuota manda (una candidata por selección)
   const best = new Map();
   for (const c of out) { const k = `${c.family}|${c.side}|${c.line}|${c.game}`; const b = best.get(k); if (!b || c.odds > b.odds) best.set(k, c); }
-  return [...best.values()].sort((x, y) => (y.edge_pp || 0) - (x.edge_pp || 0));
+  let fin = [...best.values()];
+  // T2.12: con el interruptor puesto, las selecciones que PAGAN IGUAL se agrupan y solo sobrevive la de
+  // mejor cuota. Sin él solo se anotan las duplicadas (`equiv_dup`), para poder contarlas sin cambiar nada.
+  const porEquiv = new Map();
+  for (const c of fin) { if (!c.equiv) continue; if (!porEquiv.has(c.equiv)) porEquiv.set(c.equiv, []); porEquiv.get(c.equiv).push(c); }
+  for (const grupo of porEquiv.values()) {
+    if (grupo.length < 2) continue;
+    const mejor = grupo.reduce((a, b) => (b.odds > a.odds ? b : a));
+    for (const c of grupo) { c.equiv_dup = grupo.length; c.equiv_mejor = c === mejor; }
+  }
+  if (DEDUP_EQUIV) fin = fin.filter((c) => !c.equiv || c.equiv_mejor !== false);
+  return fin.sort((x, y) => (y.edge_pp || 0) - (x.edge_pp || 0));
 }
 
 // ── LA CARD DE LA CASA ───────────────────────────────────────────────────────────────────────────────────
@@ -631,7 +660,7 @@ async function recordShadow() {
       if (have.has(key)) continue;
       have.add(key); n++;
       st.picks.push({ key, event_id: row.id, tournament: row.tournament_short, tournament_id: row.event_id, tier: row.tier, sub: row.sub, round: row.round, format: row.format, a: row.a, b: row.b, a_id: row.a_id, b_id: row.b_id,
-        family: c.family, side: c.side, line: c.line, game: c.game || null, odds: c.odds, book: c.book, p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, unc_pp: c.unc_pp, benchmark: !!c.benchmark,
+        family: c.family, side: c.side, line: c.line, game: c.game || null, odds: c.odds, book: c.book, p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, unc_pp: c.unc_pp, unc_fam_pp: c.unc_fam_pp != null ? c.unc_fam_pp : null, benchmark: !!c.benchmark,
         start_at: row.start_at, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow', era: process.env.GP_PICKS_ERA || 'tt-v1-2026-09-08', circuit: 'wtt', cold: !!(row.gp && row.gp.cold) || undefined, format_certified: !!(row.format && row.format.certified) });
     }
   }

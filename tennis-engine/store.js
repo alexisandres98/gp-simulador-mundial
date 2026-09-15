@@ -29,13 +29,42 @@ function wrD(f, obj) {
   } catch { }
 }
 
-// ── TORNEOS: superficie y formato por clave de The Odds API (fallback: dura, bo3) ────────────────────────
+// ── TORNEOS: SUPERFICIE Y FORMATO CERTIFICADOS, NO ADIVINADOS (15-sep, T2.14 / A23) ─────────────────────
+// Lo que había era una expresión regular sobre el NOMBRE de la clave y, para todo lo que no casara, "dura"
+// en silencio. Dos problemas, y el segundo es el grave:
+//   · 25 de las 45 claves que publica The Odds API caían al defecto SIN NINGUNA evidencia de que fueran
+//     pista dura. Hoy acierta en las 45 —está medido en `scripts/tennis-datos.js`—, pero acertar por
+//     casualidad no es saber: la próxima clave que abra el proveedor (un torneo nuevo, una sede movida,
+//     una gira de arcilla sudamericana) entra como DURA sin que salte nada.
+//   · una superficie equivocada no da un aviso: da un Elo de superficie equivocado, unas tasas de saque
+//     equivocadas y una distribución de juegos equivocada, todo con la misma cara de confianza.
+// Ahora manda `data/tennis/surfaces.json`, generado contrastando cada clave contra la superficie observada
+// en la base propia (`node scripts/tennis-datos.js --sports <lista> --write`), y cada fila del tablero dice
+// de dónde salió la suya: `certificada` (la base tiene ese torneo), `inferida` (solo la regla de nombres) o
+// `supuesta` (ni una cosa ni la otra, y entonces se declara como el hueco que es).
 const SURF_BY_KEY = [
   [/french_open|monte_carlo|madrid|italian|barcelona|munich|hamburg|charleston|strasbourg|stuttgart/, 1],
   [/wimbledon|halle|queens|bad_homburg|german_open/, 2],
 ]; // el resto: dura (0)
-const surfOfKey = (k) => { for (const [re, s] of SURF_BY_KEY) if (re.test(k)) return s; return 0; };
-const bo5Keys = /tennis_atp_(aus_open|french_open|wimbledon|us_open)/;
+let SURF_CAT = null;
+function surfCat() {
+  if (SURF_CAT) return SURF_CAT;
+  try { SURF_CAT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'tennis', 'surfaces.json'), 'utf8')); }
+  catch { SURF_CAT = { claves: {} }; }
+  return SURF_CAT;
+}
+const IDX_SURF = { dura: 0, arcilla: 1, hierba: 2, moqueta: 3 };
+// devuelve { surface, best_of, origen } — el origen viaja SIEMPRE, también cuando es bueno
+function torneoDe(k) {
+  const c = (surfCat().claves || {})[k];
+  if (c && IDX_SURF[c.superficie] != null) {
+    return { surface: IDX_SURF[c.superficie], best_of: c.best_of === 5 ? 5 : 3, origen: c.origen || 'certificada' };
+  }
+  for (const [re, s] of SURF_BY_KEY) if (re.test(k)) return { surface: s, best_of: /tennis_atp_(aus_open|french_open|wimbledon|us_open)/.test(k) ? 5 : 3, origen: 'inferida' };
+  return { surface: 0, best_of: /tennis_atp_(aus_open|french_open|wimbledon|us_open)/.test(k) ? 5 : 3, origen: 'supuesta' };
+}
+const surfOfKey = (k) => torneoDe(k).surface;
+const bo5Keys = { test: (k) => torneoDe(k).best_of === 5 };
 const tourOfKey = (k) => (k.startsWith('tennis_wta') ? 1 : 0);
 
 // ── CUOTAS: descubrimiento dinámico de torneos activos + 1 llamada por torneo ───────────────────────────
@@ -100,21 +129,78 @@ function marketOf(ev) {
   out.books = (ev.bookmakers || []).length;
   const med = (xs) => { const s = xs.filter(Number.isFinite).sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : null; };
   const novig = (a, b) => { const ia = 1 / a, ib = 1 / b; return ia / (ia + ib); };
+  // LAS DOS CARAS DEL MISMO LIBRO, NO LA MEDIANA DE CADA UNA (15-sep, A01/§3.1). `ml_p_a` desviga la
+  // mediana de las cuotas de A contra la mediana de las de B, y esas dos medianas pueden venir de casas
+  // distintas: eso fabrica un mercado que no existió, con un margen que nadie cobró. Se conserva el campo
+  // viejo porque el histórico de cierres lo lleva dentro y reescribirlo mentiría sobre lo que se capturó,
+  // pero al lado va el bueno: mediana de la probabilidad desvigada CASA A CASA, con las dos caras de la
+  // misma foto. El que hay que leer es `ml_p_a_par`.
+  const pares = out.ml.filter((x) => x.a > 1 && x.b > 1).map((x) => novig(x.a, x.b));
   out.consensus = {
     ml_p_a: out.ml.length ? r3(novig(med(out.ml.map((x) => x.a)), med(out.ml.map((x) => x.b)))) : null,
+    ml_p_a_par: pares.length ? r3(med(pares)) : null,
+    ml_pares_libros: pares.length,
     total_line: med(out.total.map((x) => x.line)),
     spread_line: med(out.spread.map((x) => x.line)),
     books: out.books,
   };
-  const best = (rows, side) => rows.reduce((bst, x) => (!bst || (x[side] || 0) > (bst[side] || 0) ? x : bst), null);
-  out.best = {
-    ml_a: best(out.ml, 'a'), ml_b: best(out.ml, 'b'),
-    total_over: best(out.total.filter((x) => x.line === out.consensus.total_line), 'over'),
-    total_under: best(out.total.filter((x) => x.line === out.consensus.total_line), 'under'),
-    spread_a: best(out.spread.filter((x) => x.line === out.consensus.spread_line), 'a'),
-    spread_b: best(out.spread.filter((x) => x.line === out.consensus.spread_line), 'b'),
-  };
+  out.best = mejorPorLado(out, out.consensus);
   return out;
+}
+
+// ── EL MEJOR PRECIO, PERO DE LA LÍNEA QUE SE VA A VALORAR (15-sep, A01 de la auditoría externa) ──────────
+// Gemela de `nfl-engine/store.js::mejorPorLado`, con la forma de datos de tenis (filas sueltas por casa).
+// Lo que había era un `reduce` a la cuota más alta con un `filter(x => x.line === consenso)` pegado delante
+// para el total y el hándicap. Funcionaba, pero tenía tres agujeros y ninguna cuenta:
+//   · comparaba líneas con `===` en coma flotante, sin tolerancia;
+//   · aceptaba filas SIN cuota válida (`x[side] || 0` trata `undefined` como 0, así que si nadie cotiza ese
+//     lado devuelve una fila con la cuota vacía y aguas abajo sale un NaN que mata la candidata en silencio);
+//   · no emparejaba el hándicap por la línea del lado A con signo, sino por el número tal y como lo escribió
+//     el proveedor — y A−3,5 / B+3,5 es UN mercado mientras A+3,5 / B−3,5 es OTRO con pagos opuestos;
+//   · y sobre todo NO CONTABA NADA: nadie sabía cuántas cotizaciones del tablero eran de otra línea. Medido
+//     el 15-sep sobre las cuotas reales de un torneo entero: 18 de 32 lados (56,3 %) habrían cogido el
+//     precio de otra línea sin el filtro, con la cuota inflada un 11,3 % de media. El filtro estaba
+//     haciendo un trabajo enorme y no había ni un número que lo dijera.
+// Ahora la regla es la escrita una sola vez en `lib/contrato.js`: `mejorPrecio` devuelve LA FILA ENTERA y
+// solo compite quien cotiza la MISMA línea. Si nadie la cotiza, la respuesta es nula CON MOTIVO — nunca la
+// cuota de al lado.
+function mejorPorLado(out, consenso) {
+  const CT = require('../lib/contrato');
+  const pick = (filas, familia, lado, lineaObjetivo, tipoLinea) => {
+    const esHcp = tipoLinea === 'handicap';
+    // la línea viaja como la ve ESE lado (en hándicap, la cara B la lleva con el signo cambiado);
+    // `lib/contrato` la normaliza sola a la del lado A, que es la única forma de que A−3,5 y B+3,5 casen.
+    const rows = filas.map((x) => ({
+      casa: x.book, familia, lado, cuota: x[lado], tipoLinea,
+      linea: x.line == null ? null : (esHcp && lado === 'b' ? -x.line : x.line),
+      _row: x,
+    }));
+    const objetivo = lineaObjetivo == null ? null : (esHcp && lado === 'b' ? -lineaObjetivo : lineaObjetivo);
+    const r = CT.mejorPrecio(rows, { familia, lado, linea: objetivo, tipoLinea });
+    return { fila: r.fila ? r.fila._row : null, descartes: r.descartes, motivo: r.motivo };
+  };
+  const mlA = pick(out.ml, 'ML', 'a', null, 'ninguna');
+  const mlB = pick(out.ml, 'ML', 'b', null, 'ninguna');
+  const ttO = pick(out.total, 'TOTAL', 'over', consenso.total_line, 'total');
+  const ttU = pick(out.total, 'TOTAL', 'under', consenso.total_line, 'total');
+  const spA = pick(out.spread, 'SPREAD', 'a', consenso.spread_line, 'handicap');
+  const spB = pick(out.spread, 'SPREAD', 'b', consenso.spread_line, 'handicap');
+  const suma = (...rs) => rs.reduce((s, x) => s + ((x.descartes && x.descartes.linea_distinta) || 0), 0);
+  return {
+    ml_a: mlA.fila, ml_b: mlB.fila,
+    total_over: ttO.fila, total_under: ttU.fila,
+    spread_a: spA.fila, spread_b: spB.fila,
+    // EL CONTADOR: cuántas cotizaciones del mismo mercado se quedaron fuera por ser de OTRA línea. Es el
+    // número que dice cuánta ventaja se estaría cobrando contra un mercado que no se compró.
+    descartadas_por_linea: { total: suma(ttO, ttU), spread: suma(spA, spB), ml: suma(mlA, mlB) },
+    // y los lados para los que NADIE cotiza hoy la línea evaluada: un hueco con motivo, no un precio prestado
+    sin_precio_en_linea: [
+      ttO.fila || !out.total.length ? null : 'total_over: ' + ttO.motivo,
+      ttU.fila || !out.total.length ? null : 'total_under: ' + ttU.motivo,
+      spA.fila || !out.spread.length ? null : 'spread_a: ' + spA.motivo,
+      spB.fila || !out.spread.length ? null : 'spread_b: ' + spB.motivo,
+    ].filter(Boolean),
+  };
 }
 
 // TODAS LAS LÍNEAS, NO SOLO LA DEL CONSENSO (2-sep). El cierre guardaba una sola línea de total y una de
@@ -265,6 +351,19 @@ function eventModel(ev) {
     hold_a: r3(md.holdA), hold_b: r3(md.holdB), p_set_a: r3(md.pSetA),
     adjustments: adj,
     model_version: (D.build().priors || {}).model_version || 'tennis-sr-1',
+    // DE CUÁNDO ES CADA PIEZA DE ESTA TESIS (15-sep, T2.14). No es un adorno de linaje: las tasas de saque
+    // y resto de los dos jugadores están CONGELADAS desde que la espina de Sackmann se cortó (medido:
+    // 17-may-2026 en ATP, 18-may en WTA, el 100 % de los activos), y la probabilidad de punto al saque es
+    // el átomo del que sale todo lo demás. Una pick que no dice de cuándo es su átomo no se puede auditar.
+    data_as_of: {
+      partidos: (D.build().data_as_of || {}).partidos || null,
+      espina_saque_resto: (D.build().data_as_of || {}).espina_saque_resto || null,
+      saque_a: mp.srvDateA || null, saque_b: mp.srvDateB || null,
+      superficie_origen: torneoDe(ev._tkey).origen,
+      // el recorte [0,45 · 0,80]: medido cero veces en 126.072 lados de 2015 a 2026, pero si algún día
+      // muerde hay que verlo en la propia pick y no en un script
+      recorte_saque: (mp.clampA || mp.clampB) ? { a: mp.clampA, b: mp.clampB, crudo_a: r3(mp.paSrvCrudo), crudo_b: r3(mp.pbSrvCrudo) } : null,
+    },
   };
   adj.dist_method = gamesPmf(model).method;
   return model;
@@ -366,7 +465,15 @@ function gate(c) {
       : `la base va ${c.base_lag_days} días por detrás del calendario real: +${lagUncPp(c.base_lag_days).toFixed(1)} pp de incertidumbre y forma reciente no vista` });
   const pass = gates.every((x) => x.pass);
   return {
-    family: c.family, side: c.side, line: c.line != null ? c.line : null, odds: c.odds, book: c.book,
+    family: c.family, side: c.side, line: c.line != null ? c.line : null,
+    // LA LÍNEA DEL PRECIO VIAJA CON EL PRECIO (15-sep, A01). `line` es la que valoró el modelo; `line_price`
+    // es la que de verdad cotizaba la casa cuya cuota se apunta. Tienen que ser la misma y desde hoy el
+    // selector lo garantiza — pero sin guardarlas las DOS no hay forma de comprobarlo a posteriori, y eso
+    // es justo lo que impidió medir el histórico: 766 picks liquidadas y ni una sabe de qué línea era su
+    // cuota. `line_mismatch` es el contador que esta casa no tenía.
+    line_price: c.line_price != null ? c.line_price : null,
+    line_mismatch: (c.line != null && c.line_price != null && Math.abs(c.line - c.line_price) > 1e-9) || undefined,
+    odds: c.odds, book: c.book,
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp), gates,
     base_lag_days: c.base_lag_days != null ? c.base_lag_days : null, unc_pp: r2(uncPp),
     verdict: pass ? 'SHADOW_PICK' : 'NO_PICK',
@@ -411,14 +518,14 @@ function evaluateEdges(model, mk) {
     for (const side of ['over', 'under']) {
       const b = side === 'over' ? mk.best.total_over : mk.best.total_under;
       const odds = side === 'over' ? b.over : b.under;
-      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale, base_lag_days: lag, dist_method: dp.dist_method }));
+      out.push(gate({ family: 'TOTAL', side, line: mk.consensus.total_line, line_price: b.line, odds, book: b.book, p_model: side === 'over' ? dp.pOver : 1 - dp.pOver - dp.pushT, p_implied: dec2p(odds), push_p: dp.pushT, unc_pp: uncPp, stale, base_lag_days: lag, dist_method: dp.dist_method }));
     }
   }
   if (dp.pCoverA != null && mk.best.spread_a && mk.best.spread_b) {
     for (const side of ['a', 'b']) {
       const b = side === 'a' ? mk.best.spread_a : mk.best.spread_b;
       const odds = side === 'a' ? b.a : b.b;
-      out.push(gate({ family: 'SPREAD', side, line: mk.consensus.spread_line, odds, book: b.book, p_model: side === 'a' ? dp.pCoverA : 1 - dp.pCoverA - dp.pushS, p_implied: dec2p(odds), push_p: dp.pushS, unc_pp: uncPp, stale, base_lag_days: lag }));
+      out.push(gate({ family: 'SPREAD', side, line: mk.consensus.spread_line, line_price: b.line, odds, book: b.book, p_model: side === 'a' ? dp.pCoverA : 1 - dp.pCoverA - dp.pushS, p_implied: dec2p(odds), push_p: dp.pushS, unc_pp: uncPp, stale, base_lag_days: lag }));
     }
   }
   return out;
@@ -437,9 +544,13 @@ async function board(tour) {
     const mk = marketOf(ev);
     const row = {
       id: ev.id, tourney: ev._ttitle, tkey: ev._tkey, tour: tourOfKey(ev._tkey),
-      surface: D.SURFACES[surfOfKey(ev._tkey)], best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
+      surface: D.SURFACES[surfOfKey(ev._tkey)], surface_origen: torneoDe(ev._tkey).origen,
+      best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
       a: ev.home_team, b: ev.away_team, commence: ev.commence_time, books: mk.books,
       market: mk.consensus, available: model.available,
+      // (15-sep, A01) cuántas cotizaciones de este partido eran de otra línea y qué lados se quedan sin
+      // precio en la línea evaluada. Se publica por fila para que el número no haya que reconstruirlo.
+      precio: { descartadas_por_linea: mk.best.descartadas_por_linea, sin_precio_en_linea: mk.best.sin_precio_en_linea },
     };
     if (model.available) {
       row.gp = { p_a: model.p_a, exp_games: model.exp_games, tb_any: model.tb_any, hold_a: model.hold_a, hold_b: model.hold_b };
@@ -452,8 +563,18 @@ async function board(tour) {
     rows.push(row);
   }
   rows.sort((x, y) => Date.parse(x.commence) - Date.parse(y.commence));
+  // EL AGREGADO DEL SELECTOR DE PRECIO (15-sep, A01). Una línea por tablero con lo que antes no se contaba:
+  // cuántas cotizaciones eran de otra línea y cuántos lados se quedan sin precio en la línea evaluada.
+  const precio = rows.reduce((acc, r) => {
+    const d = (r.precio && r.precio.descartadas_por_linea) || {};
+    acc.total += d.total || 0; acc.spread += d.spread || 0; acc.ml += d.ml || 0;
+    acc.sin_precio += ((r.precio && r.precio.sin_precio_en_linea) || []).length;
+    return acc;
+  }, { total: 0, spread: 0, ml: 0, sin_precio: 0 });
   return {
     rows, refreshed_at: odds ? new Date(odds.at).toISOString() : null, doctrine: DOCTRINE,
+    precio_tupla: { ...precio, eventos: rows.length,
+      nota: 'cotizaciones descartadas por ser de OTRA línea que la valorada (lib/contrato.js). Antes del 15-sep nadie las contaba: el selector las filtraba en silencio y el número no existía.' },
     note: rows.length ? null : 'sin torneos con cuotas activas en la ventana (The Odds API publica por torneo: se abren solos cuando arranca el siguiente)',
   };
 }
@@ -553,7 +674,8 @@ async function matchDetail(eventId) {
   const mk = marketOf(ev);
   const base = {
     id: ev.id, tourney: ev._ttitle, tour: tourOfKey(ev._tkey),
-    surface: D.SURFACES[surfOfKey(ev._tkey)], best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
+    surface: D.SURFACES[surfOfKey(ev._tkey)], surface_origen: torneoDe(ev._tkey).origen,
+    best_of: bo5Keys.test(ev._tkey) ? 5 : 3,
     commence: ev.commence_time, books: mk.books, market: mk.consensus, best: mk.best,
     a_ref: ev.home_team, b_ref: ev.away_team, doctrine: DOCTRINE,
   };
@@ -605,6 +727,9 @@ async function recordShadow() {
       const pick = {
         key, event_id: row.id, tkey: row.tkey, tourney: row.tourney, tour: row.tour, surface: row.surface, best_of: row.best_of,
         a: row.a, b: row.b, family: c.family, side: c.side, line: c.line, odds: c.odds, book: c.book,
+        // (15-sep, A01) la línea que de verdad cotizaba la casa del precio, y la bandera si no coincide con
+        // la valorada. Sin estos dos campos el histórico de tenis no se puede auditar, y no se pudo.
+        line_price: c.line_price != null ? c.line_price : null, line_mismatch: !!c.line_mismatch,
         p_model: c.p_model, p_implied: c.p_implied, edge_pp: c.edge_pp, benchmark: !!c.benchmark,
         commence: row.commence, status: 'OPEN', created_at: new Date().toISOString(), regime: 'shadow',
         // 9-sep: la incertidumbre de la candidata ya se calculaba y no se guardaba; ahora viaja con el veredicto
@@ -860,6 +985,30 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
           // 9-sep: y contra la MISMA casa donde nació la pick, en su línea exacta
           const own = ln && ln.bb && p.book && ln.bb[p.book] ? ln.bb[p.book][p.side] : null;
           if (own > 1) { p.close_own = own; p.clv_own_pct = +((p.odds / own - 1) * 100).toFixed(2); }
+          // ── EL RETORNO ESPERADO AL CIERRE, TICKET A TICKET (15-sep, T1.1 / A06) ──────────────────────
+          // El CLV dice cuánto se movió la línea; no dice si se gana dinero. Lo que lo dice es el EV contra
+          // la probabilidad SIN MARGEN del cierre, y para eso hacen falta las DOS caras del MISMO libro en
+          // la MISMA foto. Tenis es de los pocos sitios de la casa donde eso existe: `lineasDe` guarda
+          // `bb[casa][lado]` para los dos lados de cada línea desde el 9-sep. Donde no existe, no se
+          // inventa: se anota el motivo y el ticket queda fuera de la vara, contado aparte.
+          const otro = { over: 'under', under: 'over', a: 'b', b: 'a' }[p.side];
+          const contraria = ln && ln.bb && p.book && ln.bb[p.book] ? ln.bb[p.book][otro] : null;
+          try {
+            const EV = require('../lib/ev');
+            const e = EV.evDeTicket({ entrada: p.odds, cierre: own, cierreContraria: contraria });
+            if (e.ok) {
+              p.ev_cierre_pct = e.ev_pct; p.q_cierre = e.q_cierre; p.Q_cierre = e.Q;
+              p.margen_lado_cierre_pct = e.margen_lado_pct;
+              p.p_break_even = +(1 / p.odds).toFixed(4);
+              p.edge_information_pp = +(100 * (p.p_model - e.q_cierre)).toFixed(2);
+            } else p.ev_cierre_motivo = e.motivo;
+          } catch { /* lib/ev no disponible: el ticket queda sin EV, nunca con uno inventado */ }
+        }
+        // el ganador NO tiene EV al cierre y hay que decir por qué: `ml_a`/`ml_b` son la mejor cuota por
+        // lado ENTRE CASAS, así que las dos caras no son del mismo libro y desvigarlas fabricaría un
+        // mercado que no existió — exactamente lo que `lib/contrato.parContrario` prohíbe.
+        if (p.family === 'ML' && p.ev_cierre_pct == null) {
+          p.ev_cierre_motivo = 'el cierre de ganador se guarda como mejor cuota por lado entre casas: las dos caras no son del mismo libro y desvigarlas fabricaría un mercado que no existió';
         }
       }
       p.settled_at = new Date().toISOString();
@@ -991,6 +1140,25 @@ function track(tour, { limit = 40 } = {}) {
       note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined,
     }])),
     por_evento: { TOTAL: porEventoTotal },
+    // ── LA VARA NUEVA, POR FAMILIA (15-sep, T1.1 / A06) ──────────────────────────────────────────────────
+    // EV al cierre ticket a ticket, agregado con bootstrap por racimos de EVENTO (`lib/inferencia.js`): dos
+    // líneas del mismo partido no son dos observaciones. El CLV se queda arriba como diagnóstico de
+    // movimiento de línea; el veredicto, cuando lo haya, sale de aquí. `cobertura_pct` es el número que
+    // hay que mirar primero: sin las dos caras del mismo libro al cierre, este número no significa nada.
+    ev_cierre: (() => {
+      try {
+        const EV = require('../lib/ev');
+        const out = {};
+        for (const f of Object.keys(byFam)) {
+          const l = done.filter((p) => p.family === f);
+          out[f] = EV.agrega(l.map((p) => ({ ev_pct: p.ev_cierre_pct, event_id: p.event_id })),
+            { cluster: (x) => x.event_id });
+          out[f].sin_ev_motivos = l.filter((p) => p.ev_cierre_pct == null)
+            .reduce((a, p) => { const k = p.ev_cierre_motivo || 'sin cierre de la línea exacta'; a[k] = (a[k] || 0) + 1; return a; }, {});
+        }
+        return out;
+      } catch { return null; }
+    })(),
     // 9-sep (traído de tenis de mesa), por familia: CLV contra la MISMA casa y la muestra partida por el
     // veredicto de la puerta 0,75×unc. Medición: la puerta de tenis (edge > unc) no cambia.
     tt_transfer: (() => {

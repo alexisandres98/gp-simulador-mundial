@@ -145,4 +145,56 @@ function templateBestOf(tier, round) {
   }
 }
 
-module.exports = { RULESET, other, serverAt, gameOver, legalGameScore, bestOfFormat, bestOfFromScore, ROUND_ORDER, ROUND_LABEL, normalizeRound, tierOf, TIER_LABEL, TIER_WEIGHT, INTEGRITY, integrityOf, INTEGRITY_LABEL, INTEGRITY_NOTE, templateBestOf };
+// ── CLASES DE EQUIVALENCIA DE PAGO (T2.12, 15-sep-2026) ─────────────────────────────────────────────────
+// El reglamento deja huecos en las escalas —un game no puede acabar 11–10, así que el total 21 NO EXISTE, y
+// el margen mínimo de un game son 2 puntos— y donde hay un hueco, dos apuestas con nombres distintos pagan
+// exactamente igual. El compilador ya lo sabía (`payoffEquivalences`) pero solo para ENSEÑARLO: el catálogo
+// dedupe por `familia|lado|línea|game`, de modo que "más de 20,5", "más de 21,5" y "deuce sí" del mismo game
+// son TRES candidatas distintas para el sistema y una sola apuesta para el bolsillo. Apilar la misma apuesta
+// ya costó −17,63 % de ROI en tarjetas; aquí no ha pasado todavía porque Cloudbet no cotiza el deuce, pero
+// el agujero está abierto y Bovada sí lo cotiza.
+//
+// La clave se construye desde el CONJUNTO ALCANZABLE, no desde una lista de casos: dos líneas son la misma
+// apuesta cuando el primer resultado alcanzable que las cruza es el mismo.
+// totales alcanzables de UN game: 11..20 (11–j con j ≤ 9) y, desde el deuce, solo pares ≥ 22. El 21 no está.
+const TOTALES_GAME = (() => { const s = []; for (let j = 0; j <= RULESET.points - RULESET.win_by; j++) s.push(RULESET.points + j); for (let t = 2 * RULESET.deuce_from + 2; t <= 2 * RULESET.deuce_from + 200; t += 2) s.push(t); return s.sort((a, b) => a - b); })();
+// márgenes alcanzables de UN game: 2..11. El 1 no está (hay que ganar por dos).
+const MARGENES_GAME = (() => { const s = []; for (let m = RULESET.win_by; m <= RULESET.points; m++) s.push(m); return s; })();
+// márgenes de games de un partido al mejor de N: need, need−1, …, 1. El 0 no está (no hay empate).
+const margenesPartido = (bestOf) => { const need = Math.ceil((([3, 5, 7].includes(+bestOf) ? +bestOf : 5)) / 2); const s = []; for (let k = 0; k < need; k++) s.push(need - k); return s.sort((a, b) => a - b); };
+// primer valor alcanzable ESTRICTAMENTE mayor que x (null si no hay: la selección es imposible)
+const primeroSobre = (conj, x) => { for (const v of conj) if (v > x) return v; return null; };
+// La clave usa SIEMPRE la frontera "primer alcanzable por encima de la línea", para los dos lados: over gana
+// si el resultado llega a esa frontera y under gana si no llega, así que las dos caras comparten frontera y
+// se distinguen solo por el lado. Así "más de 20,5", "más de 21,5" y "deuce sí" caen en la misma clave, y
+// "menos de 20,5", "menos de 21,5" y "deuce no" en la contraria.
+function equivalenceKey(fam, side, line, game, bestOf) {
+  const g = game || 1;
+  const L = Number(line);
+  const lado = (s) => (s === 'over' || s === 'yes' || s === 'a' ? 'si' : 'no');
+  switch (fam) {
+    case 'GAME_DEUCE': return `g${g}|total>=${primeroSobre(TOTALES_GAME, 2 * RULESET.deuce_from)}|${lado(side)}`;
+    case 'GAME_POINTS_TOTAL': {
+      if (!Number.isFinite(L) || (side !== 'over' && side !== 'under')) return null;
+      const v = primeroSobre(TOTALES_GAME, L);
+      return v == null ? null : `g${g}|total>=${v}|${lado(side)}`;
+    }
+    // el margen mínimo de un game son 2 puntos: cualquier hándicap dentro de (−2, 2) es el ganador del game
+    case 'GAME_ML': return side === 'a' || side === 'b' ? `g${g}|margen>=${MARGENES_GAME[0]}|${side}` : null;
+    case 'GAME_POINTS_HCP': {
+      if (!Number.isFinite(L) || (side !== 'a' && side !== 'b')) return null;
+      const v = primeroSobre(MARGENES_GAME, -L);
+      return v == null ? null : `g${g}|margen>=${v}|${side}`;
+    }
+    // el partido no puede acabar empatado a games: un hándicap de games dentro de (−1, 1) es el ganador
+    case 'ML': return side === 'a' || side === 'b' ? `m|margen>=${margenesPartido(bestOf)[0]}|${side}` : null;
+    case 'GAMES_HCP': {
+      if (!Number.isFinite(L) || (side !== 'a' && side !== 'b')) return null;
+      const v = primeroSobre(margenesPartido(bestOf), -L);
+      return v == null ? null : `m|margen>=${v}|${side}`;
+    }
+    default: return null;   // totales de partido y marcador exacto no tienen huecos que los igualen
+  }
+}
+
+module.exports = { RULESET, other, serverAt, gameOver, legalGameScore, bestOfFormat, bestOfFromScore, ROUND_ORDER, ROUND_LABEL, normalizeRound, tierOf, TIER_LABEL, TIER_WEIGHT, INTEGRITY, integrityOf, INTEGRITY_LABEL, INTEGRITY_NOTE, templateBestOf, equivalenceKey, TOTALES_GAME, MARGENES_GAME, margenesPartido };

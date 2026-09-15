@@ -30,12 +30,12 @@ const REINTENTOS_MAX = 60;
 const CON_DINERO = new Set(['PLACED', 'EN_ACEPTACION', 'SETTLED']);
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-function ocupada(L, fila) {
-  return (L.bets || []).find((b) => b !== fila && b.pick_id !== fila.pick_id && CON_DINERO.has(b.status)
-    && b.cb_event_id && fila.cb_event_id && String(b.cb_event_id) === String(fila.cb_event_id)
-    && String(b.side || '').toLowerCase() === String(fila.side || '').toLowerCase()
-    && b.line != null && fila.line != null && Number(b.line) === Number(fila.line)) || null;
-}
+// UNA POSICIÓN POR PARTIDO + LADO (15-sep, Fase 0 de la auditoría). Este canal tenía su propia versión de
+// la regla y exigía ADEMÁS que coincidiera la línea, así que `over 73,5` y `over 75,5` del mismo partido
+// podían llevar dinero a la vez. Es exactamente el patrón que en tarjetas costó −17,63 % de ROI con dos
+// líneas y −45,83 % con tres: si el partido acaba largo, las dos pierden. Ahora la regla es una sola y vive
+// en `store.js`; aquí solo se llama. `GP_REAL_UNA_POR_PARTIDO=off` sigue revirtiendo las dos a la vez.
+const ocupada = (L, fila) => RE.posicionOcupada(L, fila);
 
 // la fila nace de la tesis de la sombra de tenis de mesa (tt-engine/store.js picks.json)
 function crear(pick) {
@@ -69,7 +69,7 @@ async function colocar(fila) {
   if (String(fila.side) !== 'over' && String(fila.side) !== 'under') return parar('lado_raro', { side: fila.side }, true);
   if (!(Number(fila.line) > 0)) return parar('linea_rara', { line: fila.line }, true);
   const oc = ocupada(L, fila);
-  if (oc) return parar('linea_ya_apostada', { detalle: `ya hay ${oc.status} a ${fila.side} ${fila.line} en el evento ${fila.cb_event_id} (pick ${oc.pick_id})` }, true);
+  if (oc) return parar('posicion_ya_apostada', { detalle: `ya hay ${oc.status} a ${oc.side} ${oc.line} en el evento ${fila.cb_event_id} (pick ${oc.pick_id}); esta pedía ${fila.side} ${fila.line}` }, true);
 
   // el precio VIVO y las coordenadas de colocación, del evento crudo de la casa
   const ev = await CB.eventRaw(process.env.CLOUDBET_API_KEY || '', fila.cb_event_id).catch(() => null);
@@ -92,7 +92,7 @@ async function colocar(fila) {
   fila.stake = stake; fila.recorte_pct = +(100 * (stake / tope - 1)).toFixed(2);
 
   // los MISMOS frenos de cartera que tarjetas y CS2 (apagado maestro, ventana, parada diaria, exposición, casa, fondos)
-  const f = RE.frenos(stake, fila.kickoff_at);
+  const f = RE.frenos(stake, fila.kickoff_at, FAMILIA);
   if (f) return parar('freno:' + f.freno, { detalle: f.detalle, saldo: L.saldo && L.saldo.amount });
 
   const peticion = { currency: C.currency, eventId: String(fila.cb_event_id), marketUrl: sel.marketUrl, price: sel.price, stake, referenceId: fila.ref_id, acceptPriceChange: 'BETTER' };

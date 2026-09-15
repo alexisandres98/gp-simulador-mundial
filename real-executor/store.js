@@ -198,9 +198,24 @@ function fueraDeVentana(kickoff) {
 // `kickoff` llega desde la fila y NO es opcional en la práctica: es lo que hace que la ventana de saque sea
 // imposible de esquivar — los dos caminos que mueven dinero (tarjetas por `colocar`, CS2 por el brazo
 // automático) pasan por aquí, así que el corte vive en un solo sitio.
-function frenos(stake, kickoff) {
+// INTERRUPTOR POR CANAL (15-sep, Fase 0 de la auditoría). `GP_REAL_ENABLED` es el maestro y apaga los tres
+// canales a la vez; hasta hoy no había forma de pausar tarjetas sin pausar también tenis de mesa. Cada canal
+// tiene ahora el suyo, encendido por defecto para que nada cambie por desplegar:
+//   · tarjetas → GP_REAL_CARDS_ENABLED   · tenis de mesa → GP_REAL_TT_ENABLED   · CS2 → GP_REAL_CS2_ENABLED
+// Pausar un canal NO toca las filas ya colocadas: siguen confirmándose y liquidándose con normalidad.
+function canalOn(familia) {
+  const f = String(familia || '').toUpperCase();
+  const v = (k) => String(process.env[k] == null ? 'true' : process.env[k]).trim();
+  const encendido = (k) => !/^(0|false|no|off)$/i.test(v(k));
+  if (f === 'CARDS') return encendido('GP_REAL_CARDS_ENABLED');
+  if (f === 'TT_POINTS') return encendido('GP_REAL_TT_ENABLED');
+  if (f === 'CS2') return cs2RealOn();
+  return true;   // una familia sin interruptor propio no se bloquea por esto
+}
+function frenos(stake, kickoff, familia = null) {
   const C = CFG(), L = load();
   if (!C.enabled) return { freno: 'apagado', detalle: 'GP_REAL_ENABLED no está encendido' };
+  if (familia && !canalOn(familia)) return { freno: 'canal_pausado', detalle: `el canal ${familia} está pausado por su interruptor` };
   if (!process.env.CLOUDBET_API_KEY) return { freno: 'sin_api_key' };
   const fv = fueraDeVentana(kickoff);
   if (fv) {
@@ -500,7 +515,7 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   fila.stake = stake;
   if (stakeFijo > 0) fila.stake_fijado = +stakeFijo;
 
-  const f = frenos(stake, fila.kickoff_at);
+  const f = frenos(stake, fila.kickoff_at, FAMILIA);
   if (f) {
     // un freno que espera (saldo, exposición, parada diaria) devuelve el reintento que acaba de gastar:
     // la fila no ha fallado, solo no le tocaba todavía. Los demás frenos sí cuentan.
@@ -1208,7 +1223,7 @@ async function ensayoCs2(fila, { eventoId, evRaw = null } = {}) {
     // auditado se envía de verdad por el brazo. Pasa por los MISMOS frenos de cartera que tarjetas.
     if (AUTO) {
       const L = load();
-      const f = frenos(stake, fila.kickoff_at);
+      const f = frenos(stake, fila.kickoff_at, 'CS2');
       if (f) { fila.ensayo_motivo = 'freno:' + f.freno; save(); return fila; }
       const r = await CB.placeBet(process.env.CLOUDBET_API_KEY || '', fila.ensayo_payload);
       fila.intentos = (fila.intentos || 0) + 1;
@@ -1390,4 +1405,9 @@ function board({ limit = 40 } = {}) {
 
 module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
-  frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */ };
+  frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
+  // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.
+  // El canal de tenis de mesa tenía su propia copia y le exigía además que coincidiera la línea, así que
+  // dejaba pasar dos totales del mismo partido: justo el patrón que en tarjetas costó −17,63 % con dos
+  // líneas y −45,83 % con tres. Se exporta para que ningún canal vuelva a escribir su propia versión.
+  posicionOcupada, mismaPosicion, mismoPartido, unaPorPartido, canalOn };

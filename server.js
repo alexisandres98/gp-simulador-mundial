@@ -369,6 +369,53 @@ function backupStoresDaily() {
 setTimeout(backupStoresDaily, 150 * 1000);       // al boot, después de la de db.json
 setInterval(backupStoresDaily, 6 * 3600 * 1000); // y cada 6 h, escribiendo solo si falta la del día
 
+// ── COPIA ETIQUETADA, QUE LA ROTACIÓN NO TOCA (15-sep-2026, Fase 0 de la auditoría) ──────────────────────
+// La copia diaria de arriba rota a los 14 días. Antes de una reparación grande hace falta una foto que
+// sobreviva a la rotación y no dependa de que nadie la borre: se guarda bajo `backups/etiquetas/<nombre>`,
+// que no casa con el patrón de fecha que la rotación busca. Copia db.json y TODOS los almacenes JSON de
+// primer nivel del disco por debajo del tope de tamaño, gzipados. Es de un solo uso: si la etiqueta ya
+// existe, no la pisa.
+function backupEtiquetado(etiqueta) {
+  const limpio = String(etiqueta || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 64);
+  if (!limpio) return { ok: false, error: 'etiqueta vacía' };
+  const dest = path.join(BACKUP_DIR, 'etiquetas', limpio);
+  if (fs.existsSync(dest)) return { ok: false, error: 'esa etiqueta ya existe', ruta: dest };
+  const base = path.dirname(DB_FILE);
+  const tmpDir = dest + '.tmp';
+  const salida = { ok: true, etiqueta: limpio, ruta: dest, ficheros: 0, mb: 0, saltados: [], por_carpeta: {} };
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.mkdirSync(tmpDir, { recursive: true });
+    let bytes = 0;
+    const guarda = (ruta, nombre) => {
+      let st; try { st = fs.statSync(ruta); } catch { return; }
+      if (!st.isFile()) return;
+      if (st.size > STORE_BACKUP_MAX_MB * 1048576) { salida.saltados.push(nombre + ' (' + (st.size / 1048576).toFixed(1) + ' MB)'); return; }
+      fs.writeFileSync(path.join(tmpDir, nombre + '.gz'), zlibBackup.gzipSync(fs.readFileSync(ruta)));
+      salida.ficheros++; bytes += st.size;
+    };
+    guarda(DB_FILE, 'db.json');
+    let dirs = [];
+    try { dirs = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory() && d.name !== 'backups').map((d) => d.name); } catch { /* disco raro */ }
+    for (const d of dirs) {
+      let files = [];
+      try { files = fs.readdirSync(path.join(base, d)).filter((f) => /\.json$/.test(f)); } catch { continue; }
+      if (!files.length) continue;
+      const antes = salida.ficheros;
+      for (const f of files) guarda(path.join(base, d, f), d + '__' + f);
+      salida.por_carpeta[d] = salida.ficheros - antes;
+    }
+    for (const f of (() => { try { return fs.readdirSync(base).filter((x) => /\.json$/.test(x) && x !== path.basename(DB_FILE)); } catch { return []; } })()) guarda(path.join(base, f), f);
+    fs.renameSync(tmpDir, dest);
+    salida.mb = +(bytes / 1048576).toFixed(1);
+    opsLog('backup_etiquetado', { etiqueta: limpio, ficheros: salida.ficheros, mb: salida.mb });
+    return salida;
+  } catch (e) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ya no está */ }
+    return { ok: false, error: e.message };
+  }
+}
+
 // ═══ OPS AUTOMÁTICAS (17-ago) ════════════════════════════════════════════════════════════════════════════
 // Tres piezas que hasta hoy dependían de que alguien se acordara: el CSV de usuarios al correo del admin
 // (el backup en disco protege contra corrupción, pero si se pierde el DISCO el backup se va con él — el
@@ -12818,7 +12865,9 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           const decision = GATE.evaluate({
             family: m.fam === 'match_winner' ? 'moneyline' : m.fam === 'spread' ? 'spread' : 'total',
             selection: selName, game_id: String(g.id), books, price, uncertainty_pp: uncPp,
-            staleness: PRC.staleness({ at: best.at || null }), thesis: m.fam + '|' + side + '|' + String(g.id),
+            // 15-sep (T1.12 de la auditoría): la fila de cuota trae `seen`, no `at` (basketball-engine/
+            // markets.js:103), así que esta puerta recibía siempre null y NUNCA bloqueaba un precio viejo.
+            staleness: PRC.staleness({ at: best.seen || best.at || null }), thesis: m.fam + '|' + side + '|' + String(g.id),
           }, { validation: C.validation, published: gateDecisions.filter((d) => d.pick) });
           gateDecisions.push({ ...decision, game: ev.home + ' – ' + ev.away, league: lg });
           if (edgePp < HOOPS_PICK_MIN_EDGE() || evPct <= 0) continue;
@@ -12833,7 +12882,10 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
           if (hoopsV2) {
             if (edgePp < 5) continue;
             if (m.fam === 'spread' && Math.abs(m.line) >= 8) continue;
-            if (m.fam === 'total' && side !== 'under') continue;
+            // 15-sep (T1.12): la familia se llama `match_total` (basketball-engine/markets.js), no `total`,
+            // así que la regla "solo under" de la v2 existía y no actuaba desde el 31-ago. Al empezar a
+            // aplicarse cambia qué picks nacen: las nuevas llevan era `hoops_v2b` para no mezclar muestras.
+            if (m.fam === 'match_total' && side !== 'under') continue;
           }
           out.considered++;
           cands.push({ fam: m.fam, famLab, side, line: m.line, selName, pModel, pModelRaw, pMarket, edgePp, evPct, best, books, pushProb, price, decision });
@@ -12914,7 +12966,7 @@ async function buildHoopsPicks({ cap = 12 } = {}) {
             rest_diff: restF.rest_diff, prereg_rest_over: !!restF.prereg_rest_over } : {}),
           // sello de versión del régimen de emisión: la muestra v2 (gates de la autopsia del 31-ago) se
           // lee separada de la v1 — juntar muestras con reglas distintas es contaminar las dos.
-          regime: String(process.env.GP_HOOPS_V2 || 'true') !== 'false' ? 'hoops_v2' : 'hoops_v1',
+          regime: String(process.env.GP_HOOPS_V2 || 'true') !== 'false' ? 'hoops_v2b' : 'hoops_v1',
           monitor_only: true,      // BANDERA DURA: esto no se publica jamás mientras el skill sea negativo
           // ── campos que consume pickCard() (la MISMA card de fútbol y combate) ──
           home: ev.home, away: ev.away,
@@ -13954,6 +14006,55 @@ function fisicasBoard() {
   };
 }
 
+// ── EL ARCHIVO DE NO EJECUTABLES (15-sep, Fase 0 de la auditoría) ───────────────────────────────────────
+// `S.unexec` se recortaba a las últimas 300 filas mientras `S.bets` crecía sin tope. La consecuencia no era
+// perder un log: era que `exec_rate_pct` subía solo con el tiempo, porque el numerador (apuestas) conserva
+// toda su historia y el denominador (señales = apuestas + no ejecutables) perdía la suya. Cualquier lectura
+// de "capacidad de ejecución" de un periodo viejo estaba inflada.
+// Ahora el excedente se archiva por mes en disco antes de recortar, y las lecturas por periodo leen memoria
+// y archivo juntos. `S.unexec` sigue acotado en el JSON del estado para no engordar `db.json`.
+const UNEXEC_DIR = () => path.join(path.dirname(DB_FILE), 'shadow');
+const UNEXEC_EN_MEMORIA = 300;
+function unexecArchiva(filas) {
+  if (!filas || !filas.length) return;
+  try {
+    fs.mkdirSync(UNEXEC_DIR(), { recursive: true });
+    const porMes = {};
+    for (const u of filas) {
+      const mes = String(u && u.at || new Date().toISOString()).slice(0, 7);
+      (porMes[mes] = porMes[mes] || []).push(JSON.stringify(u));
+    }
+    for (const [mes, lineas] of Object.entries(porMes)) {
+      fs.appendFileSync(path.join(UNEXEC_DIR(), `unexec-${mes}.jsonl`), lineas.join('\n') + '\n');
+    }
+  } catch (e) { opsLog('shadow_unexec_archivo', { error: e.message }); }
+}
+function unexecRecorta(S) {
+  if (!S.unexec || S.unexec.length <= UNEXEC_EN_MEMORIA) return;
+  unexecArchiva(S.unexec.slice(0, S.unexec.length - UNEXEC_EN_MEMORIA));
+  S.unexec = S.unexec.slice(-UNEXEC_EN_MEMORIA);
+}
+// todas las no ejecutables de un periodo: las del archivo más las que siguen en memoria, sin duplicar
+function unexecDesde(S, sinceMs) {
+  const vivas = (S.unexec || []).filter((u) => !sinceMs || Date.parse(u.at) >= sinceMs);
+  if (!sinceMs) return vivas;
+  const vistas = new Set(vivas.map((u) => u.pick_id));
+  const fuera = [];
+  try {
+    const desdeMes = new Date(sinceMs).toISOString().slice(0, 7);
+    for (const f of fs.readdirSync(UNEXEC_DIR()).filter((x) => /^unexec-\d{4}-\d{2}\.jsonl$/.test(x)).sort()) {
+      if (f.slice(7, 14) < desdeMes) continue;
+      for (const linea of fs.readFileSync(path.join(UNEXEC_DIR(), f), 'utf8').split('\n')) {
+        if (!linea.trim()) continue;
+        let u; try { u = JSON.parse(linea); } catch { continue; }
+        if (Date.parse(u.at || 0) < sinceMs || vistas.has(u.pick_id)) continue;
+        vistas.add(u.pick_id); fuera.push(u);
+      }
+    }
+  } catch { /* aún no hay archivo */ }
+  return vivas.concat(fuera);
+}
+
 async function shadowSweep() {
   const S = shadowInit();
   S.unexec = S.unexec || []; S.unexec_count = S.unexec_count || 0;
@@ -14056,7 +14157,7 @@ async function shadowSweep() {
         if (!ex) {
           if (ko - now > 30 * 60e3) continue; // Cloudbet puede colgar la pelea más tarde
           S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, line: p.line != null ? p.line : null, side: p.side || p.selection_code || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null });
-          if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+          unexecRecorta(S);
           S.unexec_count++; seen.add(p.pick_id); unexec++;
           continue;
         }
@@ -14097,7 +14198,7 @@ async function shadowSweep() {
             line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.odds,
             kickoff_at: p.start_at || null, reason: 'solo_casas_no_conectables',
             books_con_mercado: bk ? [bk] : [] });
-          if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+          unexecRecorta(S);
           S.unexec_count++; seen.add(p.pick_id); unexec++;
           continue;
         }
@@ -14134,7 +14235,7 @@ async function shadowSweep() {
         // el sello lleva su PORQUÉ desde el 17-ago: sin él, "no ejecutable" era un hueco inauditables
         const diag = await shadowUnexecDiag(p).catch(() => ({ reason: 'diag_error' }));
         S.unexec.push({ pick_id: p.pick_id, segment: seg.key, at: new Date().toISOString(), match: p.event ? `${p.event.home} vs ${p.event.away}` : null, league: p.league || null, line: p.line != null ? p.line : null, side: p.side || null, best_odds: p.best_odds, kickoff_at: (p.event && p.event.kickoff_at) || null, ...diag });
-        if (S.unexec.length > 300) S.unexec = S.unexec.slice(-300);
+        unexecRecorta(S);
         S.unexec_count++; seen.add(p.pick_id); unexec++;
         continue;
       }
@@ -14805,7 +14906,7 @@ function shadowBySegment(sinceMs) {
   const S = shadowInit();
   const cfgBy = {}; for (const c of (S.cfg || [])) cfgBy[c.key] = c;
   const rows = S.bets.filter((b) => !sinceMs || Date.parse(b.placed_at) >= sinceMs);
-  const un = (S.unexec || []).filter((u) => !sinceMs || Date.parse(u.at) >= sinceMs);
+  const un = unexecDesde(S, sinceMs);
   const keys = [...new Set([...rows.map((b) => b.segment || '?'), ...un.map((u) => u.segment || '?')])];
   const out = {};
   for (const k of keys) {
@@ -14853,7 +14954,7 @@ function shadowSummary(sinceMs) {
   const clvsEx = st.map(b => b.clv_exec).filter(c => typeof c === 'number');
   // capacidad real (13-ago): señales del segmento vs las que Cloudbet/Polymarket cotizaban de verdad,
   // y el "haircut" de precio (cuota ejecutable vs la mejor del mercado) — el costo real de ejecutar.
-  const un = (S.unexec || []).filter(u => !sinceMs || Date.parse(u.at) >= sinceMs);
+  const un = unexecDesde(S, sinceMs);
   const hair = rows.filter(b => b.ref_best_odds > 1).map(b => 100 * (b.odds / b.ref_best_odds - 1));
   const signals = rows.length + un.length;
   return {
@@ -21560,6 +21661,25 @@ const server = http.createServer(async (req, res) => {
         por_fuente: Object.fromEntries(Object.entries(porFuente).sort((a, b) => b[1] - a[1])),
         por_dia: Object.fromEntries(Object.entries(porDia).sort().reverse().slice(0, 30)),
         destino: (process.env.GP_CLOUDBET_AFF || CLOUDBET_AFF).replace(/af_token=([^&]{6})[^&]*/, 'af_token=$1…') });
+    }
+    // 15-sep (Fase 0 de la auditoría): copia etiquetada que la rotación no toca. POST con `&etiqueta=`.
+    if (p === '/api/internal/backup') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const raiz = path.join(BACKUP_DIR, 'etiquetas');
+      if (req.method !== 'POST') {
+        let etiquetas = [];
+        try {
+          etiquetas = fs.readdirSync(raiz).map((d) => {
+            let n = 0, bytes = 0;
+            try { for (const f of fs.readdirSync(path.join(raiz, d))) { n++; bytes += fs.statSync(path.join(raiz, d, f)).size; } } catch { /* vacía */ }
+            let at = null; try { at = new Date(fs.statSync(path.join(raiz, d)).mtimeMs).toISOString(); } catch { }
+            return { etiqueta: d, ficheros: n, mb_comprimidos: +(bytes / 1048576).toFixed(1), at };
+          });
+        } catch { /* aún no hay ninguna */ }
+        return json(res, 200, { etiquetas, uso: 'POST /api/internal/backup?key=&etiqueta=<nombre>' });
+      }
+      return json(res, 200, backupEtiquetado(url.searchParams.get('etiqueta') || ''));
     }
     if (p === '/api/internal/ops') {
       const xk = process.env.GP_EXPORT_KEY || '';

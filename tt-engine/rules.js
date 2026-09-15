@@ -98,11 +98,23 @@ const TIER_WEIGHT = { grand_smash: 1.15, finals: 1.15, champions: 1.1, worlds: 1
 // QUARANTINED / BLOCKED: una competición verificada que muestra anomalías (o una orden explícita) baja de
 //   estado; se conserva la gramática aunque hoy nadie la ocupe.
 const INTEGRITY = Object.freeze({ VERIFIED_SCOPE: 'VERIFIED_SCOPE', WATCH: 'WATCH', RESTRICTED: 'RESTRICTED', QUARANTINED: 'QUARANTINED', BLOCKED: 'BLOCKED' });
+// 15-sep-2026 — POR QUÉ EL ORDEN IMPORTA (Fase 0 de la auditoría). Esta función tenía dos fallos que se
+// sumaban y dejaban fuera del modelo competiciones oficiales enteras:
+//   (a) `tt star` casaba dentro de "W·TT STAR· Contender", así que TODOS los WTT Star Contender del mundo
+//       —una de las categorías principales del calendario— salían clasificados como liga privada de
+//       apuestas desde que se escribió el motor. El 15-sep eran 15 partidos de Astana en Cloudbet.
+//   (b) La lista de ligas privadas se evaluaba ANTES que la del organizador oficial, así que cualquier
+//       evento de la WTT celebrado en Chequia, Kazajistán, Moscú o Polonia habría caído igual.
+// El organizador oficial manda: si la competición dice WTT o ITTF, es verificada y no hay más que discutir.
+// Después va la lista de circuitos privados, que ahora exige límites de palabra donde el texto es corto.
+const OFICIAL_TT = /\b(wtt|ittf)\b/;
+const PRIVADA_TT = /liga pro|setka|\btt cup\b|elite series|challenger series|masters series|win cup|star series|pro series|ttstar|\btt star\b|moscow|ukraine|belarus|armenia|kazakhstan open|russia|czech|poland tt|polish tt|hungary tt/;
 function integrityOf(competition) {
   const x = String(competition || '').toLowerCase();
   if (!x) return INTEGRITY.RESTRICTED;
-  if (/liga pro|setka|tt cup|elite series|challenger series|masters series|win cup|star series|pro series|ttstar|tt star|moscow|ukraine|belarus|armenia|kazakhstan open|russia|czech|poland tt|polish tt|hungary tt/.test(x)) return INTEGRITY.RESTRICTED;
-  if (/wtt|ittf|world|olympic|grand smash|contender|feeder|champions|asian|european|pan ?am|africa|oceania|commonwealth|singles|doubles/.test(x)) return INTEGRITY.VERIFIED_SCOPE;
+  if (OFICIAL_TT.test(x)) return INTEGRITY.VERIFIED_SCOPE;
+  if (PRIVADA_TT.test(x)) return INTEGRITY.RESTRICTED;
+  if (/world|olympic|grand smash|contender|feeder|champions|asian|european|pan ?am|africa|oceania|commonwealth|singles|doubles/.test(x)) return INTEGRITY.VERIFIED_SCOPE;
   if (/bundesliga|t\.? ?league|pro a|superliga|super league|liga nacional|division|champions league|europe cup|ettu/.test(x)) return INTEGRITY.WATCH;
   return INTEGRITY.RESTRICTED;
 }

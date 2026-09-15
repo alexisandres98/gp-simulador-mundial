@@ -176,7 +176,9 @@ async function refreshOdds({ force = false, wait = false } = {}) {
 }
 const CB_MAX_PER_PASS = 60, CB_PAR = 6;
 async function refreshOddsNow() {
-  const [pin, bov, cbf] = await Promise.all([BOOKS.pinnacle().catch(() => ({ events: [], available: false })), BOOKS.bovada().catch(() => ({ events: [], available: false })), BOOKS.cloudbetFixtures().catch(() => ({ events: [], available: false }))]);
+  // (15-sep, auditoría T1.14) una excepción es `error_red`, no "fuente sin eventos": se marca como tal
+  const caida = (b) => ({ book: b, events: [], available: false, estado: 'error_red' });
+  const [pin, bov, cbf] = await Promise.all([BOOKS.pinnacle().catch(() => caida('pinnacle')), BOOKS.bovada().catch(() => caida('bovada')), BOOKS.cloudbetFixtures().catch(() => caida('cloudbet'))]);
   const events = [...pin.events, ...bov.events];
   // Cloudbet: mercados solo para los eventos de competiciones VERIFICADAS que casan con la agenda (ahorra llamadas);
   // las ligas privadas cuentan para el mapa de integridad pero no se leen sus líneas
@@ -203,7 +205,12 @@ async function refreshOddsNow() {
   // el mapa de competiciones (blueprint bloque 7)
   const comps = {};
   for (const e of events) { const k = e.competition || '—'; const c = comps[k] = comps[k] || { name: k, integrity: e.integrity, books: {}, n: 0, lines: 0 }; c.n++; c.books[e.book] = (c.books[e.book] || 0) + 1; c.lines += (e.rows || []).length; }
-  G.odds = { at: Date.now(), events, books: { pinnacle: pin.events.length, bovada: bov.events.length, cloudbet: (cbf.events || []).length, cloudbet_read: cbRead }, available: { pinnacle: pin.available, bovada: bov.available, cloudbet: cbf.available }, cloudbet_keys: [...cbKeys], competitions: Object.values(comps).sort((x, y) => y.n - x.n) };
+  // (15-sep) `available` por casa ya NO significa "la llamada no reventó" sino "trajo al menos un evento";
+  // `estado` dice cuál de las tres causas hay detrás de un cero (sin_eventos / error_red / no_configurada).
+  G.odds = { at: Date.now(), events, books: { pinnacle: pin.events.length, bovada: bov.events.length, cloudbet: (cbf.events || []).length, cloudbet_read: cbRead },
+    available: { pinnacle: !!pin.available, bovada: !!bov.available, cloudbet: !!cbf.available },
+    estado: { pinnacle: pin.estado || null, bovada: bov.estado || null, cloudbet: cbf.estado || null },
+    cloudbet_keys: [...cbKeys], competitions: Object.values(comps).sort((x, y) => y.n - x.n) };
   return G.odds;
 }
 // ¿el nombre de la casa es este jugador? familia completa + (nombre o inicial); apellidos compuestos exigen todos sus tokens
@@ -230,7 +237,10 @@ function matchFixture(fixtures, e) {
 }
 // el mercado de un fixture: filas de todas las casas orientadas a (a, b), consenso sin margen y líneas
 function marketFor(fx, odds) {
-  const out = { rows: [], books: [], n_books: 0, consensus: { ml_p_a: null, ml_n: 0 }, lines: (fam) => [...new Set(out.rows.filter((r) => r.family === fam && !r.live && (fam.indexOf('GAME_') !== 0 || r.game === 1)).map((r) => r.line))].sort((x, y) => x - y), events: [] };
+  // `devig` (15-sep): contador del desvigado. `sin_par` son las filas que se quedan con su cuota cruda y
+  // `pares_de_otra_linea` las que ANTES se emparejaban por `abs(line)` con una cara que no era la suya.
+  // Se declara aquí, con el resto del objeto, para que exista también en el mercado vacío.
+  const out = { rows: [], books: [], n_books: 0, consensus: { ml_p_a: null, ml_n: 0 }, devig: { sin_par: 0, pares_de_otra_linea: 0 }, lines: (fam) => [...new Set(out.rows.filter((r) => r.family === fam && !r.live && (fam.indexOf('GAME_') !== 0 || r.game === 1)).map((r) => r.line))].sort((x, y) => x - y), events: [] };
   if (!odds || !fx.a.id || !fx.b.id) return out;
   const t = Date.parse(fx.start_at || 0);
   for (const e of odds.events) {
@@ -255,13 +265,67 @@ function marketFor(fx, odds) {
   if (ps.length) { ps.sort((x, y) => x - y); out.consensus = { ml_p_a: r4(ps[Math.floor(ps.length / 2)]), ml_n: ps.length, ml_spread_pp: r2(100 * (ps[ps.length - 1] - ps[0])) }; }
   return out;
 }
-// probabilidad implícita sin margen para una fila (con su pareja en la misma casa/línea) o cruda 1/cuota
-function impliedOf(row, rows) {
-  const pair = rows.find((x) => x.book === row.book && x.family === row.family && (x.game || null) === (row.game || null) && x !== row && x.live === row.live && (
+// ── LA CARA CONTRARIA ES LA DEL MISMO CONTRATO, NO LA DEL MISMO VALOR ABSOLUTO (15-sep, A01) ─────────────
+// La pareja para desvigar se buscaba con `abs(x.line) === abs(row.line)`, y eso da por iguales dos mercados
+// distintos: la contraria de `a −2,5` es `b +2,5`, pero el filtro aceptaba también `b −2,5`, que es OTRO
+// hándicap y existe de verdad en cuanto la casa publica líneas alternativas (`alt`). Desvigar contra la cara
+// equivocada fabrica un margen que nadie cobró y mueve la probabilidad implícita siempre a favor nuestro.
+// `lib/contrato` normaliza la línea al lado A con su signo y exige misma casa, misma familia, mismo game y
+// mismo estado (vivo/prepartido). Las dos caras son contemporáneas por construcción: `mk.rows` sale de UNA
+// pasada de `refreshOdds`, así que no hay horas que comparar (por eso las filas no llevan `at`).
+// El tipo de línea se declara explícito desde la familia del proveedor, no se deduce del nombre.
+const _ctIdx = new WeakMap();                 // rows (array) → índice canónico, para no re-normalizar por fila
+function ctFila(x) {
+  return {
+    evento: 'fixture',                        // `rows` ya viene filtrado a UN partido: no hay más eventos que separar
+    familia: x.family,
+    tipoLinea: /HCP$/.test(x.family) ? 'handicap' : /TOTAL$/.test(x.family) ? 'total' : 'ninguna',
+    periodo: x.game ? 'game' + x.game : 'partido',
+    reglas: x.live ? 'en_vivo' : 'prepartido',
+    seleccion: x.side, linea: x.line != null ? x.line : null,
+    casa: x.book, cuota: x.odds, _row: x,
+  };
+}
+function ctIndice(rows) {
+  let v = _ctIdx.get(rows);
+  if (v) return v;
+  const CT = require('../lib/contrato');
+  const porMercado = new Map(), porRow = new Map();
+  for (const x of rows) {
+    const f = ctFila(x);
+    f._p = CT.partes(f);
+    const k = CT.clave(f._p, { conSeleccion: false });     // mismo contrato y misma casa; la cara es lo único que cambia
+    if (!porMercado.has(k)) porMercado.set(k, []);
+    porMercado.get(k).push(f);
+    porRow.set(x, f);
+  }
+  v = { porMercado, porRow };
+  _ctIdx.set(rows, v);
+  return v;
+}
+// El filtro VIEJO, conservado solo como instrumento de medida: dice cuántas veces el `abs(line)` habría
+// emparejado algo que no era la cara contraria. Ese número es el arreglo, contado.
+function parPorValorAbsoluto(row, rows) {
+  return rows.find((x) => x.book === row.book && x.family === row.family && (x.game || null) === (row.game || null) && x !== row && x.live === row.live && (
     (row.side === 'a' && x.side === 'b') || (row.side === 'b' && x.side === 'a') || (row.side === 'over' && x.side === 'under') || (row.side === 'under' && x.side === 'over') || (row.side === 'yes' && x.side === 'no') || (row.side === 'no' && x.side === 'yes')) &&
-    (row.line == null || x.line == null || Math.abs(Math.abs(x.line) - Math.abs(row.line)) < 1e-9));
+    (row.line == null || x.line == null || Math.abs(Math.abs(x.line) - Math.abs(row.line)) < 1e-9)) || null;
+}
+// probabilidad implícita sin margen para una fila (con la cara contraria del MISMO contrato) o cruda 1/cuota
+function impliedOf(row, rows, devig = null) {
+  const CT = require('../lib/contrato');
+  const idx = ctIndice(rows);
+  const yo = idx.porRow.get(row);
+  const bucket = yo ? idx.porMercado.get(CT.clave(yo._p, { conSeleccion: false })) : null;
+  const par = yo && bucket ? CT.parContrario(yo, bucket, { detalle: true }) : { fila: null, motivo: 'la fila no pertenece a este mercado' };
+  const pair = par.fila ? par.fila._row : null;
   const i = 1 / row.odds;
-  if (!pair || !(pair.odds > 1)) return { p: i, vig: null, devig: false };
+  if (!pair || !(pair.odds > 1)) {
+    if (devig) {
+      devig.sin_par++;
+      if (parPorValorAbsoluto(row, rows)) devig.pares_de_otra_linea++;   // lo que antes se habría desvigado mal
+    }
+    return { p: i, vig: null, devig: false, sin_par: par.motivo || 'la cara contraria no cotiza' };
+  }
   const j = 1 / pair.odds;
   return { p: i / (i + j), vig: r3(i + j - 1), devig: true };
 }
@@ -303,7 +367,7 @@ function evaluateEdges(model, mk, row) {
     if (r.family.indexOf('GAME_') === 0 && r.game !== 1) continue;
     const pModel = r.family === 'ML' ? (r.side === 'a' ? model.p_a : r.side === 'b' ? 1 - model.p_a : null) : C.probOf(mm, r.family, r.side, r.line, r.game || 1);
     if (pModel == null || !Number.isFinite(pModel)) continue;
-    const imp = impliedOf(r, mk.rows);
+    const imp = impliedOf(r, mk.rows, mk.devig);
     const c = { family: r.family, side: r.side, line: r.line != null ? r.line : null, game: r.game || null, book: r.book, odds: r.odds, alt: !!r.alt, p_model: r4(pModel), p_implied: r4(imp.p), implied_devig: imp.devig, vig: imp.vig, edge_pp: r2(100 * (pModel - imp.p)), ev_pct: r2(100 * (pModel * r.odds - 1)), unc_pp: model.unc_pp, benchmark: !!fam.benchmark, live: !!r.live };
     c.gates = gate(c, model, row);
     const fail = c.gates.find((g) => !g.pass && !g.informativo);
@@ -435,7 +499,7 @@ async function board({ daysAhead = 6, hoursBack = 10 } = {}) {
     const row = rowOf(fx);
     row.format = fx.format;
     const mk = marketFor(fx, odds);
-    row.market = { ...mk.consensus, n_books: mk.n_books, books: mk.books, lines_games: mk.lines('GAMES_TOTAL'), lines_points: mk.lines('POINTS_TOTAL'), lines_g1: mk.lines('GAME_POINTS_TOTAL'), has_g1: mk.rows.some((r) => /^GAME_/.test(r.family) && r.game === 1 && !r.live) };
+    row.market = { ...mk.consensus, n_books: mk.n_books, books: mk.books, lines_games: mk.lines('GAMES_TOTAL'), lines_points: mk.lines('POINTS_TOTAL'), lines_g1: mk.lines('GAME_POINTS_TOTAL'), has_g1: mk.rows.some((r) => /^GAME_/.test(r.family) && r.game === 1 && !r.live), devig: mk.devig };
     const model = eventModel(fx);
     row.available = model.available;
     if (model.available) {
@@ -479,7 +543,7 @@ async function matchDetail(fixtureId) {
   await liveState([row]);
   const mk = marketFor(fx, odds);
   const model = eventModel(fx);
-  const base = { ...row, format: fx.format, market: { ...mk.consensus, n_books: mk.n_books, books: mk.books, events: mk.events }, market_rows: mk.rows.filter((r) => !r.live).map((r) => ({ book: r.book, family: r.family, side: r.side, line: r.line, odds: r.odds, game: r.game || null, alt: !!r.alt })), doctrine: DOCTRINE, attribution: ATTRIB,
+  const base = { ...row, format: fx.format, market: { ...mk.consensus, n_books: mk.n_books, books: mk.books, events: mk.events, devig: mk.devig }, market_rows: mk.rows.filter((r) => !r.live).map((r) => ({ book: r.book, family: r.family, side: r.side, line: r.line, odds: r.odds, game: r.game || null, alt: !!r.alt })), doctrine: DOCTRINE, attribution: ATTRIB,
     integrity: { state: fx.integrity, label: R.INTEGRITY_LABEL[fx.integrity], note: R.INTEGRITY_NOTE[fx.integrity] } };
   if (!model.available) return { ...base, available: false, why: model.why, unresolved: model.unresolved };
   const m = model.match, cst = D.build().T.cst;
@@ -521,13 +585,27 @@ function snapshotCloses(rows) {
     // línea exacta de la tesis y en vivo esa línea ya no existe (el total se re-linea con cada punto), así que
     // las familias con línea se quedaban sin CLV: POINTS_TOTAL 4 de 62, GAMES_HCP 0 de 26. Pasado el saque se
     // siguen leyendo cuotas para nada más: el cierre ya está escrito.
-    if (minsTo >= 0) { c.at = new Date().toISOString(); c.rows = rows2; }
+    //
+    // Y EL SAQUE ES EL DE VERDAD, NO EL DEL CUADRO (15-sep, A11 de la auditoría externa). `minsTo` sale de
+    // `start_at`, que en WTT es la hora programada de una mesa: un partido anterior que se alarga la mueve
+    // media hora sin avisar. El marcador de WTT/Flashscore sí sabe si la bola ya está rodando (`r.live`,
+    // `r.status`), y es él quien manda ahora: `estadoCaptura` mira las dos cosas y solo deja escribir el
+    // cierre si la captura es PREPARTIDO. La etiqueta se guarda en el registro (`captura`) para que la vara
+    // pueda excluir después lo capturado en vivo, y las veces que se vio rodando se cuentan (`in_play_visto`).
+    // la etiqueta describe el cierre GUARDADO, así que solo se escribe cuando de verdad se escribe el cierre:
+    // si no, una pasada en vivo posterior marcaría como `in_play` una foto que se tomó antes del saque.
+    const est = CL.cuenta('tt', CL.estadoCaptura(r, now));
+    if (est.in_play) c.in_play_visto = (c.in_play_visto || 0) + 1;
+    if (est.prepartido || (est.sin_inicio && minsTo >= 0)) {
+      c.at = new Date().toISOString(); c.rows = rows2;
+      c.captura = CL.etiquetaCaptura(est); c.inicio_fuente = est.inicio_fuente;
+    }
     // y cada cubo solo acepta la lectura que cae DENTRO de su ventana (`bucketFor` tiene suelo). Con el
     // `minsTo <= bkt` de antes, un partido visto por primera vez a T−10 rellenaba T60, T30 y T10 con la MISMA
     // foto: las 264 tesis vivas tenían dos o más cubos con idéntico sello de tiempo y la curva salía plana
     // por construcción, no por ausencia de movimiento.
-    const bkt = CL.bucketFor(r.start_at, now);
-    if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date().toISOString(), rows: rows2 };
+    const bkt = est.prepartido ? est.bucket : null;
+    if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date().toISOString(), captura: 'prepartido', rows: rows2 };
     dirty = true;
   }
   for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.start_at) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
@@ -628,6 +706,9 @@ async function settleShadow({ voidDays = 10 } = {}) {
         if (pin) { p.close_pin = pin.odds; p.clv_pin_pct = +((p.odds / pin.odds - 1) * 100).toFixed(2); }
         if (own) { p.close_own = own.odds; p.clv_own_pct = +((p.odds / own.odds - 1) * 100).toFixed(2); }
         if (!best) p.close_missing = 'línea no cotizada al cierre';
+        // CÓMO SE CAPTURÓ ESE CIERRE (15-sep, A11): `prepartido`, `in_play` o `desconocido`. Viaja con la
+        // pick porque la vara lo necesita al agregar: un cierre tomado con el partido rodando no entra al EV.
+        p.close_captura = cl.captura || null;
         // la curva por cubo guarda las TRES referencias (misma casa, mejor, Pinnacle), no solo la mejor (9-sep)
         p.close_series = Object.fromEntries(Object.entries(cl.series || {}).map(([k, s]) => {
           const same2 = (s.rows || []).filter((y) => y.family === p.family && y.side === p.side && (y.game || null) === (p.game || null) && (p.line == null || y.line === p.line));
@@ -873,7 +954,8 @@ function modelCard() {
 async function modelSnapshot() {
   const d = D.build();
   const cb = G.odds ? G.odds.events.filter((e) => e.book === 'cloudbet' && (e.rows || []).length).slice(0, 2).map((e) => ({ a: e.a, b: e.b, start_at: e.start_at, competition: e.competition, raw_keys: e.raw_keys, rows: (e.rows || []).slice(0, 20).map((r) => ({ family: r.family, side: r.side, line: r.line, odds: r.odds, game: r.game, market_key: r.market_key, params: r.params })) })) : null;
-  return { base: { rows: d.rows_total || d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, built_at: d.meta.built_at, priors: d.priors.model_version }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => `${t.short} (${t.fixtures}/${t.results})`) } : null, odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, available: G.odds.available, cloudbet_keys: G.odds.cloudbet_keys, competitions: G.odds.competitions.slice(0, 12), cloudbet_sample: cb } : null, tz: tzStore().by, results_cached: Object.keys(resultsStore().by).length, track: track({ limit: 5 }), disk: DISK_DIR };
+  return { base: { rows: d.rows_total || d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, built_at: d.meta.built_at, priors: d.priors.model_version }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => `${t.short} (${t.fixtures}/${t.results})`) } : null, // (15-sep) ídem dardos: `estado` por casa en el snapshot, que es lo único que corre la sonda sin `?odds=1`
+odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, available: G.odds.available, estado: G.odds.estado || null, cloudbet_keys: G.odds.cloudbet_keys, competitions: G.odds.competitions.slice(0, 12), cloudbet_sample: cb } : null, tz: tzStore().by, results_cached: Object.keys(resultsStore().by).length, track: track({ limit: 5 }), disk: DISK_DIR };
 }
 function competitionMap() {
   const comps = (G.odds && G.odds.competitions) || [];
@@ -910,4 +992,5 @@ function openPicks() {
   return st.picks.filter((p) => p.status === 'OPEN');
 }
 
-module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, slate, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentsList, tournamentBoard, simMatch, agenda, liveProb, modelCard, modelSnapshot, competitionMap, fetchResult, nameIs, openPicks };
+module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, slate, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentsList, tournamentBoard, simMatch, agenda, liveProb, modelCard, modelSnapshot, competitionMap, fetchResult, nameIs, openPicks,
+  impliedOf };   // (15-sep) expuesto para poder comprobar el emparejado de caras con la línea firmada

@@ -364,16 +364,25 @@ async function closes(deps = {}) {
         AND coalesce(quote_status,'open') = 'open' AND observed_at > now() - interval '3 hours'
       GROUP BY 1,2`, [ids, RULE.familias.concat(RULE2.familias)]).catch(() => ({ rows: [] }));
   const idx = new Map(q.rows.map((r) => [r.canonical_event_id + '|' + r.market_id, r.o]));
-  let n = 0;
+  // EL SAQUE DE VERDAD MANDA (15-sep, A11 de la auditoría externa). El filtro de arriba ya exige que el
+  // kickoff PROGRAMADO esté por delante, pero un partido retrasado —o uno que arrancó puntual mientras la
+  // pasada iba por la mitad— dejaba entrar cotizaciones en vivo como cierre. `estadoCaptura` vuelve a
+  // preguntarlo justo antes de escribir y la etiqueta viaja con la pick (`close_captura`) para que
+  // `lib/vara.js` pueda dejar fuera del EV lo que se capturó rodando en vez de promediarlo con lo demás.
+  let CL = null; try { CL = require('./implied-engine/closes'); } catch { CL = null; }
+  let n = 0, enVivo = 0;
   for (const p of vivas) {
     const o = idx.get(p.ceid + '|' + p.market_id);
     if (!(o > 1)) continue;
+    const est = CL ? CL.cuenta('futbol-derivadas', CL.estadoCaptura(p.kickoff_at, ahora)) : null;
+    if (est && est.in_play) { p.close_in_play_visto = (p.close_in_play_visto || 0) + 1; enVivo++; continue; }
     p.close_odds = o; p.close_at = new Date().toISOString();
+    p.close_captura = CL ? CL.etiquetaCaptura(est) : 'desconocido';
     p.clv_pct = r2(100 * (p.odds / o - 1));
     n++;
   }
-  if (n) { st.at = new Date().toISOString(); wr(st); }
-  return { actualizados: n };
+  if (n || enVivo) { st.at = new Date().toISOString(); wr(st); }
+  return { actualizados: n, en_vivo: enVivo };
 }
 
 // ── LIQUIDACIÓN ─────────────────────────────────────────────────────────────────────────────────────────
@@ -529,7 +538,8 @@ function tabla() {
       // `odds(it)` lanzara, el try/catch se lo tragaba y las dos pruebas salían nulas — una tabla con huecos
       // en vez de un error. De ahí la regla: un catch que devuelve null esconde tanto como protege.
       try {
-        aporta = vara.cierreAporta(cerradas.filter((p) => Number.isFinite(p.close_odds) && gano(p) != null),
+        // y fuera las capturas en vivo (15-sep, A11): un precio tomado con el partido rodando no es cierre
+        aporta = vara.cierreAporta(cerradas.filter((p) => Number.isFinite(p.close_odds) && p.close_captura !== 'in_play' && gano(p) != null),
           { odds: (p) => p.odds, cierre: (p) => p.close_odds, gano, overPct: medOver || 0 });
       } catch (e) { aporta = { error: e.message }; }
       try {

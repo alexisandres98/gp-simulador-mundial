@@ -319,11 +319,30 @@ async function snapshot(game, { withinMin = 720, cap = 14 } = {}) {
     // CUBOS T−60/−30/−10/−5/−1 (9-sep, traído de tenis de mesa). La primera lectura dentro de cada cubo se
     // congela con sus filas —casa incluida— para medir el CLV por cubo y contra la MISMA casa. Aditivo: solo
     // la liquidación lee `snaps`; `rows`, `open_rows` y `tape` no cambian de significado.
+    //
+    // EL INICIO REAL MANDA (15-sep, A11 de la auditoría externa). El cubo salía de `bucketFor(start_at)`, o
+    // sea de la hora del CALENDARIO: con la serie retrasada media hora —cosa de todos los días en esports,
+    // que un mapa anterior se alarga— un precio tomado con la partida rodando se guardaba como cierre. Ahora
+    // el veredicto lo da `estadoCaptura`, que mira el estado del evento además de la hora, y el cubo solo se
+    // escribe si la captura es PREPARTIDO. La etiqueta viaja en el registro (`captura`) para que la vara
+    // pueda excluir después lo que se capturó en vivo en vez de mezclarlo en la media.
     {
       const CL = require('../implied-engine/closes');
+      const ahoraMk = Date.parse(mk.at) || Date.now();
+      const est = CL.cuenta(`esports:${game}`, CL.estadoCaptura(ev, ahoraMk));
+      entry.captura = CL.etiquetaCaptura(est);
+      entry.inicio_fuente = est.inicio_fuente;
+      if (prev && prev.in_play_visto) entry.in_play_visto = prev.in_play_visto;
+      if (est.in_play) {
+        entry.in_play_visto = (entry.in_play_visto || 0) + 1;
+        // y con la serie rodando NO se pisa el cierre ya guardado: se conserva la última foto prepartido
+        // (la fusión de más abajo la respeta, porque a partir de aquí `entry.rows` YA es la de `prev`).
+        if (prev && prev.rows) { entry.rows = prev.rows; entry.at = prev.at; entry.captura = prev.captura || 'desconocido'; }
+        else entry.in_play = true;
+      }
       entry.snaps = (prev && prev.snaps) || {};
-      const bkt = CL.bucketFor(ev.start_at, Date.parse(mk.at) || Date.now());
-      if (bkt && !entry.snaps[bkt]) entry.snaps[bkt] = { at: mk.at, rows: entry.rows.slice(0, 400).map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })) };
+      const bkt = est.prepartido ? est.bucket : null;
+      if (bkt && !entry.snaps[bkt]) entry.snaps[bkt] = { at: mk.at, captura: 'prepartido', rows: entry.rows.slice(0, 400).map((r) => ({ book: r.book, family: r.family, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team, odds: r.odds })) };
     }
     // NO BORRAR LO QUE LA CASA DEJÓ DE COTIZAR (25-ago). Cada pasada sobreescribía `rows` entera, y eso
     // parecía inocente: el último guardado antes del inicio es el cierre. Pero una casa no cotiza el mismo
@@ -1634,9 +1653,12 @@ function closeOddsFor(pk, closes) {
     const pool = mine.length ? mine : rows;
     return pool.reduce((mx, r) => (r.odds > (mx ? mx.odds : 0) ? r : mx), null);
   };
+  // la etiqueta de captura del registro viaja con el cierre (15-sep, A11): si la última foto de este evento
+  // se tomó con la serie ya rodando, el CLV que salga de aquí no es CLV y la vara tiene que poder saberlo.
+  const cap = c.captura || null;
   if (exactas.length) {
     const r = mejor(exactas);
-    return r && r.odds ? { odds: r.odds, src: 'exacta', pre_min: r.pre_min ?? null } : null;
+    return r && r.odds ? { odds: r.odds, src: 'exacta', pre_min: r.pre_min ?? null, captura: cap } : null;
   }
 
   // ── sin línea exacta: la escalera de la misma casa ──────────────────────────────────────────
@@ -1654,7 +1676,7 @@ function closeOddsFor(pk, closes) {
   const pInterp = abajo.p + t * (arriba.p - abajo.p);
   if (!(pInterp > 0.01 && pInterp < 0.99)) return null;
   const preMin = escalera.reduce((mn, r) => (r.pre_min != null && (mn == null || r.pre_min < mn) ? r.pre_min : mn), null);
-  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada', pre_min: preMin };
+  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada', pre_min: preMin, captura: cap };
 }
 
 const RES = require('../data-providers/esports/results');
@@ -1701,7 +1723,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   for (const p of Object.values(st.picks)) {
     if (p.status !== 'SETTLED' || p.clv_pct != null) continue;
     const co = closeOddsFor(p, closes0);
-    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
+    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.close_captura = co.captura || null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
   }
   if (backfilled) wr(PICKS_F(game), st);
 
@@ -1912,7 +1934,7 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     pk.settled_at = new Date().toISOString();
     pk.result_source = r.source;
     const co = closeOddsFor(pk, closes);
-    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
+    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.close_captura = co.captura || null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
     try { Object.assign(pk, closeExtrasFor(pk, closes)); } catch { /* la medición extra nunca bloquea la liquidación */ }
     settled++;
   }

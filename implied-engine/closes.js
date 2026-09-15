@@ -113,6 +113,16 @@ function estadoCaptura(ev, now = Date.now()) {
   };
 }
 
+// LA ETIQUETA QUE VIAJA EN EL ARCHIVO (15-sep). `estadoCaptura` devuelve un objeto con todo el detalle, pero
+// lo que se guarda en cada cierre —y lo que después lee la vara— es UNA palabra de tres: `prepartido`,
+// `in_play` o `desconocido`. Que sea la misma palabra en los ocho motores es el punto: si cada uno inventa
+// su marca, los cierres vuelven a ser incomparables, que es justo lo que este cambio viene a arreglar.
+function etiquetaCaptura(est) {
+  if (!est) return 'desconocido';
+  if (est.sin_inicio) return 'desconocido';
+  return est.in_play ? 'in_play' : 'prepartido';
+}
+
 // EL CONTADOR, porque la cifra es un hallazgo en sí misma. Cada motor cuenta sus capturas con su nombre y
 // `diagInPlay()` las publica; es por proceso (se reinicia con el deploy), así que el número duradero vive
 // además en el propio almacén de cierres de cada motor (`in_play_visto`).
@@ -237,9 +247,10 @@ function salud(items) {
 }
 
 module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize, rescatar, salud,
-  // 15-sep (A11): el inicio REAL manda sobre el programado. Estas piezas están escritas y probadas, pero
-  // todavía NO las llama cada motor: el cambio de bucket T1 (suelo 0 en vez de −2) ya está activo y es el
-  // que impide escribir un "cierre" con el partido rodando. Conectar `estadoCaptura` en cada captura
-  // —fútbol, esports, tenis, tenis de mesa, dardos, baloncesto, NFL y amfoot— queda pendiente y va anotado
-  // en TODO_NEXT: hacerlo a medias en unos motores y no en otros haría incomparables sus cierres.
-  inicioDe, estadoCaptura, cuenta, diagInPlay, cierreValorable };
+  // 15-sep (A11): el inicio REAL manda sobre el programado, y desde hoy está CONECTADO en los ocho sitios
+  // que capturan cierres — fútbol derivadas, esports, tenis de mesa, dardos, baloncesto (las dos rutas del
+  // server), NFL, amfoot y la sombra del proceso implícito. Cada uno marca su captura con `etiquetaCaptura`
+  // (`prepartido` | `in_play` | `desconocido`) y cuenta con `cuenta()`; `lib/vara.js` excluye las `in_play`
+  // del EV y las publica aparte en `cierres_in_play`. Se conectaron TODOS a la vez a propósito: hacerlo a
+  // medias en unos motores y no en otros haría incomparables sus cierres.
+  inicioDe, estadoCaptura, etiquetaCaptura, cuenta, diagInPlay, cierreValorable };

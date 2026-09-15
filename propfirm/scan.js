@@ -21,10 +21,20 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const COM = require('../lib/comisiones');
 
 const DIR = process.env.GP_PROPFIRM_DIR || (fs.existsSync('/data') ? '/data/propfirm' : path.join(__dirname, '..', 'data', 'propfirm'));
 const F = path.join(DIR, 'senales.json');
 const GAMMA = 'https://gamma-api.polymarket.com';
+
+// LA TARIFA VIAJA CON LA SEÑAL (15-sep, A09). Polymarket cobra al taker una comisión que depende del
+// mercado, y gamma la publica en cada uno (`feeSchedule`). Capturarla aquí —donde ya tenemos el mercado en
+// la mano— es lo que permite que la sombra y el ejecutor descuenten la tasa REAL de ese contrato en vez de
+// un defecto global. Cuando el mercado no la publica, los dos caen al defecto documentado y lo dicen.
+function tarifaDe(m) {
+  const t = COM.deFeeSchedule(m && m.feeSchedule);
+  return t ? { fee_rate: t.tasa, fee_exp: t.exponente } : {};
+}
 
 const EDGE_MIN_PP = () => +(process.env.GP_PROPFIRM_EDGE_PP || 4);
 const PRECIO_MIN = 0.15, PRECIO_MAX = 0.84;      // banda: la firm prohíbe >0,85 y bajo 15¢ el edge es ruido de longshot
@@ -152,6 +162,7 @@ function mapMercado(m, home, away) {
   return { familia, mapa, linea, linea_home: lineaHome,
     lados: { [l0]: { precio: precios[0], nombre: outs[0], token: tks[0] || null, idx: 0 },
       [l1]: { precio: precios[1], nombre: outs[1], token: tks[1] || null, idx: 1 } },
+    ...tarifaDe(m),
     pm_id: String(m.id || m.conditionId || m.slug || q), pm_mid: m.id != null ? String(m.id) : null, pregunta: q,
     liquidez: num(m.liquidityNum != null ? m.liquidityNum : m.liquidity), vol24: num(m.volume24hr) };
 }
@@ -228,6 +239,7 @@ async function escanear({ game = 'cs2' } = {}) {
               precio_pm: p, consenso: pModelo[lado], books: 0, edge_pp: +edgeM.toFixed(1),
               limite: null, shares: Math.floor(RIESGO_USD() / p), ko: ev.start_at, home, away,
               token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
+              fee_rate: mm.fee_rate, fee_exp: mm.fee_exp,
               estado: 'ABIERTA', correo_at: 'nunca',   // sombra pura: el correo jamás la toca
             };
             out.senales_nuevas++;
@@ -268,6 +280,7 @@ async function escanear({ game = 'cs2' } = {}) {
           liquidez: mm.liquidez != null ? Math.round(mm.liquidez) : null,
           limite, shares, ko: ev.start_at, home, away,
           token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
+          fee_rate: mm.fee_rate, fee_exp: mm.fee_exp,
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s;
@@ -372,6 +385,7 @@ async function escanearFutbol({ dbc, eventos } = {}) {
           precio_pm: p, consenso: consLado, books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: new Date(ev.ko).toISOString(), home: ev.home, away: ev.away,
           token: jarr(m.clobTokenIds)[i] || null, outcome_idx: i, pm_mid: m.id != null ? String(m.id) : null,
+          ...tarifaDe(m),
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
@@ -451,6 +465,7 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
           precio_pm: p, consenso: cons[ldo], books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: new Date(ko).toISOString(), home, away,
           token: tksAf[idxDe[ldo]] || null, outcome_idx: idxDe[ldo], pm_mid: m.id != null ? String(m.id) : null,
+          ...tarifaDe(m),
           estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);

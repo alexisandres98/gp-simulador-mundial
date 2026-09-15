@@ -14,6 +14,10 @@
 //   4. LOS REINTENTOS RESPETAN EL SAQUE. Una señal sin fondos reintenta mientras el partido no empiece, no
 //      un número fijo de veces.
 //   5. NADA SE COLOCA SIN UN INTERRUPTOR EXPLÍCITO. Por defecto esto no coloca: ensaya.
+//   6. LA VENTAJA SE MIDE DESPUÉS DE LA CASA (15-sep, hallazgo A09). Polymarket cobra al taker en cada
+//      cruce y nosotros cruzamos siempre. Una señal con ventaja bruta positiva pero menor que la comisión
+//      no es una oportunidad pequeña: es una pérdida esperada. La comisión entra en el listón, en el
+//      efectivo y en el P&L de cada posición — `lib/comisiones.js`, verificada en `docs/CONTRATOS_CASA.md`.
 //
 // LO QUE DE VERDAD PRODUCE ESTE EJECUTOR. No es beneficio: con $200 y la varianza medida no hay forma de
 // distinguir una ventaja real del ruido —harían falta unas 800 apuestas—. Lo que produce es la ÚNICA
@@ -23,6 +27,7 @@
 
 const path = require('path');
 const JS = require('../lib/jsonstore');
+const COM = require('../lib/comisiones');
 
 const DIR = process.env.GP_PM_DIR || (require('fs').existsSync('/data') ? '/data/polymarket' : path.join(__dirname, '..', 'data', 'polymarket'));
 const FNAME = 'real.json';
@@ -69,7 +74,8 @@ async function barrer({ senales = {}, colocarFn, simularFn = null, ahora = Date.
   if (st.banco_inicial == null) { st.banco_inicial = c.banco; st.efectivo = c.banco; }
   const out = { at: new Date().toISOString(), encendido: c.encendido, seco: forzarSeco || !c.encendido,
     revisadas: 0, colocadas: 0, rechazadas: 0, sin_fondos: 0, apiladas: 0, fuera_de_familia: 0,
-    por_tope: 0, por_parada_diaria: 0, ya_estaban: 0, sin_token: 0, detalle: [] };
+    por_tope: 0, por_parada_diaria: 0, ya_estaban: 0, sin_token: 0, ev_tras_comision: 0,
+    comision_usd: 0, detalle: [] };
 
   const vivas = Object.values(st.posiciones || {});
   const expuesto = vivas.filter((p) => p.estado === 'COLOCADA').reduce((a, p) => a + (p.costo || 0), 0);
@@ -104,15 +110,35 @@ async function barrer({ senales = {}, colocarFn, simularFn = null, ahora = Date.
 
     const precio = Number(s.limite != null ? s.limite : s.precio_pm);
     if (!(precio > 0 && precio < 1)) { out.rechazadas++; continue; }
+
+    // EL LISTÓN, ANTES DE CALCULAR TAMAÑOS. La ventaja declarada por acción es `consenso − precio`; lo que
+    // la casa cobra por esa misma acción es `tasa·p·(1−p)`, máximo justo en 0,50, que es donde más
+    // colocamos. Restarlas es la única comparación que corresponde a dinero. Una señal sin `consenso` no se
+    // puede juzgar así y pasa: el filtro es para lo que se puede medir, no una excusa para bloquear.
+    const evNeto = s.consenso != null
+      ? COM.evNetoPorShare({ prob: Number(s.consenso), precio, tasa: s.fee_rate, exponente: s.fee_exp })
+      : null;
+    if (evNeto != null && !(evNeto > 0)) {
+      out.ev_tras_comision++;
+      out.detalle.push({ id: s.id, evento: s.evento, aceptada: false,
+        why: `EV neto ${(evNeto * 100).toFixed(2)} pp por acción: la comisión se come la ventaja` });
+      continue;
+    }
+
     const shares = Math.floor(c.stake / precio);
     if (shares < c.min_shares) {
       // con stake pequeño y precio alto no se llega al mínimo de la casa: es una medición, no un fallo
       out.rechazadas++; out.detalle.push({ id: s.id, why: `${shares} acciones < mínimo ${c.min_shares}` });
       continue;
     }
+    // `coste` sigue siendo el NOCIONAL —lo que decide el tamaño y el denominador del ROI— y la comisión va
+    // aparte: mezclarlas convertiría cada cambio de tarifa en un cambio de stake y haría incomparables los
+    // ROI de antes y después. De la caja, en cambio, sale la suma de las dos.
+    const comision = COM.comisionPolymarket({ shares, precio, tasa: s.fee_rate, exponente: s.fee_exp });
     const coste = +(shares * precio).toFixed(2);
-    if (expo + coste > topeExposicion(c)) { out.por_tope++; continue; }
-    if (coste > (st.efectivo || 0)) {
+    const costeTotal = +(coste + comision).toFixed(2);
+    if (expo + costeTotal > topeExposicion(c)) { out.por_tope++; continue; }
+    if (costeTotal > (st.efectivo || 0)) {
       st.posiciones[s.id] = { ...(prev || {}), ...base(s, fam), estado: 'SIN_FONDOS',
         intentos: ((prev && prev.intentos) || 0) + 1, ultimo_intento: new Date().toISOString() };
       out.sin_fondos++; continue;
@@ -123,7 +149,7 @@ async function barrer({ senales = {}, colocarFn, simularFn = null, ahora = Date.
     // misma pasada, la segunda ya lo encuentra ocupado
     ocupado.add(clave);
     if (out.seco) {
-      out.detalle.push({ id: s.id, seco: true, ...orden, coste });
+      out.detalle.push({ id: s.id, seco: true, ...orden, coste, comision, ev_neto_por_share: evNeto });
       continue;                                                     // en seco NO se anota posición
     }
     let r = null;
@@ -135,14 +161,21 @@ async function barrer({ senales = {}, colocarFn, simularFn = null, ahora = Date.
       ...base(s, fam),
       estado: aceptada ? 'COLOCADA' : 'RECHAZADA',
       orden_id: id, precio_limite: precio, shares, costo: aceptada ? coste : 0,
+      // la tasa se guarda CON la posición: la casa la cambia por mercado y por fecha, y sin esto un
+      // recálculo futuro reescribiría el pasado con la tarifa de mañana
+      comision: aceptada ? comision : 0, tasa_comision: s.fee_rate != null ? s.fee_rate : COM.tasaPorDefecto(),
+      costo_total: aceptada ? costeTotal : 0,
+      ev_neto_por_share: evNeto != null ? +evNeto.toFixed(4) : null,
       // EL DATO POR EL QUE SE HACE TODO ESTO: lo que la sombra decía que costaría, al lado de lo real.
       fill_simulado: sim ? { precio: sim.precio_medio, shares: sim.shares, costo: sim.costo } : null,
       respuesta: r && r.respuesta ? { status: r.status, ...recorta(r.respuesta) } : { status: r && r.status, error: (r && (r.error || r.rechazado_por_el_brazo)) || null },
       colocada_at: new Date().toISOString(),
     };
-    if (aceptada) { expo += coste; st.efectivo = r2((st.efectivo || 0) - coste); out.colocadas++; }
-    else out.rechazadas++;
-    out.detalle.push({ id: s.id, evento: s.evento, aceptada, coste, orden_id: id,
+    if (aceptada) {
+      expo += costeTotal; st.efectivo = r2((st.efectivo || 0) - costeTotal); out.colocadas++;
+      out.comision_usd = r2(out.comision_usd + comision);
+    } else out.rechazadas++;
+    out.detalle.push({ id: s.id, evento: s.evento, aceptada, coste, comision, orden_id: id,
       why: aceptada ? null : ((r && (r.rechazado_por_el_brazo || r.error)) || (r && r.respuesta && r.respuesta.error) || 'rechazada') });
   }
   st.at = new Date().toISOString();
@@ -181,7 +214,12 @@ async function liquidar({ fetchJson, ahora = Date.now(), tope = 25 } = {}) {
     const gana = win === p.outcome_idx;
     p.estado = gana ? 'WIN' : 'LOSS';
     p.resuelto_at = new Date().toISOString();
-    p.pnl = gana ? r2(p.shares - p.costo) : r2(-p.costo);           // cada acción ganadora paga $1
+    // Cada acción ganadora paga $1. La comisión se pagó al CRUZAR —la fórmula vale 0 en p=0 y p=1, así que
+    // el vencimiento no vuelve a cobrar—, pero salió de la caja: resta del P&L una sola vez, aquí. El bruto
+    // se conserva al lado para poder publicar el antes y el después sin rehacer el libro.
+    const com = p.comision || 0;
+    p.pnl_bruto = gana ? r2(p.shares - p.costo) : r2(-p.costo);
+    p.pnl = r2(p.pnl_bruto - com);
     if (gana) st.efectivo = r2((st.efectivo || 0) + p.shares);
     out.liquidadas++;
   }
@@ -197,6 +235,9 @@ function estado() {
   const col = pos.filter((p) => p.estado === 'COLOCADA');
   const cer = pos.filter((p) => p.estado === 'WIN' || p.estado === 'LOSS');
   const pnl = cer.reduce((a, p) => a + (p.pnl || 0), 0);
+  const pnlBruto = cer.reduce((a, p) => a + (p.pnl_bruto != null ? p.pnl_bruto : (p.pnl || 0) + (p.comision || 0)), 0);
+  const comCer = cer.reduce((a, p) => a + (p.comision || 0), 0);
+  const comTodas = pos.reduce((a, p) => a + (p.comision || 0), 0);
   const coste = cer.reduce((a, p) => a + (p.costo || 0), 0);
   const expuesto = col.reduce((a, p) => a + (p.costo || 0), 0);
 
@@ -215,6 +256,10 @@ function estado() {
     rechazadas: pos.filter((p) => p.estado === 'RECHAZADA').length,
     sin_fondos: pos.filter((p) => p.estado === 'SIN_FONDOS').length,
     pnl_usd: r2(pnl), roi_pct: coste > 0 ? r2(100 * pnl / coste) : null,
+    // el bruto viaja SIEMPRE al lado del neto: sin él, comparar este tablero con cualquier lectura anterior
+    // al 15-sep da una caída que parece del modelo y es de la comisión
+    pnl_bruto_usd: r2(pnlBruto), roi_bruto_pct: coste > 0 ? r2(100 * pnlBruto / coste) : null,
+    comisiones_usd: r2(comCer), comisiones_usd_todas: r2(comTodas), tasa_comision: COM.tasaPorDefecto(),
     ejecucion: {
       n: difs.length,
       deslizamiento_real_vs_simulado_pp: difs.length ? r2(100 * media(difs)) : null,

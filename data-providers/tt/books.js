@@ -16,6 +16,7 @@
 // es de puntos; lo demás es de games. La competición viaja en cada evento para el mapa de integridad.
 'use strict';
 
+const F = require('../../lib/fuente');
 const PIN_HOST = 'https://guest.api.arcadia.pinnacle.com/0.1';
 const PIN_KEY = process.env.PINNACLE_GUEST_KEY || 'CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R';
 const PIN_SPORT_TT = 32;
@@ -41,9 +42,13 @@ const isPointsTotal = (line) => Math.abs(+line) >= 15;
 const isPointsHcp = (line) => Math.abs(+line) >= 4;
 
 // ── PINNACLE ─────────────────────────────────────────────────────────────────────────────────────────────
+// COMPROBADO EL 15-sep (auditoría T1.14): el deporte 32 ES Table Tennis y el endpoint responde HTTP 200 —
+// pero con `[]`. El catálogo `/0.1/sports` lo confirma desde el otro lado: `{"id":32,"name":"Table Tennis",
+// "matchupCount":0}`, mientras el control (33 Tennis) trae 348. O sea: ni el id está mal ni el endpoint se
+// movió; Pinnacle sencillamente NO PUBLICA tenis de mesa ahora mismo. Eso es `sin_eventos`, no `available`.
 async function pinnacle() {
   const mus = await getJson(`${PIN_HOST}/sports/${PIN_SPORT_TT}/matchups`, { 'X-API-Key': PIN_KEY });
-  if (!Array.isArray(mus)) return { book: 'pinnacle', events: [], available: false };
+  if (!Array.isArray(mus)) return F.marcar({ book: 'pinnacle', events: [] }, { respondio: false });
   const mk = await getJson(`${PIN_HOST}/sports/${PIN_SPORT_TT}/markets/straight`, { 'X-API-Key': PIN_KEY });
   const byMu = new Map();
   for (const m of Array.isArray(mk) ? mk : []) { const a = byMu.get(m.matchupId) || []; a.push(m); byMu.set(m.matchupId, a); }
@@ -64,14 +69,15 @@ async function pinnacle() {
     }
     events.push({ book: 'pinnacle', provider_id: String(mu.id), start_at: mu.startTime, competition: (mu.league || {}).name || null, a: home.name, b: away.name, live: !!mu.isLive, rows: rows.filter((r) => r.odds > 1).map((r) => ({ book: 'pinnacle', ...r })) });
   }
-  return { book: 'pinnacle', events, available: true, at: new Date().toISOString() };
+  // (15-sep) la fila útil es el EVENTO: con cero eventos no hay nada que leer, por muy 200 que venga el HTTP
+  return F.marcar({ book: 'pinnacle', events, matchups_crudos: mus.length }, { respondio: true, filas: events.length });
 }
 
 // ── BOVADA ───────────────────────────────────────────────────────────────────────────────────────────────
 const stripG = (s) => String(s || '').replace(/\s*-\s*L?G\d+\s*$/i, '').trim();
 async function bovada() {
   const j = await getJson('https://www.bovada.lv/services/sports/event/coupon/events/A/description/table-tennis?lang=en', { accept: 'application/json, text/plain, */*' });
-  if (!Array.isArray(j)) return { book: 'bovada', events: [], available: false };
+  if (!Array.isArray(j)) return F.marcar({ book: 'bovada', events: [] }, { respondio: false });
   const events = [];
   for (const g of j) {
     const comp = ((g.path || []).find((p) => p.description && p.description !== 'Table Tennis') || {}).description || null;
@@ -100,18 +106,22 @@ async function bovada() {
       events.push({ book: 'bovada', provider_id: String(e.id), start_at: e.startTime ? new Date(e.startTime).toISOString() : null, competition: comp, a: aName, b: bName, live: !!e.live, rows: rows.map((r) => ({ book: 'bovada', ...r })) });
     }
   }
-  return { book: 'bovada', events, available: true, at: new Date().toISOString() };
+  return F.marcar({ book: 'bovada', events }, { respondio: true, filas: events.length });
 }
 
 // ── CLOUDBET (la venue ejecutable; clave en Render) ──────────────────────────────────────────────────────
 const CB_BASE = 'https://sports-api.cloudbet.com/pub/v2/odds';
 async function cloudbetFixtures({ days = 6, key = process.env.CLOUDBET_API_KEY || '' } = {}) {
-  if (!key) return { book: 'cloudbet', events: [], available: false };
+  if (!key) return F.marcar({ book: 'cloudbet', events: [] }, { configurada: false });
   const seen = new Set(), events = [];
   const t0 = Date.now();
+  // (15-sep) `respondio` se queda en false si NINGUNO de los días contestó: seis timeouts seguidos no son
+  // "hoy no hay tenis de mesa", son la red caída, y hasta hoy las dos cosas se publicaban igual.
+  let respondio = false;
   for (let k = 0; k < days; k++) {
     const d = new Date(t0 + k * 864e5).toISOString().slice(0, 10);
     const j = await getJson(`${CB_BASE}/fixtures?sport=table-tennis&date=${d}`, { 'X-API-Key': key });
+    if (j) respondio = true;
     for (const c of (j && j.competitions) || []) for (const e of c.events || []) {
       if (!e.home || !e.away || seen.has(e.id)) continue;
       seen.add(e.id);
@@ -119,7 +129,7 @@ async function cloudbetFixtures({ days = 6, key = process.env.CLOUDBET_API_KEY |
     }
     await sleep(200);
   }
-  return { book: 'cloudbet', events, available: true, at: new Date().toISOString() };
+  return F.marcar({ book: 'cloudbet', events }, { respondio, filas: events.length });
 }
 // el orden importa: lo específico (por game) antes que lo genérico
 const CB_FAMILY = [

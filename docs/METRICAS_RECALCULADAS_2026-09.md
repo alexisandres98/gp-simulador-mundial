@@ -128,7 +128,75 @@ De ahí salen dos cifras que hacen falta para cerrarla:
 Con el saldo en cero, la línea de caja de la parada está saltada y bloquea órdenes nuevas en los tres canales,
 que es el comportamiento correcto.
 
-## 5. Lo que falta para cerrar la Fase 1
+## 5. Polymarket con comisión
+
+Entregable de **T1.11** (hallazgo A09). La sombra de Polymarket anotaba el P&L de cada posición como
+`acciones − coste` y no restaba lo que la casa cobra al taker por cruzar. Cruzamos siempre: la sombra
+camina los asks del libro y el ejecutor coloca al límite del consenso menos un céntimo. Todo lo publicado
+de esa sombra —incluido el +3,86 % que estaba a punto de encender el ejecutor real sobre `futbol:No`— venía
+inflado por esa cantidad.
+
+La tarifa está verificada contra dos fuentes de la propia casa el 15-sep y anotada en
+`docs/CONTRATOS_CASA.md`: `fee = C × tasa × p × (1 − p)`, solo taker, **por mercado**. La documentación dice
+0,05 para la categoría Sports; el `feeSchedule` que gamma publica en los binarios de partido que usamos dice
+0,03. Se publican las dos, porque elegir una sería esconder que la casa no se pone de acuerdo consigo misma.
+
+Como fracción del nocional la comisión es `tasa × (1 − p)`, así que muerde más cuanto más barata es la
+acción y es máxima en dólares alrededor de 0,50, que es donde está nuestro precio medio.
+
+**Antes y después, con tasa 0,05 (el defecto, el peor de los dos valores creíbles):**
+
+| Corte | n | Apostado | P&L antes | ROI antes | Comisión | P&L después | ROI después |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Sombra completa, desde el inicio | 341 | 9.304,10 | +358,90 | +3,86 % | 268,17 | **+90,73** | **+0,98 %** |
+| Sombra completa, semana 38 | 190 | 5.311,42 | +363,58 | +6,85 % | 150,45 | +213,13 | +4,01 % |
+| `futbol:No`, desde el inicio | 101 | 3.029,46 | +262,54 | +8,67 % | 76,95 | **+185,59** | **+6,13 %** |
+| CS2, semana 38 | 112 | 2.837,57 | +653,43 | +23,03 % | 83,19 | +570,24 | +20,10 % |
+| Fútbol, semana 38 | 69 | 2.174,47 | −211,47 | −9,73 % | 59,85 | −271,32 | −12,48 % |
+| LoL, semana 38 | 9 | 299,38 | −78,38 | −26,18 % | 8,21 | −86,59 | −28,92 % |
+
+**Con tasa 0,03 (la que hoy devuelve el `feeSchedule` de nuestros mercados):**
+
+| Corte | n | Apostado | P&L antes | Comisión | P&L después | ROI después |
+|---|---:|---:|---:|---:|---:|---:|
+| Sombra completa, desde el inicio | 341 | 9.304,10 | +358,90 | 160,90 | +198,00 | +2,13 % |
+| `futbol:No`, desde el inicio | 101 | 3.029,46 | +262,54 | 46,17 | +216,37 | +7,14 % |
+
+Lo que cambia de esto, que no es el decimal:
+
+- **La sombra entera deja de ser un negocio.** De +3,86 % a +0,98 % con la tasa documentada. El t del ROI
+  de `futbol:No` ya era 0,97 —no significativo— antes de tocar nada; con la comisión puesta el número al
+  que ese t acompaña es aún más pequeño. La sombra no dice que haya ventaja: dice que no se sabe.
+- **Fútbol pasa de perder a perder más**, y es la familia que el ejecutor real iba a tomar.
+- **CS2 sigue en pie** con +20,10 % en la semana, que es lo único que la comisión no borra. Sigue siendo
+  una semana, y el gradiente de ventaja invertido (3-5 pp +13,80 %, 8 pp o más −27,89 %) sigue sin explicar.
+
+**Advertencia de método sobre estos números.** El ledger de la sombra (`poly-sombra.json`) vive en el disco
+persistente de Render y no se alcanza desde el entorno donde se hizo este recálculo, así que la tabla es una
+**estimación**, no el recuento exacto. El precio medio ponderado por acción de cada corte no está supuesto:
+sale de una identidad contable —cada acción ganadora paga exactamente 1, luego `apostado + P&L` es el número
+de acciones ganadoras— y da 0,424 en el total y 0,492 en `futbol:No`. Lo que sí es supuesto es que las
+perdedoras se compraron al mismo precio medio que las ganadoras; no es cierto —las ganadoras tiran hacia el
+favorito—, así que **esta estimación se queda corta**. Moviendo el precio medio entre 0,35 y 0,50 la
+comisión del total queda entre 232,60 y 302,38 con tasa 0,05 (entre 139,56 y 181,43 con 0,03).
+
+El número exacto sale de correr en producción `node scripts/poly-comision-recalc.js --ledger`, que recorre
+posición a posición con su precio y sus acciones reales. Queda como el primer paso de la próxima sesión con
+acceso a la sonda.
+
+**Lo que ya está en el código** (no hay que volver a decidirlo):
+
+- `lib/comisiones.js` — la fórmula, con la tasa y el exponente parametrizados (`GP_PM_FEE_RATE`,
+  `GP_PM_FEE_EXP`) y el defecto documentado.
+- `propfirm/polyshadow.js` — el presupuesto de cada fill incluye la comisión, el efectivo la descuenta, el
+  P&L la resta y cada posición guarda `comision` y `tasa_comision`. `estado()` publica el bruto al lado del
+  neto para que nadie compare un número nuevo contra uno viejo sin darse cuenta.
+- `polymarket/ejecutor.js` — lo mismo, más **la puerta nueva**: una señal cuya ventaja declarada por acción
+  no supera a la comisión de esa acción **no genera orden** y se cuenta aparte (`ev_tras_comision`). A
+  precio 0,50 y tasa 0,05 el listón mínimo es 1,25 pp de ventaja; por debajo de eso lo que parecía una
+  oportunidad pequeña era una pérdida esperada.
+
+## 6. Lo que falta para cerrar la Fase 1
 
 | Tarea | Estado |
 |---|---|
@@ -142,6 +210,62 @@ que es el comportamiento correcto.
 | T1.2 el precio como tupla | `lib/contrato.js` escrito y probado; **falta conectarlo** en el tablero, en el selector de mejor precio y en los dos motores de fútbol americano |
 | T1.3 cierres prepartido | el cubo T−1 ya no admite lecturas posteriores al inicio; **falta conectar** `estadoCaptura` en cada motor |
 | T1.6 tablero sin etiqueta de confirmada | pendiente |
-| T1.11 comisiones de Polymarket | pendiente |
+| T1.11 comisiones de Polymarket | hecho en código y tarifa verificada (§5); **falta correr el recálculo exacto** sobre el ledger de producción |
 | T1.13 replay completo de todos los tracks | este documento cubre las familias con cierre; faltan los motores que no pasan por la vara |
-| T1.14 Pinnacle sin eventos de tenis de mesa | pendiente |
+| T1.14 Pinnacle sin eventos de tenis de mesa | hecho — ver §7 |
+
+## 7. Fuentes: qué está vivo y qué no (15-sep)
+
+La auditoría señaló que `pinnacle()` de tenis de mesa devolvía cero eventos y aun así publicaba
+`available: true`. Al comprobarlo contra la API resultó que **el fallo no era de los ids ni de los endpoints**:
+el deporte 32 ES Table Tennis y el 10 ES Darts, las dos rutas contestan HTTP 200, y lo que traen es `[]`. El
+catálogo del propio Pinnacle lo confirma desde el otro lado: `/0.1/sports` devuelve
+`{"id":32,"name":"Table Tennis","matchupCount":0}` y `{"id":10,"name":"Darts","matchupCount":0}`, mientras el
+control de la misma llamada —deporte 33, Tennis— trae 348 matchups y 1,88 MB de mercados. O sea: **Pinnacle
+sencillamente no está publicando ni tenis de mesa ni dardos**. No se fuerza nada; se documenta y se etiqueta.
+
+Lo que sí era un fallo nuestro es que las tres causas de un cero se publicaban igual. Cero filas porque la
+casa no cubre el deporte, cero filas porque la red se cayó y cero filas porque falta la credencial son tres
+problemas distintos con tres arreglos distintos, y los tres se leían como `available: true` o como un `false`
+mudo. El caso más descarado era Kalshi: `available: Array.isArray((j && j.markets) || [])` es **siempre**
+`true`, porque ese `|| []` fabrica un array aunque la llamada haya fallado.
+
+### La tabla
+
+| Fuente | Deporte | Estado real comprobado | Evidencia (HTTP · filas) | Acción tomada |
+|---|---|---|---|---|
+| Pinnacle (guest arcadia, deporte 32) | Tenis de mesa | `sin_eventos` — id y endpoint correctos, la casa no publica | 200 · `[]` · 0 eventos; catálogo `matchupCount: 0` | `available: false` + `estado: sin_eventos`; comentario con la evidencia en el código |
+| Pinnacle (guest arcadia, deporte 10) | Dardos | `sin_eventos` — idéntico caso | 200 · `[]` · 0 eventos; catálogo `matchupCount: 0` | igual que arriba |
+| Pinnacle (control, deporte 33) | Tenis | `viva` — prueba de que la llamada y la clave están bien | 200 · 348 matchups · 1,88 MB de mercados | ninguna; es el control |
+| Pinnacle `/sports/32/leagues` | Tenis de mesa | 403 `BAD_LOCATION` reproducible 3/3 desde el sandbox (salida US) | 403 · `{"reason":"location"}` | ninguna: el motor no usa esa ruta, usa `/matchups`, que sí contesta 200 |
+| Bovada (cupón `table-tennis`) | Tenis de mesa | `viva` | 200 · 985 KB · 149 eventos · 2.390 filas | `estado: viva` |
+| Bovada (cupón `darts`) | Dardos | `viva` | 200 · 233 KB · 16 eventos + 107 outrights · 559 filas | `estado: viva`; los outrights cuentan como fila utilizable |
+| Polymarket (gamma, serie 12754) | Dardos | `viva` | 200 · 119 KB · 16 eventos con precio | `estado: viva`; un evento sin filas de precio no cuenta |
+| Kalshi (`KXPDCDARTS`) | Dardos | `viva` | 200 · 31 KB · 18 mercados abiertos | **corregido el `available` siempre-true**: ahora `respondio: !!j` |
+| Cloudbet (`/fixtures?sport=table-tennis`) | Tenis de mesa | `no_configurada` en el sandbox (la clave vive en Render) | 401 sin clave | `estado: no_configurada`, que ya no se confunde con caída |
+| Cloudbet (`/fixtures?sport=darts`) | Dardos | `no_configurada` en el sandbox | 401 sin clave | igual |
+| Cloudbet (`/fixtures?sport=counter-strike`) | Esports | `no_configurada` en el sandbox | 401 sin clave | igual; además la casa apagada **aparece** en el parte, antes se filtraba y desaparecía |
+| Pinnacle (deporte 12, E Sports) | Esports | `viva` | 200 · 68 matchups en catálogo · 24 eventos de CS2 | `estado: viva` |
+| Bovada (esports) | Esports | `viva` | 200 · 26 eventos de CS2 | `estado: viva` |
+
+### El arreglo
+
+`lib/fuente.js` (nuevo) fija la regla en un sitio: **`available` solo es true si la llamada respondió Y trajo
+al menos una fila utilizable**, y cuando no lo es, `estado` dice cuál de las cuatro cosas pasa —
+`viva` · `sin_eventos` · `error_red` · `no_configurada`. Se aplicó en `data-providers/tt/books.js`,
+`data-providers/darts/books.js`, `data-providers/esports/cloudbet.js` y el agregador
+`data-providers/esports/books.js`, y se propaga a `tt-engine/store.js` y `darts-engine/store.js`.
+
+Dos detalles que valía la pena arreglar de paso: un bucle de fixtures de Cloudbet que falla los seis u ocho
+días seguidos ahora sale como `error_red` y no como "hoy no hay partidos"; y la agenda unificada de esports
+declara `available` por **partidos fundidos**, no por "alguna casa contestó con las manos vacías".
+
+Se ve en las sondas sin abrir sesión:
+
+- `/api/internal/tt?key=` → `snapshot.odds.estado` y, con `&odds=1`, `estado` junto a `books`.
+- `/api/internal/darts?key=` → `snapshot.odds.estado` y `snapshot.odds.eventos`; con `&odds=1`, lo mismo.
+- `/api/internal/esports?key=` → `books_estado` (por casa) y cada entrada de `books` con `estado` y `por_que`.
+
+Medido el 15-sep a las 14:12 UTC. Que Pinnacle no publique estos dos deportes **hoy** no significa que los
+haya retirado para siempre: el día que vuelva a abrirlos, el estado pasará solo a `viva`. Lo que ya no puede
+pasar es que sigamos leyendo `available: true` de un canal que lleva días sin traer un solo precio.

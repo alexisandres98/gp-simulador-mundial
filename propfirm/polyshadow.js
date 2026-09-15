@@ -17,10 +17,16 @@
 // pagaría según SU resolución. Además esto cubre uniformemente fútbol y NFL, cuyas tesis hoy no liquidan
 // en senales.json.
 //
+// LA COMISIÓN (15-sep-2026, hallazgo A09 de la auditoría externa). Hasta hoy esta sombra no descontaba lo
+// que Polymarket cobra al taker, y su rendimiento estaba inflado por esa cantidad exacta. Camina asks: es
+// taker SIEMPRE, en todos los fills, sin excepción. La fórmula y el porqué del defecto están en
+// `lib/comisiones.js` y la verificación contra la casa en `docs/CONTRATOS_CASA.md`.
+//
 // DOCTRINA: separado por completo del ledger de la firm y de las sombras de las casas. Ningún dinero real.
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const COM = require('../lib/comisiones');
 
 const DIR = process.env.GP_PROPFIRM_DIR || (fs.existsSync('/data') ? '/data/propfirm' : path.join(__dirname, '..', 'data', 'propfirm'));
 const F = path.join(DIR, 'poly-sombra.json');
@@ -39,12 +45,21 @@ function kellyDe(prob, odds) {
   return Math.max(0, (b * prob - (1 - prob)) / b) / 4;   // Kelly/4, como en Cloudbet
 }
 function bancoVivo(st) {
-  const pnl = Object.values(st.posiciones || {}).reduce((a, p) => a + (p.pnl || 0), 0);
-  return +((st.banco_inicial || BANCO()) + pnl).toFixed(2);
+  const pos = Object.values(st.posiciones || {});
+  const pnl = pos.reduce((a, p) => a + (p.pnl || 0), 0);
+  // La comisión de las ABIERTAS ya salió de la caja aunque su P&L todavía no exista. Si no se resta aquí,
+  // Kelly dimensiona contra un banco que no está — que es la forma silenciosa de apostar de más.
+  const comAbiertas = pos.filter((p) => p.estado === 'ABIERTA').reduce((a, p) => a + (p.comision || 0), 0);
+  return +((st.banco_inicial || BANCO()) + pnl - comAbiertas).toFixed(2);
 }
 function stakeDe(st, s) {
   const banco = bancoVivo(st);
-  const odds = s.precio_pm > 0 ? 1 / s.precio_pm : 0;    // comprar a p paga 1/p por share
+  // La cuota que importa para Kelly es la que se cobra DESPUÉS de la casa: comprar a p con comisión c por
+  // acción cuesta p+c y sigue pagando 1. Con la cuota bruta, Kelly apuesta más de lo que la ventaja real
+  // aguanta, y eso es exactamente lo que la fracción está para evitar.
+  const cShare = COM.comisionPorShare(s.precio_pm, s.fee_rate, s.fee_exp);
+  const coste = s.precio_pm > 0 ? s.precio_pm + cShare : 0;
+  const odds = coste > 0 ? 1 / coste : 0;
   const f = kellyDe(s.consenso, odds);
   // `f || STAKE_PCT()` es la fórmula EXACTA del sombra de Cloudbet, conservada a propósito
   const stk = Math.min(STAKE_PCT(), f || STAKE_PCT()) * banco;
@@ -80,20 +95,28 @@ async function libro(token) {
 
 // una orden LÍMITE simulada: compra asks con precio ≤ limite hasta agotar el presupuesto.
 // Devuelve lo comprado y el mejor ask que había — el dato de capacidad cuando no se pudo comprar.
-function simulaFill(asks, limite, presupuesto) {
-  let costo = 0, shares = 0;
+//
+// EL PRESUPUESTO INCLUYE LA COMISIÓN (15-sep). Cada acción sale del banco por su precio MÁS lo que la casa
+// cobra por cruzarla; gastar el presupuesto entero en acciones y pagar la comisión aparte sería sacar del
+// banco más de lo que el stake autoriza, y con el suelo de 5 USD eso se nota.
+function simulaFill(asks, limite, presupuesto, tasa, exponente) {
+  let costo = 0, shares = 0, comision = 0;
   for (const a of asks || []) {
     if (limite != null && a.price > limite) break;   // orden límite: jamás por encima
-    const resto = presupuesto - costo;
-    if (resto < a.price) break;                      // ni una share más
-    const take = Math.min(a.size, resto / a.price);
-    shares += take; costo += take * a.price;
+    const cShare = COM.comisionPorShare(a.price, tasa, exponente);
+    const unit = a.price + cShare;
+    const resto = presupuesto - costo - comision;
+    if (resto < unit) break;                         // ni una share más
+    const take = Math.min(a.size, resto / unit);
+    shares += take; costo += take * a.price; comision += take * cShare;
   }
   const mejorAsk = asks && asks.length ? asks[0].price : null;
   const sh = Math.floor(shares);
-  if (sh < 1) return { shares: 0, costo: 0, precio_medio: null, mejor_ask: mejorAsk };
+  if (sh < 1) return { shares: 0, costo: 0, comision: 0, precio_medio: null, mejor_ask: mejorAsk };
   const pm = costo / shares;                         // precio medio del fill real
-  return { shares: sh, costo: +(sh * pm).toFixed(2), precio_medio: +pm.toFixed(4), mejor_ask: mejorAsk };
+  return { shares: sh, costo: +(sh * pm).toFixed(2),
+    comision: COM.comisionPolymarket({ shares: sh, precio: pm, tasa, exponente }),
+    precio_medio: +pm.toFixed(4), mejor_ask: mejorAsk };
 }
 
 // rescate del token para señales que nacieron sin él (las anteriores al 1-sep): el id de la señal empieza
@@ -117,13 +140,15 @@ async function sincronizar() {
   const st = rd();
   const sen = senales();
   const ahora = Date.now();
-  const out = { abiertas: 0, sin_fill: 0, sin_token: 0, revisadas: 0 };
+  const out = { abiertas: 0, sin_fill: 0, sin_token: 0, revisadas: 0, ev_tras_comision: 0, comision_usd: 0 };
   let toques = 0;                                            // máx llamadas al CLOB por pasada: educados
   for (const s of Object.values(sen)) {
     if (s.estado !== 'ABIERTA' || s.tipo === 'modelo_sombra') continue;   // solo lo operable de la firm
     const ko = Date.parse(s.ko || 0);
     const pos = st.posiciones[s.id];
-    if (pos && pos.estado !== 'SIN_FILL') continue;          // ya está resuelta su entrada
+    // una tesis frenada por la comisión se vuelve a mirar en la siguiente pasada: el libro se mueve y la
+    // misma señal puede volverse rentable a un precio mejor. Solo 'SIN_FILL' y ella reintentan.
+    if (pos && pos.estado !== 'SIN_FILL' && pos.estado !== 'EV_TRAS_COMISION') continue;
     if (!(ko > ahora)) {
       // sin fill y el partido empezó: la ventana se cerró — eso también es una medición
       if (pos && pos.estado === 'SIN_FILL') { pos.estado = 'NO_ENTRO'; pos.cerrado_at = new Date().toISOString(); }
@@ -149,17 +174,40 @@ async function sincronizar() {
     const lim = s.limite != null ? s.limite : s.precio_pm;
     const stakeObj = stakeDe(st, s);
     const presupuesto = Math.min(stakeObj, st.efectivo);
-    const fill = asks ? simulaFill(asks, lim, presupuesto) : null;
+    const fill = asks ? simulaFill(asks, lim, presupuesto, s.fee_rate, s.fee_exp) : null;
+    // LA PUERTA NUEVA (15-sep, A09): la ventaja se mide DESPUÉS de la casa, y contra el precio del fill —no
+    // contra el del aviso—, porque caminar el libro ya se comió parte de ella. Una tesis que cruza el listón
+    // en bruto y no lo cruza neto no es una oportunidad pequeña: es una pérdida esperada, y hasta hoy abría
+    // posición igual. Se anota como medición, no se descarta en silencio.
+    const evNeto = fill && fill.shares >= 1 && s.consenso != null
+      ? COM.evNetoPorShare({ prob: s.consenso, precio: fill.precio_medio, tasa: s.fee_rate, exponente: s.fee_exp })
+      : null;
+    if (fill && fill.shares >= 1 && evNeto != null && !(evNeto > 0)) {
+      st.posiciones[s.id] = { ...(pos || {}), senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
+        deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko,
+        precio_senal: s.precio_pm, limite: lim, consenso: s.consenso, edge_pp: s.edge_pp,
+        precio_fill_simulado: fill.precio_medio, ev_neto_por_share: +evNeto.toFixed(4),
+        estado: 'EV_TRAS_COMISION', at: (pos && pos.at) || new Date().toISOString(),
+        cerrado_at: new Date().toISOString() };
+      out.ev_tras_comision++;
+      continue;
+    }
     if (fill && fill.shares >= 1 && fill.costo > 0) {
       st.posiciones[s.id] = {
         senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
         deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, equipo: s.equipo,
         ko: s.ko, precio_senal: s.precio_pm, limite: lim, consenso: s.consenso, edge_pp: s.edge_pp,
         stake_objetivo: stakeObj, shares: fill.shares, costo: fill.costo, precio_fill: fill.precio_medio,
+        // la comisión se guarda POR POSICIÓN con la tasa que se le aplicó: sin eso, un cambio de tarifa
+        // reescribe el pasado la próxima vez que alguien recalcule el track
+        comision: fill.comision, tasa_comision: s.fee_rate != null ? s.fee_rate : COM.tasaPorDefecto(),
+        costo_total: +(fill.costo + fill.comision).toFixed(2),
+        ev_neto_por_share: evNeto != null ? +evNeto.toFixed(4) : null,
         slippage_pp: +((fill.precio_medio - s.precio_pm) * 100).toFixed(2),
         estado: 'ABIERTA', at: new Date().toISOString(),
       };
-      st.efectivo = +(st.efectivo - fill.costo).toFixed(2);
+      st.efectivo = +(st.efectivo - fill.costo - fill.comision).toFixed(2);
+      out.comision_usd = +(out.comision_usd + fill.comision).toFixed(2);
       out.abiertas++;
     } else {
       st.posiciones[s.id] = { ...(pos || {}), senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
@@ -210,7 +258,12 @@ async function liquidarPoly() {
     const gana = winIdx === p.outcome_idx;
     p.estado = gana ? 'WIN' : 'LOSS';
     p.resuelto_at = new Date().toISOString();
-    p.pnl = gana ? +(p.shares - p.costo).toFixed(2) : -p.costo;   // cada share ganadora paga $1
+    // Cada share ganadora paga $1. La comisión se pagó al ENTRAR (la fórmula vale 0 en p=1 y p=0, así que
+    // el vencimiento no vuelve a cobrar), pero es dinero que salió: resta en los dos lados. Se guarda
+    // también el bruto para poder publicar el antes y el después sin recalcular nada.
+    const com = p.comision || 0;
+    p.pnl_bruto = gana ? +(p.shares - p.costo).toFixed(2) : -p.costo;
+    p.pnl = +(p.pnl_bruto - com).toFixed(2);
     if (gana) st.efectivo = +(st.efectivo + p.shares).toFixed(2);
     out.settled++;
   }
@@ -236,6 +289,10 @@ function agrupa(cerradas, clave) {
   return Object.entries(g).map(([k, v]) => {
     const costo = v.reduce((a, p) => a + (p.costo || 0), 0);
     const pnl = v.reduce((a, p) => a + (p.pnl || 0), 0);
+    // el bruto viaja al lado del neto en cada corte: es la única forma de ver de un vistazo cuánto de lo
+    // que parecía ventaja se lo llevaba la casa, familia por familia
+    const com = v.reduce((a, p) => a + (p.comision || 0), 0);
+    const pnlBruto = v.reduce((a, p) => a + (p.pnl_bruto != null ? p.pnl_bruto : (p.pnl || 0) + (p.comision || 0)), 0);
     const w = v.filter((p) => p.estado === 'WIN').length;
     const sl = v.filter((p) => p.slippage_pp != null).map((p) => p.slippage_pp);
     const pr = v.map((p) => p.precio_fill).filter((x) => x > 0).sort((a, b) => a - b);
@@ -244,7 +301,9 @@ function agrupa(cerradas, clave) {
     const m = r.length ? r.reduce((a, b) => a + b, 0) / r.length : null;
     const sd = r.length > 1 ? Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1)) : null;
     return { k, n: v.length, w, l: v.length - w, costo: +costo.toFixed(2), pnl: +pnl.toFixed(2),
+      comision: +com.toFixed(2), pnl_bruto: +pnlBruto.toFixed(2),
       roi_pct: costo > 0 ? +(100 * pnl / costo).toFixed(2) : null,
+      roi_bruto_pct: costo > 0 ? +(100 * pnlBruto / costo).toFixed(2) : null,
       t_roi: (sd && r.length > 1) ? +(m / (sd / Math.sqrt(r.length))).toFixed(2) : null,
       slippage_medio_pp: sl.length ? +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(2) : null,
       precio_mediano: pr.length ? pr[pr.length >> 1] : null,
@@ -261,6 +320,9 @@ function estado() {
   const cerradas = pos.filter((p) => p.estado === 'WIN' || p.estado === 'LOSS');
   const conFill = pos.filter((p) => p.slippage_pp != null);
   const pnl = +cerradas.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2);
+  const pnlBruto = +cerradas.reduce((a, p) => a + (p.pnl_bruto != null ? p.pnl_bruto : (p.pnl || 0) + (p.comision || 0)), 0).toFixed(2);
+  const comCerradas = +cerradas.reduce((a, p) => a + (p.comision || 0), 0).toFixed(2);
+  const comTodas = +pos.reduce((a, p) => a + (p.comision || 0), 0).toFixed(2);
   const expuesto = +abiertas.reduce((a, p) => a + (p.costo || 0), 0).toFixed(2);
   const fn = cerradas.filter(esFutbolNo);
   const desglose = {
@@ -281,6 +343,14 @@ function estado() {
     l: cerradas.filter((p) => p.estado === 'LOSS').length,
     pnl_usd: pnl,
     roi_pct: cerradas.length ? +(100 * pnl / cerradas.reduce((a, p) => a + p.costo, 0)).toFixed(2) : null,
+    // EL ANTES Y EL DESPUÉS, SIEMPRE JUNTOS (15-sep, A09): `pnl_usd` y `roi_pct` ya van netos de comisión;
+    // el bruto se publica al lado para que nadie compare un número nuevo contra uno viejo sin darse cuenta.
+    pnl_bruto_usd: pnlBruto,
+    roi_bruto_pct: cerradas.length ? +(100 * pnlBruto / cerradas.reduce((a, p) => a + p.costo, 0)).toFixed(2) : null,
+    comisiones_usd: comCerradas,
+    comisiones_usd_todas: comTodas,
+    tasa_comision: COM.tasaPorDefecto(),
+    ev_tras_comision: pos.filter((p) => p.estado === 'EV_TRAS_COMISION').length,
     slippage_medio_pp: conFill.length ? +(conFill.reduce((a, p) => a + p.slippage_pp, 0) / conFill.length).toFixed(2) : null,
     sin_fill: pos.filter((p) => p.estado === 'SIN_FILL').length,
     no_entro: pos.filter((p) => p.estado === 'NO_ENTRO').length,

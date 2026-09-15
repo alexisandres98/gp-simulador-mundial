@@ -124,9 +124,11 @@ function formatOf(fx) {
 const ODDS_TTL = 10 * 60e3;
 async function refreshOdds({ force = false } = {}) {
   if (G.odds && !force && Date.now() - G.odds.at < ODDS_TTL) return G.odds;
+  // (15-sep, auditoría T1.14) una excepción es `error_red`, no "fuente sin eventos": se marca como tal
+  const caida = (b) => ({ book: b, events: [], outrights: [], available: false, estado: 'error_red' });
   const [pin, bov, pm, cbf] = await Promise.all([
-    BOOKS.pinnacle().catch(() => ({ events: [] })), BOOKS.bovada().catch(() => ({ events: [], outrights: [] })),
-    BOOKS.polymarket().catch(() => ({ events: [] })), BOOKS.cloudbetFixtures().catch(() => ({ events: [], available: false })),
+    BOOKS.pinnacle().catch(() => caida('pinnacle')), BOOKS.bovada().catch(() => caida('bovada')),
+    BOOKS.polymarket().catch(() => caida('polymarket')), BOOKS.cloudbetFixtures().catch(() => caida('cloudbet')),
   ]);
   // Cloudbet: mercados de los eventos de los próximos 3 días (uno a uno, con pausa)
   const cbEvents = [];
@@ -138,8 +140,14 @@ async function refreshOdds({ force = false } = {}) {
     }
   }
   const events = [].concat(pin.events || [], bov.events || [], pm.events || [], cbEvents);
-  G.odds = { at: Date.now(), events, outrights: { bovada: bov.outrights || [], kalshi: null }, books: { pinnacle: !!pin.available, bovada: !!bov.available, polymarket: !!pm.available, cloudbet: !!cbf.available }, cloudbet_keys: [...new Set(cbEvents.flatMap((e) => e.raw_keys || []))] };
-  try { G.odds.outrights.kalshi = (await BOOKS.kalshi()).outrights; } catch { }
+  // (15-sep) `books` ya NO dice "la llamada no reventó": dice si esa casa trajo filas. `estado` da la causa
+  // del cero, y `eventos` el conteo crudo — sin eso, un `false` de Pinnacle se leía como avería nuestra.
+  G.odds = { at: Date.now(), events, outrights: { bovada: bov.outrights || [], kalshi: null },
+    books: { pinnacle: !!pin.available, bovada: !!bov.available, polymarket: !!pm.available, cloudbet: !!cbf.available },
+    estado: { pinnacle: pin.estado || null, bovada: bov.estado || null, polymarket: pm.estado || null, cloudbet: cbf.estado || null, kalshi: null },
+    eventos: { pinnacle: (pin.events || []).length, bovada: (bov.events || []).length, polymarket: (pm.events || []).length, cloudbet: cbEvents.length },
+    cloudbet_keys: [...new Set(cbEvents.flatMap((e) => e.raw_keys || []))] };
+  try { const ka = await BOOKS.kalshi(); G.odds.outrights.kalshi = ka.outrights; G.odds.estado.kalshi = ka.estado || null; } catch { G.odds.estado.kalshi = 'error_red'; }
   return G.odds;
 }
 // eventos de casas casados a un fixture de la PDC: mismos apellidos (en cualquier orden) y ±36 h
@@ -479,9 +487,24 @@ function snapshotCloses(rows) {
     // hora (para no perder el cubo T−1 de un partido que arranca entre pasadas), pero seguir machacando `rows`
     // con precios en vivo deja a la liquidación sin la línea exacta de la tesis y la familia entera se queda
     // sin CLV. Los cubos ya iban por `CL.bucketFor`, que tiene suelo; esto le pone el mismo suelo a `rows`.
-    if (t >= now) { c.at = new Date().toISOString(); c.rows = rows2; }
-    // 9-sep (traído de tenis de mesa): la primera lectura dentro de cada cubo T−60/−30/−10/−5/−1 se congela
-    try { const CL = require('../implied-engine/closes'); const bkt = CL.bucketFor(r.start_at, now); c.series = c.series || {}; if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date(now).toISOString(), rows: rows2 }; } catch { }
+    // 15-sep (A11): y el primer dardo manda sobre la hora del cuadro. La PDC programa por sesión, no por
+    // partido: el que abre a las 19:00 puede empezar a las 19:40 porque el anterior se fue a un decider. El
+    // feed de Flashscore (`r.live`) sabe cuándo rueda de verdad, así que `estadoCaptura` decide y solo deja
+    // escribir cierre y cubo si la captura es PREPARTIDO; la etiqueta queda en el registro para la vara.
+    try {
+      const CL = require('../implied-engine/closes');
+      // la etiqueta describe el cierre GUARDADO: solo se escribe cuando de verdad se escribe el cierre, para
+      // que una pasada en vivo posterior no marque como `in_play` una foto tomada antes del primer dardo.
+      const est = CL.cuenta('dardos', CL.estadoCaptura(r, now));
+      if (est.in_play) c.in_play_visto = (c.in_play_visto || 0) + 1;
+      if (est.prepartido || (est.sin_inicio && t >= now)) {
+        c.at = new Date().toISOString(); c.rows = rows2;
+        c.captura = CL.etiquetaCaptura(est); c.inicio_fuente = est.inicio_fuente;
+      }
+      c.series = c.series || {};
+      const bkt = est.prepartido ? est.bucket : null;
+      if (bkt && !c.series[bkt]) c.series[bkt] = { at: new Date(now).toISOString(), captura: 'prepartido', rows: rows2 };
+    } catch { if (t >= now) { c.at = new Date().toISOString(); c.rows = rows2; } }
     dirty = true;
   }
   for (const [id, c] of Object.entries(st.closes)) if (Date.parse(c.start_at) < now - 30 * 864e5) { delete st.closes[id]; dirty = true; }
@@ -590,6 +613,9 @@ async function settleShadow({ voidDays = 12 } = {}) {
         if (best) { p.close_price = best.odds; p.clv_pct = +((p.odds / best.odds - 1) * 100).toFixed(2); p.close_source = best.book; }
         if (pin) { p.close_pin = pin.odds; p.clv_pin_pct = +((p.odds / pin.odds - 1) * 100).toFixed(2); }
         if (!best) p.close_missing = 'línea no cotizada al cierre';
+        // CÓMO SE CAPTURÓ ESE CIERRE (15-sep, A11): `prepartido`, `in_play` o `desconocido`. La vara lo usa
+        // para dejar fuera del EV lo que se capturó con el partido ya rodando.
+        p.close_captura = cl.captura || null;
         // 9-sep (traído de tenis de mesa): la MISMA casa de la pick y la curva por cubo (own/best/pinnacle)
         const own = same.find((x) => x.book === p.book);
         if (own) { p.close_own = own.odds; p.clv_own_pct = +((p.odds / own.odds - 1) * 100).toFixed(2); }
@@ -875,7 +901,9 @@ async function modelSnapshot() {
   const d = D.build();
   // muestra cruda de Cloudbet (dos eventos con sus filas): la respuesta a "¿no cotiza o no leemos?"
   const cbSample = G.odds ? G.odds.events.filter((e) => e.book === 'cloudbet' && (e.rows || []).length).slice(0, 2).map((e) => ({ a: e.a, b: e.b, start_at: e.start_at, competition: e.competition, raw_keys: e.raw_keys, rows: (e.rows || []).slice(0, 24).map((r) => ({ family: r.family, side: r.side, line: r.line, odds: r.odds, participant: r.participant, market_key: r.market_key, params: r.params })) })) : null;
-  return { base: { rows: d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, orakel_as_of: orakel().latest }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => t.name) } : null, odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, cloudbet_keys: G.odds.cloudbet_keys, cloudbet_sample: cbSample } : null, calib_cache: CALIB.size, track: track({ limit: 5 }), disk: DISK_DIR };
+  return { base: { rows: d.rows.length, players: Object.keys(d.players).length, freshness: d.meta.last_match_date, orakel_as_of: orakel().latest }, slate: G.slate ? { at: new Date(G.slate.at).toISOString(), fixtures: G.slate.fixtures.length, tournaments: G.slate.tournaments.map((t) => t.name) } : null, // (15-sep) el estado por casa viaja también aquí: la sonda sin `?odds=1` solo corre el snapshot, y era
+// justo ahí donde una fuente muerta se leía como viva
+odds: G.odds ? { at: new Date(G.odds.at).toISOString(), events: G.odds.events.length, books: G.odds.books, estado: G.odds.estado || null, eventos: G.odds.eventos || null, cloudbet_keys: G.odds.cloudbet_keys, cloudbet_sample: cbSample } : null, calib_cache: CALIB.size, track: track({ limit: 5 }), disk: DISK_DIR };
 }
 
 module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, resetOrakel, slate, seasonTournaments, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentBoard, tournamentsList, simMatch, agenda, liveProb, modelCard, modelSnapshot, skillOf, formatOf, parseFormat };

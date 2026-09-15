@@ -12,6 +12,7 @@
 // X180_TOTAL (over|under), X180_MOST (a|b|tie), X180_PLAYER (a|b + over|under), HIGHEST_CHECKOUT (over|under).
 'use strict';
 
+const F = require('../../lib/fuente');
 const PIN_HOST = 'https://guest.api.arcadia.pinnacle.com/0.1';
 const PIN_KEY = process.env.PINNACLE_GUEST_KEY || 'CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R';
 const PIN_SPORT_DARTS = 10;
@@ -34,9 +35,12 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 const lastName = (s) => { const p = norm(s).split(' '); return p[p.length - 1] || ''; };
 
 // ── PINNACLE ─────────────────────────────────────────────────────────────────────────────────────────────
+// COMPROBADO EL 15-sep (auditoría T1.14): igual que en tenis de mesa. El deporte 10 ES Darts, el endpoint
+// responde HTTP 200, y trae `[]`; el catálogo `/0.1/sports` dice `{"id":10,"name":"Darts","matchupCount":0}`.
+// Ni id equivocado ni endpoint movido: Pinnacle no tiene dardos abiertos. Estado = `sin_eventos`.
 async function pinnacle() {
   const mus = await getJson(`${PIN_HOST}/sports/${PIN_SPORT_DARTS}/matchups`, { 'X-API-Key': PIN_KEY });
-  if (!Array.isArray(mus)) return { book: 'pinnacle', events: [], available: false };
+  if (!Array.isArray(mus)) return F.marcar({ book: 'pinnacle', events: [] }, { respondio: false });
   const mk = await getJson(`${PIN_HOST}/sports/${PIN_SPORT_DARTS}/markets/straight`, { 'X-API-Key': PIN_KEY });
   const byMu = new Map();
   for (const m of Array.isArray(mk) ? mk : []) { const a = byMu.get(m.matchupId) || []; a.push(m); byMu.set(m.matchupId, a); }
@@ -63,13 +67,13 @@ async function pinnacle() {
     }
     events.push({ book: 'pinnacle', provider_id: String(mu.id), start_at: mu.startTime, competition: (mu.league || {}).name || null, a: home.name, b: away.name, live: !!mu.isLive, rows: rows.map((r) => ({ book: 'pinnacle', ...r })) });
   }
-  return { book: 'pinnacle', events, available: true, at: new Date().toISOString() };
+  return F.marcar({ book: 'pinnacle', events, matchups_crudos: mus.length }, { respondio: true, filas: events.length });
 }
 
 // ── BOVADA ───────────────────────────────────────────────────────────────────────────────────────────────
 async function bovada() {
   const j = await getJson('https://www.bovada.lv/services/sports/event/coupon/events/A/description/darts?lang=en', { accept: 'application/json, text/plain, */*' });
-  if (!Array.isArray(j)) return { book: 'bovada', events: [], outrights: [], available: false };
+  if (!Array.isArray(j)) return F.marcar({ book: 'bovada', events: [], outrights: [] }, { respondio: false });
   const events = [], outrights = [];
   for (const g of j) {
     const comp = ((g.path || []).find((p) => p.description && p.description !== 'Darts') || {}).description || null;
@@ -100,13 +104,15 @@ async function bovada() {
       events.push({ book: 'bovada', provider_id: String(e.id), start_at: e.startTime ? new Date(e.startTime).toISOString() : null, competition: comp, a: aName, b: bName, live: !!e.live, rows: rows.map((r) => ({ book: 'bovada', ...r })) });
     }
   }
-  return { book: 'bovada', events, outrights, available: true, at: new Date().toISOString() };
+  // (15-sep) en Bovada un outright TAMBIÉN es fila utilizable: fuera de temporada de partidos puede quedar
+  // solo el campeonato cotizado, y eso sigue siendo una fuente viva
+  return F.marcar({ book: 'bovada', events, outrights }, { respondio: true, filas: events.length + outrights.length });
 }
 
 // ── POLYMARKET (serie PDC) ───────────────────────────────────────────────────────────────────────────────
 async function polymarket() {
   const j = await getJson('https://gamma-api.polymarket.com/events?series_id=12754&closed=false&limit=100');
-  if (!Array.isArray(j)) return { book: 'polymarket', events: [], available: false };
+  if (!Array.isArray(j)) return F.marcar({ book: 'polymarket', events: [] }, { respondio: false });
   const events = [];
   for (const e of j) {
     for (const m of e.markets || []) {
@@ -119,7 +125,8 @@ async function polymarket() {
       events.push({ book: 'polymarket', provider_id: String(e.id), slug: e.slug, start_at: e.startDate || null, competition: (e.title || '').split(':')[0] || null, a: outs[0], b: outs[1], liquidity: +(m.liquidity || 0), spread: m.spread != null ? +m.spread : null, rows, url: e.slug ? `https://polymarket.com/event/${e.slug}` : null });
     }
   }
-  return { book: 'polymarket', events, available: true, at: new Date().toISOString() };
+  // (15-sep) un evento de Polymarket sin filas de precio no es utilizable: se cuenta el que trae precio
+  return F.marcar({ book: 'polymarket', events }, { respondio: true, filas: events.filter((e) => (e.rows || []).length).length });
 }
 
 // ── KALSHI (campeón del Mundial) ─────────────────────────────────────────────────────────────────────────
@@ -127,18 +134,23 @@ async function kalshi() {
   const j = await getJson('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXPDCDARTS&status=open&limit=200');
   const ms = (j && j.markets) || [];
   const dollars = (x) => (x == null ? null : typeof x === 'string' ? parseFloat(x) : x > 1 ? x / 100 : x);
-  return { book: 'kalshi', available: Array.isArray(ms), at: new Date().toISOString(), outrights: ms.map((m) => ({ book: 'kalshi', ticker: m.ticker, title: m.title, participant: (m.title || '').replace(/^Will\s+/i, '').replace(/\s+win.*$/i, ''), yes_bid: dollars(m.yes_bid_dollars != null ? m.yes_bid_dollars : m.yes_bid), yes_ask: dollars(m.yes_ask_dollars != null ? m.yes_ask_dollars : m.yes_ask), close_time: m.close_time })) };
+  // (15-sep) `Array.isArray(ms)` era SIEMPRE true — `(j && j.markets) || []` ya devuelve un array aunque la
+  // llamada haya fallado. O sea: Kalshi se reportaba disponible incluso con la red caída. Ahora el estado
+  // separa "no respondió" (j nulo) de "respondió sin mercados abiertos".
+  return F.marcar({ book: 'kalshi', outrights: ms.map((m) => ({ book: 'kalshi', ticker: m.ticker, title: m.title, participant: (m.title || '').replace(/^Will\s+/i, '').replace(/\s+win.*$/i, ''), yes_bid: dollars(m.yes_bid_dollars != null ? m.yes_bid_dollars : m.yes_bid), yes_ask: dollars(m.yes_ask_dollars != null ? m.yes_ask_dollars : m.yes_ask), close_time: m.close_time })) }, { respondio: !!j, filas: ms.length });
 }
 
 // ── CLOUDBET (la venue ejecutable; clave en Render) ──────────────────────────────────────────────────────
 const CB_BASE = 'https://sports-api.cloudbet.com/pub/v2/odds';
 async function cloudbetFixtures({ days = 8, key = process.env.CLOUDBET_API_KEY || '' } = {}) {
-  if (!key) return { book: 'cloudbet', events: [], available: false };
+  if (!key) return F.marcar({ book: 'cloudbet', events: [] }, { configurada: false });
   const seen = new Set(), events = [];
   const t0 = Date.now();
+  let respondio = false; // (15-sep) ocho timeouts seguidos no son "no hay dardos", son la red caída
   for (let k = 0; k < days; k++) {
     const d = new Date(t0 + k * 864e5).toISOString().slice(0, 10);
     const j = await getJson(`${CB_BASE}/fixtures?sport=darts&date=${d}`, { 'X-API-Key': key });
+    if (j) respondio = true;
     for (const c of (j && j.competitions) || []) for (const e of c.events || []) {
       if (!e.home || !e.away || seen.has(e.id)) continue;
       seen.add(e.id);
@@ -146,7 +158,7 @@ async function cloudbetFixtures({ days = 8, key = process.env.CLOUDBET_API_KEY |
     }
     await sleep(220);
   }
-  return { book: 'cloudbet', events, available: true, at: new Date().toISOString() };
+  return F.marcar({ book: 'cloudbet', events }, { respondio, filas: events.length });
 }
 // mercados de un evento de Cloudbet: se leen TODAS las claves y se mapean por nombre (la sonda dirá cuáles)
 // CLAVES REALES DE CLOUDBET (sonda en prod, 7-sep): darts.winner · darts.total_legs · darts.handicap_legs ·

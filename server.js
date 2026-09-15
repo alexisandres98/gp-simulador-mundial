@@ -6939,7 +6939,12 @@ async function clubStatsTsa(lgKey, homeId, awayId, kickoffMs) {
     if (Date.now() - kickoffMs > 48 * 3600e3) { db.clubTsaStats[ck] = { miss: true, at: Date.now() }; save(); }
     return null;
   }
-  const out = { match_id: m.id, yellows: y, reds: rj, corners: c, cards: y != null ? y + (rj || 0) : null, at: Date.now() };
+  // `cards` sigue la regla de la casa: una roja cuenta DOS (15-sep, `prop-engine/conteo.js`). Esta es la
+  // segunda fuente del liquidador de tarjetas, así que tiene que contar igual que la primera o la
+  // liquidación dependería de qué proveedor contestó antes.
+  const out = { match_id: m.id, yellows: y, reds: rj, corners: c,
+    cards: y != null ? require('./prop-engine/conteo').conteoCasa(y, rj || 0) : null,
+    cards_antiguo: y != null ? y + (rj || 0) : null, at: Date.now() };
   db.clubTsaStats[ck] = out;
   for (const [k2, v] of Object.entries(db.clubTsaStats)) { if (Date.now() - (v.at || 0) > 45 * 86400e3) delete db.clubTsaStats[k2]; }
   save();
@@ -9425,7 +9430,19 @@ async function settleClubPropsViaAf() {
       let tot = null, src = 'api-football';
       if (st && st.home && st.away) {
         if (p.family === 'CORNERS' && st.home.corners != null && st.away.corners != null) tot = val(st.home, 'corners') + val(st.away, 'corners');
-        if (p.family === 'CARDS' && st.home.yellowCards != null && st.away.yellowCards != null) tot = val(st.home, 'yellowCards') + val(st.home, 'redCards') + val(st.away, 'yellowCards') + val(st.away, 'redCards'); // amarillas+rojas = mismo conteo del modelo (fit: yellows+reds)
+        // TARJETAS: EL CONTEO ES EL DE LA CASA, NO EL NUESTRO (15-sep, T2.1 de la auditoría externa). El
+        // reglamento de Cloudbet cuenta una ROJA COMO DOS, y hasta hoy liquidábamos con amarillas+rojas. Dos
+        // apuestas reales del libro lo confirman: Stoke–Charlton under 4,5 y Palmeiras–São Paulo under 6,5,
+        // las dos "ganadas" según nuestro conteo y PERDIDAS según la casa. El track mentía a nuestro favor.
+        // El detalle y lo que sigue sin resolverse, en `prop-engine/conteo.js`.
+        if (p.family === 'CARDS' && st.home.yellowCards != null && st.away.yellowCards != null) {
+          const CN = require('./prop-engine/conteo');
+          const am = val(st.home, 'yellowCards') + val(st.away, 'yellowCards');
+          const ro = val(st.home, 'redCards') + val(st.away, 'redCards');
+          tot = CN.conteoCasa(am, ro);
+          p.conteo_antiguo = CN.conteoAntiguo(am, ro);   // para poder releer el track viejo sin reescribirlo
+          p.conteo_regla = 'cloudbet_booking_2026-09-15';
+        }
       }
       if (tot == null) {
         // SEGUNDA FUENTE (25-ago): la cuenta de AF no devuelve stats de partido → overview de TSA
@@ -9493,12 +9510,21 @@ async function refreshClubPickPrices() {
 function clubPickCloseRecord(p, rows, ko, now = Date.now()) {
   if (!rows || !rows.length) return null;
   const CL = require('./implied-engine/closes');
+  // EL CIERRE ES ANTES DEL SAQUE (15-sep, A11 de la auditoría externa). La ventana de `clubPicksCloseBuckets`
+  // llega a T+3 min para no perder el cubo T−1 de un partido que arranca entre pasadas, y en esos minutos el
+  // T−1 se rellenaba con precios ya en vivo. Ahora la captura se juzga antes de escribir: si el partido ya
+  // rodaba, se cuenta (`close_in_play_visto`) y no se toca nada. El inicio sale de `p.event`, así que el día
+  // que el marcador entre ahí (`started_at`) esto distingue solo el partido retrasado del puntual.
+  const est = CL.cuenta('clubes', CL.estadoCaptura(p.event || ko, now));
+  if (est.in_play) { p.close_in_play_visto = (p.close_in_play_visto || 0) + 1; return null; }
   const ownB = p.best_book_at_create || p.best_book;
   const own = rows.find((r) => r.b === ownB), pin = rows.find((r) => r.b === 'pinnacle');
   const best = rows.reduce((m, r) => (r.o > m ? r.o : m), 0);
   const newest = rows.reduce((m, r) => (r.seen && String(r.seen) > String(m) ? r.seen : m), '');
   p.closes = p.closes || { buckets: {}, last: null };
-  return CL.record(p.closes, ko, { own: own ? own.o : null, best: best || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now);
+  const b = CL.record(p.closes, ko, { own: own ? own.o : null, best: best || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now);
+  if (p.closes.last) p.close_captura = CL.etiquetaCaptura(est);
+  return b;
 }
 let _clubBucketsBusy = false;
 async function clubPicksCloseBuckets() {
@@ -9878,31 +9904,49 @@ function booksListFor(map, x) {
 // chequeo corre en el ciclo de 15min con la MISMA fuente del cierre oficial (sportsbook_goal_quote_current);
 // al disparar: email al usuario (mailer) + estado "alcanzado" en la lista in-app. KO pasado → watch vencido.
 function watchPriceOn() { return /^(1|true|yes|on|admin)$/i.test(String(process.env.GP_WATCH_PRICE_ENABLED || '').trim()); }
+// (15-sep, A01 de la auditoría) UN PRECIO ES UNA TUPLA. Esto devolvía `max(odds_decimal)`: una cuota suelta,
+// sin línea, sin casa y sin hora. El watch del usuario se disparaba con la mejor cuota DEL MERCADO viniera de
+// la línea que viniera, y en PLAYER ni siquiera había filtro de lado: un "sí anota" podía alcanzar su objetivo
+// con el precio del "no anota". Ahora se traen las filas enteras y `lib/contrato` elige la mejor DE LA LÍNEA
+// Y EL LADO que la pick valoró; lo que no casa se descarta con motivo y se cuenta.
+// Devuelve siempre un objeto (nunca una cuota pelada) con `cuota: null` cuando no hay precio de ese contrato.
+// Los mercados sin línea (1X2/match_winner) quedan exactamente igual que antes: objetivo `null` contra filas
+// `null`, que es la única pareja que `mejorPrecio` acepta cuando no hay línea que normalizar.
 async function currentBestOddsForPick(pk) {
   const dbc = require('./database/client');
-  if (!dbc.isConfigured() || !pk || !pk.event || !pk.event.canonical_event_id) return null;
+  const CT = require('./lib/contrato');
+  const vacio = (motivo) => ({ cuota: null, linea: null, casa: null, at: null, descartes: null, motivo: motivo || null });
+  if (!dbc.isConfigured() || !pk || !pk.event || !pk.event.canonical_event_id) return vacio('sin base o sin evento canónico');
   const ceid = pk.event.canonical_event_id;
+  // la fila inmutable: cuota + línea + selección + casa + hora, juntas desde la consulta
+  // (`at` va entrecomillado: es palabra clave de SQL y sin comillas el alias se parsea mal)
+  const SEL = `SELECT sportsbook_code AS casa, odds_decimal::float AS cuota, line::float AS linea,
+                      lower(side) AS lado, observed_at AS "at"
+               FROM sportsbook_goal_quote_current`;
   try {
+    let filas = null, familia = null, lado = null, linea = null;
     if (pk.family === 'SOLID') {
-      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND lower(side)=$2`, [ceid, String(pk.selection_code || '').toLowerCase()]);
-      return (r.rows[0] && r.rows[0].o) || null;
+      familia = 'match_winner'; lado = String(pk.selection_code || '').toLowerCase(); linea = null;
+      filas = (await dbc.query(`${SEL} WHERE canonical_event_id=$1 AND market_family='match_winner' AND lower(side)=$2`, [ceid, lado])).rows;
+    } else if (['GOALS', 'CORNERS', 'CARDS'].includes(pk.family)) {
+      familia = pk.family === 'GOALS' ? 'match_total' : pk.family === 'CORNERS' ? 'corners_total' : 'cards_total';
+      lado = String(pk.side || '').toLowerCase(); linea = pk.line != null ? Number(pk.line) : null;
+      // el filtro de línea sale del SQL a propósito: aquí lo aplica el contrato y así se puede CONTAR cuántas
+      // cotizaciones del mismo mercado eran de otra línea, que es el número que mide este arreglo.
+      filas = (await dbc.query(`${SEL} WHERE canonical_event_id=$1 AND market_family=$2 AND lower(side)=$3`, [ceid, familia, lado])).rows;
+    } else if (pk.family === 'PLAYER') {
+      familia = pk.player_family; lado = String(pk.side || 'yes').toLowerCase(); linea = pk.line != null ? Number(pk.line) : null;
+      filas = (await dbc.query(`${SEL} WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3`, [ceid, familia, pk.pid])).rows;
     }
-    if (['GOALS', 'CORNERS', 'CARDS'].includes(pk.family)) {
-      const fam = pk.family === 'GOALS' ? 'match_total' : pk.family === 'CORNERS' ? 'corners_total' : 'cards_total';
-      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND lower(side)=$4`, [ceid, fam, pk.line, String(pk.side || '').toLowerCase()]);
-      return (r.rows[0] && r.rows[0].o) || null;
-    }
-    if (pk.family === 'PLAYER') {
-      const r = await dbc.query(`SELECT max(odds_decimal)::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3`, [ceid, pk.player_family, pk.pid]);
-      return (r.rows[0] && r.rows[0].o) || null;
-    }
-  } catch { return null; }
-  return null;
+    if (!filas) return vacio('familia sin fuente de precio');
+    const r = CT.mejorPrecio(filas.map((x) => ({ ...x, familia })), { familia, lado, linea });
+    return { cuota: r.cuota, linea: r.linea, casa: r.casa, at: r.at, descartes: r.descartes, motivo: r.motivo, evaluadas: r.evaluadas };
+  } catch { return vacio('error de consulta'); }
 }
 async function checkPriceWatches() {
   if (!watchPriceOn()) return { skipped: 'off' };
   const ws = db.priceWatches = db.priceWatches || [];
-  let checked = 0, fired = 0;
+  let checked = 0, fired = 0, descartadas = 0, sinPrecioEnLinea = 0;
   const now = Date.now();
   for (const w of ws) {
     if (w.triggered_at || w.dead) continue;
@@ -9910,9 +9954,13 @@ async function checkPriceWatches() {
     if (!pk) { w.dead = true; continue; }
     const ko = Date.parse((pk.event && pk.event.kickoff_at) || '');
     if (isFinite(ko) && ko < now) { w.dead = true; continue; }
-    const o = await currentBestOddsForPick(pk);
+    // (15-sep) la respuesta es la fila entera; `o` es su cuota y la línea y la casa viajan con ella
+    const q = await currentBestOddsForPick(pk);
+    const o = q && q.cuota != null ? q.cuota : null;
     checked++;
-    if (o != null) { w.last_odds = +o.toFixed(3); w.last_check = new Date().toISOString(); }
+    if (q && q.descartes) descartadas += q.descartes.linea_distinta || 0;
+    if (o == null && q && q.motivo) { sinPrecioEnLinea++; w.last_motivo = q.motivo; }
+    if (o != null) { w.last_odds = +o.toFixed(3); w.last_line = q.linea; w.last_book = q.casa; w.last_motivo = null; w.last_check = new Date().toISOString(); }
     if (o != null && o >= w.target_odds) {
       w.triggered_at = new Date().toISOString(); fired++;
       try {
@@ -9930,7 +9978,10 @@ async function checkPriceWatches() {
     }
   }
   if (checked) save();
-  return { checked, fired };
+  // `descartadas_por_linea`: cotizaciones del mismo mercado que eran de OTRA línea y antes podían disparar el
+  // watch. `sin_precio_en_linea`: watches para los que nadie cotiza hoy la línea de la pick — mejor un hueco
+  // declarado que la cuota del mercado de al lado (15-sep).
+  return { checked, fired, descartadas_por_linea: descartadas, sin_precio_en_linea: sinPrecioEnLinea };
 }
 // ===== F4 — GP DAILY BRIEF (flag GP_DAILY_BRIEF_ENABLED) =====================================================
 // Un solo builder (memo 10min) alimenta los 3 canales: in-app (/api/me/brief), email diario (SOLO opt-in del
@@ -13102,11 +13153,18 @@ async function hoopsPicksCloseline() {
   const MK = require('./basketball-engine/markets');
   const PRC = require('./basketball-engine/pricing');
   const CLV = require('./basketball-engine/clv');
+  // EL SALTO DE VERDAD MANDA (15-sep, A11 de la auditoría externa). La ventana de arriba coge picks desde
+  // T−25 min hasta TRES HORAS DESPUÉS del salto: un partido cuyo precio no se pudo congelar a tiempo se
+  // "cerraba" en el descanso, con el marcador puesto. `estadoCaptura` marca cada captura y la que sale
+  // `in_play` no escribe `close_odds`; se cuenta aparte y la vara la deja fuera del EV.
+  const CLc = require('./implied-engine/closes');
   const ceids = [...new Set(near.map((p) => p.ceid))];
   const rows = await MK.loadQuotes(dbc, ceids, { minutes: 40 }).catch(() => []);
   const mkts = MK.groupMarkets(rows);
-  let closed = 0, touched = 0;
+  let closed = 0, touched = 0, enVivo = 0;
   for (const p of near) {
+    const est = CLc.cuenta('hoops', CLc.estadoCaptura(p.event, now));
+    if (est.in_play) { p.close_in_play_visto = (p.close_in_play_visto || 0) + 1; enVivo++; continue; }
     const fam = p.family === 'MONEYLINE' ? 'match_winner' : p.family === 'SPREAD' ? 'spread' : 'match_total';
     // LÍNEA DE CIERRE (backtests §5.5): la principal del mercado en esta familia, aunque la nuestra ya no
     // cotice. Se guarda aunque el CLV no se pueda calcular, y el movimiento va con signo a favor nuestro.
@@ -13137,10 +13195,11 @@ async function hoopsPicksCloseline() {
     p.market_fair_at_create = fairCreate;
     p.clv_pct = CLV.clvFair(fairCreate, p.close_fair);
     p.clv_v = CLV.CLV_V;
+    p.close_captura = CLc.etiquetaCaptura(est);
     closed++;
   }
-  if (closed || touched) save();
-  return { closed, lines: touched };
+  if (closed || touched || enVivo) save();
+  return { closed, lines: touched, en_vivo: enVivo };
 }
 
 // ── CIERRES POR CUBO Y MISMA CASA (9-sep, traído de tenis de mesa) ───────────────────────────────────────
@@ -13156,12 +13215,16 @@ async function hoopsCloseSnapshots() {
   try {
     const MK = require('./basketball-engine/markets'), CL = require('./implied-engine/closes');
     const near = (db.hoopsPicks || []).filter((p) => { if (p.status !== 'ACTIVE' || !p.event || !p.event.kickoff_at || !p.ceid) return false; const m = (Date.parse(p.event.kickoff_at) - now) / 60000; return m <= 95 && m > -3; });
-    let cubos = 0, leidas = 0;
+    let cubos = 0, leidas = 0, enVivo = 0;
     if (near.length) {
       const ceids = [...new Set(near.map((p) => p.ceid))];
       const rows = await MK.loadQuotes(dbc, ceids, { minutes: 30 }).catch(() => []);
       const mkts = MK.groupMarkets(rows);
       for (const p of near) {
+        // el cubo solo se escribe si la captura es PREPARTIDO (15-sep, A11): esta ventana llega a T+3 min y
+        // en esos minutos el T−1 se rellenaba con precios ya en vivo. Se cuenta aparte y no se escribe nada.
+        const est = CL.cuenta('hoops:cubos', CL.estadoCaptura(p.event, now));
+        if (est.in_play) { enVivo++; continue; }
         const fam = p.family === 'MONEYLINE' ? 'match_winner' : p.family === 'SPREAD' ? 'spread' : 'match_total';
         const m = mkts.find((x) => x.ceid === p.ceid && x.fam === fam && (x.line == null ? p.line == null : Math.abs(x.line - p.line) < 0.01));
         const q = m && m.q[p.selection_code]; if (!q || !q.length) continue;
@@ -13175,7 +13238,7 @@ async function hoopsCloseSnapshots() {
     }
     let implicito = null;
     try { implicito = await require('./implied-engine/run-hoops').closesOnly({ dbc, MK, ahora: now }); } catch (e) { implicito = { error: e.message }; }
-    return { candidatas: near.length, leidas, cubos_nuevos: cubos, implicito };
+    return { candidatas: near.length, leidas, cubos_nuevos: cubos, en_vivo: enVivo, implicito };
   } catch (e) { return { error: e.message }; }
   finally { _hoopsSnapsBusy = false; }
 }
@@ -15030,7 +15093,7 @@ async function shadowWeeklyReport({ force = false } = {}) {
   let polyTxt = '';
   try {
     const PSw = require('./propfirm/polyshadow').estado();
-    polyTxt = `\n\n────────────────────────────\nSOMBRA POLYMARKET (prop firm ejecutada directo en PM, banco simulado $${PSw.banco_inicial})\nEquity: $${PSw.equity} (efectivo $${PSw.efectivo} + expuesto $${PSw.expuesto}) · P&L $${fmt(PSw.pnl_usd)}${PSw.roi_pct != null ? ' · ROI ' + fmt(PSw.roi_pct) + '%' : ''}\nPosiciones: ${PSw.abiertas} abiertas · ${PSw.w}W-${PSw.l}L${PSw.slippage_medio_pp != null ? ' · slippage medio ' + fmt(PSw.slippage_medio_pp) + ' pp (fill real vs precio del aviso)' : ''}\nCapacidad: ${PSw.sin_fill} sin fill ahora · ${PSw.no_entro} nunca entraron (límite jamás alcanzado) · ${PSw.sin_token} sin token\nSi esta sombra da positivo sostenido, se cablea la API real del CLOB y se le mete dinero.`;
+    polyTxt = `\n\n────────────────────────────\nSOMBRA POLYMARKET (prop firm ejecutada directo en PM, banco simulado $${PSw.banco_inicial})\nEquity: $${PSw.equity} (efectivo $${PSw.efectivo} + expuesto $${PSw.expuesto}) · P&L $${fmt(PSw.pnl_usd)}${PSw.roi_pct != null ? ' · ROI ' + fmt(PSw.roi_pct) + '%' : ''}\nEl P&L va NETO de la comisión de la casa desde el 15-sep: bruto $${fmt(PSw.pnl_bruto_usd)}${PSw.roi_bruto_pct != null ? ' (ROI ' + fmt(PSw.roi_bruto_pct) + '%)' : ''} menos $${fmt(PSw.comisiones_usd)} de comisión a tasa ${PSw.tasa_comision}. Cualquier lectura anterior a esa fecha es el bruto.\nPosiciones: ${PSw.abiertas} abiertas · ${PSw.w}W-${PSw.l}L${PSw.slippage_medio_pp != null ? ' · slippage medio ' + fmt(PSw.slippage_medio_pp) + ' pp (fill real vs precio del aviso)' : ''}\nCapacidad: ${PSw.sin_fill} sin fill ahora · ${PSw.no_entro} nunca entraron (límite jamás alcanzado) · ${PSw.sin_token} sin token · ${PSw.ev_tras_comision} frenadas porque la comisión se comía la ventaja\nSi esta sombra da positivo sostenido, se cablea la API real del CLOB y se le mete dinero.`;
   } catch { /* la sombra poly jamás rompe el reporte */ }
   const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}${polyTxt}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
   if (mailer.isConfigured()) {
@@ -22040,7 +22103,10 @@ const server = http.createServer(async (req, res) => {
       const DT = require('./darts-engine/store');
       const out = { steps: [] };
       const step = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; } catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; } };
-      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await DT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, cloudbet_keys: o.cloudbet_keys }; });
+      // (15-sep, auditoría T1.14) `estado` por casa: una fuente con cero filas ya no se publica como viva.
+      // `sin_eventos` = respondió y no hay nada (Pinnacle deporte 10 hoy) · `error_red` = no respondió ·
+      // `no_configurada` = falta la credencial. Las tres daban `available: true` o `false` sin decir cuál.
+      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await DT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, estado: o.estado, eventos: o.eventos, cloudbet_keys: o.cloudbet_keys }; });
       if (url.searchParams.get('rec') === '1') await step('recordShadow', () => DT.recordShadow());
       // `?board=1` (7-sep): por qué el tablero no produce tesis — cuántos partidos hay en la ventana, cuántos
       // tienen los dos jugadores definidos, cuántos tienen mercado y en qué puerta muere cada candidata.
@@ -22089,7 +22155,9 @@ const server = http.createServer(async (req, res) => {
       const TT = require('./tt-engine/store');
       const out = { steps: [] };
       const step = async (name, fn) => { const t0 = Date.now(); try { const r = await fn(); out.steps.push({ name, ms: Date.now() - t0, ok: true, sample: r }); return r; } catch (e) { out.steps.push({ name, ms: Date.now() - t0, ok: false, error: e.message }); return null; } };
-      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await TT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, available: o.available, cloudbet_keys: o.cloudbet_keys, competitions: o.competitions.slice(0, 12) }; });
+      // (15-sep, auditoría T1.14) mismo cambio que en dardos: `available` solo es true con filas de verdad,
+      // y `estado` separa `sin_eventos` (Pinnacle deporte 32 hoy) de `error_red` y de `no_configurada`.
+      if (url.searchParams.get('odds') === '1') await step('refreshOdds', async () => { const o = await TT.refreshOdds({ force: true }); return { events: o.events.length, books: o.books, available: o.available, estado: o.estado, cloudbet_keys: o.cloudbet_keys, competitions: o.competitions.slice(0, 12) }; });
       if (url.searchParams.get('rec') === '1') await step('recordShadow', () => TT.recordShadow());
       if (url.searchParams.get('settle') === '1') await step('settleShadow', () => TT.settleShadow());
       if (url.searchParams.get('selftest') === '1') await step('selfTest', () => require('./tt-engine/compiler').selfTest());
@@ -22465,6 +22533,10 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get('buckets') === '1') out.buckets_clubes = await clubPicksCloseBuckets().catch((e) => ({ error: e.message }));
       if (url.searchParams.get('snaps') === '1') out.snaps_hoops = await hoopsCloseSnapshots().catch((e) => ({ error: e.message }));
       out.futbol = RF.track(); out.hoops = RH.track();
+      // CAPTURAS POR MOTOR (15-sep, A11): cuántas capturas de cierre intentó cada motor desde el último
+      // deploy y cuántas cayeron con el partido ya rodando. Es por proceso —se reinicia con el deploy—; el
+      // número duradero vive en cada archivo de cierres (`in_play_visto`) y en `cierres_in_play` de la vara.
+      try { out.capturas = require('./implied-engine/closes').diagInPlay(); } catch { out.capturas = null; }
       out.selftest = { futbol: require('./implied-engine/football').selfTest().ok, hoops: require('./implied-engine/hoops').selfTest().ok };
       // lo transferido a las sombras existentes
       try { out.clubes_tt_transfer = (clubDailyPicksTrackRecord() || {}).tt_transfer || null; } catch { out.clubes_tt_transfer = null; }
@@ -22805,6 +22877,10 @@ const server = http.createServer(async (req, res) => {
           // diagnóstico: una pizarra vacía con Pinnacle viva no es el mismo problema que una con las tres caídas
           books: ov.books,
           books_up: (ov.books || []).filter((b) => b.available).map((b) => b.book),
+          // (15-sep, auditoría T1.14) `books_up` se leía como "casas vivas" y no lo era: una casa que
+          // contestaba 200 con cero eventos entraba en la lista. Ahora `available` exige filas y aquí va el
+          // desglose con la causa de cada cero — `sin_eventos` no se arregla igual que `error_red`.
+          books_estado: Object.fromEntries((ov.books || []).map((b) => [b.book, b.estado || (b.available ? 'viva' : 'sin_eventos')])),
           public_flag: String(process.env.GP_ESPORTS_PUBLIC_ENABLED || '') === 'true',
           closes_job: String(process.env.GP_ESPORTS_CLOSES_ENABLED || 'true') !== 'false',
           closes_dir: ES.DIR, closes_dir_persistent: ES.DIR.indexOf(__dirname) !== 0,

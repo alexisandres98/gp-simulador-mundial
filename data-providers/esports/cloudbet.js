@@ -19,6 +19,7 @@
 // de este archivo sabe que existe Cloudbet.
 'use strict';
 
+const F = require('../../lib/fuente');
 const BASE = 'https://sports-api.cloudbet.com/pub/v2/odds';
 
 // Los cuatro títulos, con su clave en el proveedor y su gramática propia. `bo` es el formato por defecto
@@ -57,12 +58,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // deduplica por id — el mismo patrón que ya funciona en combate.
 async function fixtures(game, { days = 7, key = process.env.CLOUDBET_API_KEY || '' } = {}) {
   const G = GAMES[game];
-  if (!G || !key) return { game, events: [], competitions: [], available: !!key };
+  // (15-sep, auditoría T1.14) sin clave es `no_configurada` y sin juego es `error_red` — antes las dos
+  // devolvían `available: !!key`, que mezclaba "no está puesta la clave" con "este juego no existe".
+  if (!key) return F.marcar({ game, events: [], competitions: [] }, { configurada: false });
+  if (!G) return F.marcar({ game, events: [], competitions: [] }, { respondio: false });
   const seen = new Set(), events = [], comps = new Map();
   const t0 = Date.now();
+  // siete días sin respuesta NO es "no hay partidos": es la fuente caída, y hasta hoy se publicaban igual
+  let respondio = false;
   for (let k = 0; k < days; k++) {
     const d = new Date(t0 + k * 864e5).toISOString().slice(0, 10);
     const j = await cbFetch(`${BASE}/fixtures?sport=${G.key}&date=${d}`, key);
+    if (j) respondio = true;
     for (const c of (j && j.competitions) || []) {
       for (const e of c.events || []) {
         if (!e.home || !e.away || seen.has(e.id)) continue;
@@ -79,7 +86,7 @@ async function fixtures(game, { days = 7, key = process.env.CLOUDBET_API_KEY || 
     await sleep(220);
   }
   events.sort((a, b) => Date.parse(a.start_at || 0) - Date.parse(b.start_at || 0));
-  return { game, events, competitions: [...comps.values()], available: true, at: new Date().toISOString() };
+  return F.marcar({ game, events, competitions: [...comps.values()] }, { respondio, filas: events.length });
 }
 
 // Identidad de GP, no la del proveedor. El id propio es estable aunque Cloudbet renumere: se compone del

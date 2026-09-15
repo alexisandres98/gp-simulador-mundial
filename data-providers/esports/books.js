@@ -24,6 +24,7 @@
 // catálogo unificado con su procedencia. Quien decide es `esports-engine/store.js`.
 'use strict';
 
+const F = require('../../lib/fuente');
 const CB = require('./cloudbet');
 const PIN = require('./pinnacle');
 const BOV = require('./bovada');
@@ -96,10 +97,22 @@ async function slate(game, { days = 7, resolve = null } = {}) {
 
   const merged = [];
   const sources = [];
+  // (15-sep, auditoría T1.14) las casas APAGADAS o sin credencial también entran en el parte, con su motivo.
+  // Antes `enabled()` las filtraba y desaparecían del listado: una fuente que no se ve no se echa de menos.
+  for (const a of ADAPTERS) {
+    if (use.includes(a)) continue;
+    sources.push({ book: a.key, name: a.name, sharp: a.sharp, role: a.role,
+      available: false, estado: F.ESTADOS.NO_CONFIGURADA, por_que: a.why_not || 'apagada por GP_ESPORTS_BOOKS',
+      events: 0, competitions: 0 });
+  }
   for (const { a, r } of got) {
+    // `available` YA NO es "la llamada no reventó": es "respondió y trajo al menos un evento". Cero eventos
+    // con HTTP 200 es `sin_eventos`, y eso hay que poder distinguirlo de la fuente caída.
+    const est = F.deducir(r);
     sources.push({
       book: a.key, name: a.name, sharp: a.sharp, role: a.role,
-      available: !!(r && r.available), events: (r && r.events) ? r.events.length : 0,
+      available: est === F.ESTADOS.VIVA, estado: est, por_que: F.POR_QUE[est],
+      events: (r && r.events) ? r.events.length : 0,
       competitions: (r && r.competitions) ? r.competitions.length : 0,
     });
     for (const ev of (r && r.events) || []) {
@@ -160,7 +173,9 @@ async function slate(game, { days = 7, resolve = null } = {}) {
     game, events: merged, sources,
     books: sources.filter((s) => s.available).length,
     competitions: dedupComps(got),
-    available: sources.some((s) => s.available),
+    // (15-sep) la agenda está viva si HAY partidos, no si alguna casa contestó con las manos vacías
+    available: merged.length > 0,
+    estado: F.estado({ respondio: sources.some((s) => s.estado !== F.ESTADOS.ERROR_RED && s.estado !== F.ESTADOS.NO_CONFIGURADA), filas: merged.length }),
     at: new Date().toISOString(),
   };
 }

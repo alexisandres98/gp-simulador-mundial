@@ -104,22 +104,32 @@ function record(sport, theses, { baseline = null, ahora = Date.now() } = {}) {
 
 // ── CIERRES ─────────────────────────────────────────────────────────────────────────────────────────────
 // quoteFor(pick) → { own, best, pinnacle, age_min } con las cuotas actuales de esa selección; async.
-async function closes(sport, quoteFor, { ahora = Date.now(), windowMin = 95 } = {}) {
+// `eventoDe(pick)` → el evento (o la hora) del que sale el inicio REAL. Por defecto solo hay el kickoff
+// programado, y entonces la etiqueta lo declara (`inicio_fuente: 'programado'`). El día que fútbol y
+// baloncesto pasen aquí su marcador, esta misma puerta empieza a distinguir el retraso sin tocar nada más.
+async function closes(sport, quoteFor, { ahora = Date.now(), windowMin = 95, eventoDe = null } = {}) {
   const st = rd(sport);
   const vivas = Object.values(st.picks || {}).filter((p) => p.status === 'ACTIVE' && p.kickoff_at);
   const cerca = vivas.filter((p) => { const m = CL.minutesToStart(p.kickoff_at, ahora); return m != null && m <= windowMin && m > -3; });
-  let buckets = 0, refreshed = 0;
+  let buckets = 0, refreshed = 0, enVivo = 0;
   for (const p of cerca) {
     let snap = null;
     try { snap = await quoteFor(p); } catch { snap = null; }
     if (!snap) continue;
+    // EL CIERRE ES ANTES DEL SAQUE, NO ALREDEDOR (15-sep, A11 de la auditoría externa). La ventana de arriba
+    // llega hasta tres minutos DESPUÉS del kickoff para no perder el cubo T−1 de un partido que arranca entre
+    // pasadas, y en esos tres minutos `record` seguía refrescando `last` con precios ya en vivo. Ahora la
+    // captura se juzga antes de escribir: si el partido ya rodaba, se cuenta y no se toca nada. La etiqueta
+    // se estampa en la pick SOLO cuando se graba de verdad, para que no la pise una pasada posterior en vivo.
+    const est = CL.cuenta(`implicito:${sport}`, CL.estadoCaptura(eventoDe ? eventoDe(p) : p.kickoff_at, ahora));
+    if (est.in_play) { p.close_in_play_visto = (p.close_in_play_visto || 0) + 1; enVivo++; continue; }
     p.closes = p.closes || { buckets: {}, last: null };
     const b = CL.record(p.closes, p.kickoff_at, snap, ahora);
     if (b) buckets++;
-    if (p.closes.last) refreshed++;
+    if (p.closes.last) { refreshed++; p.close_captura = CL.etiquetaCaptura(est); }
   }
-  if (buckets || refreshed) { st.at = new Date(ahora).toISOString(); wr(sport, st); }
-  return { candidatas: cerca.length, cubos_nuevos: buckets, refrescadas: refreshed };
+  if (buckets || refreshed || enVivo) { st.at = new Date(ahora).toISOString(); wr(sport, st); }
+  return { candidatas: cerca.length, cubos_nuevos: buckets, refrescadas: refreshed, en_vivo: enVivo };
 }
 
 // ── LIQUIDACIÓN ─────────────────────────────────────────────────────────────────────────────────────────

@@ -20,9 +20,14 @@ let n = 0;
 const t = async (nombre, fn) => { try { await fn(); n++; } catch (e) { console.error('✗ ' + nombre + ': ' + e.message); process.exitCode = 1; } };
 
 const ko = () => new Date(Date.now() + 6 * 3600e3).toISOString();
+// El `consenso` de la señal SALE DEL PRECIO (4 pp por encima, que es el `edge_pp` declarado) en vez de ser
+// un 0,6 fijo. Con el filtro de EV neto del 15-sep una señal ya no es solo un precio: un consenso fijo
+// convertía el caso de precio 0,99 en una tesis con −39 pp de ventaja, que ningún ejecutor debe tomar y
+// que por tanto no sirve para probar el mínimo de acciones de la casa.
 const senal = (id, ev, lado, precio, extra = {}) => [id, { id, estado: 'ABIERTA', deporte: 'futbol', lado,
   evento: ev, mercado: 'Will X win on 2026-09-14?', precio_pm: precio, limite: precio, ko: ko(),
-  token: '123456789', outcome_idx: 1, pm_mid: '999', consenso: 0.6, edge_pp: 4, ...extra }];
+  token: '123456789', outcome_idx: 1, pm_mid: '999', consenso: +Math.min(0.995, precio + 0.04).toFixed(3),
+  edge_pp: 4, ...extra }];
 const limpia = () => EJ.reset();
 const colocador = (registro) => async (o) => { registro.push(o); return { ok: true, status: 200, respuesta: { orderID: 'ord-' + registro.length, success: true } }; };
 
@@ -81,6 +86,47 @@ const colocador = (registro) => async (o) => { registro.push(o); return { ok: tr
     const r = await EJ.barrer({ senales: Object.fromEntries([senal('a', 'A vs B', 'No', 0.99)]), colocarFn: colocador(puestas) });
     assert.strictEqual(r.colocadas, 1, 'a 0,99 con 5 dólares salen 5 acciones, que es el mínimo justo');
     assert.strictEqual(puestas[0].size, 5);
+  });
+
+  // ── LA COMISIÓN DE LA CASA (15-sep, hallazgo A09) ─────────────────────────────────────────────────────
+  // El ejecutor cruza siempre, y en Polymarket el que cruza paga. Estas tres pruebas existen porque el
+  // fallo que corrigen no se ve: las órdenes salen bien formadas, la casa las acepta y el P&L que se
+  // reporta es el de otro negocio — uno sin casa.
+  await t('una ventaja menor que la comisión NO genera orden', async () => {
+    limpia();
+    const puestas = [];
+    // a precio 0,50 la comisión es 0,05 × 0,25 = 0,0125 por acción, o sea 1,25 pp. Una ventaja declarada de
+    // 1 pp es positiva en bruto y negativa después de la casa: es una pérdida esperada, no una oportunidad.
+    const floja = senal('a', 'A vs B', 'No', 0.5, { consenso: 0.51, edge_pp: 1 });
+    const buena = senal('b', 'C vs D', 'No', 0.5, { consenso: 0.56, edge_pp: 6 });
+    const r = await EJ.barrer({ senales: Object.fromEntries([floja, buena]), colocarFn: colocador(puestas) });
+    assert.strictEqual(r.ev_tras_comision, 1, JSON.stringify(r.detalle));
+    assert.strictEqual(r.colocadas, 1, 'la de 6 pp sí tiene que entrar');
+    assert.strictEqual(puestas.length, 1);
+  });
+
+  await t('la comisión sale de la caja y del P&L, no del aire', async () => {
+    limpia();
+    const antes = EJ.estado().efectivo;
+    await EJ.barrer({ senales: Object.fromEntries([senal('a', 'A vs B', 'No', 0.5)]), colocarFn: colocador([]) });
+    const e = EJ.estado();
+    // 10 acciones a 0,50 → nocional 5,00 y comisión 10 × 0,05 × 0,25 = 0,125
+    assert.ok(Math.abs((antes - e.efectivo) - 5.13) < 0.02, 'salió de caja ' + (antes - e.efectivo));
+    assert.strictEqual(e.comisiones_usd_todas, 0.13);
+  });
+
+  await t('el P&L liquidado resta la comisión y conserva el bruto', async () => {
+    limpia();
+    await EJ.barrer({ senales: Object.fromEntries([senal('a', 'A vs B', 'No', 0.5)]), colocarFn: colocador([]) });
+    // gamma dice que ganó el outcome 1, que es el nuestro
+    const mercado = { id: '999', closed: true, outcomePrices: JSON.stringify(['0', '1']) };
+    const vieja = senal('a', 'A vs B', 'No', 0.5)[1];
+    await EJ.liquidar({ fetchJson: async () => mercado, ahora: Date.parse(vieja.ko) + 2 * 3600e3 });
+    const e = EJ.estado();
+    assert.strictEqual(e.w, 1);
+    assert.strictEqual(e.pnl_bruto_usd, 5, '10 acciones que pagan 1 menos 5 de coste');
+    assert.strictEqual(e.pnl_usd, 4.88, 'y menos 0,125 de comisión, redondeado');
+    assert.strictEqual(e.comisiones_usd, 0.13);
   });
 
   await t('el tope de exposición corta antes de vaciar el banco', async () => {

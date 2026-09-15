@@ -149,20 +149,60 @@ function marketFor(g, odds) {
     ml_p_home: mls.length ? r3(novig2(med(mls.map((x) => x.home)), med(mls.map((x) => x.away)))) : null,
     books: out.books.length,
   };
-  // mejor precio por lado (para medir edge contra lo EJECUTABLE, NFL-0613)
-  const best = (rows, side) => rows.reduce((b, x) => (!b || (x[side] || 0) > (b[side] || 0) ? x : b), null);
-  out.best = {
-    spread_home: best(sp.map((x, i) => ({ ...x, book: Object.keys(out.spread)[i] })), 'home'),
-    spread_away: best(sp.map((x, i) => ({ ...x, book: Object.keys(out.spread)[i] })), 'away'),
-    total_over: best(tt.map((x, i) => ({ ...x, book: Object.keys(out.total)[i] })), 'over'),
-    total_under: best(tt.map((x, i) => ({ ...x, book: Object.keys(out.total)[i] })), 'under'),
-    // EL GANADOR VUELVE A TENER MEJOR PRECIO (19-ago). Los precios de moneyline se recogían desde el primer
-    // día —`out.ml` está lleno— pero nadie calculaba el mejor por lado, porque la familia estaba cerrada y
-    // no había a qué medirse. Al reabrirla en sombra hace falta el precio ejecutable, igual que en las otras.
-    ml_home: best(mls.map((x, i) => ({ ...x, book: Object.keys(out.ml)[i] })), 'home'),
-    ml_away: best(mls.map((x, i) => ({ ...x, book: Object.keys(out.ml)[i] })), 'away'),
-  };
+  // ── MEJOR PRECIO POR LADO, PERO DE LA LÍNEA QUE SE VA A VALORAR (15-sep, A01 de la auditoría) ───────────
+  // Antes esto era un `reduce` a la cuota más alta del tablero SIN MIRAR LA LÍNEA, y después `evaluateEdges`
+  // valoraba `consensus.spread_line` con ese precio. Son dos contratos distintos: la casa que paga más suele
+  // pagar más porque su línea es peor, y cobrar por esa diferencia infla la ventaja SIEMPRE en la misma
+  // dirección. Ahora compite solo quien cotiza la MISMA línea, vía `lib/contrato` (la regla escrita una vez).
+  // Si nadie cotiza la línea del consenso, la respuesta correcta es `null` + motivo, no la cuota de al lado.
+  out.best = mejorPorLado(out, out.consensus);
   return out;
+}
+
+// El selector de precio con la tupla entera. `dict` es {casa: {line, <lado>: cuota}} tal y como lo arma
+// `marketFor`; se traduce a filas de `lib/contrato` y se pide la mejor DE ESA LÍNEA.
+// El hándicap se declara desde la cara que lo lleva: en la convención interna de este motor la línea es
+// "puntos que da el local" (positiva = local favorito), así que la cara `away` la lleva con el signo
+// cambiado y `contrato` la normaliza sola al lado A. En los totales la línea es común a las dos caras y en
+// el ganador no hay línea: ahí el objetivo es `null` y el comportamiento queda idéntico al de siempre.
+// Nota: `amfoot-engine/store.js` tiene el gemelo de esta función sobre la misma forma de datos.
+function mejorPorLado(out, consenso) {
+  const CT = require('../lib/contrato');
+  const pick = (dict, familia, lado, lineaObjetivo) => {
+    const esHcp = familia === 'SPREAD';
+    const filas = Object.entries(dict).map(([book, x]) => ({
+      casa: book, familia, lado, cuota: x[lado],
+      linea: x.line == null ? null : (esHcp && (lado === 'away') ? -x.line : x.line),
+      _row: x,
+    }));
+    const objetivo = lineaObjetivo == null ? null : (esHcp && lado === 'away' ? -lineaObjetivo : lineaObjetivo);
+    const r = CT.mejorPrecio(filas, { familia, lado, linea: objetivo });
+    return { fila: r.fila ? { ...r.fila._row, book: r.fila.casa } : null, descartes: r.descartes, motivo: r.motivo };
+  };
+  const spH = pick(out.spread, 'SPREAD', 'home', consenso.spread_line);
+  const spA = pick(out.spread, 'SPREAD', 'away', consenso.spread_line);
+  const ttO = pick(out.total, 'TOTAL', 'over', consenso.total_line);
+  const ttU = pick(out.total, 'TOTAL', 'under', consenso.total_line);
+  // EL GANADOR VUELVE A TENER MEJOR PRECIO (19-ago). Los precios de moneyline se recogían desde el primer
+  // día —`out.ml` está lleno— pero nadie calculaba el mejor por lado, porque la familia estaba cerrada y
+  // no había a qué medirse. Al reabrirla en sombra hace falta el precio ejecutable, igual que en las otras.
+  const mlH = pick(out.ml, 'MONEYLINE', 'home', null);
+  const mlA = pick(out.ml, 'MONEYLINE', 'away', null);
+  // EL CONTADOR: cuántas cotizaciones se quedaron fuera por ser de OTRA línea. Es el número que dice cuántas
+  // candidatas se estaban valorando contra el precio de un mercado que no era el suyo.
+  const suma = (...rs) => rs.reduce((s, r) => s + ((r.descartes && r.descartes.linea_distinta) || 0), 0);
+  return {
+    spread_home: spH.fila, spread_away: spA.fila,
+    total_over: ttO.fila, total_under: ttU.fila,
+    ml_home: mlH.fila, ml_away: mlA.fila,
+    descartadas_por_linea: { spread: suma(spH, spA), total: suma(ttO, ttU), moneyline: suma(mlH, mlA) },
+    sin_precio_en_linea: [
+      spH.fila ? null : (spH.motivo ? 'spread_home: ' + spH.motivo : null),
+      spA.fila ? null : (spA.motivo ? 'spread_away: ' + spA.motivo : null),
+      ttO.fila ? null : (ttO.motivo ? 'total_over: ' + ttO.motivo : null),
+      ttU.fila ? null : (ttU.motivo ? 'total_under: ' + ttU.motivo : null),
+    ].filter(Boolean),
+  };
 }
 
 // ── 3) CIERRES: cada refresh sobreescribe el snapshot del partido; el último antes del kickoff ES el
@@ -180,8 +220,23 @@ function snapshotCloses(rows) {
       if (mk.key === 'totals') { const o = (mk.outcomes || []).find((x) => x.name === 'Over'); if (o && o.point != null) tt.push({ line: o.point, price: o.price }); }
       if (mk.key === 'h2h') { const h = (mk.outcomes || []).find((o) => o.name === ev.home_team), a = (mk.outcomes || []).find((o) => o.name === ev.away_team); if (h) mlh.push(h.price); if (a) mla.push(a.price); }
     }
+    // CÓMO SE CAPTURÓ (15-sep, A11 de la auditoría externa). La ventana de arriba admite partidos empezados
+    // hace hasta una hora, y cada pasada SOBREESCRIBÍA el cierre: con barridos cada 30 min, el "cierre" de un
+    // partido de las 13:00 podía ser un precio de las 13:25, en vivo y con la primera posesión ya jugada.
+    // The Odds API no publica estado de partido, así que aquí el único inicio que hay es el programado
+    // (`commence_time`) y la etiqueta lo dice (`inicio_fuente: 'programado'`): se marca la captura y, si es
+    // en vivo, NO se pisa el cierre que ya estaba escrito. `lib/vara.js` excluye después las `in_play`.
+    const CL = require('../implied-engine/closes');
+    const est = CL.cuenta('nfl', CL.estadoCaptura(ev, now));
+    const cap = CL.etiquetaCaptura(est);
+    const prev = st.closes[ev.id] || null;
+    // y una captura en vivo NO PISA nunca un cierre ya escrito, tenga etiqueta o no: los registros anteriores
+    // al 15-sep no la llevan y el que está guardado es, casi siempre, el bueno (el de antes del kickoff).
+    if (cap === 'in_play' && prev) { prev.in_play_visto = (prev.in_play_visto || 0) + 1; continue; }
     st.closes[ev.id] = {
       home: ev.home_team, away: ev.away_team, commence: ev.commence_time, at: new Date().toISOString(),
+      captura: cap, inicio_fuente: est.inicio_fuente, in_play: est.in_play || undefined,
+      in_play_visto: prev && prev.in_play_visto ? prev.in_play_visto : undefined,
       spread_line: med(sp.map((x) => x.line)), spread_price: med(sp.map((x) => x.price)),
       total_line: med(tt.map((x) => x.line)), total_price: med(tt.map((x) => x.price)),
       ml_home: med(mlh), ml_away: med(mla),
@@ -556,6 +611,8 @@ async function settleShadow() {
         if (p.family === 'SPREAD' && cl.spread_line != null) p.close = { line: cl.spread_line, price: cl.spread_price };
         if (p.family === 'TOTAL' && cl.total_line != null) p.close = { line: cl.total_line, price: cl.total_price };
         if (p.close && p.close.price) p.clv_pct = +((p.odds / p.close.price - 1) * 100).toFixed(2);
+        // cómo se capturó ese cierre (15-sep, A11): la vara deja fuera del EV lo tomado con el partido rodando
+        p.close_captura = cl.captura || null;
       }
       p.settled_at = new Date().toISOString();
       settled++;
@@ -859,4 +916,5 @@ module.exports = {
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, track,
   recordShadow, settleShadow, refreshOdds, modelSnapshot, weatherFor, DOCTRINE, DISK_DIR,
   playersDirectory, search, injuriesFor, playerProfile, simMatch,
+  marketFor, mejorPorLado,   // (15-sep) expuestos para poder comprobar el selector de precio con la tupla
 };

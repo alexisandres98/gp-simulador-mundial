@@ -8617,6 +8617,1209 @@ ESP-AUT 2,05-0,77 → 2,74-0,31 → 3-0 · MEX-ECU 1,41-1,32 → 1,02-0,72 → 2
 
 ---
 
+# PARTE E — ESPORTS
+
+## E.1 📄 Agregado por juego
+
+### E.1.1 Corte del 2-sep (`docs/AUTOPSIA_MODELOS_2026-09-02.md` §2, tras las correcciones de liquidación)
+
+| Familia | n | Acierto | ROI | CLV medio (t) | Brier modelo vs mercado | Veredicto |
+|---|---:|---:|---:|---|---|---|
+| CS2 (todas) | 738 | 47,6 % | **+4,0 %** | +2,2 | 0,252 vs 0,244 | gana por **precio y momento**, no por modelo |
+| CS2 RONDAS_HANDICAP perro | 183 | 54,1 % | **+18,6 %** | +2,3 | — | el único bolsillo con edge que sobrevive al cierre (**+5,7 %**) |
+| Valorant (todas) | 304 | 35,2 % | **−8,2 %** | 0,0 | **0,248 vs 0,221** | modelo claramente inferior |
+| LoL KILLS_HANDICAP | 238 | 58,0 % | +2,0 % | +0,1 | — | sobreconfiado 20-30 pp; edge ≈ 0 |
+| Dota KILLS/KILLS_H | 122 | 50 % | −6,9 % | 0,0 | **0,273 vs 0,252** | inferior |
+
+### E.1.2 Corte del 7-sep (`semana-37.html:247-253`)
+
+| Juego | Liquidadas | G / P | Acierto | Unidades | ROI | CLV | Familias que confirman | En contra |
+|---|---:|---|---:|---:|---:|---:|---|---|
+| CS2 | 1.480 | 575 / 669 | 46,2 % | **+12,5** | +0,8 % | **+3,92 %** | RONDAS_HANDICAP (+32,6 u), RONDAS, HANDICAP, RONDAS_EQUIPO | — |
+| LoL | 681 | 368 / 303 | 54,8 % | **+12,1** | +1,8 % | **+1,22 %** | KILLS total (+13,6 u, Bovada), HANDICAP mapas (+9,3 u) | KILLS_HANDICAP (−9,7 u), KILLS_DNB |
+| Valorant | 374 | 136 / 238 | 36,4 % | **−21,8** | −5,8 % | +0,69 % | RONDAS total (CLV, no ROI) | RONDAS_HANDICAP (−25,4 u, plana) |
+| Dota 2 | 148 | 72 / 76 | 48,6 % | **−9,6** | −6,5 % | +4,45 % | KILLS total promete (t 1,82) | KILLS_HANDICAP, KILLS_EQUIPO |
+
+### E.1.3 Corte del 14-sep (`semana-38.html:229-238`)
+
+| Juego | Liquidadas | Acierto | Unidades | ROI | CLV | Activas |
+|---|---:|---:|---:|---:|---:|---:|
+| CS2 | 2.135 | 45,6 % | **+13,93** | **+0,65 %** | **+4,37 %** | 242 |
+| LoL | 1.121 | 55,1 % | **+22,51** | **+2,01 %** | **+1,27 %** | 112 |
+| Valorant | 435 | 36,9 % | −19,16 | −4,40 % | **+0,65 %** | 14 |
+| Dota 2 | 289 | 48,1 % | −17,65 | −6,11 % | **+1,89 %** | 90 |
+
+«Los cuatro juegos tienen CLV positivo… El CLV de CS2 (**+4,37 % sobre 1.936 mediciones**) es el número más
+sólido de toda la plataforma.»
+
+## E.2 📄 CS2 por casa (hándicap de rondas)
+
+| Fecha | Casa | n | Acierto | ROI | CLV | Fuente |
+|---|---|---:|---:|---:|---:|---|
+| 2-sep | **Pinnacle cotizando solo (bq1)** | 287 | — | **+15,6 %** | **+1,7 (t 4,4)** | AUTOPSIA §4.4 |
+| 2-sep | Cloudbet bq1 | 91 | — | −9,1 % | +3,6 | AUTOPSIA §4.4 |
+| 3-sep | Pinnacle | 108 | — | **+23 % flat** | +1,6 | HANDOFF.md:833 |
+| 3-sep | Cloudbet | 59 | — | −19 % | — | HANDOFF.md:834 |
+| 7-sep | Pinnacle | 341 | 41,3 % | **+11,6 %** | **+1,14 % (t 3,33)** | `semana-37.html:255` |
+| 7-sep | Bovada | 276 | 44,9 % | +4,9 % | — | ídem |
+| 7-sep | Cloudbet | 251 | 31,9 % | **−8,1 %** | +2,72 % | ídem |
+| 13-sep | Pinnacle | 450 | — | 4 semanas de ROI positivo (+15,5 / +33,7 / +4,5 / +9,0) | **+0,92 (t 2,96)** | HANDOFF.md:451 |
+
+**Descomposición del momento (2-sep, AUTOPSIA §4.4):** el **43 % de las picks ven bajar su cuota al cierre**
+(CLV +7,8 en esas) frente al 24 % que la ven subir; el ROI evaluado **al precio de cierre** cae de +2,4 % a
++0,9 % en general, pero **RONDAS_HANDICAP conserva +5,7 % al cierre (n=374)** y los perros de hándicap (+3,6
+rondas de media) rinden **+18,6 % (n=183)** frente a −0,8 % los favoritos.
+
+**Bugs de modelo declarados en la misma autopsia:** `clampRound` aplicado **dos veces** (0,42² ≈ 0,18 de la
+ventaja real); la variable comprimida usada como probabilidad de mapa en `simulateSeries`.
+
+## E.3 📐 CS2 — validación del rating (`data/esports/cs2/meta.json`, 19-ago 09:54Z)
+
+| Magnitud | Valor |
+|---|---|
+| Cobertura | 88.620 partidas · 84.523 casadas · 4.097 sin casar · 1.700 equipos · 15 mapas · 32.311 pares |
+| Modelo | jerárquico calibrado: Elo GLOBAL + corrección por mapa encogida |
+| **Validación walk-forward** | **14.297 mapas de 2026 no vistos**: skill de Brier **7,28 %**, **AUC 0,652**, **ECE 0,008**, pendiente de calibración **0,999** |
+| Elo POR MAPA (descartado) | predice peor que el global: **3,04 % de skill contra 6,88 %** |
+
+Constantes declaradas: `half_life_days` 180 · `prior_maps` 12 · pesos de tier s 1 / a 0,95 / b 0,8 / c 0,5 /
+d 0,35 · `map_effect_prior` 20.
+
+Medición previa del 16-ago (HANDOFF.md:2330): «la validación tumbó el modelo que yo había defendido» — misma
+conclusión.
+
+## E.4 📄 Props de CS2 (Underdog)
+
+| Fecha | Versión | n | Acierto | ROI | CLV de línea | t | Fuente |
+|---|---|---:|---:|---:|---:|---:|---|
+| 20-ago (base rota) | — | 87 | 47-40 | +3,01 % | — | — | HANDOFF.md:1811 |
+| 20-ago (rehecha) | — | 91 | 48-43 | **+0,51 %** | **+0,07 %** | — | HANDOFF.md:1811 |
+| 7-sep | `props_cs2_v2` | 302 | 52,7 % | −0,3 % | **+0,58 %** | **3,33** | `semana-37.html:197,257` |
+| 7-sep | `props_cs2_v1` | 142 | 50,7 % | −3,6 % | +0,40 % | 1,54 | `semana-37.html:198` |
+| 7-sep | v1+v2 juntas | 444 | — | — | +0,58 % | 3,33 | `semana-37.html:158` |
+| **14-sep** | **`props_cs2_v2`** | **330** | **53,9 %** | **+2,2 %** | **+0,47 %** | **3,21** | `semana-38.html:181,239` |
+| 14-sep | `props_cs2_v1` | — | — | — | — | 1,54 («promete») | `semana-38.html:239` |
+
+Regla congelada `props_cs2_v2`: **listón 10 pp** (v1 entraba desde 6). «Cada tesis guarda con qué versión
+nació… v1 y v2 no son la misma familia» (HANDOFF.md:1813-1815).
+
+Nota del 7-sep: «la línea se mueve a nuestro favor de forma medible pero el pago por pierna del libro DFS se
+lo come. Seguir en sombra hasta ver si el acierto sube del 52 % al **55 %** que hace rentable la pierna»
+(`semana-37.html:257`).
+
+## E.5 📐 LoL — validación del rating (`data/esports/lol/priors.json`, 2-sep 08:05Z)
+
+**Base propia:** 97.588 partidas (2020-01-03 → 2026-09-01), 3.251 equipos; 535.478 filas de scoreboard de
+jugador (2023-01-06 → 2026-09-01); 33.185 drafts (2024-01-01 → 2026-08-31) (HANDOFF.md:930-934).
+
+Constantes: **K = 32, `patch_decay` = 1, `side_step` = 1, `min_n` = 10**. Ventaja de lado azul: **+24,5 Elo**
+(52,79 % de victorias del azul).
+
+| Ventana | Modelo | n | Brier | Skill % | AUC | ECE | Acierto % |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Desarrollo | gp | 72.903 | 0,22443 | **10,23** | 0,6814 | 0,0127 | 63,34 |
+| Desarrollo | elo | 72.903 | 0,22517 | 9,93 | 0,6816 | 0,0307 | 63,00 |
+| Desarrollo | lado | 72.903 | 0,24915 | 0,34 | 0,4964 | 0,0010 | 52,94 |
+| **Holdout 120 d** | **gp** | **4.372** | **0,22059** | **11,76** | **0,6893** | **0,0161** | **64,41** |
+| Holdout 120 d | elo | 4.372 | 0,22172 | 11,31 | 0,6894 | 0,0365 | 63,17 |
+| Holdout 120 d | lado | 4.372 | 0,24780 | 0,88 | 0,5062 | 0,0250 | 55,31 |
+
+Espejo de HuggingFace (misma conclusión, distinta numeración): 12,75 / 12,56 / 0,67 y +20,4 Elo de lado
+(HANDOFF.md:938-939).
+
+Nota del propio archivo: «**Brier skill NO es rentabilidad**: sin histórico de cuotas propio de LoL, esto
+dice que el modelo predice, no que gane dinero».
+
+**Fases 4 y 7** (HANDOFF.md:944-948): `player-stats.json` con **2.883 jugadores** con rating GP por rol (≥8
+partidas en 365 d); `champions.json` con **18.695 filas** parche×rol×campeón + bans; Ranking GP (BLG #1, Elo
+**1.914**); Draft Room resuelto en los dos lados (HLE–T1: fragilidad **16,4 % vs 19 %**).
+
+## E.6 📐 Generador de kills de LoL (`data/esports/lol/gen-priors.json`, 9-sep 07:48Z) 🔬
+
+**Walk-forward mensual 2024-01 → 2026-09, 38.761 partidas predichas, pMap = 0,5.** Fuente de celda:
+celda 4.469 / liga 29.867 / circuito 4.425. Constantes: ventana 365 d, ventana de liga 240 d, `shrink_k` 30,
+`min_cell` 8, 20.000 simulaciones, semilla 77.
+
+| Variante | MAE kills | log-loss mediana | Brier mediana | log-loss +3 | log-loss −3 |
+|---|---:|---:|---:|---:|---:|
+| **Generador** | 7,65 | 0,6966 | 0,2517 | 0,6811 | 0,6418 |
+| Liga plana (Poisson) | 7,62 | 0,6927 | 0,2498 | 0,6761 | 0,6694 |
+| Liga histograma (n=32.464) | **7,46** | 0,6948 | — | 0,6664 | 0,6551 |
+| Circuito | 8,05 | 0,6923 | 0,2496 | — | — |
+
+**Log-loss multilínea** (líneas −9, −6, −3, 0, +3, +6, +9): generador **0,5766** · liga plana 0,6167 · liga
+histograma 0,5755 · generador en la misma muestra 0,5738.
+
+| Skill declarado | Valor |
+|---|---:|
+| Multilínea vs histograma de liga | **+0,2954 %** |
+| Multilínea vs Poisson plana de liga | **+6,5024 %** |
+| vs liga (mediana) | −0,74 % |
+| vs liga histograma (mediana) | −0,11 % |
+
+**Veredicto textual del archivo:** «El generador bate a la Poisson plana de liga en un 6,5 % de log-loss
+multilínea (dispersión), pero al histograma empírico de la liga solo en un 0,3-0,5 %: la estructura no aporta
+sobre la FORMA de la liga cuando pMap = 0,5. **Sesgo conocido:** en las colas (mediana ± 3) el over realizado
+supera al predicho en **4-5 pp** en walk-forward.»
+
+Calibración por decil guardada en el archivo (deciles con n>0): decil 2 n=18 p 0,292 obs 0,3889 · decil 3
+n=38.226 p 0,3624 obs 0,4097 · decil 4 n=517 p 0,4045 obs 0,2959 · decil 5 n=8.314 p 0,5912 obs 0,6180 ·
+decil 6 n=30.447 p 0,6225 obs 0,6779.
+
+**Primera pasada en producción** (9-sep 08:40Z, HANDOFF.md:612-614): 2 eventos con kills cotizados, 90 pares
+evaluados, **7 tesis** (KILLS over 31,5/32,5 en LCK CL con 4-5 pp de ventaja y 1,85 de incertidumbre), 12
+muertas por incertidumbre.
+
+Acople medido (HANDOFF.md:602): **b_len −0,98, b_kpm −0,38, ρ −0,47.** Discrepancia de perfil señalada:
+«LCK 0,62 kpm cuando la base mide 0,90» (TODO_NEXT.md:114).
+
+## E.7 📐 Valorant — validación (`data/esports/valorant/priors.json`, 18-ago 11:47Z)
+
+Base: 32.508 series (vlr.gg), 5.273 equipos. Constantes: K 32, `margin_boost` 1,7, `idle_boost` 1,5,
+`min_n` 10, `idle_days` 60.
+
+| Ventana | Modelo | n | Brier | Skill % | AUC | ECE | Acierto % |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Desarrollo | gp | 14.116 | 0,21827 | **12,69** | 0,6986 | 0,0261 | 64,91 |
+| **Holdout 120 d** | gp | 893 | 0,23011 | **7,96** | 0,6638 | 0,0502 | 63,27 |
+| Holdout 120 d | elo plano | 893 | 0,22994 | **8,02** | 0,6602 | 0,0493 | 63,38 |
+
+(El Elo plano queda por encima del modelo GP en el holdout: 8,02 vs 7,96.)
+
+**Autopsia de Valorant (2-sep, §4.3):** 304 picks, 35 % de acierto, **Brier 0,248 vs 0,221 del mercado**. En
+RONDAS_HANDICAP el equipo elegido **ganó el mapa solo el 38 %** de las veces (favoritos elegidos 41 %, perros
+35 %). RONDAS: 80 unders con línea media **20,3** y total real medio **21,2** (sd 2,9, 5,5 % de prórrogas).
+Calibración: donde el modelo dice ≥70 ocurre el **42 %**.
+
+**Backtest de mejoras (2-sep, §2 de BACKTESTS):** la bisección de pRound en vez de `×0,44` **sobrevive como
+parche** (Brier del hándicap de rondas **−0,015**, SE 0,0055, n=128; con ella **0 de las 80 under** habrían
+nacido). Anclar la p de mapa al mercado: **recomendado por eliminación** (ningún rating propio bate al
+win-rate, Δ −0,0022 ± 0,0022; favorito de producción gana **45 %** (n=106) frente a una implícita del mercado
+de **55,7 %**). Blend: **RECHAZADO**, c = −0,20 (RONDAS_HANDICAP −0,40).
+
+Apertura de Valorant medida el 20-ago (HANDOFF.md:1838-1840): de **0 picks a 56** sobre 14 partidos (RONDAS
+19, RONDAS_HANDICAP 24, HANDICAP 9, RONDAS_EQUIPO 4), con el veto de calibración rechazando **419 líneas**.
+
+## E.8 📐 Dota 2 — validación (`data/esports/dota2/priors.json`, 18-ago 11:50Z)
+
+Base: 49.645 partidos (OpenDota), 3.326 equipos. Constantes: K 12, `min_n` 8, `side_step` 2. Ventaja de
+Radiant: **+3,7 Elo** (51,3 % de victorias).
+
+| Modelo | n | Brier | Skill % | AUC | ECE | Log-loss | Acierto % |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| moneda | 39.434 | 0,25000 | 0 | 0,5000 | 0,0101 | 0,69315 | 51,01 |
+| lado | 39.434 | 0,24990 | 0,04 | 0,5032 | 0,0036 | 0,69295 | 50,83 |
+| **elo** | 39.434 | 0,24433 | **2,27** | 0,5798 | 0,0176 | 0,68145 | 55,26 |
+| elo_lado | 39.434 | 0,24444 | 2,22 | 0,5798 | 0,0194 | 0,68171 | 55,35 |
+
+## E.9 Liquidación de esports — deuda medida
+
+| Fecha | Estado | Fuente |
+|---|---|---|
+| 21-ago | Atascadas: CS2 **85**, LoL **31**, Valorant **60**, Dota 2 **2**. «Todo sano menos esports» | HANDOFF.md:1473-1487 |
+| 21-ago | ~55 de Valorant y 27 de CS2 son **`unsettleable`** (la fuente no publica rondas por mapa): no se pueden liquidar nunca. 65 de CS2 y 20 de LoL son `unmatched` | HANDOFF.md:1505-1512 |
+| 2-sep | 137 picks de LoL y 62 de Dota atascadas por límites de las fuentes (Leaguepedia 500 filas, OpenDota 100 partidos) | AUTOPSIA §1 |
+| 7-sep | Liquidación desatascada: **106 picks liquidadas y 169 anuladas** (mapa no jugado) en una pasada. Quedan **166 sin casar** (Moscow Cyber Games 55, United21 16, European Pro League 15); caducan a los 21 días | `semana-37.html:256` |
+| 7-sep (dinero real) | **43 apuestas reales de CS2 (271 USDT)** sin liquidar desde el 1-sep por tres fallos encadenados | HANDOFF.md:703-711 |
+
+---
+
+# PARTE F — TENIS
+
+## F.1 📄 Track del monitor
+
+| Fecha | n | G / P | Acierto | Unidades | ROI | CLV global | Fuente |
+|---|---:|---|---:|---:|---:|---:|---|
+| 2-sep (antes de re-liquidar) | 429 | — | — | — | **+44 %** (artefacto) | — | AUTOPSIA §1 |
+| 2-sep (tras re-liquidar) | 392 | 148 / 148 (de las 297 reabiertas) | — | — | **+7,3 %** | **−12,5 %** | AUTOPSIA §1 |
+| 7-sep | 675 | 338 / 334 | — | **+41,2** | **+6,1 %** | **−11,6 %** | `semana-37.html:262` |
+| **14-sep** | **755** | **377 / 375** | — | **+39,61** | **+5,25 %** | **−10,5 %** | `semana-38.html:242` |
+
+## F.2 📄 Por familia
+
+| Fecha | Familia | n | Acierto | Unidades / ROI | CLV | t | Estado |
+|---|---|---:|---:|---|---:|---:|---|
+| 2-sep | ML | 109 | 43,1 % | +9,9 % | **−15,3** | −2,5 | «benchmark, nunca pick» |
+| 2-sep | SPREAD | 205 | 51,9 % | +1,9 % | **−6,8** | −3,4 | inferior al cierre |
+| 2-sep | TOTAL | 77 | 61,0 % | **+17,9 %** | +2,5 (n=9) | — | prometedor, n corto |
+| 7-sep | ML | 170 | 41,2 % | +12,6 % | **−16,7 %** | −4,59 | DESCARTAR |
+| 7-sep | SPREAD | 355 | 51,0 % | +0,2 % | −4,33 % | −2,74 | EN_CONTRA |
+| 7-sep | TOTAL | 150 | 58,0 % | +12,7 % (+19 u) | −1,81 % | −0,54 | PLANA |
+| **14-sep** | **ML** | **193** | **42,0 %** | **+22,30 u** | **−15,52 %** | **−4,65** | **descartar por la vara** |
+| **14-sep** | **SPREAD** | **394** | **51,3 %** | **+2,68 u** | **−3,50 %** | — | en contra |
+| **14-sep** | **TOTAL** | **168** | **56,0 %** | **+14,63 u** | **−1,46 %** | — | plana, «la menos mala» |
+
+**Señal del 14-sep:** TOTAL contra el cierre de **Pinnacle en concreto** da CLV **+2,33 % con t = 2,99 — pero
+solo hay 2 mediciones** (`semana-38.html:251`).
+
+**Brier del 2-sep (AUTOPSIA §4.8):** modelo **0,247 vs 0,238** de la implícita con margen.
+
+## F.3 📄 Preregistro TOTAL con ventaja ≥ 8 pp (`docs/PREREGISTRO_TENIS_TOTAL.md`, congelado 2-sep)
+
+Regla congelada: ventaja ≥ **8 pp** al nacer (`edge_pp_at_create`); **unidad de cuenta = el EVENTO**;
+**60 eventos** liquidados; vara = **CLV medio por evento contra Pinnacle** (éxito CLV > 0 con t ≥ 2); «el ROI
+se anota pero NO decide» (con 60 eventos el SE del ROI ronda 12-15 puntos).
+
+| Fecha | Resultado parcial | Fuente |
+|---|---|---|
+| 7-sep | **39 eventos decididos, ROI +29,4 % (t 1,98), acierto 66,7 %.** Solo 8 de los 60 eventos preregistrados se han jugado. CLV contra Pinnacle: 2 medidas, +2,3 % | `semana-37.html:264`; `:163` |
+| 14-sep | El preregistro «sigue siendo lo más prometedor de tenis y sigue sin muestra» | `semana-38.html:251` |
+
+**Advertencia de origen** (`PREREGISTRO_TENIS_TOTAL.md`): el libro de TOTAL «(+18 % por pick) eran 77 picks
+que en realidad son **43 eventos**, con **ROI por evento +10,5 % (SE 14,7, t 0,72)** y solo 9 cierres
+capturados. **No hay prueba.**»
+
+## F.4 📐 Validación del modelo de tenis (`data/tennis/model-priors.json`, 18-ago 15:55Z, `dev_end` 20250101)
+
+**ATP:**
+
+| Ventana | Variante | n | Log-loss | Brier | Acierto | AUC | Skill % |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Desarrollo | elo_mix | 18.384 | 0,62219 | 0,21709 | 64,45 % | 0,7078 | 10,24 |
+| Desarrollo | compiled | 18.384 | 0,62595 | 0,21916 | 63,83 % | 0,6976 | 9,69 |
+| Desarrollo | **ensemble** | 18.384 | **0,61865** | **0,21575** | 64,52 % | 0,7101 | **10,75** |
+| Holdout | rank | 4.141 | 0,63223 | 0,22099 | 64,57 % | 0,7035 | 8,79 |
+| Holdout | gen | 4.141 | 0,62616 | 0,21832 | 64,62 % | 0,7080 | 9,66 |
+| Holdout | mix | 4.141 | 0,62263 | 0,21716 | 64,40 % | 0,7092 | 10,17 |
+| Holdout | comp | 4.141 | 0,63040 | 0,22095 | 63,12 % | 0,6930 | 9,05 |
+| **Holdout** | **ens** | **4.141** | **0,62035** | **0,21634** | 64,33 % | **0,7107** | **10,50** |
+
+ATP juegos: **MAE 5,502 vs 5,576 del ingenuo**; Brier de tie-break 0,23106. Desarrollo: forma MAE 5,890 vs
+5,594 del ingenuo.
+
+**WTA:**
+
+| Ventana | Variante | n | Log-loss | Brier | Acierto | AUC | Skill % |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Desarrollo | elo_mix | 16.911 | 0,61844 | 0,21531 | 65,29 % | 0,7128 | 10,78 |
+| Desarrollo | **ensemble** | 16.911 | **0,61783** | **0,21506** | 65,35 % | 0,7134 | **10,87** |
+| Holdout | rank | 3.641 | 0,63166 | 0,22075 | 62,92 % | 0,7002 | 8,87 |
+| Holdout | gen | 3.641 | 0,61579 | 0,21370 | 65,56 % | 0,7206 | 11,16 |
+| Holdout | mix | 3.641 | 0,61279 | 0,21259 | 65,81 % | 0,7225 | 11,59 |
+| **Holdout** | **ens** | **3.641** | **0,61196** | **0,21220** | **66,03 %** | **0,7235** | **11,71** |
+
+WTA juegos: MAE 4,797 vs 4,859 del ingenuo; Brier de tie-break 0,18605.
+
+## F.5 🔬 Backtests de tenis (2-sep)
+
+| Mejora | Veredicto | Efecto medido | Fuente |
+|---|---|---|---|
+| **Edad lineal** en el logit del ensamble ATP | **SOBREVIVE (la más sólida)** | skill **10,12 → 10,62 %**, ΔLL 0,00345, **t 5,8**, n=4.908; coeficiente estable 9 años | BACKTESTS §2 |
+| **Calendario** (log días sin jugar + partidos en 7 días) | SOBREVIVE DEGRADADA | **+0,4 pp de skill** dada la edad (ΔLL 0,00273, **t 3,1**); los otros 5 rasgos de fatiga no aportan | BACKTESTS §2 |
+| **Distribución C6** (punto + residuo empírico por formato×tercil) | SOBREVIVE **solo en ATP bo3** | ATP bo3: Brier over/under abanico **0,2421 → 0,2392 (t 9,9)**, CRPS t 8,9, fiabilidad 0,444 → 0,443 | BACKTESTS §2 |
+| Saque/resto por superficie | RECHAZADA | — | BACKTESTS §6.3 |
+| WTA: edad y fatiga | RECHAZADAS | empeoran | BACKTESTS §2 |
+
+**Reproducción en la rama de implementación** (`docs/impl/tenis-REPORT.md`, holdout 2025→, solo lectura):
+
+| Tour | Formato | n | P(real>med) shift | P(real>med) c6 | ΔBrier abanico | t abanico | ΔBrier línea fija | t fija |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| atp | bo3 | 3.931 | 0,419 | **0,456** | **0,00328** | **5,38** | 0,00527 | 5,56 |
+| atp | bo5 | 975 | 0,475 | 0,508 | 0,00082 | 0,61 | 0,00044 | 0,32 |
+| wta | bo3 | 4.488 | 0,444 | 0,494 | 0,00056 | 1,03 | 0,00105 | 1,26 |
+
+Cortes de tercil ATP bo3: expGames **24,73 / 25,04**; por tercil n = 4.960/4.978/4.979, media R 0,15 / −0,27 /
+0,09. ATP bo5: cortes 40,11 / 41,12, media R −0,14 / −0,35 / −0,17. WTA bo3: cortes 23,97 / 24,38, media R
+−0,03 / −0,09 / 0,25.
+
+**Defecto de datos reparado:** **1.024 de 1.526 filas** de la cola ESPN tenían `best_of` mal (ATP nivel 250
+marcado bo5: 516 filas; WTA bo5: 508 filas) (`docs/impl/tenis-REPORT.md`).
+
+## F.6 Deuda de liquidación de tenis
+
+| Fecha | Estado |
+|---|---|
+| 2-sep | **268 de 429 picks liquidadas con 0-0** y 56 con sets sueltos; `resettleShadow` reabrió y re-liquidó **297** picks → 148-148 (AUTOPSIA §1) |
+| 7-sep | **39 picks vencidas sin cerrar** (28 sin cruce de nombres, 11 con marcador incompleto) + 60 abiertas del US Open (`semana-37.html:265`) |
+| 14-sep | **9 vencidas sin cerrar** (6 sin cruce de nombres, 3 con marcador incompleto) (`semana-38.html:252`) |
+
+---
+
+# PARTE G — BALONCESTO
+
+## G.1 📐 Evaluación fuera de muestra del 15-ago (TODO_NEXT.md:929-941)
+
+| | NBA | WNBA |
+|---|---:|---:|
+| Partidos evaluados | 772 | 164 |
+| Brier del mercado (cierre) | 0,1878 | 0,1953 |
+| Brier de GP | 0,2083 | 0,2032 |
+| **Skill vs cierre** | **−0,0205 ± 0,0040 · t = −5,16** | **−0,0079 ± 0,0067 · t = −1,18** |
+| Acierto | 67,0 % | 67,7 % |
+| MAE de margen | 12,11 | 9,80 |
+
+Huecos medidos en los propios datos: 546 jugadores cosechados en NBA y **cero usados** (el jugador más usado
+juega 37,2 min de media); **15,3 %** de los partidos NBA son back-to-back y el equipo en B2B rinde **1,56
+puntos peor (n=261)** —casi el doble de la ventaja de cancha modelada (1,68)—; el detector de garbage time
+marca el **64 %** de los partidos.
+
+## G.2 🔬 Backtest al cierre del 23-ago (TODO_NEXT.md:812-826)
+
+| | NBA (911 partidos) | WNBA (203) |
+|---|---|---|
+| ROI base | **−7,27 % ± 2,67 · t = −2,72** | −6,15 % ± 6,12 |
+| Ganador | −11,87 % (t = −2,05) | −20,73 % |
+| Hándicap | −8,80 % (t = −2,39) | −0,34 % |
+| **Total** | **−0,26 % (t = −0,06)** | **+2,15 %** |
+
+Diagnóstico: «las picks prometían **56,5 %** de acierto y dieron **43,6 %**. En el tramo donde el modelo más
+confía (67-83 %) acertó el **49,3 %**.» Apostar lo contrario tampoco gana (−2,69 % en NBA).
+
+**ROI por banda de ventaja en NBA:** 2-4 pp −3,6 % · 4-6 pp −2,79 % · **6-8 pp −16,07 %** · 8-12 pp −6,61 % ·
+12+ −8,31 %.
+
+**Props medidos el 16-ago (WNBA, 50 casas, 4 partidos):**
+
+| | Casas por línea | Vig | EV mejor precio vs consenso | Líneas con EV ≥ 2 % |
+|---|---:|---:|---|---:|
+| Mercado principal | 8 | **4,71 %** | mediana −3,45 % | **9 %** |
+| Props | 6 | **6,98 %** | mediana −4,07 % | **1 %** |
+
+«Los props son más caros y están más de acuerdo entre sí, no menos… el listón real para batirlos no es 3,5 pp
+sino **~4 pp sobre el consenso sin margen**.»
+
+## G.3 🔬 Autopsia + refit del 31-ago (TODO_NEXT.md:579-591)
+
+Walk-forward local sobre **275 partidos WNBA 2026**: acortar la media vida del rating **EMPEORA** el skill
+contra el mercado (**hl=45 → skill −0,0079; hl=14 → −0,0128**). Back-to-back: el equipo rinde 4-9 pts bajo su
+proyección (b2b local −4,4; rival en b2b +8,9 para el local) pero **n=9**. Vara declarada de la v2: CLV
+medio ≥ 0 y % positivo ≥ 40 % con **n ≥ 60** liquidadas.
+
+## G.4 🔬 Backtests del 2-sep (BACKTESTS §2, §5)
+
+| Hipótesis | Veredicto | Efecto medido |
+|---|---|---|
+| Histograma de totales a 1 punto | SOBREVIVE como corrección de código, **no** como rentabilidad | sesgo determinista **±4,3 / 2,1 pp** por resto de la línea; al cierre WNBA **−6,4 % ± 9,4**, NBA **−2,25 % ± 4,0** |
+| Umbral × peso de mezcla | **RECHAZADA** | β(desacuerdo modelo−cierre → residuo) ≈ 0: WNBA total **−0,22 [−1,01; 0,52]**, NBA **−0,05 [−0,29; 0,18]** |
+| Fórmula del CLV | **DEFECTO CONFIRMADO** | **−3,16 de los −4,62 puntos** del CLV de hándicap son el margen de la casa. **79 picks = 15 tesis** |
+| Descanso diferencial → over WNBA | **PREREGISTRAR** | corr **−0,24 dev / −0,16 test**; regla **13/18 en test (+37,9 % ± 20,7)** pero **p = 0,11** frente al over ciego (56,2 %). En NBA no existe (corr −0,007, n=879) |
+
+**Bug de los cubos de 5 (AUTOPSIA §1.3):** «toda línea justo por debajo de un múltiplo de 5 heredaba ~5 pp de
+over regalados». El monitor WNBA lo compró: **22 de sus 31 totales eran overs en líneas x3,5/x4/x4,5 con
+17-27 % de acierto**. WNBA TOTAL en la autopsia: 31 picks, 35,5 % de acierto, **−30,9 % de ROI**.
+
+**WNBA SPREAD (AUTOPSIA §4.6):** 79 picks, 55,7 % de acierto pero **CLV −4,6 % con t = −6,1** (solo el **12 %**
+de picks con CLV positivo). Líneas ≥8 puntos: **38 % y −28 %**. «Ninguna configuración bate al cierre (skill
+−0,004 a −0,022).»
+
+## G.5 📄 Estado en producción
+
+| Fecha | Estado | Fuente |
+|---|---|---|
+| 7-sep | 186 decididas: SPREAD 111 (53 %, +1,8 %, CLV −0,84 %), TOTAL 57 (53 %, +2,3 %, CLV +2,55 %, t 1,2), moneyline 18. WNBA en pausa hasta el 17-sep | `semana-37.html:269` |
+| 14-sep | **187 picks activos**, todas admin-only. TOTAL +2,3 % con CLV +2,55 % y t 1,20 («promete»); SPREAD +1,8 % con CLV −0,84 % y t −1,41 («en contra») | `semana-38.html:255` |
+
+**Preregistros congelados:** `docs/PREREGISTRO_WNBA_TOTALES.md` (60 picks de TOTAL desde el corte
+`created_at ≥ 2026-09-02T10:40Z`, WNBA no juega hasta el 17-sep; vara = CLV medio > 0 y ≥ 40 % de picks con
+CLV positivo; fracaso = CLV < −1 % con t < −1,5) y `docs/PREREGISTRO_WNBA_DESCANSO.md` (60 disparos; éxito =
+**≥ 56 % de overs** —hay que batir el over ciego de 56,2 %, no el 50 %— con el IC de un SE por encima de
+52,4 %). **Los dos figuran como «pendiente: se rellena al llegar a…»**: no hay resultado a 14-sep.
+
+**Bug latente sin corregir** (TODO_NEXT.md:117-120): en `buildHoopsPicks` la puerta de frescura lee `best.at`
+pero la fila trae `seen` → «la puerta de precio viejo nunca dispara»; y `m.fam === 'total'` donde la familia
+es `match_total` → «la regla *solo under* de v2 nunca se aplica».
+
+---
+
+# PARTE H — FÚTBOL AMERICANO
+
+## H.1 📐 NFL — validación walk-forward (`data/nfl/model-priors.json`, 19-ago 07:59Z) 🔬
+
+Constantes: `hfa` 1,74 · `k_total` 18,68 · `sigma_extra_margin` 3,57 · `sigma_extra_total` 3,34.
+Protocolo declarado: «walk-forward semanal 2017→: cada partido predicho SOLO con lo anterior. El cierre es el
+benchmark, no el label. **El modelo NO lee ninguna cuota: es market-blind por construcción.**»
+
+**Global (n = 2.494):**
+
+| Métrica | Modelo | Cierre |
+|---|---:|---:|
+| MAE de margen | **10,31** | 9,86 |
+| MAE de total | 10,80 | 10,51 |
+| Brier | 0,224 | 0,210 |
+| sd del error de margen | 13,28 | 12,79 |
+
+**Por temporada:**
+
+| Temporada | n | MAE margen modelo | MAE margen cierre | MAE total modelo | MAE total cierre | Brier modelo | Brier cierre |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 2017 | 267 | 10,54 | 10,08 | 11,57 | 11,26 | 0,2163 | 0,2031 |
+| 2018 | 267 | 10,17 | 9,87 | 11,07 | 10,72 | 0,2193 | 0,2122 |
+| 2019 | 267 | 10,54 | 10,18 | 10,88 | 10,78 | 0,2245 | 0,2140 |
+| 2020 | 269 | 10,21 | 9,79 | 10,74 | 10,30 | 0,2247 | 0,2028 |
+| 2021 | 285 | 11,10 | 10,67 | 11,19 | 10,81 | 0,2290 | 0,2189 |
+| 2022 | 284 | 9,21 | 8,78 | 10,72 | 10,40 | 0,2275 | 0,2088 |
+| 2023 | 285 | 10,44 | 9,98 | 10,63 | 10,17 | 0,2293 | 0,2186 |
+| 2024 | 285 | 10,29 | 9,70 | 9,82 | 9,77 | 0,2200 | 0,2010 |
+| 2025 | 285 | 10,25 | 9,67 | 10,59 | 10,42 | 0,2247 | 0,2104 |
+
+**Backtest «entrar AL CIERRE cuando |modelo − cierre| ≥ umbral» (−110, break-even 52,4 %):**
+
+| Familia | Umbral | n | Acierto | ROI |
+|---|---|---:|---:|---:|
+| SPREAD | 2 pts | 1.346 | 50,2 % | **−4,04 %** |
+| SPREAD | 3 pts | 898 | 51,0 % | −2,51 % |
+| SPREAD | **4 pts** | 575 | 53,2 % | **+1,55 %** |
+| TOTAL | 2 pts | 1.279 | 50,1 % | −4,22 % |
+| TOTAL | 3 pts | 827 | 51,5 % | −1,67 % |
+| TOTAL | **4 pts** | 483 | 52,4 % | **+0,10 %** |
+| MONEYLINE | 3 pp | 1.945 | 33,2 % | **−9,81 %** |
+| MONEYLINE | 5 pp | 1.617 | 32,8 % | **−7,24 %** |
+
+## H.2 📐 NCAAF — validación (`data/amfoot/priors-ncaaf.json`, 19-ago 08:11Z) 🔬
+
+Constantes: `hfa` 3,82 · halflife 20 · carry 0,5 · K 5 · cap 45 · `fcs_prior` −24 · `sigma_margin` 17,25 ·
+`sigma_total` 17,01. Walk-forward semanal 2016→.
+
+| Métrica (n = 7.552; n_close 7.542) | Modelo | Cierre |
+|---|---:|---:|
+| MAE de margen | **13,59** | 12,34 |
+| MAE de total | 13,50 | 12,85 |
+| Brier | 0,2031 | 0,1841 |
+| sd del error de margen | 17,25 | 15,67 |
+
+**Backtest al cierre (−110, break-even 52,4 %):**
+
+| Familia | Umbral | n | Acierto | ROI |
+|---|---|---:|---:|---:|
+| SPREAD | 2 pts | 5.653 | 49,4 % | −5,63 % |
+| SPREAD | 3 pts | 4.757 | 49,5 % | −5,33 % |
+| SPREAD | 4 pts | 3.944 | 49,0 % | −6,35 % |
+| SPREAD | 6 pts | 2.671 | 48,3 % | **−7,54 %** |
+| TOTAL | 2 pts | 5.079 | 52,0 % | −0,71 % |
+| TOTAL | 3 pts | 4.275 | 51,9 % | −0,88 % |
+| TOTAL | 4 pts | 3.501 | 52,3 % | −0,19 % |
+| TOTAL | **6 pts** | 2.199 | 52,9 % | **+1,04 %** |
+
+## H.3 📐 CFL — validación (`data/amfoot/priors-cfl.json`, 19-ago 08:11Z) 🔬
+
+Constantes: `hfa` 1,93 · halflife 18 · carry 0,45 · K 5 · cap 35 · `sigma_margin` 13,42 · `sigma_total` 13,82.
+Walk-forward semanal 2022→.
+
+| Métrica (n = 373; n_close 249) | Modelo | Cierre |
+|---|---:|---:|
+| MAE de margen | **10,55** | 9,88 |
+| MAE de total | 11,32 | 11,20 |
+| Brier | `null` | `null` |
+| sd del error de margen | 13,42 | 12,84 |
+
+**Backtest al cierre:**
+
+| Familia | Umbral | n | Acierto | ROI |
+|---|---|---:|---:|---:|
+| SPREAD | 2 pts | 140 | 52,2 % | −0,34 % |
+| SPREAD | 3 pts | 95 | 50,5 % | −3,40 % |
+| SPREAD | 4 pts | 64 | 54,7 % | **+4,45 %** |
+| SPREAD | 6 pts | 24 | 50,0 % | −4,50 % |
+| TOTAL | 2 pts | 89 | 52,3 % | −0,16 % |
+| TOTAL | 3 pts | 43 | 57,1 % | **+8,93 %** |
+| TOTAL | 4 pts | 26 | 65,4 % | **+24,88 %** |
+| TOTAL | 6 pts | 6 | 66,7 % | **+27,33 %** |
+
+## H.4 📄 Track en sombra
+
+| Fecha | Liga | Familia | n | Acierto | ROI | CLV | t | Fuente |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| 7-sep | NCAAF | SPREAD | 89 | 44,9 % | −9,4 % | **+6,27 %** | **9,43** | `semana-37.html:274` |
+| 7-sep | NCAAF | TOTAL | 57 | 52,6 % | +3,6 % | **+4,79 %** | **24,8** | `semana-37.html:275` |
+| 7-sep | CFL | SPREAD | 20 | 40,0 % | −16,8 % | **+10,7 %** | — | `semana-37.html:276` |
+| 7-sep | CFL | TOTAL | 29 | 44,8 % | −12,6 % | **+4,98 %** | — | `semana-37.html:277` |
+| 7-sep | NFL | todas | 0 | — | — | — | — | kickoff 9-sep |
+| **14-sep** | **NCAAF** | **TOTAL** | **141** | **61,7 %** | **+21,2 %** | **+4,76 %** | **38,45** | `semana-38.html:171` |
+| **14-sep** | **NCAAF** | **SPREAD** | **202** | **48,0 %** | **−4,6 %** | **+5,72 %** | **17,45** | `semana-38.html:172` |
+| **14-sep** | **CFL** | **TOTAL** | **46** | **43,5 %** | **−15,2 %** | **+4,64 %** | **11,79** | `semana-38.html:173` |
+| **14-sep** | **CFL** | **SPREAD** | **34** | **32,4 %** | **−34,0 %** | **+8,87 %** | **8,08** | `semana-38.html:174` |
+
+**NFL al 14-sep** (`semana-38.html:258`): 18 partidos de la semana 1 con **31 casas** cotizando; **MAE de
+margen 10,31 puntos**; **31 liquidadas con 5 abiertas**. Todas las familias en sombra y el moneyline cerrado
+por doctrina. «El blueprint NFL-1125 dice que el modelo queda a **0,45 puntos** del cierre.»
+
+Picks abiertas el 7-sep: 86 de NCAAF y 12 de CFL (`semana-37.html:280`).
+
+## H.5 🔬 Investigación previa (`INVESTIGACION_AMFOOT.md`, 18-ago) — solo cifras de resultados
+
+| Liga | Sport key | Eventos ese día | Casas cotizando | Polymarket |
+|---|---|---:|---:|---:|
+| NFL | `americanfootball_nfl` | 47 (semana 1) | ~24 | 446 mercados |
+| **NCAAF** | `americanfootball_ncaaf` | **111** (semana 1, desde el 29-ago) | **22** | 102 mercados |
+| **CFL** | `americanfootball_cfl` | **4** (temporada en curso) | **20** | 4 mercados |
+| UFL | `americanfootball_ufl` | inactiva | — | — |
+
+Créditos restantes de The Odds API en esa medición: **4,8 M**. NCAAF tiene 136 equipos FBS y favoritos de
+−40. CFL: 9 equipos, ~81 partidos/temporada. Advertencia declarada: «El backtest de NFL (**−7/−10 % ROI en
+ML**) enseñó que "hay modelo" ≠ "hay edge"».
+
+Resolución de nombres de College medida el 20-ago (HANDOFF.md:1852-1860): **43 de 111 eventos** caían por
+nombre; tras la corrección quedan **39 sin resolver y todos son de FCS**.
+
+---
+
+# PARTE I — COMBATE (UFC, MMA, boxeo)
+
+## I.1 🔬 Calibración del simulador de rutas (20-ago, HANDOFF.md:1530-1562)
+
+**3.886 peleas de 2016 a 2026**, perfiles reconstruidos año a año solo con el pasado
+(`scripts/combat-calibra.js`). Probabilidad de «termina antes del límite»:
+
+| Decil | Predicho | Real | Sesgo |
+|---|---:|---:|---:|
+| 1 | 2,4 % | 42,3 % | **−39,9 pp** |
+| 5 | 40,6 % | 48,3 % | −7,7 pp |
+| 10 | 94,1 % | 61,4 % | **+32,7 pp** |
+
+«La escala del simulador va de 2 % a 94 %; la de la realidad, de 42 % a 61 %.» **Brier crudo 0,286, peor que
+decir siempre la tasa base (0,250).** Por asaltos: 3 asaltos 43,7 % predicho vs 47,9 % real; **5 asaltos
+70,4 % vs 56,9 %**.
+
+**El arreglo (temperatura sobre el logit, a = 0,0985, b = −0,0072):**
+- **Walk-forward: Brier 0,28812 → 0,24693 (−14,3 %), mejorando en 9 de 9 años.**
+- Extremo a extremo en 2025: 0,28626 → 0,24671, **por primera vez por debajo de la referencia de no opinar
+  (0,24977)**.
+- Piso de peligro `PISO = 0,004`; error medio entre lo simulado y el objetivo **0,011** (ruido de Montecarlo).
+
+## I.2 🔬 Medición del 16-ago sobre 3.140 peleas (TODO_NEXT.md:1006-1013)
+
+| | Resultado |
+|---|---|
+| **Quién gana** | Brier **0,276** contra **0,250** de decir siempre 50 % → **peor que una moneda**. Cuando decía 93 % ganaba el 67 %; cuando decía 8 % ganaba el 46 %. **7 de 8 tramos descalibrados**, resolución 0,004 |
+| **Cómo termina** | KO 29,4 % vs 32,3 % real · sumisión 19,4 vs 17,6 · decisión 51,2 vs 50,1 · límite 51,3 vs 50,1 → **las cuatro dentro de 3 pp** |
+
+Confirmación independiente del monitor en vivo (66 picks liquidadas): FIGHT con **CLV −8,34 %** y ROUNDS con
+**CLV +4,88 % y 52,2 % de acierto**.
+
+## I.3 📄 Track del monitor por familia
+
+| Fecha | Corte | n | G / P | Acierto | Unidades | CLV | t | Fuente |
+|---|---|---:|---|---:|---:|---:|---:|---|
+| 20-ago | FIGHT (ganador) | 31 | — | — | — | **−6,35 %** | **−2,29** | HANDOFF.md:1613 |
+| 20-ago | ROUNDS | 27 | — | — | — | **+1,75 %** | — | HANDOFF.md:1614 |
+| 20-ago | METHOD | 14 | — | — | — | +0,28 % | — | HANDOFF.md:1615 |
+| 20-ago | Global | 79 | 28-51 | 35,4 % | — | −2,32 % | — | HANDOFF.md:1617 |
+| 2-sep | FIGHT | 48 | — | 39,6 % | — | **−5,2** | **−2,6** | AUTOPSIA §2 |
+| 2-sep | ROUNDS | 39 | — | 46,2 % | — | +2,1 | 2,6 | AUTOPSIA §2 |
+| 7-sep | Total | 121 | 51 / 70 | 42,1 % | −6,39 | −1,22 % | — | `semana-37.html:285` |
+| **14-sep** | **Total** | **140** | — | **42,9 %** | **−10,12** | **−1,35 %** | — | `semana-38.html:262` |
+
+**Cortes del 7-sep (`semana-37.html:284-292`):**
+
+| Corte | Peleas | G / P | Acierto | Unidades | CLV | t |
+|---|---:|---|---:|---:|---:|---:|
+| Cartelera principal | 20 | 11 / 9 | 55,0 % | **+2,16** | +0,32 % | — |
+| Preliminares | 101 | 40 / 61 | 39,6 % | **−8,55** | −1,54 % | — |
+| **Favorito** | 18 | 13 / 5 | **72,2 %** | **+1,90** | **+5,77 %** | **2,17** |
+| **Perro** | 39 | 12 / 27 | 30,8 % | **−8,78** | **−7,96 %** | **−3,60** |
+| Preregistro favorito ≥45 %: cumple | 23 | 15 / 8 | 65,2 % | +0,95 | **+3,07 %** | 1,14 |
+| Preregistro favorito ≥45 %: no cumple | 34 | 10 / 24 | 29,4 % | −7,83 | **−8,15 %** | **−3,43** |
+
+**Cortes del 14-sep (`semana-38.html:264-271`):**
+
+| Corte | n | Acierto | Unidades | CLV | t |
+|---|---:|---:|---:|---:|---:|
+| Estelares | 23 | 60,9 % | **+3,62** | −0,67 % | — |
+| Preliminares | 117 | 39,3 % | **−13,74** | −1,49 % | — |
+| **Favorito ≥45 preregistrado** | 30 | **63,3 %** | −0,19 | **+1,99 %** | 0,91 |
+| **Sin preregistro** | 37 | 29,7 % | **−8,09** | **−7,91 %** | **−3,51** |
+
+ROUNDS en Cloudbet al 7-sep: 45 picks, CLV **+1,42 %, t 1,76** (`semana-37.html:293`).
+
+## I.4 🔬 Cuotas históricas de UFC (`docs/impl/combate-REPORT.md`, 2-sep; `docs/COMBATE_CUOTAS_HISTORICAS.md`)
+
+**Muestra:** CSV de 6.541 filas, 6.303 con cuota, **6.090 cruzadas**, 2 ambiguas, 211 sin cruce. Walk-forward:
+8.987 peleas, warm 3.145 (hasta 2015-07-15), **4.180 evaluadas fuera de muestra**. Ganador CSV vs el nuestro:
+coinciden 6.088, discrepan 2.
+
+| Modelo | n | Brier | Log-loss | Acierto |
+|---|---:|---:|---:|---:|
+| **Cierre** | 4.180 | **0,2120** | **0,6118** | **65,98 %** |
+| Elo puro | 4.180 | 0,2434 | 0,6797 | 56,99 % |
+| Modelo actual | 4.180 | 0,2343 | 0,6610 | 60,96 % |
+| Blend 0,5 | 4.180 | 0,2180 | 0,6263 | 65,53 % |
+
+| Comparación pareada | ΔBrier | SE | t |
+|---|---:|---:|---:|
+| Modelo − cierre | +0,02228 | 0,002 | **11,16** |
+| Blend 0,5 − cierre | +0,00600 | 0,00098 | **6,13** |
+| Modelo − Elo puro | −0,00910 | 0,0014 | **−6,49** |
+
+`w*` lineal por log-loss: **w = 1,00 global**; por año 0,90 (2015), 0,85 (2016), 0,95 (2017) y 1,00 de 2018 a
+2024.
+
+**Regla preregistrada simulada al cierre (≥2 pp, cuota <3):**
+
+| Corte | n | Acierto | ROI |
+|---|---:|---:|---|
+| Todas | 2.031 | 47,0 % | −0,6 % ± 2,4 |
+| **`prereg_fav45`** | 852 | **59,6 %** | **+5,2 % ± 3,0** |
+| Perro k<0,45 | 1.179 | 37,9 % | **−4,8 % ± 3,6** |
+| Favorito k≥0,5 | 611 | 60,6 % | +1,0 % ± 3,3 |
+
+## I.5 📐 Combate consciente del mercado (`data/combat/market-aware-priors.json`, 3-sep)
+
+**Muestra:** 6.090 cruzadas, **4.180 fuera de muestra**, años 2015-2024. De-vig proporcional.
+**Veredicto guardado en el archivo:** «NINGÚN rasgo añade información al cierre recalibrado fuera de muestra:
+coeficientes 0, la función devuelve el cierre tal cual.» `rasgos_que_pasan: []`, `rasgos_que_rozan: []`.
+
+**Recalibración del cierre:** `close` = **1,1119** (t del coeficiente **28,72**), ΔLog-loss OOS **−0,00084**
+(**t −2,37**). Nota del archivo: «NO se publica sola: es sesgo favorito-longshot del de-vig proporcional, no
+un rasgo del modelo».
+
+**Rasgos evaluados (ΔLog-loss vs cierre / t; ΔLog-loss vs recalibrado / t):**
+
+| Variante | ΔLL vs cierre | t | ΔLL vs recal. | t recal. |
+|---|---:|---:|---:|---:|
+| cierre recalibrado | −0,00084 | −2,37 | — | — |
+| +reach | −0,00106 | −1,88 | −0,00021 | −0,48 |
+| +exp | −0,00074 | −2,04 | +0,00010 | 1,48 |
+| +years | −0,00083 | −1,77 | +0,00001 | 0,05 |
+| **+age** | **−0,00180** | **−2,28** | −0,00095 | **−1,45** |
+| +chin | −0,00073 | −1,95 | +0,00011 | 0,95 |
+| +streak | −0,00075 | −1,76 | +0,00010 | 0,35 |
+| +mileage | −0,00079 | −1,97 | +0,00005 | 0,23 |
+| +misswt / +slpm / +td15 / +tddef / +ctrl / +kdr | −0,00084 | −2,37 | 0 | — |
+| +delo | −0,00090 | −1,82 | −0,00006 | −0,16 |
+| +dmodel | −0,00068 | −1,43 | +0,00017 | 0,63 |
+| físicos7 | −0,00193 | −1,85 | −0,00109 | −1,12 |
+| rasgos13 | −0,00193 | −1,85 | −0,00109 | −1,12 |
+| full (delo+13) | −0,00182 | −1,73 | −0,00098 | −1,00 |
+
+## I.6 🔬 Backtests del 2-sep (BACKTESTS §2, §7)
+
+| Hipótesis | Veredicto | Efecto medido |
+|---|---|---|
+| Modelo ACTUAL (Elo + rasgos) vs Elo puro | **SOBREVIVE** | **t −8,2 UFC / −6,4 MMA**; calibrado en el histórico (favorito 60,4 % predicho, **61,1 % real**) → «No tocar `ratings.js`» |
+| Tramos de edad, inactividad no lineal, SPREAD por división, estatura | **RECHAZADAS** | la edad por tramos **empeora (t +2,4)**; las demás t entre −0,02 y +1,0 |
+| Racha ponderada por calidad, guardia zurda, pesaje real | INCONCLUSAS | signo correcto, P(mejor) 0,93 / 0,64 / 0,94 |
+| Peso del mercado 0,8; veto por deriva | **RECHAZADAS** | w=0,8: n=24, **CLV −8,9**; veto: t 1,5, n=11 |
+| Publicar solo si el lado es también favorito del mercado | **PREREGISTRAR** | perro **CLV −8,64 ± 2,47 (t −3,5, n=34)**; favorito **+3,31 ± 1,73 (t +1,9, n=14)**; diferencia **+11,95 ± 3,02 (t 4,0)**, se mantiene post-techo (t 2,35) |
+| ROUNDS | **DEJAR CORRER** | **CLV +2,13 ± 0,82 (t 2,6, n=37)** |
+
+**Preregistro congelado** (`docs/PREREGISTRO_COMBATE_FAVORITO.md`, 2-sep): las primeras **40 picks
+liquidadas** con `prereg_fav45 = true`; vara = CLV medio contra el cierre; **éxito = CLV > 0; fracaso = CLV
+< −2 con t < −1,5**. Sección «Resultado» del documento: **_(pendiente)_**. Regla 2 (degradación a T−24 h):
+40 degradadas liquidadas; hipótesis apoyada en corr(deriva tomada→cierre, resultado) = **−0,31**.
+
+**Interacciones de matchup (12-ago, TODO_NEXT.md:1293-1300):** UFC n=5.842 OOS + MMA n=2.752 → **Brier
+idéntico (0,2332)**, bootstrap P mejor caso 0,773 (+absorb) vs gate de la casa 0,983 → **no se shippean**.
+Bonus medido: subir de división no penaliza en agregado (racheados subiendo **60,5 % vs 58,1 %**, n = 81 /
+3.256).
+
+**Elo de combate (20-ago, HANDOFF.md:1619-1623):** validado walk-forward, **skill 0,0166 y 61 % de acierto en
+UFC**; el mercado del ganador de UFC en Kalshi tiene interés abierto mediano de **21.358 contratos** y
+horquilla de **1 céntimo**.
+
+---
+
+# PARTE J — DARDOS (9º deporte, nacido el 6-sep)
+
+## J.1 📐 Validación (`data/darts/model-priors.json`, 6-sep 23:30Z; `scripts/darts-fit.js`) 🔬
+
+Constantes congeladas: `kScale` 1,0 · `ensembleU` 0,5 · `halfLifeMatches` 12 · `shrinkK` 8 · `formatK` 1.
+Rejilla: kScale ∈ {0,7; 1; 1,4} × u ∈ {0; 0,25; 0,5; 0,75; 1}, elegida por log-loss en desarrollo.
+
+**Desarrollo (2024-03-01 → 2026-01-01, n = 13.922):** log-loss **0,6111**, skill **11,84 %**, Brier 0,2119,
+AUC 0,724.
+
+**Holdout 2026 (leído UNA vez, circuito principal, legs ≥ BO7):**
+
+| Variante | n | Log-loss | Skill % | Brier | AUC |
+|---|---:|---:|---:|---:|---:|
+| Elo | 7.688 | 0,6167 | 11,03 | 0,2146 | 0,714 |
+| Compilador | 6.688 | 0,6071 | 12,41 | 0,2106 | 0,726 |
+| **Mezcla (ensemble)** | **6.688** | **0,6045** | **12,79** | **0,2096** | **0,729** |
+| Elo en el subconjunto del compilador | 6.688 | 0,6174 | 10,92 | 0,2149 | 0,713 |
+
+**Total de legs, MAE por formato (holdout):**
+
+| Formato (BO) | n | MAE modelo | MAE ingenuo | Media de legs |
+|---|---:|---:|---:|---:|
+| 9 | 6 | 1,462 | 1,333 | 7,00 |
+| **11** | **6.458** | **1,245** | **1,250** | **9,03** |
+| 13 | 87 | 1,250 | 1,254 | 10,84 |
+| 15 | 43 | 1,368 | 1,423 | 12,56 |
+| 19 | 76 | 1,902 | 1,960 | 16,16 |
+| 21 | 11 | 2,452 | 2,430 | 19,91 |
+| 31 | 4 | 1,776 | 2,125 | 27,25 |
+| 33 | 2 | 4,726 | 2,500 | 24,50 |
+| 35 | 1 | 4,582 | 0 | 27,00 |
+
+Nota del archivo: «el compilador aporta **+1,5 pp** de skill sobre el Elo en el mismo subconjunto (12,4 vs
+10,9)». HANDOFF.md:748-750 dice **+1,9 pp** sobre el mismo par de cifras. *(Discrepancia entre las dos
+fuentes: el archivo dice 1,5; el HANDOFF dice 1,9.)*
+
+**Propiedades del motor medidas** (HANDOFF.md:726): un BO11 entre iguales da **6-5 el 25,7 %**; salir primero
+vale **63,6 %** del leg a 95 de media.
+
+## J.2 📄 Base y estado de la sombra
+
+| Fecha | Estado | Fuente |
+|---|---|---|
+| 6-sep | 896 torneos y **103.908 resultados 2023→hoy** con formato por ronda certificado; **4.942 jugadores**; ~2.000 fichas. Darts Orakel: ventanas 365/90 d desde dic-2023; **34k campos casados** del Players Championship. Compactos gz 4,7 MB | HANDOFF.md:727-732 |
+| 7-sep | «Base de **103.908** partidos y 4.942 jugadores, cuatro casas… **0 liquidadas**: primera semana de sombra» | `semana-37.html:298` |
+| **14-sep** | Base **103.913 filas, 4.942 jugadores**, datos al 6-sep; **78 fixtures en cuatro torneos**. «Sin liquidadas suficientes para tablero» | `semana-38.html:276` |
+| 11-sep | Rescate del CLV: dardos pasa de **4 a 15 de 24** tesis con CLV reconstruido | HANDOFF.md:353 |
+
+**Preregistro congelado** (`docs/PREREGISTRO_DARDOS.md`, 6-sep, antes de la primera tesis): puertas idénticas
+para todas las familias — `edge ≥ 3 pp`, `edge > incertidumbre` (tope 12 pp), `push < 8 %`, formato
+certificado, ninguno de los dos «frío» (< 1.500 dardos en 365 d). **Vara: CLV medio por EVENTO contra el
+cierre de la misma línea; el ROI se anota, no decide. Mínimo para leer: 60 eventos liquidados por familia y
+dos torneos distintos.** ML es benchmark, jamás pick. Stake ¼ Kelly, tope 2 %.
+
+---
+
+# PARTE K — TENIS DE MESA (11º deporte, nacido el 8-sep)
+
+## K.1 📐 Validación (`data/tt/model-priors.json`, 8-sep 20:25Z; `scripts/tt-fit.js`) 🔬
+
+Constantes congeladas: `kScale` 1,4 · `pointEta` 0,08 · `pointNorm` 0,5 · `pointScale` 1 ·
+`pointScaleDist` 1 · `serveDelta` 0,03 · `ensembleU` 0,25 · `youthWeight` 0,5 · `warmN` 8.
+
+**Base:** 192.460 partidos, 15.732 jugadores, construida el 8-sep, último partido 2026-09-08.
+
+**Desarrollo (2023-01-01 → 2026-01-01, n = 17.227):**
+
+| Variante | Log-loss | Skill % | Brier | AUC |
+|---|---:|---:|---:|---:|
+| **best (ensemble)** | **0,5230** | **24,55** | **0,1764** | **0,813** |
+| Elo | 0,5322 | 23,224 | 0,1793 | 0,807 |
+| Compilado | 0,5745 | 17,122 | 0,1901 | 0,798 |
+
+Games: media real 4,055 vs modelo 4,073; **MAE 0,682 vs 0,766 del ingenuo**. Puntos: media real 74,515 vs
+modelo 74,792; **MAE 14,588 vs 16,645**. Deuce: real 15,11 % vs modelo 14,91 %.
+
+**Holdout 2026 (n = 4.557, mayores, sin retiradas, ambos con ≥ warmN partidos previos):**
+
+| Variante | Log-loss | Skill % | Brier | AUC |
+|---|---:|---:|---:|---:|
+| Elo | 0,5372 | 22,505 | 0,1811 | 0,803 |
+| Compilado | 0,5789 | 16,480 | 0,1908 | 0,796 |
+| **Ensemble** | **0,5273** | **23,924** | **0,1777** | **0,810** |
+
+| Magnitud (holdout) | Real | Modelo |
+|---|---:|---:|
+| Games (media) | 3,893 | 3,881 |
+| Games MAE | **0,653** (ingenuo 0,704) | |
+| Puntos (media) | 71,885 | 71,232 |
+| Puntos MAE | **14,302** (ingenuo 15,475) | |
+| Deuce | 15,78 % | 14,89 % |
+| Over de la línea | 59,12 % | 57,99 % — **Brier 0,2326 vs 0,2417 del ingenuo** |
+| Barridas (sweep) | 40,05 % | 41,17 % |
+| Marcador exacto | log-loss **1,6327** vs uniforme 1,7918 | |
+
+`selfTest()` del compilador reproduce la tabla sintética del blueprint a **6 decimales**.
+
+## K.2 📄 Estado de la sombra
+
+| Fecha | Estado | Fuente |
+|---|---|---|
+| 8-sep 20:30Z | Base 192.460 partidos cargada; agenda de 148 partidos en 3 eventos WTT; Cloudbet leyendo **71 eventos**, Bovada 62, **Pinnacle 0**; 46 candidatas y **las primeras 8 tesis en sombra** | HANDOFF.md:666-669 |
+| 8-sep 22:48Z | **17 tesis abiertas, 0 liquidadas** (5 totales de puntos, 4 hándicaps de puntos del 1er game, 3 ganador del 1er game, 1 total del 1er game, 4 ganador como referencia) | HANDOFF.md:684-685 |
+| 9-sep | Al arrancar el dinero real: **19 liquidadas en sombra** | HANDOFF.md:546 |
+| 11-sep | Rescate del CLV: TT pasa de **38 a 300 de 321** tesis con CLV reconstruido. «Las 321 tesis vivas tenían dos o más cubos con idéntico sello de tiempo» | HANDOFF.md:351-353 |
+| 11-sep | La vara mide `TT GAME_POINTS_HCP cloudbet` con **t −2,95** modelo-vs-precio → veredicto **cerrar** (sin aplicar) | HANDOFF.md:334-335 |
+| 14-sep | TT no aparece en el tablero de ventaja del reporte semanal | `semana-38.html` |
+
+**Márgenes medidos en TT:** `cloudbet GAME_POINTS_HCP` **1,97 %** por lado (CLAUDE.md §📏; HANDOFF.md:309).
+**La línea de TT POINTS_TOTAL no se mueve el 78,8 % de las veces** (HANDOFF.md:321).
+
+**Incidente de datos del 8-sep** (HANDOFF.md:669-672): la primera cola diaria recibió el ranking ITTF vacío
+(404 desde Render), no bajó historiales y **escribió un compacto de CERO filas** que pisó al del repo durante
+~6 minutos.
+
+---
+
+# PARTE L — F1 (8º deporte)
+
+## L.1 📐 Validación (`data/f1/model-priors.json`, 19-ago 01:50Z) 🔬
+
+Constantes: `hlCar` 6 · `hlDrv` 15 · `wq` 0,35 · `seasonKeep` 0,8 · `regimeKeep` 0,6 · `driverKeepBonus` 0,15 ·
+`hlDnf` 30 · `dnfBase` 0,03 · sim `sigma` 0,4, `gridW` 0,7, **4.000 simulaciones** · `blendU` 0,4.
+
+| Métrica | Holdout post-quali (n=35) | Holdout pre-quali (n=35) | Línea de base (n=721) |
+|---|---:|---:|---:|
+| Log-loss | 1,38873 | 1,99808 | grid baseline 1,058 (post-quali) |
+| Skill vs uniforme | **53,64 %** | 33,30 % | — |
+| Brier de podio | 0,06736 | 0,08599 | **0,06191** |
+| Brier de puntos | 0,17453 | 0,19074 | **0,16565** |
+| Brier de DNF | 0,10611 | 0,10611 | 0,10675 |
+| Acierto en duelos | **72,49 %** (n=269) | 66,17 % (n=269) | duelo por grid 74,35 % · por forma 60,25 % (n=244) |
+| Log-loss del blend | **1,15** (skill 61,6 %) | — | — |
+| Spearman | 0,687 | 0,687 | desarrollo 0,752 |
+
+> **Nota que el propio archivo obliga a leer:** el Brier de podio y de puntos del modelo **es peor que la
+> línea de base** en post-quali (0,06736 vs 0,06191 y 0,17453 vs 0,16565), y el acierto en duelos del modelo
+> (72,49 %) queda por debajo del duelo decidido solo por la parrilla (74,35 %).
+
+## L.2 📄 Track en producción
+
+| Fecha | Estado | Fuente |
+|---|---|---|
+| 7-sep | **33 picks, 19 liquidadas** (podio 44 %, puntos 42 %, duelos 80 %), **Brier 0,15-0,20**. «Sin cobertura de mercado en las casas conectadas: no hay cierre, así que no hay CLV» | `semana-37.html:297` |
+| 7-sep (tablero) | F1 podio / top 10: 19 liquidadas, SIN_MUESTRA, «sin cobertura de mercado: no hay cierre contra el que medir» | `semana-37.html:164` |
+| **14-sep** | **31 liquidadas en PUNTOS, sin CLV capturado — «no se puede juzgar todavía»** | `semana-38.html:275` |
+
+---
+
+# PARTE M — POLYMARKET, PROP FIRM Y CANALES AUXILIARES
+
+## M.1 📄 Sombra de Polymarket (banco simulado de 2.000)
+
+| Fecha | Liquidadas | G / P | Apostado | P&L | ROI | Deslizamiento | Fuente |
+|---|---:|---|---:|---:|---:|---:|---|
+| 3-sep (desatasco) | 59 de golpe | 25 / 34 | — | **−31 USD** | — | — | HANDOFF.md:830-831 |
+| 7-sep | 150 | 63 / 87 | — | **+172,44** | **+4,36 %** | **+1,86 pp**; 7 sin fill; 39 tesis nunca entraron | `semana-37.html:304` |
+| **14-sep (semana)** | **190** | — | 5.311,42 | **+363,58** | **+6,85 %** | — | `semana-38.html:286` |
+| **14-sep (desde el inicio)** | **341** | — | 9.304,10 | **+358,90** | **+3,86 %** | **1,82 pp** sobre 432 posiciones; **77 señales (17,8 %) no entraron** | `semana-38.html:287,315` |
+
+**Por deporte, semana 38 (`semana-38.html:281-287`):**
+
+| Deporte | Liq. semana | Acierto | Apostado | P&L | ROI |
+|---|---:|---:|---:|---:|---:|
+| CS2 | 112 | 50,9 % | 2.837,57 | **+653,43** | **+23,03 %** |
+| Fútbol | 69 | 40,6 % | 2.174,47 | **−211,47** | **−9,73 %** |
+| LoL | 9 | 33,3 % | 299,38 | −78,38 | **−26,18 %** |
+| **Semana** | **190** | **46,3 %** | **5.311,42** | **+363,58** | **+6,85 %** |
+
+«Toda la ganancia acumulada de la sombra se hizo esta semana, y toda esta semana fue CS2.»
+
+**La familia `futbol:No`, que iba a recibir dinero real (`semana-38.html:295-303`):**
+
+| Corte | n | Acierto | Apostado | P&L | ROI |
+|---|---:|---:|---:|---:|---:|
+| Desde el inicio | 101 | 53,5 % | 3.029,46 | **+262,54** | **+8,67 %** |
+| Semana 37 (31 ago – 6 sep) | 50 | 62,0 % | 1.419,51 | **+288,49** | **+20,32 %** |
+| Semana 38 (7 – 13 sep) | 49 | 44,9 % | 1.542,37 | −44,37 | **−2,88 %** |
+
+**El t del ROI acumulado es 0,97: no significativo.** (En HANDOFF.md:453, el 13-sep: +163,95 con **t 0,79**, y
+«devolvió el 71 % en una semana: +568 → −404».)
+
+**El gradiente de ventaja, invertido (`semana-38.html:306-313`):**
+
+| Ventaja declarada | n | Acierto | Apostado | P&L | ROI |
+|---|---:|---:|---:|---:|---:|
+| 3 – 5 pp | 68 | 54,4 % | 2.055,42 | **+283,58** | **+13,80 %** |
+| 5 – 8 pp | 27 | 51,9 % | 814,56 | +23,44 | +2,88 % |
+| **8 pp o más** | 6 | 50,0 % | 159,48 | −44,48 | **−27,89 %** |
+
+Semana anterior (misma medición, menos muestra): 3-5 pp **+9,9 %**, 8 pp+ **−7,9 %** (`semana-38.html:314`;
+HANDOFF.md:453).
+
+**Verificación técnica del ejecutor contra la casa (13-sep, HANDOFF.md:14-20, 49-54, 83-95):**
+
+| Comprobación | Resultado |
+|---|---|
+| La clave privada deriva una dirección | `0x0bcaaf…d95aa` — exactamente la que muestra Polymarket |
+| `/auth/derive-api-key` con firma EIP-712 | **ACEPTADA** |
+| Tres GET autenticados con HMAC L2 | **200** |
+| `POST /order` desde Render (Oregón) | **403** «Trading restricted in your region» |
+| `POST /order` desde gp-pm-hel1 (Helsinki) | **401** «missing address header» |
+| Orden real de prueba | `400 "not enough balance: balance: 8100, order amount: 5140070"` → «falta el dinero, no el código» |
+| Ejecutor en seco sobre **437 señales reales** | 3 revisadas, 2 fuera de familia, **1 elegida** — 26 acciones a 0,19 = 4,94 $ |
+
+## M.2 📄 Prop firm (FP-796307, Elite 10K, cierra 30-sep)
+
+| Fecha | Señales | Abiertas | G / P | P&L | Fuente |
+|---|---:|---:|---|---:|---|
+| 7-sep | 213 | 152 | 19 / 42 | **−1.168,5 USD** (al stake de la firm) | `semana-37.html:303` |
+| **14-sep** | **441** | **287** | **72 / 82** | **+1.516,10 USD** | `semana-38.html:318` |
+
+Nota del 7-sep: «solo se liquidan las de CS2 y LoL (vía bo3.gg); las de fútbol y NFL quedan abiertas, así que
+el número está sesgado hacia esports». La sombra «modelo contra retail» sigue en **cero señales** en las dos
+semanas.
+
+## M.3 📄 Cobertura de las casas conectadas, medida (20-ago, HANDOFF.md:1682-1689)
+
+- **Kalshi** — 3.472 series deportivas; UFC con interés abierto mediano **21.358** y horquilla de **1
+  céntimo**; EPL ganador OI **632** y 5,5 céntimos; **todo lo demás vacío** (NFL partido OI 40 y 21 céntimos;
+  MLS ganador OI 0; córners EPL OI 0). **No lista tarjetas en ningún deporte**; sí lista córners.
+- **Polymarket** — sin córners ni tarjetas.
+- **Myriad** — solo 1X2 de partido.
+- **Cloudbet** — la única con familias de partido, «y donde nuestro CLV sale negativo».
+
+Colector de Cloudbet, medido el 20-ago: leía **19 de 854** partidos disponibles; tras la corrección,
+**19 → 34 partidos útiles**, 30 con 1X2 y 28 con goles donde antes había 3 y 3 (HANDOFF.md:1754-1762).
+De las 70 señales de tarjetas de la ventana, «Cloudbet solo podría tomar las 10 de Championship».
+
+## M.4 📄 Operación de la plataforma
+
+| Métrica | 7-sep | 14-sep |
+|---|---|---|
+| Usuarios registrados | **982** | 966 citados en HANDOFF (13-sep) |
+| Afiliados | 1 activo, **38 registros**, 1 referido convertido, 1,9 disponible | **38 registros**, 1 referido, 1,90 disponible |
+| Presupuesto LLM | **4,09 USD gastados de 20** desde el 15-ago (79,6 % restante); 66 llamadas ese día, todas Gemini y Groq | **15,91 USD restantes de 20** (79,6 %); **85 llamadas, coste 0,00** |
+| **Verificador de lecturas** | **940 correctas, 21 reescritas, 0 descartadas** | **1.572 verificadas, 42 reescritas, 0 descartadas** (**2,7 %** de reescritura) |
+| Base de datos | 20 GB; la tabla de cuotas de goles pesa **18 GB** (30 M filas vivas) | — |
+| Descuadres contables | — | **1 descuadre de liquidación**; la ecuación de conciliación no cierra |
+| Despliegues | — | **33 despliegues** en la semana, ninguno tocó `gp-relay-eu` |
+
+Estado del LLM el 21-ago (HANDOFF.md:1516-1519): lecturas esports 32 · hoops 21 · amfoot 9 · tenis 4 · F1 2 ·
+NFL 0; 56 llamadas (Gemini 53, Groq 3); gasto **$0,4926**.
+
+## M.5 📄 Proceso implícito (sombra `implicito_v1`, desde el 9-sep)
+
+| Medición | Valor | Fuente |
+|---|---|---|
+| Primera pasada en prod (9-sep 00:37Z) | línea de base de fútbol **−0,62 goles** con 2.144 observaciones (109 partidos, 72 con 1X2 y total en la misma casa, **6.070 tesis evaluadas, 40 nacidas**: 26 over / 12 under / 2 del 1X2, en 22 casas) | TODO_NEXT.md:97-101 |
+| v2 (01:00Z) | las **87 tesis v1** se anularon con motivo (`anuladas_regla`); la incoherencia salía **+14 pp en TODAS las casas** en partidos muy desiguales → error de forma, no señal | HANDOFF.md:578-583 |
+| **v3 (02:20Z)** | **4.647 evaluadas → 25 nacidas** (19 IMPLIED_TOTAL, 5 BOOK_DEV, 1 IMPLIED_1X2), **3.806 bajo listón, 13 bajo incertidumbre, 22 vetadas por > 15 pp**; ventajas 4-10 pp con unc ≈ 2-2,4 pp. Las **767 tesis v1/v2** quedaron VOID | HANDOFF.md:586-590 |
+| Puertas | edge 3-15 pp · cuota 1,25-6 · edge ≥ 0,75×unc · ≤ 60 nuevas/pasada. Listón declarado: **~150 liquidadas por familia** | HANDOFF.md:591-592 |
+
+Fórmula de incertidumbre por muestra (`implied-engine/uncertainty.js`, HANDOFF.md:552):
+`unc_pp = 100 · 0,28 · √(1/(nA+2) + 1/(nB+2))`, con `unc.passes = edge ≥ 0,75 × unc`.
+
+---
+
+# PARTE N — LA VARA Y LA AUTOPSIA: LAS MEDICIONES TRANSVERSALES
+
+## N.1 Márgenes de casa medidos (`lib/margen.js`, 11-sep; CLAUDE.md §📏; HANDOFF.md:308-310)
+
+Medidos emparejando las dos caras del mismo mercado en el archivo de cierres. Por lado:
+
+| Casa | Familia | Margen por lado |
+|---|---|---:|
+| pinnacle | RONDAS_HANDICAP | **2,21 %** |
+| pinnacle | RONDAS | 2,83 % |
+| bovada | KILLS | 2,35 % |
+| cloudbet | RONDAS_HANDICAP | **3,13 %** |
+| cloudbet | GAME_POINTS_HCP (TT) | 1,97 % |
+| — | total de goles de fútbol | **0,69 %** (el más barato = el más eficiente) |
+
+## N.2 🧭 El CLV no aplica en nuestros mercados (11-sep, HANDOFF.md:316-336)
+
+**Con qué frecuencia la línea NO se mueve:**
+
+| Familia · casa | % de veces que la línea no se mueve |
+|---|---:|
+| dota2 KILLS · bovada | **92,8 %** |
+| TT POINTS_TOTAL | **78,8 %** |
+| LoL KILLS_HCP · bovada | 56,9 % |
+| CS2 RONDAS · bovada | 56,2 % |
+| CS2 RONDAS_HCP · pinnacle | 19,0 % |
+
+**Prueba de fondo:** Brier pareado entrada-vs-cierre sobre las mismas liquidadas. **«En NINGUNA de las diez
+familias el cierre predice mejor que nuestro precio de entrada (|t| < 2 en todas).»**
+
+**Lo que destapó `modeloContraPrecio()` — cinco familias donde el precio le gana al modelo con
+significancia:**
+
+| Familia · casa | t (modelo vs precio) | Veredicto de la vara |
+|---|---:|---|
+| LoL KILLS_HANDICAP · bovada | **−3,42** | cerrar |
+| LoL KILLS_HANDICAP · cloudbet | **−3,52** | cerrar |
+| CS2 RONDAS_HANDICAP · cloudbet | **−3,31** | cerrar |
+| TT GAME_POINTS_HCP · cloudbet | **−2,95** | cerrar |
+| sombra `lol_kills_hcp_v1` | **−3,65** | cerrar |
+
+**Ninguna se ha cerrado a 14-sep**: «es cambio de lógica de picks y Alexis no lo ha ordenado»
+(HANDOFF.md:336; TODO_NEXT.md:31-34).
+
+**Ejemplo del daño del CLV crudo** (HANDOFF.md:298-301): el CLV de CS2 en Pinnacle decía **+0,05 %** las dos
+últimas semanas de agosto; recortando el 10 % de cada cola decía **+0,55 % con t 2,72**, y todas las semanas
+salían significativas.
+
+## N.3 🔧 El CLV perdido, rescatado (11-sep, HANDOFF.md:338-355)
+
+| Familia | CLV recuperable antes | Después |
+|---|---:|---:|
+| Tenis de mesa (321 tesis) | 38 | **300** |
+| Dardos (24 tesis) | 4 | **15** |
+| Reparto que lo delató: ML sin línea | 16 de 35 | — |
+| POINTS_TOTAL | 4 de 62 | — |
+| GAMES_HCP | 0 de 26 | — |
+
+## N.4 🔬 La ley común: el sesgo del ganador (AUTOPSIA §3, 2-sep)
+
+Calibración por familia en el tramo donde el modelo más se separa del mercado:
+
+| Familia | Tramo p_modelo | p_modelo | p_mercado | **Observado** |
+|---|---|---:|---:|---:|
+| Fútbol SOLID | 55-65 | 60,3 | 44,9 | **32,9** |
+| Valorant | ≥70 | 74,5 | 58,2 | **42,3** |
+| CS2 | 60-70 | 64,3 | 54,0 | **50,2** |
+| LoL kills | ≥80 | 85,2 | 59,2 | **56,4** |
+| Tenis | 65-75 | 69,8 | 52,3 | **52,3** |
+| WNBA (crudo) | — | 69,0 | 50,4 | 55,7 |
+
+**El peso que merece el modelo**, estimado con `P(gana) = σ(a + b·logit(p_mkt) + c·[logit(p_gp) − logit(p_mkt)])`
+(c = 1 publicar el modelo; c = 0 publicar el mercado; c < 0 discrepar es señal contraria):
+
+| Familia | n | **c (peso del modelo)** | t |
+|---|---:|---:|---:|
+| LoL (todas) | 375 | **−0,65** | **−2,4** |
+| Fútbol GOALS | 130 | −1,68 | −1,4 |
+| CS2 RONDAS | 245 | −0,91 | −1,0 |
+| Valorant (todas) | 304 | −0,35 | −0,7 |
+| Fútbol CORNERS | 587 | −0,17 | −0,4 |
+| Fútbol SOLID | 432 | 0,19 | 0,8 |
+| CS2 RONDAS_HANDICAP | 433 | 0,35 | 0,9 |
+| Tenis SPREAD / ML | 205 / 109 | 0,26 / 0,29 | 0,7 / 0,5 |
+| Combate FIGHT | 48 | 0,36 | 0,6 |
+| WNBA SPREAD (crudo) | 79 | 1,49 | 1,6 |
+| **Fútbol CARDS** | 361 | **1,41** | **2,8** |
+| **Tenis TOTAL** | 77 | **6,0** | **2,8** |
+
+**Conclusión transcrita:** «**Brier modelo vs mercado pierde en TODAS las familias con dato.** No hay una sola
+donde la probabilidad del modelo, tal cual, sea mejor que la del precio. El dinero que se gana (CS2, cards) no
+sale del modelo: sale de dónde y cuándo se toma el precio.»
+
+**Fórmula operativa propuesta (no aplicada):**
+`p* = σ( logit(p_mkt_sin_margen) + c_familia · [logit(p_gp) − logit(p_mkt_sin_margen)] )`, con `c` estimado
+fuera de muestra y **c = 0 obligatorio donde t < 1**. Hoy se blendea solo en baloncesto (**w = 0,13-0,23**) y
+combate (**0,5 fijo**).
+
+## N.5 🔴 Los tres liquidadores que mentían (AUTOPSIA §1, 2-sep)
+
+| # | Liquidador | Qué hacía mal | Daño medido | Corrección |
+|---|---|---|---|---|
+| 1 | **Tenis (0-0)** | ESPN marca `STATUS_FINAL` antes de colgar los sets; el liquidador se tragaba el marcador vacío | **268 de 429** picks liquidadas con 0-0 y 56 con sets sueltos. «El **+44 % de ROI y el 80 % de acierto en hándicap eran ese artefacto**» | `marcadorCoherente` + user-agent de curl; `resettleShadow` re-liquidó **297** picks → 148-148. El track pasa de +44 % a **+7,3 % (392 picks) con CLV −12,5 %** |
+| 2 | **Esports (kills sin voltear)** | Al orientar el resultado se volteaban `score_a/b` pero **no `kills_a/b` ni `winner`** | LoL «local +x,5 kills» ganaba el **85 %** y «visitante +x,5» el **41 %** con la misma p_gp (0,72); Dota 2 al revés (**26 % / 68 %**) | Re-liquidadas **245 en LoL (85 cambiaron de veredicto)** y 55 en Dota. LoL KILLS_HANDICAP pasa de **60,1 % / +14,7 u a 58,0 % / +4,7 u**; Dota KILLS_HANDICAP a 49,1 % / −6,7 u |
+| 3 | **Baloncesto (cubos de 5)** | P(over 164,5) sumaba los cubos ≥165, y el cubo 165 contiene 163 y 164 | «Toda línea justo por debajo de un múltiplo de 5 heredaba **~5 pp de over regalados**». **22 de los 31 totales** del monitor WNBA eran overs en x3,5/x4/x4,5 con **17-27 % de acierto** | Resolución de 1 punto |
+
+**Fuentes de resultados que no llegaban:** Leaguepedia por `api.php` (tope 500, «menos en Render: 39 series
+donde había 715 partidas») → `Special:CargoExport` (5.000 filas/llamada); OpenDota `/proMatches` (100
+partidos, dos días) → paginado. «Eso es lo que tenía **137 picks de LoL y 62 de Dota** atascadas.»
+Tras el cambio, la cosecha entera de LoL terminó en **113 llamadas, ~4 minutos** (HANDOFF.md:928).
+
+## N.6 🔬 Otros defectos de medición documentados
+
+| Fecha | Defecto | Daño medido | Fuente |
+|---|---|---|---|
+| 20-ago | Props CS2: la liquidación tomaba «las dos últimas filas» del montón asumiendo orden cronológico | Sumas imposibles (44, 51, 56 kills contra líneas de 27,5). Las **87 liquidaciones viejas se rehicieron**: de «47-40, ROI +3,01 %» a **48-43, ROI +0,51 %, CLV +0,07 %** | HANDOFF.md:1802-1811 |
+| 20-ago | Las tres dobles oportunidades iban a la misma casilla (clave sin `side`) | Quedaba UNA fila por partido; el valorador habría comparado local-o-empate contra el precio de empate-o-visitante | HANDOFF.md:1728-1732 |
+| 21-ago | Valorant leía `<disco>/esports/valorant` mientras la cosecha escribía en `/data/val-raw` | **94 picks y cero liquidadas** desde que existe el deporte; la fuente en crudo se paraba el 17 mientras la cosecha «presumía de 33.104 series al día» | HANDOFF.md:1489-1502 |
+| 7-sep | Catálogo de CS2 resolvía «MOUZ» → MOUZ NXT y «Spirit» → Spirit Academy | «La final de BLAST Open Porto se modeló con ratings de academias»; **toda la muestra de CS2 previa** lleva ese ruido | `semana-37.html:128,258` |
+| 13-sep | `noVig.twoWayNoVig` devolvía `null` desde el 20-ago | **Ninguna pick de `futbol-derivadas` se valoró nunca contra el precio sin vig**; el error empujaba al lado seguro (menos picks, no peores) | HANDOFF.md:199-208 |
+| 13-sep | El espejo de la línea cero de hándicap estaba mal (el contrario de `P0` es `P0`, no `M0`) | La línea cero se medía contra la cuota cruda | HANDOFF.md:208 |
+| 20-ago | `FS.simulate` lanzaba `ReferenceError` en **todas** las llamadas tras un commit | La ficha de pelea y la generación de picks de combate quedaron rotas desde ese despliegue | HANDOFF.md:1568-1574 |
+
+## N.7 📄 Auditoría de liquidación del 21-ago (HANDOFF.md:1473-1487)
+
+| Deporte | Liquidadas | Abiertas | **Atascadas** |
+|---|---:|---:|---:|
+| fútbol (Mundial + clubes) | 96 + 684 | 0 | **0** |
+| combate | 79 | 18 | 0 |
+| baloncesto | 50 | 15 | **0** |
+| tenis ATP / WTA | 19 / 27 | 5 / 1 | **0** |
+| NFL · College | 0 | 0 | 0 (temporada sin empezar) |
+| CFL | 4 | 14 | **0** |
+| F1 | 0 | 69 | 0 (carreras no corridas) |
+| esports CS2 | 207 | 92 | **85** |
+| esports LoL | 77 | 39 | **31** |
+| esports Valorant | 0 → **14** | 80 | **60** |
+| esports Dota 2 | 31 | 4 | **2** |
+
+---
+
+# PARTE O — TABLA RESUMEN: ESTADO DE CADA FAMILIA A 14-SEP-2026
+
+> Fuente primaria de la tabla: `docs/reportes/semana-38.html` (leído el 14-sep 08:37-08:50 UTC), completada con
+> `HANDOFF.md` §📊 y §🧭 (13-sep) y con los tracks del 7-sep cuando el reporte del 14 no publica la celda.
+> «Veredicto de la vara» = el que aparece escrito en el documento citado; **"—" significa que el documento no
+> publica ese dato**, no que valga cero.
+
+## O.1 Fútbol
+
+| Deporte | Familia | n | ROI | CLV | t | Veredicto de la vara | 💵 ¿Dinero real? |
+|---|---|---:|---:|---:|---:|---|---|
+| Fútbol | **CARDS under** (feed) | 243 / 186 / 170 (3 bandas) | varios | −0,4 a −1,0 % | −2,2 a −4,3 | **descartar** | **SÍ** (Cloudbet, stake 30 plano) |
+| Fútbol | CARDS under · **núcleo limpio** | 43 (392 en la serie larga) | **+25,26 %** (núcleo) / +14,42 % (under global) | — | modelo vs mercado **+0,135, t 5,96** | no cruza: **n = 43** | SÍ |
+| Fútbol | CARDS over | 138 | **−18,68 %** | — | **t −2,05** vs mercado | en contra | No (el ejecutor solo toma under) |
+| Fútbol | CORNERS under | 243 | −6,5 % | −0,39 % | **−4,32** | **descartar** | No |
+| Fútbol | CORNERS (total, modelo vs precio) | 1.009 | −1,48 % | — | **−1,99** | sin evidencia | No |
+| Fútbol | `corners_over_v1` (sombra $2.000) | — (66 en 7 d) | **−5,2 %** total | **−1,41** | — | «coherente y malo» | No |
+| Fútbol | GOALS | 165 | −5,50 % | — | −1,04 | sin evidencia (modelo = mercado a 3 decimales) | No |
+| Fútbol | SOLID (1X2) | 488 | — (−20,29 u) | — | — | agujero: 34,2 % de acierto | No (`GP_SOLID_C=0`: `lead` no genera picks) |
+| Fútbol | COMBO / PLAYER | 120 / 26 | +4,8 % / −11,8 % | sin CLV | — | sin muestra | No |
+| futbol-derivadas | **asian_handicap** | **3.222** | −7,9 % | −3,66 % | **−26,45 / −26,49** | **cerrar** | No |
+| futbol-derivadas | team_total | 1.350 | −9,5 % | −1,01 % | −5,29 / −5,32 | **cerrar** | No |
+| futbol-derivadas | double_chance | 508 | −5,4 % | −2,76 % | −8,79 | **cerrar** | No |
+| futbol-derivadas | draw_no_bet | 474 | −10,8 % | −4,43 % | −8,28 | **cerrar** | No |
+| futbol-derivadas | btts | 301 | −2,5 % | −0,97 % | −3,60 / −3,61 | sin evidencia | No |
+| futbol-derivadas v2 | las 14 de mitad + marcador exacto, portería a cero, ganar a cero | 14 – 47 por familia | — | — | — | **sin muestra** (todas bajo el listón de 30) | No |
+| implicito_v1 | IMPLIED_TOTAL / IMPLIED_1X2 / BOOK_DEV | 25 nacidas en la primera pasada v3 | — | — | — | listón declarado: ~150 liquidadas por familia | No |
+
+## O.2 Esports
+
+| Deporte | Familia | n | ROI | CLV | t | Veredicto | 💵 ¿Dinero real? |
+|---|---|---:|---:|---:|---:|---|---|
+| CS2 | **RONDAS_HANDICAP** | **1.232** | **+2,1 %** | **+1,92 %** | **5,67** | **confirmada** | **Pausado** (`GP_REAL_CS2_ENABLED=false` desde el 7-sep; −66,9 sobre 600) |
+| CS2 | **RONDAS** | 642 | **+1,9 %** | **+1,89 %** | **5,95** | **confirmada** | No |
+| CS2 | TOTAL_MAPAS | 44 | −1,4 % | **+9,95 %** | **5,03** | confirmada (n corta) | No |
+| CS2 | HANDICAP (mapas) | 145 | −13,6 % | **+20,19 %** | **4,64** | confirmada (ROI negativo) | No |
+| CS2 | RONDAS_EQUIPO | 70 | −6,3 % | **+30,72 %** | **3,13** | confirmada (n corta) | No |
+| CS2 | RONDAS_HANDICAP · **cloudbet** | — | — | — | **−3,31** (modelo vs precio) | **cerrar** (sin aplicar) | era el canal real, pausado |
+| CS2-props | **`props_cs2_v2`** | **330** | **+2,2 %** | **+0,47 %** | **3,21** | **confirmada** | No (Underdog, no conectable) |
+| CS2-props | `props_cs2_v1` | 142 (7-sep) | −3,6 % | +0,40 % | 1,54 | promete | No |
+| LoL | **KILLS** | 279 | **+11,8 %** | **+1,18 %** | **2,98** | **confirmada** | No (cotiza en Bovada) |
+| LoL | **HANDICAP** (mapas) | 92 | −1,6 % | **+10,42 %** | **3,73** | **confirmada** | No |
+| LoL | KILLS_HANDICAP · bovada | 124 (bovada) / 372 (7-sep) | −2,6 % | +2,00 (bovada) | **−3,42** (modelo vs precio) | **cerrar** | No |
+| LoL | KILLS_HANDICAP · cloudbet | — | — | — | **−3,52** | **cerrar** | No |
+| LoL | `lol_kills_hcp_v1` (sombra $2.000) | 42 en 7 d | +12,5 % (7 d) / **−4,5 %** total | **−0,68** total | **−3,65** (modelo vs precio) | **cerrar** | No |
+| LoL | KILLS_DNB | 49 (7-sep) | +0,7 % | −3,32 % | −2,29 | en contra | No |
+| LoL-gen | generador de kills (sombra) | 7 tesis | — | — | — | sin muestra | No |
+| Valorant | **RONDAS** | 143 | −5,4 % | **+0,75 %** | **4,21** | **confirmada** (ROI negativo) | No |
+| Valorant | RONDAS_HANDICAP | 178 (7-sep) | −14,3 % | −0,10 % | −0,32 | plana | No |
+| Valorant | HANDICAP (mapas) | 54 (7-sep) | +25,1 % | +4,06 % | 0,88 | plana | No |
+| Valorant | PRORROGA | 0 | — | — | — | sin picks (la casa no la cotiza) | No |
+| Dota 2 | KILLS (total) | 72 (7-sep) | −4,2 % | +0,28 % | 1,82 | promete | No |
+| Dota 2 | KILLS_HANDICAP | 55 (7-sep) | −12,2 % | −0,50 % | — | sin CLV | No |
+
+## O.3 Otros deportes
+
+| Deporte | Familia | n | ROI | CLV | t | Veredicto | 💵 ¿Dinero real? |
+|---|---|---:|---:|---:|---:|---|---|
+| Tenis | ML | 193 | **+11,6 %** | **−15,52 %** | **−4,65** | **descartar** | No |
+| Tenis | SPREAD | 394 | (+2,68 u) | −3,50 % | — | en contra | No |
+| Tenis | TOTAL | 168 | (+14,63 u) | −1,46 % | — | plana, «la menos mala» | No |
+| Tenis | TOTAL preregistro ≥8 pp | 39 eventos (7-sep) | **+29,4 %** | +2,3 % vs Pinnacle (2 medidas) | **1,98** | acumulando hasta 60 eventos | No |
+| Baloncesto | TOTAL (WNBA) | 57 (7-sep) | +2,3 % | **+2,55 %** | 1,20 | promete | No (picks apagadas por doctrina) |
+| Baloncesto | SPREAD (WNBA) | 111 (7-sep) | +1,8 % | −0,84 % | −1,41 | en contra | No |
+| Baloncesto | Value / arbitraje / caídas / middles | — | — | — | — | se publican: salen de precios entre casas | No |
+| NCAAF | **TOTAL** | **141** | **+21,2 %** | **+4,76 %** | **38,45** | **confirmada** (la más fuerte del tablero) | **No — apagada por doctrina** |
+| NCAAF | **SPREAD** | **202** | −4,6 % | **+5,72 %** | **17,45** | **confirmada** | No |
+| CFL | **TOTAL** | 46 | −15,2 % | **+4,64 %** | **11,79** | **confirmada** (n corta) | No |
+| CFL | **SPREAD** | 34 | −34,0 % | **+8,87 %** | **8,08** | **confirmada** (n corta) | No |
+| NFL | todas | 31 liquidadas, 5 abiertas | — | — | — | **todo en sombra**; moneyline cerrado por doctrina | No |
+| Combate | FIGHT global | 140 | (−10,12 u) | −1,35 % | — | en contra | No |
+| Combate | FIGHT · favorito ≥45 preregistrado | 30 | (−0,19 u) | **+1,99 %** | 0,91 | preregistro abierto (meta 40) | No |
+| Combate | FIGHT · sin preregistro | 37 | (−8,09 u) | **−7,91 %** | **−3,51** | **descartar el corte** | No |
+| Combate | ROUNDS | 37-45 | −2,3 % | +0,63 % / +1,42 % | 0,78 / 1,76 | dejar correr | No |
+| Combate | METHOD | 14 (20-ago) | — | +0,28 % | — | sin muestra | No |
+| Dardos | todas | **0 liquidadas suficientes** | — | 15 de 24 con CLV rescatado | — | **sin muestra** (listón: 60 eventos por familia) | No |
+| Tenis de mesa | **POINTS_TOTAL** | 19 al arrancar (300 de 321 con CLV) | — | CLV propio plano en los cinco cubos | — | vara `clv_own` a **150** liquidadas | **SÍ — $5 planos en Cloudbet desde el 9-sep** |
+| Tenis de mesa | GAME_POINTS_HCP | — | — | — | **−2,95** (modelo vs precio) | **cerrar** (sin aplicar) | No |
+| F1 | PUNTOS / podio | 31 | — | **sin CLV capturado** | — | no se puede juzgar | No |
+| Polymarket | `futbol:No` | 101 | **+8,67 %** | — | **0,97 / 0,79** | no significativo; ejecutor **no encendido** | **No** (banco simulado 2.000) |
+| Polymarket | CS2 (sombra) | 112 en la semana | **+23,03 %** | — | — | sin veredicto de vara | No |
+| Prop firm | escáner (5 frentes) | 441 señales, 154 decididas | **+1.516,10 USD** | — | — | sin vara | No (cuenta de firm) |
+| Físicas (Gambia) | tarjetas under | 6 boletos | **+18,5 %** | — | — | «muestra anecdótica» | **SÍ** (6.000 GMD) |
+
+## O.4 Recuento final de la vara a 14-sep (`semana-38.html:165`)
+
+| Estado | Nº de filas |
+|---|---:|
+| **Confirmadas (t ≥ 2)** | **13** |
+| En contra | 15 |
+| **Para descartar (t ≤ −2 y n ≥ 100)** | **9** |
+| Prometen | 3 |
+| Planas | 16 |
+| **Sin muestra** | **42** |
+| **Total de filas del tablero** | **96** |
+
+**Y la frase que resume el estado de la evidencia a 13-sep (HANDOFF.md:274-275):** «hoy **no hay una sola
+familia en todo el sistema** de la que se pueda decir con seguridad "mete dinero ahí"». Las cuatro
+candidaturas más fuertes y por qué ninguna cruza:
+
+| Candidata | Lo que tiene | Lo que le falta |
+|---|---|---|
+| Cards under, núcleo limpio | +25,26 % ROI, +0,135 vs mercado con t 5,96 sobre 392 | **n = 43** en el núcleo; la ventaja cayó de +0,221 a +0,074 |
+| CS2 rondas hcp Pinnacle | CLV +0,92, t 2,96, n 450, 4 semanas de ROI positivo | el margen es **2,21 %** y el CLV 0,92 % → «le ganamos al cierre, no a la casa» |
+| LoL KILLS bovada | CLV +2,00, t 4,38, n 124 | margen **2,35 %** |
+| Polymarket `futbol:No` | +163,95 / +8,67 % | **t 0,79-0,97**; gradiente de ventaja invertido |
+
+**Punto de decisión declarado: ≈ 20-oct**, cuando el núcleo limpio de `cards_under_v1` llegue a 100
+liquidadas al ritmo medido de 18,7/semana.
+
+---
+
 # Parte 11 · Guía para la auditora: dónde perdemos dinero y qué está abierto
 
 Esta última parte no describe modelos: encuadra el trabajo de la auditoría. Recoge (a) el mapa de dónde se pierde dinero de verdad, (b) los interrogantes que el equipo tiene abiertos y no ha sabido cerrar, (c) los errores de método ya cometidos, para que no se repitan al auditar, y (d) las preguntas concretas que nos gustaría que el informe conteste.
@@ -8765,6 +9968,9 @@ Por eso fútbol americano universitario y canadiense encabezan el tablero con t 
 - La nota congelada del segmento de hándicap de kills de LoL ("221 picks, +15,96 unidades") es anterior al arreglo del volteo de kills del 2 de septiembre, que cambió 85 de 245 veredictos y bajó esa familia de +14,7 a +4,7 unidades. Nunca se actualizó.
 - Las props de CS2 se valoran contra el inverso de la cuota decimal, es decir **con el margen dentro** (alrededor de 5,7 % en ese libro), sin retirada de vig por pares. Parte del +2,2 % de ROI atribuido a la familia es margen mal descontado.
 - El acople ritmo-paliza del modelo de kills de LoL usa +0,13 donde la base propia mide −0,38: **signo contrario**. Esas constantes no se validaron en ningún ajuste.
+- El archivo de priors de Fórmula 1 guarda un **Brier de podio y de puntos peor que su propia línea de base**, y un acierto en duelos por debajo del duelo decidido solo por la parrilla. El reporte semanal no lo menciona.
+- El skill del compilador de dardos figura como +1,5 pp en el archivo de priors y como +1,9 pp en el punto de retoma, sobre el mismo par de cifras.
+- Tres t del reporte del 14 de septiembre no coinciden consigo mismos entre tablas del propio reporte (hándicap asiático −26,49 frente a −26,45, total de equipo −5,29 frente a −5,32, ambos marcan −3,61 frente a −3,60). La parte 10 transcribe las dos versiones sin elegir.
 
 ---
 

@@ -157,32 +157,45 @@ acción y es máxima en dólares alrededor de 0,50, que es donde está nuestro p
 
 **Con tasa 0,03 (la que hoy devuelve el `feeSchedule` de nuestros mercados):**
 
-| Corte | n | Apostado | P&L antes | Comisión | P&L después | ROI después |
-|---|---:|---:|---:|---:|---:|---:|
-| Sombra completa, desde el inicio | 341 | 9.304,10 | +358,90 | 160,90 | +198,00 | +2,13 % |
-| `futbol:No`, desde el inicio | 101 | 3.029,46 | +262,54 | 46,17 | +216,37 | +7,14 % |
+### El recuento EXACTO, posición a posición (15-sep, 15:35 UTC)
 
-Lo que cambia de esto, que no es el decimal:
+El ledger sí era alcanzable: `/api/internal/picks-export?key=…&poly=1` lo exporta entero. Se corrió
+`node scripts/poly-comision-recalc.js --ledger` sobre las **459 posiciones** del almacén vivo, de las que
+**358 están liquidadas**, aplicando `fee = C·tasa·p·(1−p)` con el precio y las acciones **reales** de cada
+fill y la tasa guardada en cada posición.
 
-- **La sombra entera deja de ser un negocio.** De +3,86 % a +0,98 % con la tasa documentada. El t del ROI
-  de `futbol:No` ya era 0,97 —no significativo— antes de tocar nada; con la comisión puesta el número al
-  que ese t acompaña es aún más pequeño. La sombra no dice que haya ventaja: dice que no se sabe.
-- **Fútbol pasa de perder a perder más**, y es la familia que el ejecutor real iba a tomar.
-- **CS2 sigue en pie** con +20,10 % en la semana, que es lo único que la comisión no borra. Sigue siendo
-  una semana, y el gradiente de ventaja invertido (3-5 pp +13,80 %, 8 pp o más −27,89 %) sigue sin explicar.
+| corte | n | apostado | P&L bruto | ROI bruto | comisión | P&L neto | ROI neto |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `futbol · No` | 106 | 3.194,73 | +169,27 | +5,30 % | 82,73 | **+86,54** | **+2,71 %** |
+| `cs2 · away` | 85 | 2.114,80 | +41,20 | +1,95 % | 61,73 | −20,53 | −0,97 % |
+| `cs2 · home` | 83 | 2.190,85 | −35,85 | −1,64 % | 62,81 | −98,66 | −4,50 % |
+| `futbol · Yes` | 46 | 1.375,90 | −248,90 | −18,09 % | 43,61 | −292,51 | −21,26 % |
+| `cs2 · over` | 12 | 240,30 | +281,70 | +117,23 % | 8,14 | +273,56 | +113,84 % |
+| `lol · over` | 10 | 287,83 | −144,83 | −50,32 % | 9,52 | −154,35 | −53,63 % |
+| `lol · under` | 5 | 141,83 | −11,83 | −8,34 % | 4,87 | −16,70 | −11,78 % |
+| `lol · home` | 4 | 116,13 | +81,87 | +70,50 % | 3,78 | +78,09 | +67,24 % |
+| `cs2 · under` | 4 | 68,67 | −10,67 | −15,54 % | 1,33 | −12,00 | −17,47 % |
+| `lol · away` | 3 | 92,00 | +17,00 | +18,48 % | 2,33 | +14,67 | +15,94 % |
+| **TOTAL** | **358** | **9.823,04** | **+138,96** | **+1,41 %** | **280,86** | **−141,90** | **−1,44 %** |
 
-**Advertencia de método sobre estos números.** El ledger de la sombra (`poly-sombra.json`) vive en el disco
-persistente de Render y no se alcanza desde el entorno donde se hizo este recálculo, así que la tabla es una
-**estimación**, no el recuento exacto. El precio medio ponderado por acción de cada corte no está supuesto:
-sale de una identidad contable —cada acción ganadora paga exactamente 1, luego `apostado + P&L` es el número
-de acciones ganadoras— y da 0,424 en el total y 0,492 en `futbol:No`. Lo que sí es supuesto es que las
-perdedoras se compraron al mismo precio medio que las ganadoras; no es cierto —las ganadoras tiran hacia el
-favorito—, así que **esta estimación se queda corta**. Moviendo el precio medio entre 0,35 y 0,50 la
-comisión del total queda entre 232,60 y 302,38 con tasa 0,05 (entre 139,56 y 181,43 con 0,03).
+**La comisión cambia el signo de la sombra entera.** Bruto +1,41 %, neto **−1,44 %**. Y la estimación
+anterior se quedaba corta, exactamente como advertía: decía +0,98 % y el número real es −1,44 %.
 
-El número exacto sale de correr en producción `node scripts/poly-comision-recalc.js --ledger`, que recorre
-posición a posición con su precio y sus acciones reales. Queda como el primer paso de la próxima sesión con
-acceso a la sonda.
+Tres cosas que esto deja claras:
+
+- **La sombra de Polymarket no es un negocio.** Lo que parecía un +3,86 % era el bruto de un libro que, con
+  lo que cobra la casa, pierde dinero. La comisión —280,86 sobre 9.823 apostados— es **el doble del P&L
+  bruto**.
+- **`futbol:No` sobrevive, y es lo único que sobrevive con muestra.** +2,71 % neto sobre 106 posiciones.
+  Era la familia que el ejecutor real iba a tomar y sigue en pie, pero con un tercio de la ventaja que se
+  le atribuía (+8,67 % publicado → +5,30 % bruto → +2,71 % neto) y con un t que ya antes no era
+  significativo.
+- **Los dos lados de CS2 pierden en neto** (−0,97 % y −4,50 %) pese a que uno de ellos ganaba en bruto. Es
+  el caso exacto que la puerta nueva `ev_tras_comision` existe para frenar: ventaja positiva más pequeña
+  que la comisión.
+
+`cs2 · over` con +113,84 % sobre 12 posiciones y `lol · home` con +67,24 % sobre 4 no son resultados: son
+muestras de doce y de cuatro. Se listan para que la tabla cuadre, no para leerlos.
 
 **Lo que ya está en el código** (no hay que volver a decidirlo):
 
@@ -210,7 +223,7 @@ acceso a la sonda.
 | T1.2 el precio como tupla | `lib/contrato.js` escrito y probado; **falta conectarlo** en el tablero, en el selector de mejor precio y en los dos motores de fútbol americano |
 | T1.3 cierres prepartido | el cubo T−1 ya no admite lecturas posteriores al inicio; **falta conectar** `estadoCaptura` en cada motor |
 | T1.6 tablero sin etiqueta de confirmada | pendiente |
-| T1.11 comisiones de Polymarket | hecho en código y tarifa verificada (§5); **falta correr el recálculo exacto** sobre el ledger de producción |
+| T1.11 comisiones de Polymarket | **hecho**: tarifa verificada, código desplegado y recálculo EXACTO corrido sobre las 358 liquidadas del ledger (§5). La sombra pasa de +1,41 % bruto a −1,44 % neto |
 | T1.13 replay completo de todos los tracks | este documento cubre las familias con cierre; faltan los motores que no pasan por la vara |
 | T1.14 Pinnacle sin eventos de tenis de mesa | hecho — ver §7 |
 

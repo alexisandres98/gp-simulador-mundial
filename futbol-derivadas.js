@@ -628,4 +628,13 @@ function track() {
   };
 }
 
-module.exports = { RULE, RULE2, FUERA, record, closes, settle, track, tabla, contrario, NECESITA_DESCANSO };
+
+// EL LIBRO CRUDO, TICKET A TICKET (15-sep, T1.13). `track()` agrega; la vara necesita las filas para
+// calcular el EV contra la cara contraria del mismo contrato. Ver la nota larga en la ruta de exportación.
+function libroCrudo({ limit = 0 } = {}) {
+  const st = rd();
+  const picks = Object.values(st.picks || {});
+  return { n: picks.length, picks: limit > 0 ? picks.slice(-limit) : picks };
+}
+
+module.exports = { RULE, RULE2, FUERA, record, closes, settle, track, tabla, contrario, NECESITA_DESCANSO, libroCrudo };

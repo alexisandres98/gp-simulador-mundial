@@ -6172,6 +6172,11 @@ function clubPropsGate(league, family) {
 // ref_name (total vía clubPropTotal), dedup por liga|equipos|día. Persistido en <dir(DB_FILE)>/clubs/referees.json.
 const REFS = require('./clubs-engine/referees');
 function cornersRefOn() { return /^(1|true|on|yes)$/i.test(String(process.env.GP_CORNERS_REF || '').trim()); }
+// EL ÁRBITRO EN TARJETAS SÍ ENTRA A LA PROYECCIÓN (15-sep, A19 / T2.2, por orden de Alexis). Va ENCENDIDO
+// por defecto, al revés que el de córners: aquí no es un experimento en sombra, es cerrar el desajuste
+// entre el modelo que se valida y el que se sirve. `GP_CARDS_REF=0` lo apaga sin desplegar, que es lo que
+// hay que hacer si el track de tarjetas empeora después de este cambio.
+function cardsRefOn() { return !/^(0|false|off|no)$/i.test(String(process.env.GP_CARDS_REF || '1').trim()); }
 function cornersRefK() { const k = Number(process.env.GP_CORNERS_REF_K); return isFinite(k) && k >= 0 ? k : REFS.DEFAULTS.REF_PRIOR; }
 const CLUB_REFEREES_FILE = path.join(CLUB_DATA_DISK, 'referees.json');
 function clubRefereeIndex({ force = false } = {}) {
@@ -8538,19 +8543,43 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
               let l3 = null; const gf = clubGoalsFit(lg); if (gf) l3 = require('./clubs-engine/goalsModel').goalLambdas(gf, hId, aId);
               if (!l3) { const rh = clubElo(lg, hId), ra = clubElo(lg, aId); l3 = lambdas(rh + (L.hfa || 60), ra); }
               const pr3 = matchProbs(clubElo(lg, hId) + (L.hfa || 60), clubElo(lg, aId));
-              projCache2[ceid] = require('./prop-engine').project(pf.fit, { home: hId, away: aId, lambdas: { home: l3[0], away: l3[1] }, closeness1x2: pr3 });
+              // EL ÁRBITRO SE SIRVE (15-sep, A19 de la auditoría externa y T2.2). Hasta hoy esta llamada
+              // iba SIN `referee` mientras `prop-engine/model.js` lo esperaba y la validación LOO lo usaba:
+              // llevábamos meses validando un modelo que no era el que salía a producción. Y el que no
+              // salía es el mejor de los dos — medido sobre 8.078 partidos con validación hacia adelante,
+              // el árbitro aislado gana 0,00309 de log-score con t −3,80 sobre racimos de partido
+              // (docs/CHALLENGERS_TARJETAS_2026-09-15.md). Se busca ANTES de proyectar, que es la única
+              // forma de que entre en la proyección en vez de quedarse en una anotación al lado.
+              //
+              // El multiplicador es el de `fit()`: encogido al total de la liga con REF_PRIOR partidos
+              // equivalentes y topado ±20 %. Es un residuo sobre el NIVEL DE LIGA, no sobre liga×temporada
+              // ×equipos como el T2b del challenger; esa versión más fina es un paso posterior y va con
+              // preregistro, porque cambia más cosas. Lo de hoy cierra el desajuste entre lo entrenado y
+              // lo servido, que es lo que A19 señalaba.
+              //
+              // Cobertura medida sobre la base: el árbitro del partido está en el fit de su liga en el
+              // 94,7 % de los casos (10.051 de 10.609). Cuando no está, `project` usa multiplicador 1 y
+              // el comportamiento es el de antes. GP_CARDS_REF=0 lo apaga sin desplegar.
+              let refName = null;
+              try { const riPre = await clubRefereeFor(meta); refCache2[ceid] = { ref_name: riPre.name, ref_effect: riPre.effect, ref_n: riPre.n, ref_applied: false }; refName = riPre.name || null; }
+              catch { refCache2[ceid] = null; }
+              const refCards = cardsRefOn() ? refName : null;
+              projCache2[ceid] = require('./prop-engine').project(pf.fit, { home: hId, away: aId, lambdas: { home: l3[0], away: l3[1] }, closeness1x2: pr3, referee: refCards });
+              if (refCache2[ceid]) {
+                refCache2[ceid].ref_cards_applied = !!(refCards && projCache2[ceid] && projCache2[ceid].cards && projCache2[ceid].cards.ref_mult !== 1);
+                refCache2[ceid].ref_mult_cards = (projCache2[ceid] && projCache2[ceid].cards && projCache2[ceid].cards.ref_mult) || 1;
+              }
             }
           } catch { projCache2[ceid] = null; }
-          // 3-sep (córners × árbitro, sombra): nombre del árbitro y su efecto encogido. Se ANOTAN siempre; la
-          // proyección solo cambia con GP_CORNERS_REF=1 (copia: la de tarjetas queda intacta). Nunca bloquea.
-          refCache2[ceid] = null;
+          // 3-sep (córners × árbitro, sombra): el efecto sobre CÓRNERS sigue siendo una capa aparte y sigue
+          // detrás de GP_CORNERS_REF. El nombre y el efecto ya se anotaron arriba.
           if (projCache2[ceid]) {
             try {
               const ri = await clubRefereeFor(meta);
-              refCache2[ceid] = { ref_name: ri.name, ref_effect: ri.effect, ref_n: ri.n, ref_applied: false };
+              if (!refCache2[ceid]) refCache2[ceid] = { ref_name: ri.name, ref_effect: ri.effect, ref_n: ri.n, ref_applied: false };
               if (ri.name && cornersRefOn() && ri.mult !== 1) { projCache2[ceid] = REFS.applyToProjection(projCache2[ceid], ri.eff); refCache2[ceid].ref_applied = true; }
-            } catch { refCache2[ceid] = null; }
-          }
+            } catch { /* la capa de córners nunca bloquea la de tarjetas */ }
+          } else { refCache2[ceid] = refCache2[ceid] || null; }
         }
         const proj = projCache2[ceid]; if (!proj) continue;
         const refInfo = fam === 'corners_total' ? refCache2[ceid] : null;
@@ -20134,6 +20163,43 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/picks-export') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      // ?motor=<esports:cs2|tenis|tt|dardos|nfl|hoops|derivadas> (15-sep, T1.13 de la auditoría externa).
+      //
+      // OCHO DE LOS TRECE MOTORES no tenían forma de sacar su libro ticket a ticket, y por eso la vara no
+      // podía juzgarlos: el EV contra el cierre se calcula ticket a ticket contra la cara contraria del
+      // MISMO contrato, y con `track()` —que devuelve agregados— eso no se puede hacer. El tablero tenía
+      // que declarar el hueco en vez de dar un veredicto, y el replay de la Fase 1 se quedaba a medias en
+      // esos ocho. No era una decisión de diseño: nadie había necesitado el libro entero desde fuera.
+      //
+      // Esto no calcula nada. Devuelve las filas tal cual están en disco para que `lib/vara.js` haga su
+      // trabajo desde fuera del contenedor.
+      if (url.searchParams.get('motor')) {
+        const m = String(url.searchParams.get('motor')).toLowerCase();
+        const lim = Number(url.searchParams.get('limit')) || 0;
+        const salida = (n, picks, extra = {}) => json(res, 200, { motor: m, count: n, picks, ...extra, exported_at: new Date().toISOString() });
+        try {
+          if (m.startsWith('esports:')) {
+            const g = m.split(':')[1];
+            const ES = require('./esports-engine/store');
+            if (!ES.GAME_ORDER.includes(g)) return json(res, 400, { error: 'juego desconocido', juegos: ES.GAME_ORDER });
+            const rows = ES.picksRaw(g) || [];
+            return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
+          }
+          const MOT = { tenis: './tennis-engine/store', tt: './tt-engine/store', dardos: './darts-engine/store', nfl: './nfl-engine/store' };
+          if (MOT[m]) {
+            const L = require(MOT[m]).libroCrudo({ limit: lim });
+            return salida(L.n, L.picks);
+          }
+          if (m === 'hoops') { const rows = db.hoopsPicks || []; return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows); }
+          if (m === 'derivadas') {
+            const FD = require('./futbol-derivadas');
+            const st = FD.estado ? FD.estado() : null;
+            const rows = (st && st.picks) ? Object.values(st.picks) : [];
+            return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
+          }
+          return json(res, 400, { error: 'motor desconocido', motores: ['esports:cs2', 'esports:lol', 'esports:valorant', 'esports:dota2', 'tenis', 'tt', 'dardos', 'nfl', 'hoops', 'derivadas'] });
+        } catch (e) { return json(res, 500, { error: e.message, motor: m }); }
+      }
       // ?clubs=1 (17-ago): el feed de CLUBES (el que ve el suscriptor hoy) — las sesiones de contenido lo
       // necesitan para elegir las picks del día sin sesión de admin. ?active=1 filtra a las vivas.
       if (url.searchParams.get('clubs')) {

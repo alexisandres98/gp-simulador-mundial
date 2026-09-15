@@ -912,7 +912,22 @@ function simMatch(homeRef, awayRef, { neutral = false } = {}) {
     at: new Date().toISOString() };
 }
 
-module.exports = {
+
+// ── EL LIBRO CRUDO, TICKET A TICKET (15-sep-2026, T1.13 de la auditoría externa) ─────────────────────────
+// `track()` devuelve AGREGADOS: n, ROI, CLV medio. Con agregados no se puede calcular el EV contra el
+// cierre, porque ese cálculo es ticket a ticket contra la cara contraria del MISMO contrato. Resultado: la
+// vara no podía juzgar a este motor, y el tablero tenía que declarar el hueco en vez de dar un veredicto.
+//
+// Ocho de los trece motores estaban así, y no por una decisión: simplemente nadie había necesitado el libro
+// entero desde fuera. Esto lo expone. No calcula nada ni decide nada — devuelve las filas tal cual están en
+// disco para que `lib/vara.js` haga su trabajo desde la ruta de exportación.
+function libroCrudo({ limit = 0 } = {}) {
+  const st = rdD('picks.json') || { picks: [] };
+  const picks = st.picks || [];
+  return { n: picks.length, picks: limit > 0 ? picks.slice(-limit) : picks };
+}
+
+module.exports = { libroCrudo,
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, track,
   recordShadow, settleShadow, refreshOdds, modelSnapshot, weatherFor, DOCTRINE, DISK_DIR,
   playersDirectory, search, injuriesFor, playerProfile, simMatch,

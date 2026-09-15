@@ -1012,7 +1012,24 @@ async function liquidar(resultados = {}, { sombra = [] } = {}) {
       const stakeM = Number(b.stake) || 0;
       if (mio === 'WIN') { b.pnl = +(stakeM * ((b.odds_real || b.odds_sombra) - 1)).toFixed(2); b.resultado = 'WIN'; }
       else if (mio === 'LOSS') { b.pnl = -stakeM; b.resultado = 'LOSS'; }
-      else if (/VOID|PUSH|CANCEL/.test(mio)) { b.pnl = 0; b.resultado = 'VOID'; }
+      else if (/VOID|PUSH|CANCEL/.test(mio)) {
+        // UN RESULTADO QUE NO ENCONTRAMOS NO ES UNA DEVOLUCIÓN (15-sep, auditoría externa §3.3). En este
+        // camino la casa NO habla: la apuesta se colocó a mano y su historial no es legible desde fuera.
+        // El VOID que llega aquí lo escribimos NOSOTROS al no localizar el resultado, y apuntarlo como
+        // devolución afirma que la apuesta no movió dinero — una afirmación que nadie ha comprobado y que
+        // además es cómoda, porque un cero no ensucia el ROI. Son 14 de las 68 de CS2, un 20,6 %: si de
+        // verdad fueran devoluciones, la casa habría devuelto 70 USDT que no están en el saldo.
+        //
+        // El P&L sigue siendo 0 porque no se puede saber otra cosa, pero la fila queda marcada y viaja con
+        // su RANGO: lo que habría pasado si hubiera ganado y si hubiera perdido. Cuando el rango es ancho,
+        // el número del medio no se puede leer como si fuera el resultado.
+        // Un PUSH/CANCEL dicho por la CASA sí es una devolución de verdad, y ese va por la rama de abajo.
+        b.pnl = 0;
+        b.resultado = 'DATA_UNRESOLVED';
+        b.sin_resolver = true;
+        b.rango_pnl = [-stakeM, +(stakeM * ((b.odds_real || b.odds_sombra || 1) - 1)).toFixed(2)];
+        b.sin_resolver_nota = 'lo escribimos nosotros al no encontrar el resultado; la casa no ha dicho que devolviera nada';
+      }
       else { esperando++; continue; }
       b.status = 'SETTLED'; b.settled_at = new Date().toISOString();
       b.resultado_nuestro = mio; b.verificacion = 'resultado_propio'; b.fuente_resultado = fuente;
@@ -1461,6 +1478,22 @@ function board({ limit = 40 } = {}) {
     })(),
     por_que_pendiente: cuenta(pendientes),
     por_que_caducada: cuenta(caducadas),
+    // ── LAS QUE NO SE PUDIERON RESOLVER (15-sep, §3.3 de la auditoría) ─────────────────────────────────
+    // Van con su RANGO porque su P&L de 0 no es un dato, es la ausencia de uno. Si el rango es ancho
+    // comparado con el P&L declarado, ese P&L no se puede leer como si fuera el resultado. En CS2 son 14
+    // de 68 liquidadas: el 20,6 %.
+    sin_resolver: (() => {
+      const nr = (L.bets || []).filter((b) => b.status === 'SETTLED' && (b.sin_resolver || b.resultado === 'DATA_UNRESOLVED'));
+      if (!nr.length) return { n: 0 };
+      const porFam = {};
+      for (const b of nr) { const f = b.familia || FAMILIA; porFam[f] = (porFam[f] || 0) + 1; }
+      const pl = (L.bets || []).filter((b) => b.status === 'SETTLED').reduce((a, b) => a + (b.pnl || 0), 0);
+      const peor = nr.reduce((a, b) => a + (b.stake || 0), 0);
+      const mejor = nr.reduce((a, b) => a + (b.stake || 0) * ((b.odds_real || b.odds_sombra || 1) - 1), 0);
+      return { n: nr.length, por_familia: porFam, stake: +peor.toFixed(2),
+        pnl_declarado: +pl.toFixed(2), pnl_rango: [+(pl - peor).toFixed(2), +(pl + mejor).toFixed(2)],
+        nota: 'un resultado que no se encuentra NO es una devolución: la casa no ha dicho que devolviera nada. El P&L de estas filas es 0 porque no se puede saber otra cosa, no porque no se moviera dinero.' };
+    })(),
     // `dias` mezcla dos relojes (apostado por colocación, P&L por liquidación): sirve para tesorería y para
     // la parada diaria, NO para leer rendimiento. Las dos cohortes separadas van al lado.
     dias: L.dias,
@@ -1470,7 +1503,32 @@ function board({ limit = 40 } = {}) {
   };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG,
+// MIGRACIÓN DE UNA SOLA PASADA (15-sep). Las filas que ya están en el libro con `resultado: 'VOID'` y
+// `verificacion: 'resultado_propio'` se escribieron antes de que existiera la distinción: son resultados
+// que NO encontramos, no devoluciones de la casa. Se reetiquetan sin tocar un céntimo del P&L —siguen a
+// cero, que es lo único que se puede afirmar— y pasan a contarse aparte. Las que traen `casa_estado`
+// (PUSH/CANCEL dicho por la casa) NO se tocan: esas sí son devoluciones de verdad.
+function migrarSinResolver({ aplicar = false } = {}) {
+  const L = load();
+  const cand = (L.bets || []).filter((b) => b.status === 'SETTLED' && b.resultado === 'VOID'
+    && b.verificacion === 'resultado_propio' && !b.casa_estado && !b.sin_resolver);
+  const detalle = cand.map((b) => ({ pick: b.pick_id, partido: b.match, linea: b.line, lado: b.side,
+    familia: b.familia || FAMILIA, stake: b.stake, fuente: b.fuente_resultado || null }));
+  if (!aplicar) return { candidatas: cand.length, aplicado: false, detalle: detalle.slice(0, 40),
+    nota: 'pasada en seco. Repetir con &aplicar=1 para reetiquetar. El P&L no cambia en ningún caso.' };
+  for (const b of cand) {
+    const st = Number(b.stake) || 0;
+    b.resultado = 'DATA_UNRESOLVED';
+    b.sin_resolver = true;
+    b.rango_pnl = [-st, +(st * ((b.odds_real || b.odds_sombra || 1) - 1)).toFixed(2)];
+    b.sin_resolver_nota = 'reetiquetada el 15-sep: era un VOID escrito por nosotros al no encontrar el resultado, no una devolución de la casa';
+    b.migrado_at = new Date().toISOString();
+  }
+  if (cand.length) save();
+  return { candidatas: cand.length, aplicado: true, detalle: detalle.slice(0, 40) };
+}
+
+module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
   frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
   // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.

@@ -23905,6 +23905,11 @@ async function anotar(pid){
         }
         // `run=movimiento&tipo=deposito|retiro&monto=&at=&nota=` (7-sep): anotar caja para que la conciliación
         // saldo-libro sea una resta y no una estimación (Alexis recordó tres retiros de memoria).
+        // `run=migrar_sin_resolver[&aplicar=1]` (15-sep): reetiqueta los VOID que escribimos nosotros al no
+        // encontrar el resultado. No toca el P&L; solo deja de llamar devolución a lo que nadie devolvió.
+        if (run === 'migrar_sin_resolver') {
+          return json(res, 200, RE.migrarSinResolver({ aplicar: url.searchParams.get('aplicar') === '1' }));
+        }
         if (run === 'movimiento') {
           return json(res, 200, RE.movimiento({ tipo: url.searchParams.get('tipo'), monto: url.searchParams.get('monto'),
             at: url.searchParams.get('at') || null, nota: url.searchParams.get('nota') || null }));

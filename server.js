@@ -22724,7 +22724,17 @@ const server = http.createServer(async (req, res) => {
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const EB = require('./edge-board');
       const out = EB.build({ db, pickClvNum, hoopsTrack: hoopsPicksTrack, combatTrack: combatPicksTrack });
-      if (url.searchParams.get('full') !== '1') out.filas = out.filas.filter((r) => (r.n || 0) >= 5);
+      // EL RECORTE SE DECLARA (15-sep, A31). Filtrar aquí las filas cortas dejaba la conciliación del
+      // tablero apuntando a un total que ya no existía: 96 declaradas contra 98 sumadas, y nadie sabía de
+      // dónde salían las dos. Ahora el recorte se anota en el propio objeto y la conciliación dice a qué
+      // conjunto se refiere.
+      if (url.searchParams.get('full') !== '1') {
+        const antes = out.filas.length;
+        out.filas = out.filas.filter((r) => (r.n || 0) >= 5);
+        out.conciliacion = { ...out.conciliacion, filas_enviadas: out.filas.length,
+          recortadas_por_n_menor_5: antes - out.filas.length,
+          nota: 'la conciliación cuenta TODAS las filas construidas; `filas` va recortada a n≥5 salvo con &full=1' };
+      }
       return json(res, 200, out);
     }
     if (p === '/api/internal/esports') {

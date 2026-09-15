@@ -3,7 +3,7 @@
 > **T2.10 a T2.13 del plan de trabajo de la auditoría externa.** Ejecutado el 15-sep-2026.
 > Reproducible: `node scripts/tt-challengers.js [--solo=poblacion|duracion|challengers]`.
 > Identidades: `node tests/tt-identidades.test.js`. Compilador: `node -e "console.log(require('./tt-engine/compiler').selfTest().ok)"`.
-> Registro de los experimentos: `docs/REGISTRO_EXPERIMENTOS.md` (E-005 a E-010).
+> Registro de los experimentos: `docs/REGISTRO_EXPERIMENTOS.md` (E-005 a E-009 y E-015).
 
 ## La pregunta
 
@@ -237,7 +237,7 @@ Vale la pena dejarlo escrito: en tarjetas el entrenamiento eligió `damp > 0` en
 aquí eligió λ > 0 en 19 de 21 y se equivocó. **Que el entrenamiento elija un hiperparámetro no es evidencia
 de nada; solo lo es que el bloque no visto lo confirme.**
 
-### Un segundo intento, declarado (E-010)
+### Un segundo intento, declarado (E-015)
 
 En la primera corrida el ancho de núcleo elegido por TT1 fue el mínimo de la rejilla (1,5) en 19 de 21
 bloques: el entrenamiento pedía menos suavizado del que se le ofrecía, así que la victoria podía ser del

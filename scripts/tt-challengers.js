@@ -2,7 +2,12 @@
 // scripts/tt-challengers.js — LOS ASPIRANTES DEL TOTAL DE PUNTOS DE TENIS DE MESA (T2.11 y T2.13)
 //
 //   node scripts/tt-challengers.js [--solo=poblacion|duracion|challengers] [--desde=20240101]
-//                                  [--eval-desde=20250101] [--json=<salida>] [--cache=<records.json>]
+//                                  [--eval-desde=20250101] [--json=<salida>] [--sin-orden]
+//
+// `--desde=20260101` reproduce EXACTAMENTE el holdout congelado en data/tt/model-priors.json (n 4.557,
+// 71,885 puntos reales contra 71,232 del modelo, barridas 0,4005/0,4117, deuce 0,1578/0,1489). Si algún día
+// deja de reproducirlo, lo que ha cambiado es el motor y no este script: mirar ahí primero.
+// `--sin-orden` se salta la prueba de sensibilidad al orden inventado, que cuesta cuatro replays.
 //
 // POR QUÉ EXISTE. El compilador exacto de `tt-engine/compiler.js` nunca se comparó con nada: se validó
 // contra sí mismo (constantes elegidas por log-loss del GANADOR) y contra una referencia naif de media

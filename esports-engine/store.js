@@ -1705,9 +1705,29 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   }
   if (backfilled) wr(PICKS_F(game), st);
 
+  // MIGRACIÓN DE UNA VEZ (15-sep, A03). Los VOID que este motor escribió por caducidad o por parseo
+  // descartado no eran devoluciones de la casa: eran huecos de dato disfrazados de cero. Se reclasifican
+  // una sola vez —la condición deja de cumplirse en cuanto se reescriben, así que es idempotente— y se
+  // reconocen por su huella: `result_source: 'caducidad'` o el motivo del parseo descartado. El VOID del
+  // mapa que no se jugó NO entra aquí: ese sí es una devolución de verdad y se queda como está.
+  let migradas = 0;
+  for (const p of Object.values(st.picks)) {
+    if (p.result_code !== 'VOID') continue;
+    const porCaducidad = p.result_source === 'caducidad';
+    const porParseo = /descart[óo] el parseo/.test(String(p.unsettleable_why || ''));
+    if (!porCaducidad && !porParseo) continue;
+    p.status = 'RESULT_PENDING'; p.result_code = 'DATA_UNRESOLVED'; p.units = 0;
+    p.unresolved_motivo = porCaducidad
+      ? 'reclasificado el 15-sep: la fuente nunca publicó este partido, no hubo devolución'
+      : 'reclasificado el 15-sep: la fuente descartó el parseo, no hubo devolución';
+    p.unresolved_at = new Date().toISOString();
+    migradas++;
+  }
+  if (migradas) wr(PICKS_F(game), st);
+
   const pend = Object.values(st.picks).filter((p) => p.status === 'ACTIVE'
     && p.start_at && Date.parse(p.start_at) < Date.now() - 20 * 60e3);
-  if (!pend.length) return { game, settled: 0, pending: 0, clv_backfilled: backfilled };
+  if (!pend.length) return { game, settled: 0, pending: 0, clv_backfilled: backfilled, migradas_no_resueltas: migradas };
 
   // LA VENTANA DE LA FUENTE SE CALCULA DESDE LA PICK PENDIENTE MÁS ANTIGUA (22-ago). Estaba fija en cuatro
   // días, así que una pick cuyo partido se jugó hace cinco NO PODÍA liquidarse nunca: a la fuente no se le
@@ -1789,10 +1809,16 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
       // ancha que llegamos a pedir es de 30 días. Pasado ese plazo la pick no está esperando dato, está
       // esperando un dato que no existe, y dejarla ACTIVE para siempre engorda el contador de atascadas y
       // tapa los fallos nuevos — que es exactamente como se perdieron las 94 de Valorant en agosto.
-      // Se cierra VOID: ni ganada ni perdida, no se pudo saber. Nunca antes de los 21 días.
+      // NO RESUELTA NO ES ANULADA (15-sep, A03 de la auditoría). Hasta hoy esto se cerraba VOID con cero
+      // unidades, que es lo mismo que decir "la casa devolvió el dinero". No lo devolvió: el partido se
+      // jugó y lo único que pasa es que la fuente nunca lo publicó. Contarlo como un cero legítimo
+      // selecciona la muestra y puede esconder pérdidas, así que queda en DATA_UNRESOLVED, fuera del ROI
+      // y del recuento de liquidadas, con su motivo a la vista. El plazo de 21 días no se toca.
       if (Date.now() - t > 21 * 864e5) {
-        pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
-        pk.settled_at = new Date().toISOString(); pk.result_source = 'caducidad';
+        pk.status = 'RESULT_PENDING'; pk.result_code = 'DATA_UNRESOLVED'; pk.units = 0;
+        pk.result_source = 'caducidad';
+        pk.unresolved_motivo = 'la fuente nunca publicó este partido: 21 días sin aparecer';
+        pk.unresolved_at = new Date().toISOString();
         pk.unsettleable_why = 'la fuente nunca publicó este partido: 21 días sin aparecer';
         caducadas++; continue;
       }
@@ -1841,9 +1867,14 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     // `gp:vitality`, o sea la ORGANIZACIÓN en vez de la filial. Con eso, dejar que una de estas filas
     // dictara un WIN/LOSS podría liquidar la pick del primer equipo con el resultado de su academia. Se
     // usan para lo único que son fiables: certificar que de ese partido no va a haber dato.
+    // Y TAMPOCO ES UNA DEVOLUCIÓN (15-sep, A03). Que bo3 descarte el parseo de una demo no anula nada: la
+    // serie se jugó y alguien ganó, sencillamente nosotros no vamos a saber quién. Es el caso puro de dato
+    // que falta, no de dinero devuelto, así que va a DATA_UNRESOLVED igual que la caducidad.
     if (r.parse_rejected) {
-      pk.status = 'SETTLED'; pk.result_code = 'VOID'; pk.units = 0;
-      pk.settled_at = new Date().toISOString(); pk.result_source = r.source;
+      pk.status = 'RESULT_PENDING'; pk.result_code = 'DATA_UNRESOLVED'; pk.units = 0;
+      pk.result_source = r.source;
+      pk.unresolved_motivo = 'la fuente descartó el parseo de este partido: el detalle por mapa no va a existir';
+      pk.unresolved_at = new Date().toISOString();
       pk.unsettleable_why = 'la fuente descartó el parseo de este partido: el detalle por mapa no va a existir';
       voided++; continue;
     }
@@ -1887,7 +1918,9 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   }
   st.at = new Date().toISOString();
   const fechas = idx.map((x) => x.t).filter(Boolean).sort((a, b) => a - b);
-  const resumen = { at: st.at, settled, unmatched, unsettleable, anuladas_sin_parseo: voided, anuladas_mapa_no_jugado: mapaNoJugado, caducadas, pending: pend.length, source: rs.source, resolver: !!resolve,
+  // los dos huecos de dato se cuentan por su nombre (15-sep): `no_resueltas_*`. Solo `anuladas_mapa_no_jugado`
+  // sigue siendo una anulación de verdad, porque ahí la casa devuelve el dinero.
+  const resumen = { at: st.at, settled, unmatched, unsettleable, no_resueltas_sin_parseo: voided, anuladas_mapa_no_jugado: mapaNoJugado, no_resueltas_caducidad: caducadas, migradas_no_resueltas: migradas, pending: pend.length, source: rs.source, resolver: !!resolve,
     // el estado de la FUENTE va en el mismo parte: sin esto no se sabe si el problema es nuestro o suyo
     // la ventana pedida viaja en el parte: sin esto, un `fuente_desde` corto no distingue "la fuente no
     // tiene más" de "no se le pidió más", que es exactamente el fallo que esto viene a cerrar
@@ -1981,6 +2014,9 @@ function track(game, { limit = 60 } = {}) {
   const all = st && st.picks ? Object.values(st.picks) : [];
   const closes = rd(`closes-${game}.json`);
   const settled = all.filter((p) => p.status === 'SETTLED');
+  // NO RESUELTAS (15-sep, A03): filas que no sabemos liquidar. No son ceros y no entran ni al ROI ni al
+  // recuento de liquidadas — salen aparte, con su motivo, para que el hueco se vea en vez de taparse.
+  const sinResolver = all.filter((p) => p.result_code === 'DATA_UNRESOLVED');
   const w = settled.filter((p) => p.result_code === 'WIN').length;
   const l = settled.filter((p) => p.result_code === 'LOSS').length;
   const push = settled.filter((p) => p.result_code === 'PUSH').length;
@@ -2022,6 +2058,8 @@ function track(game, { limit = 60 } = {}) {
     last_settle: (st && st.last_settle) || null,
     total: all.length, active: all.filter((p) => p.status === 'ACTIVE').length,
     settled: settled.length, w, l, push,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     units: +units.toFixed(2),
     roi_pct: staked ? +(100 * units / staked).toFixed(2) : null,
     hit_pct: (w + l) ? +(100 * w / (w + l)).toFixed(1) : null,

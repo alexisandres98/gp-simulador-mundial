@@ -391,7 +391,19 @@ const TOPE_DESCANSOS = Number(process.env.GP_DERIV_TOPE_DESCANSOS) || 30;
 async function settle(deps = {}) {
   const { scoreFor, descansoFor, ahora = Date.now() } = deps;
   const st = rd();
-  let liquidadas = 0, anuladas = 0, esperando_descanso = 0, descansos_buscados = 0;
+  let liquidadas = 0, anuladas = 0, no_resueltas = 0, esperando_descanso = 0, descansos_buscados = 0;
+  // MIGRACIÓN DE UNA VEZ (15-sep, A03 de la auditoría). Los tres VOID que este motor llegó a escribir eran
+  // huecos de dato —sin marcador, sin descanso, mercado sin regla—, no devoluciones: aquí no hay casa, las
+  // familias nuevas viven en sombra y nadie devolvió un dólar. Se reclasifican una sola vez; al reescribir
+  // el estado dejan de cumplir la condición, así que repetir la pasada no vuelve a tocarlas.
+  let migradas = 0;
+  for (const p of Object.values(st.picks || {})) {
+    if (p.status !== 'VOID') continue;
+    p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+    p.unresolved_motivo = 'reclasificado el 15-sep: ' + (p.void_why || 'VOID por falta de dato') + ', no hubo devolución';
+    p.unresolved_at = new Date().toISOString();
+    migradas++;
+  }
   const cacheDescanso = new Map();                               // ceid → {h1Home,h1Away} | null
   for (const p of Object.values(st.picks || {})) {
     if (p.status !== 'ACTIVE') continue;
@@ -400,7 +412,12 @@ async function settle(deps = {}) {
     let sc = null;
     try { sc = typeof scoreFor === 'function' ? scoreFor(p) : null; } catch { sc = null; }
     if (!sc || sc.homeGoals == null || sc.awayGoals == null) {
-      if (ahora - ko > 72 * 3600e3) { p.status = 'VOID'; p.result = 'void'; p.void_why = 'sin marcador a las 72 h'; p.settled_at = new Date().toISOString(); anuladas++; }
+      // NO RESUELTO NO ES ANULADO (15-sep, A03 de la auditoría). Setenta y dos horas sin marcador se
+      // cerraban VOID con cero unidades, y VOID quiere decir que la casa devolvió el dinero. Nadie devolvió
+      // nada: el partido se jugó y lo que falta es nuestro dato. Ese cero selecciona la muestra y puede
+      // esconder pérdidas, así que la pick queda en DATA_UNRESOLVED con su motivo. El corte de 72 h es el
+      // mismo de siempre: aquí solo cambia la etiqueta.
+      if (ahora - ko > 72 * 3600e3) { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = 'sin marcador final 72 h después del saque'; p.unresolved_at = new Date().toISOString(); no_resueltas++; }
       continue;
     }
     const marcador = { homeGoals: sc.homeGoals, awayGoals: sc.awayGoals };
@@ -415,16 +432,29 @@ async function settle(deps = {}) {
       const d = cacheDescanso.get(p.ceid);
       if (!d) {
         // sin descanso NO se liquida con el marcador final: eso sería resolver otro mercado. Se espera, y a
-        // las 72 h se anula igual que cualquier pick sin resultado.
-        if (ahora - ko > 72 * 3600e3) { p.status = 'VOID'; p.result = 'void'; p.void_why = 'sin marcador al descanso a las 72 h'; p.settled_at = new Date().toISOString(); anuladas++; }
+        // las 72 h se cierra — pero como NO RESUELTA (15-sep, A03), no como anulada: que ESPN no publique
+        // el marcador al descanso es un hueco nuestro, no una devolución de nadie.
+        if (ahora - ko > 72 * 3600e3) { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = 'sin marcador al descanso 72 h después del saque'; p.unresolved_at = new Date().toISOString(); no_resueltas++; }
         else esperando_descanso++;
         continue;
       }
       marcador.h1Home = d.h1Home; marcador.h1Away = d.h1Away;
     }
     const res = settlement.settle(p.market_id, marcador);
-    if (!res || res === 'unknown') { p.status = 'VOID'; p.result = 'unknown'; p.void_why = 'el liquidador no reconoce el mercado'; p.settled_at = new Date().toISOString(); anuladas++; continue; }
-    if (res === 'void') { esperando_descanso++; continue; }      // le falta un dato: se reintenta la próxima
+    // un mercado sin regla de liquidación tampoco es una devolución (15-sep, A03): es una familia que no
+    // sabemos resolver, y eso se dice con su nombre en vez de convertirse en un cero cómodo.
+    if (!res || res === 'unknown') { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = `el liquidador no reconoce el mercado ${p.market_id}`; p.unresolved_at = new Date().toISOString(); no_resueltas++; continue; }
+    if (res === 'void') {
+      // AQUÍ 'void' SIGNIFICA DATO INCOHERENTE, NO DEVOLUCIÓN (15-sep, A03). Llegados a este punto el
+      // marcador final está y, si la familia lo pedía, el del descanso también: lo único que hace que
+      // `settlement.settle` devuelva 'void' es que los números no se sostienen entre sí —la primera mitad
+      // con más goles que el partido entero—. Eso es dato roto, no dinero devuelto. Se sigue reintentando
+      // por si la fuente se corrige, y al mismo corte de 72 h que las demás ramas se cierra como no
+      // resuelta. Antes se quedaba ACTIVE para siempre y el hueco no se veía en ningún contador.
+      if (ahora - ko > 72 * 3600e3) { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = 'marcador incoherente: las dos mitades no cuadran con el resultado final'; p.unresolved_at = new Date().toISOString(); no_resueltas++; }
+      else esperando_descanso++;
+      continue;
+    }
     p.result = res;
     p.units = r2((UNIDADES[res] || (() => 0))(p.odds));
     p.final_score = { home: sc.homeGoals, away: sc.awayGoals };
@@ -433,8 +463,8 @@ async function settle(deps = {}) {
     p.settled_at = new Date().toISOString();
     liquidadas++;
   }
-  if (liquidadas || anuladas) { st.at = new Date().toISOString(); wr(st); }
-  return { liquidadas, anuladas, esperando_descanso, descansos_buscados };
+  if (liquidadas || anuladas || no_resueltas || migradas) { st.at = new Date().toISOString(); wr(st); }
+  return { liquidadas, anuladas, no_resueltas, migradas, esperando_descanso, descansos_buscados };
 }
 
 // ── SEGUIMIENTO ─────────────────────────────────────────────────────────────────────────────────────────
@@ -528,6 +558,9 @@ function tabla() {
       error_cal_pp: mitades.ERROR_CAL[fam] != null ? r2(100 * mitades.ERROR_CAL[fam]) : null,
       abiertas: v.filter((p) => p.status === 'ACTIVE').length,
       anuladas: v.filter((p) => p.status === 'VOID').length,
+      // no resueltas (15-sep, A03): huecos de dato, ni liquidadas ni anuladas. No entran a `agrega` —que
+      // solo mira SETTLED— así que no tocan ni el ROI ni el CLV de la fila; están para que se vean.
+      no_resueltas: v.filter((p) => p.result === 'DATA_UNRESOLVED').length,
       ...a,
       clv_recortado_pct: clvRec, clv_t_recortada: tRec,
       margen_lado_pct: margenLadoPct, n_margen: overs.length,
@@ -562,6 +595,11 @@ function track() {
     total: all.length,
     active: all.filter((p) => p.status === 'ACTIVE').length,
     voided: all.filter((p) => p.status === 'VOID').length,
+    // NO RESUELTAS (15-sep, A03): fuera del ROI y del recuento de liquidadas, contadas con su motivo. Un
+    // "no encontré el dato" contado como cero selecciona la muestra y puede esconder pérdidas.
+    no_resueltas: all.filter((p) => p.result === 'DATA_UNRESOLVED').length,
+    no_resueltas_motivos: all.filter((p) => p.result === 'DATA_UNRESOLVED')
+      .reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     overall: agrega(all),
     // las dos ventanas por separado: mezclarlas sería juzgar la regla nueva con la muestra de la vieja
     por_regla: Object.fromEntries(Object.entries(porRegla).map(([k, v]) => [k, agrega(v)])),

@@ -520,8 +520,21 @@ async function recordShadow() {
 // liquidación con el resultado oficial de la PDC (legs/sets) y, para 180s, con la estadística de Orakel (PC)
 async function settleShadow({ voidDays = 12 } = {}) {
   const st = rd('picks.json') || { picks: [] };
+  // MIGRACIÓN DE UNA VEZ (15-sep, A03 de la auditoría). Aquí no hay casa —todas las familias están en
+  // sombra— y la única rama que escribía VOID era la del plazo: o no casó el resultado, o la familia no
+  // tiene fuente de liquidación. Ninguno de los dos es una devolución, los dos son huecos de dato. Se
+  // reclasifican una sola vez; al reescribirlos dejan de cumplir la condición, así que es idempotente.
+  let migradas = 0;
+  for (const p of st.picks) {
+    if (p.result === 'VOID' && p.unresolved_motivo == null) {
+      p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+      p.unresolved_motivo = 'reclasificado el 15-sep: ' + (p.void_reason || 'VOID por falta de resultado') + ', no hubo devolución';
+      p.unresolved_at = new Date().toISOString(); migradas++;
+    }
+  }
+  if (migradas) wr('picks.json', st);
   const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.start_at) < Date.now() - 90 * 60e3);
-  const diag = { vencidas: open.length, ok: 0, sin_resultado: 0, sin_stats: 0, void_tiempo: 0, no_final: 0 };
+  const diag = { vencidas: open.length, ok: 0, sin_resultado: 0, sin_stats: 0, no_resueltas_tiempo: 0, no_final: 0, migradas };
   if (!open.length) return { settled: 0, diag };
   const sl = await slate({ force: true }).catch(() => G.slate);
   const closes = rd('closes.json') || { closes: {} };
@@ -529,7 +542,12 @@ async function settleShadow({ voidDays = 12 } = {}) {
   let settled = 0;
   for (const p of open) {
     try {
-      if (Date.parse(p.start_at) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = p.unsettleable ? 'familia sin fuente de liquidación fuera del Players Championship' : `sin resultado casado en ${voidDays} días`; p.settled_at = new Date().toISOString(); settled++; diag.void_tiempo++; continue; }
+      // NO RESUELTO NO ES ANULADO (15-sep, A03 de la auditoría). Doce días sin casar el resultado —o una
+      // familia que fuera del Players Championship no tiene de dónde liquidarse— se cerraban VOID con cero
+      // unidades, y VOID significa que la casa devolvió el dinero. No lo devolvió nadie: el partido se jugó
+      // y lo que falta es el dato. Ese cero selecciona la muestra y puede esconder pérdidas, así que la pick
+      // queda en DATA_UNRESOLVED, fuera del ROI y de las liquidadas. El plazo de `voidDays` no se toca.
+      if (Date.parse(p.start_at) < Date.now() - voidDays * 864e5) { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = p.unsettleable ? 'familia sin fuente de liquidación fuera del Players Championship' : `sin resultado casado ${voidDays} días después del inicio`; p.unresolved_at = new Date().toISOString(); settled++; diag.no_resueltas_tiempo++; continue; }
       let fx;
       if (p.circuit === 'modus') {
         // MODUS: el marcador lo da Flashscore (la PDC no lo publica); la fila se construye con la misma forma
@@ -593,6 +611,9 @@ function track({ limit = 40 } = {}) {
   const settleDiag = rd('settle-diag.json') || null;
   const mine = st.picks;
   const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  // NO RESUELTAS (15-sep, A03): picks sin resultado casado. Fuera del ROI y del recuento de liquidadas, y
+  // contadas aparte con su motivo — un hueco de dato no es un cero, y disfrazarlo sesga la muestra.
+  const sinResolver = mine.filter((p) => p.result === 'DATA_UNRESOLVED');
   // mismo rescate que en tenis de mesa: el CLV que la liquidación no encontró en `rows` sale de los cubos
   // congelados. En memoria — `rd` relee el archivo en cada llamada y aquí no se escribe nada.
   try { const CLr = require('../implied-engine/closes'); for (const p of done) CLr.rescatar(p); } catch { }
@@ -622,6 +643,8 @@ function track({ limit = 40 } = {}) {
     regime: 'shadow', doctrine: DOCTRINE,
     open: mine.filter((p) => p.status === 'OPEN').length, open_list: mine.filter((p) => p.status === 'OPEN').slice(-Math.max(30, limit)).reverse(),
     settled: done.length, w, l, push: done.filter((p) => p.result === 'PUSH').length, voided: mine.filter((p) => p.result === 'VOID').length,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: fam(byFam), by_family_book: fam(byFB), clv_curve: clvCurve,

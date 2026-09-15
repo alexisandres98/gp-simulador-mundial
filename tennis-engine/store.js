@@ -664,12 +664,26 @@ function marcadorCoherente(setsA, setsB, bestOf) {
 
 async function settleShadow({ voidDays = 10, only = null } = {}) {
   const st = rdD('picks.json') || { picks: [] };
+  // MIGRACIÓN DE UNA VEZ (15-sep, A03 de la auditoría). De los tres VOID que escribe este motor, solo uno
+  // era un hueco de dato: el del plazo ("sin resultado casado en N días"). Los otros dos son anulaciones de
+  // verdad y NO se tocan — el cuadro cambiado (el partido nunca existió) y el retiro/walkover (la regla de
+  // sombra devuelve el stake, T-0442). Se reconoce por el motivo escrito; al reescribirlo deja de cumplir
+  // la condición, así que la migración es idempotente.
+  let migradas = 0;
+  for (const p of st.picks) {
+    if (p.result === 'VOID' && /sin resultado casado/.test(String(p.void_reason || ''))) {
+      p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+      p.unresolved_motivo = 'reclasificado el 15-sep: ' + p.void_reason + ' — no hubo devolución, falta el marcador';
+      p.unresolved_at = new Date().toISOString(); migradas++;
+    }
+  }
+  if (migradas) wrD('picks.json', st);
   const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.commence) < Date.now() - 2 * 3600e3 && (!only || only.has(p.key)));
-  if (!open.length) return { settled: 0, pending: 0, diag: {} };
+  if (!open.length) return { settled: 0, pending: 0, diag: { migradas } };
   let settled = 0;
   // DIAGNÓSTICO DEL LIQUIDADOR: sin esto, "0 liquidadas" es indistinguible de "la fuente está caída".
   // Se cuenta por MOTIVO y viaja hasta la sonda, que es donde se mira cuando algo no cuadra.
-  const diag = { vencidas: open.length, sin_fuente: 0, sin_cruce: 0, no_final: 0, sin_marcador: 0, marcador_incompleto: 0, ok: 0, void_tiempo: 0 };
+  const diag = { vencidas: open.length, sin_fuente: 0, sin_cruce: 0, no_final: 0, sin_marcador: 0, marcador_incompleto: 0, ok: 0, no_resueltas_tiempo: 0, migradas };
   const errs = [];
   const closes = rdD('closes.json') || { closes: {} };
   for (const p of open) {
@@ -678,7 +692,13 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       // días pasados, así que esperar no cuesta nada y anular a los 4 días tiraba datos buenos
       // una pick REABIERTA por la re-liquidación nunca se anula por plazo en la pasada normal: espera a que la
       // fuente conteste (o a que resettleShadow, con su propio plazo largo, decida)
-      if (!p.resettled_from && Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.void_reason = `sin resultado casado en ${voidDays} días (walkover/cambio de agenda probable)`; settled++; diag.void_tiempo++; continue; }
+      // NO RESUELTO NO ES ANULADO (15-sep, A03 de la auditoría). Este plazo se cerraba VOID con cero
+      // unidades y VOID quiere decir que la casa devolvió el dinero. Aquí nadie devolvió nada: puede que
+      // fuera un walkover, o un cambio de agenda, o simplemente que ESPN no publicó ese cuadro — y el
+      // propio motivo lo decía con un "probable". Un cero por sospecha selecciona la muestra y puede
+      // esconder pérdidas, así que queda en DATA_UNRESOLVED, fuera del ROI y de las liquidadas. El
+      // walkover que SÍ vemos confirmado se sigue anulando más abajo, con su marcador delante.
+      if (!p.resettled_from && Date.parse(p.commence) < Date.now() - voidDays * 864e5) { p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0; p.unresolved_motivo = `sin resultado casado en la fuente ${voidDays} días después del saque`; p.unresolved_at = new Date().toISOString(); settled++; diag.no_resueltas_tiempo++; continue; }
       const day = p.commence.slice(0, 10).replace(/-/g, '');
       // EL DÍA DE ESPN NO ES EL DÍA UTC DE LA PICK (7-sep). ESPN agrupa el marcador por fecha LOCAL del
       // torneo (US Open: hora de Nueva York) y la pick guarda el saque en UTC: un partido de la sesión
@@ -886,6 +906,9 @@ function track(tour, { limit = 40 } = {}) {
   const settleDiag = rdD('settle-diag.json') || null;
   const mine = st.picks.filter((p) => tour == null || p.tour === tour);
   const done = mine.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  // NO RESUELTAS (15-sep, A03): picks cuyo marcador nunca apareció. Ni al ROI ni al recuento de liquidadas;
+  // salen aparte con su motivo, porque un hueco de dato disfrazado de cero sesga la muestra en silencio.
+  const sinResolver = mine.filter((p) => p.result === 'DATA_UNRESOLVED');
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
@@ -950,6 +973,8 @@ function track(tour, { limit = 40 } = {}) {
     open_list: mine.filter((p) => p.status === 'OPEN').slice(-40).reverse(),
     settled: done.length, w, l, push: done.filter((p) => p.result === 'PUSH').length,
     voided: mine.filter((p) => p.result === 'VOID').length,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, F]) => [k, {

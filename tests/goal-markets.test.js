@@ -22,9 +22,16 @@ const CASES = [[1.82, 1.13], [1.30, 1.30], [2.60, 1.90], [0.60, 0.55]];
     ok(`línea 2.0: over+under+push == 1 (λ ${lh}/${la})`, close(w2.over + w2.under + w2.push, 1, 1e-5));
     ok(`línea 2.0: kind=whole y push==P(total=2) (λ ${lh}/${la})`, w2.kind === 'whole' && close(w2.push, H.eq(2)));
     ok(`línea 2.0: over_fair descuenta el push (λ ${lh}/${la})`, close(w2.over_fair, H.gt(2) / (1 - H.eq(2))));
+    // CORREGIDO EL 15-SEP (hallazgo A22 de la auditoría externa). Este test afirmaba que el cuarto es el
+    // PROMEDIO DE LAS PROBABILIDADES de sus dos sub-líneas, y esa era justamente la fórmula equivocada: no
+    // vale cuando las dos mitades tienen distinta masa de devolución. Lo correcto es promediar PAGOS.
+    //   A = masa que gana = ½(P(>lo) + P(>hi))     B = masa que pierde = ½(P(<lo) + P(≤hi))
+    //   probabilidad equivalente = A/(A+B)         cuota justa = 1 + B/A
+    // Con el promedio de probabilidades, apostar a la "cuota justa" resultante tiene EV negativo.
     const q = mk.asianTotal(matrix, 2.25, H);
-    const o20 = mk.asianTotal(matrix, 2.0, H).over_fair, o25 = mk.asianTotal(matrix, 2.5, H).over_fair;
-    ok(`línea 2.25: over_fair = promedio de 2.0 y 2.5 (λ ${lh}/${la})`, close(q.over_fair, (o20 + o25) / 2) && q.kind === 'quarter');
+    const A = 0.5 * (H.gt(2) + H.gt(2.5)), B = 0.5 * (H.lt(2) + (1 - H.gt(2.5)));
+    ok(`línea 2.25: over_fair = A/(A+B), promediando pagos (λ ${lh}/${la})`, close(q.over_fair, A / (A + B)) && q.kind === 'quarter');
+    ok(`línea 2.25: cuota justa = 1 + B/A (λ ${lh}/${la})`, close(q.quarter.cuota_justa, 1 + B / A));
     // monotonicidad: over_fair decrece al subir la línea
     const lines = mk.asianTotals(matrix).map(a => a.over_fair);
     let mono = true; for (let i = 1; i < lines.length; i++) if (lines[i] > lines[i - 1] + 1e-9) mono = false;

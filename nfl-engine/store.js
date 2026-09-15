@@ -530,9 +530,22 @@ async function settleShadow() {
       const ch = (comp.competitors || []).find((x) => x.homeAway === 'home'), ca = (comp.competitors || []).find((x) => x.homeAway === 'away');
       const hs = +ch.score, as = +ca.score;
       const margin = hs - as, total = hs + as;
-      let win = null;
+      let win = null, familiaConocida = true;
       if (p.family === 'SPREAD') win = p.side === 'home' ? (margin > p.line ? 1 : margin === p.line ? null : 0) : (margin < p.line ? 1 : margin === p.line ? null : 0);
-      if (p.family === 'TOTAL') win = p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0);
+      else if (p.family === 'TOTAL') win = p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0);
+      // EL GANADOR NO SE LIQUIDABA (15-sep, A04 de la auditoría). Sin rama para MONEYLINE, toda pick de
+      // ganador caía con `win = null` y se marcaba PUSH con cero unidades: la familia no podía producir
+      // muestra ni a favor ni en contra. En la NFL el empate existe y es devolución.
+      else if (p.family === 'MONEYLINE') win = p.side === 'home' ? (margin > 0 ? 1 : margin === 0 ? null : 0) : (margin < 0 ? 1 : margin === 0 ? null : 0);
+      else familiaConocida = false;
+      if (!familiaConocida) {
+        // una familia sin regla de liquidación se queda sin resolver, nunca en empate silencioso
+        p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+        p.unresolved_motivo = `no hay regla de liquidación para la familia ${p.family}`;
+        p.unresolved_at = new Date().toISOString();
+        settled++;
+        continue;
+      }
       p.status = 'SETTLED';
       p.result = win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
       p.final = { home: hs, away: as, margin, total };
@@ -555,6 +568,8 @@ async function settleShadow() {
 function track() {
   const st = rdD('picks.json') || { picks: [] };
   const done = st.picks.filter((p) => p.status === 'SETTLED');
+  // NO RESUELTAS (15-sep, A03): fuera del ROI y contadas aparte, nunca disfrazadas de empate
+  const sinResolver = st.picks.filter((p) => p.result === 'DATA_UNRESOLVED');
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
@@ -579,6 +594,8 @@ function track() {
     regime: 'shadow', doctrine: DOCTRINE,
     open: st.picks.filter((p) => p.status === 'OPEN').length,
     settled: done.length, w, l, push: done.length - w - l,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, F]) => [k, {

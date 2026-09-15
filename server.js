@@ -16380,11 +16380,14 @@ async function buildCombatPicksOrg(org, out, dryRun) {
   return out; // (save/active los maneja el wrapper multi-org)
 }
 // Liquidación por ESPN scoreboard (pasado 10 días): ganador → WIN/LOSS; completada sin ganador (NC/draw)
-// → VOID; pelea que no aparece 72h después del evento → VOID (cancelada/reprogramada — sin fuente no se inventa).
+// → VOID, que es la única devolución de verdad de este liquidador. Pelea que no aparece 72 h después del
+// evento, o que aparece sin el método/round que la familia necesita → RESULT_PENDING con
+// `result_code: 'DATA_UNRESOLVED'` (15-sep, A03): sin fuente no se inventa el resultado, pero tampoco se
+// apunta un cero como si la casa hubiera devuelto el dinero.
 async function settleCombatPicks() {
   const pend = (db.combatPicks || []).filter(p => p.status === 'ACTIVE' && Date.parse(p.event.kickoff_at || 0) < Date.now());
   if (!pend.length) return { settled: 0 };
-  const out = { settled: 0, won: 0, lost: 0, void: 0 };
+  const out = { settled: 0, won: 0, lost: 0, void: 0, no_resueltas: 0 };
   let results = {};
   try {
     const from = new Date(Date.now() - 10 * 24 * 3600e3), to = new Date();
@@ -16476,12 +16479,26 @@ async function settleCombatPicks() {
       if (p.closing && p.closing.odds > 1 && p.best_odds > 1) p.clv_pct = +((p.best_odds / p.closing.odds - 1) * 100).toFixed(2);
       out.settled++;
     };
+    // NO RESUELTO NO ES ANULADO (15-sep, A03 de la auditoría). Tres de los cuatro cierres en cero de este
+    // liquidador no eran devoluciones: eran huecos de dato —ESPN no publica el método, no publica el round,
+    // o la pelea no aparece en el marcador 72 h después—. VOID significa que la casa devolvió el dinero, y
+    // llamar VOID a "no lo encontré" convierte un agujero en un cero legítimo, selecciona la muestra y
+    // puede esconder pérdidas. Estas quedan en RESULT_PENDING con su motivo: fuera del ROI y del track,
+    // que solo cuenta WIN y LOSS. Los plazos de 72 h no se tocan; lo único que cambia es la etiqueta.
+    const noResuelta = (motivo) => {
+      p.status = 'RESULT_PENDING'; p.result_code = 'DATA_UNRESOLVED'; p.units = 0;
+      p.unresolved_motivo = motivo; p.unresolved_at = new Date().toISOString();
+      out.settled++; out.no_resueltas++;
+    };
     if (r) {
-      if (!r.winner_id) { finish('VOID', 0); out.void++; }
+      // el único VOID de verdad: la pelea se celebró y terminó SIN ganador (empate o sin decisión). Ahí la
+      // casa devuelve el dinero de verdad, así que se queda VOID — con el motivo escrito desde hoy, para
+      // que de aquí en adelante se pueda distinguir de los huecos de dato sin adivinar.
+      if (!r.winner_id) { finish('VOID', 0); p.void_reason = 'empate o sin decisión: la pelea terminó sin ganador'; out.void++; }
       else if (p.family === 'METHOD') {
         // boxeo trae el método en el propio resultado (Wikipedia); MMA lo pide al core API de ESPN
         const mc = r.method_class || require('./combat-engine/ratings').methodClass((await fetchMethod(p, r)) || {});
-        if (!mc) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
+        if (!mc) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) noResuelta('la fuente no publica el método del desenlace 72 h después de la pelea'); }
         else {
           const [side4, meth4] = p.selection_code.split('_');
           const pickedId = side4 === 'f1' ? p.event.home_id : p.event.away_id;
@@ -16490,7 +16507,7 @@ async function settleCombatPicks() {
         }
       } else if (p.family === 'ROUNDS') {
         const mc = r.method_class || require('./combat-engine/ratings').methodClass((await fetchMethod(p, r)) || {});
-        if (!mc && !r.period) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; } }
+        if (!mc && !r.period) { if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) noResuelta('la fuente no publica ni el método ni el round de cierre 72 h después de la pelea'); }
         else {
           // el round dura 5 minutos en MMA y 3 en boxeo: con 5 fijos, un "over 4.5 rounds" de boxeo se
           // liquidaba contra un reloj que no existe (la línea también está en rounds, no en minutos).
@@ -16506,7 +16523,13 @@ async function settleCombatPicks() {
         if (String(r.winner_id) === String(pickedId)) { finish('WIN', p.best_odds - 1); out.won++; }
         else { finish('LOSS', -1); out.lost++; }
       }
-    } else if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) { finish('VOID', 0); out.void++; }
+    } else if (Date.parse(p.event.kickoff_at) < Date.now() - 72 * 3600e3) {
+      // la pelea no aparece en ninguna fuente 72 h después. Puede que se cancelara —y entonces sí sería
+      // devolución— o puede que se celebrara y nadie la haya publicado donde miramos. No lo sabemos, y
+      // cuando no se sabe se dice, no se apunta un cero. La retirada CONFIRMADA de cartelera sigue
+      // anulándose aparte, con su `void_reason: 'fight_off_card'`, que es cuando sí consta la devolución.
+      noResuelta('la pelea no aparece en ninguna fuente 72 h después del evento');
+    }
   }
   if (out.settled) save();
   return out;
@@ -16586,9 +16609,15 @@ function combatPicksTrack({ since = 0, excludeLeagues = null, excludeFamilies = 
     const clv = list.filter(p => p.clv_pct != null);
     return { n: list.length, w, l: list.length - w, hit: list.length ? +(w / list.length * 100).toFixed(1) : null, units: +u.toFixed(2), clv_avg: clv.length ? +(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length).toFixed(2) : null };
   };
+  // NO RESUELTAS (15-sep, A03): peleas cuyo desenlace nunca encontramos. No entran al ROI ni al recuento de
+  // liquidadas —`rows` solo tiene WIN y LOSS—, pero se cuentan y se agrupan por motivo para que el hueco se
+  // vea. Si un día crecen, el problema es la fuente, no el modelo, y así se nota a tiempo.
+  const sinResolver = (db.combatPicks || []).filter(p => p.result_code === 'DATA_UNRESOLVED');
   return {
     total: agg(rows), main: agg(rows.filter(p => p.card_slot === 'main')), prelim: agg(rows.filter(p => p.card_slot !== 'main')),
     active: (db.combatPicks || []).filter(p => p.status === 'ACTIVE').length,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     // PREREGISTRO (2-sep): desgloses SOLO de FIGHT — regla del favorito (prereg_fav45), degradación T−24 h y
     // CLV por lado del mercado, cada uno con n, acierto, ROI y CLV medio ± se. ROUNDS/METHOD no cambian.
     fight_breakdown: CBM.trackBreakdown(rows.filter(p => (p.family || 'FIGHT') === 'FIGHT')),

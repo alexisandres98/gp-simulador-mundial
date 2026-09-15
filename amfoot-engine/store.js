@@ -609,8 +609,20 @@ async function recordShadow(lg) {
 
 async function settleShadow(lg) {
   const st = rdD(`${lg}-picks.json`) || { picks: [] };
+  // MIGRACIÓN DE UNA VEZ (15-sep, A03): los VOID de este motor solo podían venir de "sin marcador a los
+  // siete días", nunca de una devolución de la casa — aquí no hay casa, es sombra. Se reclasifican como
+  // no resueltos para que dejen de contar como ceros legítimos en el histórico.
+  let migrados = 0;
+  for (const p of st.picks) {
+    if (p.result === 'VOID' && !p.book_void && p.unresolved_motivo == null) {
+      p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+      p.unresolved_motivo = 'reclasificado el 15-sep: VOID por falta de marcador, no devolución de la casa';
+      p.unresolved_at = new Date().toISOString(); migrados++;
+    }
+  }
+  if (migrados) wrD(`${lg}-picks.json`, st);
   const open = st.picks.filter((p) => p.status === 'OPEN' && Date.parse(p.kickoff) < Date.now() - 4 * 3600e3);
-  if (!open.length) return { settled: 0 };
+  if (!open.length) return { settled: 0, migrados };
   await refreshResults(lg, { force: true }).catch(() => null);
   const M = modelSnapshot(lg);
   const closes = rdD(`${lg}-closes.json`) || { closes: {} };
@@ -618,14 +630,34 @@ async function settleShadow(lg) {
   for (const p of open) {
     const g = M && M.data.games.find((x) => gid(x) === p.game_id && x.hp != null);
     if (!g) {
-      // una semana sin resultado (partido movido/cancelado): VOID con motivo, no eternamente abierto
-      if (Date.parse(p.kickoff) < Date.now() - 7 * 864e5) { p.status = 'SETTLED'; p.result = 'VOID'; p.units = 0; p.settled_at = new Date().toISOString(); settled++; }
+      // NO RESUELTO NO ES ANULADO (15-sep, A03 de la auditoría). Antes, una semana sin resultado se marcaba
+      // VOID con cero unidades, que es lo mismo que decir "la casa devolvió el dinero". No lo devolvió:
+      // simplemente no hemos encontrado el marcador. Contarlo como cero selecciona la muestra y puede
+      // esconder pérdidas. Ahora queda en DATA_UNRESOLVED, fuera del ROI y con su motivo a la vista.
+      if (Date.parse(p.kickoff) < Date.now() - 7 * 864e5 && p.result !== 'DATA_UNRESOLVED') {
+        p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+        p.unresolved_motivo = 'sin marcador en la base propia siete días después del saque';
+        p.unresolved_at = new Date().toISOString(); settled++;
+      }
       continue;
     }
     const margin = g.hp - g.ap, total = g.hp + g.ap;
-    let win = null;
+    let win = null, familiaConocida = true;
     if (p.family === 'SPREAD') win = p.side === 'home' ? (margin > p.line ? 1 : margin === p.line ? null : 0) : (margin < p.line ? 1 : margin === p.line ? null : 0);
-    if (p.family === 'TOTAL') win = p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0);
+    else if (p.family === 'TOTAL') win = p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0);
+    // EL GANADOR NO SE LIQUIDABA (15-sep, A04 de la auditoría). Solo había rama para SPREAD y TOTAL, así que
+    // toda pick de MONEYLINE caía con `win = null` y salía marcada PUSH con cero unidades. La familia se
+    // reabrió en sombra el 19-ago "para tener muestra propia" y por construcción no podía producirla:
+    // su track entero eran empates. El empate real (margen 0) sí es devolución en las tres ligas.
+    else if (p.family === 'MONEYLINE') win = p.side === 'home' ? (margin > 0 ? 1 : margin === 0 ? null : 0) : (margin < 0 ? 1 : margin === 0 ? null : 0);
+    else familiaConocida = false;
+    if (!familiaConocida) {
+      // una familia sin regla de liquidación no se convierte en empate: se queda sin resolver y se ve
+      p.status = 'RESULT_PENDING'; p.result = 'DATA_UNRESOLVED'; p.units = 0;
+      p.unresolved_motivo = `no hay regla de liquidación para la familia ${p.family}`;
+      p.unresolved_at = new Date().toISOString(); settled++;
+      continue;
+    }
     p.status = 'SETTLED';
     p.result = win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
     p.final = { home: g.hp, away: g.ap, margin, total };
@@ -666,6 +698,8 @@ function track(lg) {
   const C = LEAGUES[lg];
   const st = rdD(`${lg}-picks.json`) || { picks: [] };
   const done = st.picks.filter((p) => p.status === 'SETTLED' && p.result !== 'VOID');
+  // NO RESUELTAS: fuera del ROI y a la vista, con su motivo. No son ceros: son filas que no sabemos liquidar.
+  const sinResolver = st.picks.filter((p) => p.result === 'DATA_UNRESOLVED');
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
@@ -696,6 +730,8 @@ function track(lg) {
     regime: 'shadow', doctrine: C.doctrine, league: lg,
     open: st.picks.filter((p) => p.status === 'OPEN').length,
     settled: done.length, w, l, push: done.length - w - l,
+    no_resueltas: sinResolver.length,
+    no_resueltas_motivos: sinResolver.reduce((a, p) => { const k = p.unresolved_motivo || 'sin motivo'; a[k] = (a[k] || 0) + 1; return a; }, {}),
     units: r2(units), roi_pct: done.length ? r2(100 * units / done.length) : null,
     clv_avg_pct: clv.length ? r2(clv.reduce((s, p) => s + p.clv_pct, 0) / clv.length) : null, clv_n: clv.length,
     by_family: Object.fromEntries(Object.entries(byFam).map(([k, F]) => [k, {

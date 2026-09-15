@@ -45,23 +45,43 @@ const ASIAN_LINES = [0.5, 1.5, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 4.5];
 
 function asianTotal(matrix, line, H = totalsHelpers(matrix)) {
   const kind = lineKind(line);
-  let over, under, push = 0, overFair, components = null;
+  let over, under, push = 0, overFair, components = null, quarter = null;
   if (kind === 'half') {
     over = H.gt(line); under = 1 - over; overFair = over;
   } else if (kind === 'whole') {
     over = H.gt(line); under = H.lt(line); push = H.eq(line); overFair = wholeFairOver(H, line);
-  } else { // quarter: promedio de las dos sub-líneas adyacentes (half-stake en cada una)
+  } else { // quarter: media apuesta en cada sub-línea adyacente
     const lo = Math.floor(line * 2) / 2;   // 2.25 → 2.0 ; 2.75 → 2.5
     const hi = lo + 0.5;                    // 2.25 → 2.5 ; 2.75 → 3.0
-    const fairAt = (L) => lineKind(L) === 'whole' ? wholeFairOver(H, L) : H.gt(L);
-    overFair = (fairAt(lo) + fairAt(hi)) / 2;
-    over = overFair; under = 1 - overFair; components = [lo, hi];
+    // SE PROMEDIAN PAGOS, NO PROBABILIDADES (15-sep, hallazgo A22/§3.2 de la auditoría externa). Hasta hoy
+    // esto hacía la media de las dos probabilidades justas condicionales, y eso NO es la probabilidad
+    // equivalente de la apuesta cuando las dos mitades tienen distinta masa de devolución.
+    //
+    //   over 2,25 con P(T<2)=0,30, P(T=2)=0,25, P(T>2)=0,45:
+    //     media apuesta en over 2,0 (el 2 exacto DEVUELVE) y media en over 2,5 (el 2 exacto PIERDE)
+    //     A = masa que gana = 0,45        B = masa que pierde = 0,30 + 0,5 × 0,25 = 0,425
+    //     cuota justa = 1 + B/A = 1,944444      probabilidad equivalente = A/(A+B) = 0,514286
+    //   La media de probabilidades daba 0,525 → cuota 1,904762. Apostar a esa cuota "justa" tiene EV −1,79 %.
+    //
+    // Se calcula con las masas y se deja `over_fair` como la probabilidad EQUIVALENTE, que es la que se
+    // puede comparar contra el mercado sin falsear el valor. `over`/`under` de display siguen siendo la
+    // probabilidad de superar la línea, que es lo que el usuario entiende por "más de 2,25".
+    const masas = (L) => {
+      if (lineKind(L) === 'whole') return { gana: H.gt(L), pierde: H.lt(L), devuelve: H.eq(L) };
+      return { gana: H.gt(L), pierde: 1 - H.gt(L), devuelve: 0 };
+    };
+    const a = masas(lo), b = masas(hi);
+    const A = 0.5 * (a.gana + b.gana), B = 0.5 * (a.pierde + b.pierde);
+    overFair = (A + B) > 0 ? A / (A + B) : H.gt(line);
+    over = H.gt(line); under = 1 - over; components = [lo, hi];
+    quarter = { A: +A.toFixed(6), B: +B.toFixed(6), devuelve: +Math.max(0, 1 - A - B).toFixed(6),
+      cuota_justa: A > 0 ? +(1 + B / A).toFixed(6) : null };
   }
   return {
     market_family: 'match_total', line, kind, push: +push.toFixed(6),
     over: +over.toFixed(6), under: +under.toFixed(6),
     over_fair: +overFair.toFixed(6), under_fair: +(1 - overFair).toFixed(6),
-    components,
+    components, quarter,
     market_id_over: `TOTAL_GOALS_OVER_${lineId(line)}`, market_id_under: `TOTAL_GOALS_UNDER_${lineId(line)}`,
   };
 }

@@ -7,6 +7,68 @@
 
 ---
 
+## ESTADO AL CIERRE DEL 15-SEP-2026
+
+> Añadido por la sesión ejecutora al terminar la jornada. **Las Fases 0 y 1 están cerradas y desplegadas**
+> (`6ab0320`, health 200). La Fase 2 quedó hecha en tarjetas, CS2, tenis de mesa y tenis ATP. La Fase 3 y el
+> backlog de la sección 7 se empiezan mañana.
+
+### Decisiones de Alexis, tomadas el 15-sep
+
+| ID | Decisión | Lo que dijo | Efecto |
+|---|---|---|---|
+| **D1a** | ¿Pausar tarjetas? | **No.** Siguen corriendo | `GP_REAL_CARDS_ENABLED` sin tocar |
+| **D1b** | ¿Pausar tenis de mesa real? | No más allá de A02 | hecho en T0.4 |
+| **D2** | ¿Quitar "confirmada" del tablero? | Sí | hecho en T1.6 |
+| **D3** | ¿Parada vinculante? | Sí | hecho en T1.8 |
+| **D4** | ¿Retirar versiones sin evidencia? | Sí | hecho en T1.9 |
+| **D5** | ¿Córners y goles de clubes? | **Seguir publicando normal por ahora** | sin cambios en el feed |
+| **D6** | ¿Reparto de esfuerzo de la Fase 2? | Sí | seguido |
+| **D7** | ¿Clasificador de tenis de mesa? | Sí, hoy | hecho en T0.3 |
+| **D8** | ¿Rotar claves? | **Más adelante, lo hace él** | PENDIENTE: Render (expuesta el 15-sep), Hetzner, `GP_REAL_RELAY_TOKEN`, `API_FOOTBALL_KEY` |
+| **T2.2** | ¿Conectar el árbitro a producción? | **Sí, conéctalo** | hecho: entra a la proyección, `GP_CARDS_REF=1` por defecto |
+
+Además, el 15-sep: confirmado el total depositado (2.280,92 USDT, la conciliación cierra a cero exacto) y
+aplicada la migración de las filas sin resultado localizable (10 filas, 8 de CS2 y 2 de tarjetas).
+
+### Lo que queda, por orden de importancia
+
+**1. LA CARA CONTRARIA DEL CIERRE. Una tarea, no nueve.** El replay del apartado 5b de
+`METRICAS_RECALCULADAS` lo deja medido: **nueve de nueve motores guardan el cierre de su lado y ninguno el
+del contrario**. Sin eso no se puede quitar el margen, y sin quitar el margen la vara no puede dar un
+veredicto de dinero en NINGÚN deporte, tarjetas incluida. El contador de la muestra objetivo del preregistro
+de `cards_under_v2` vale cero por esto mismo. **Es el trabajo previo a todo lo demás y no hay atajo.**
+
+**2. Fase 3 — las cinco puertas** (G0 integridad, G1 señal histórica, G2 sombra prospectiva, G3 piloto real,
+G4 escalar) y la decisión sobre el libro transaccional. No se puede empezar antes del punto 1: ningún
+challenger ha pasado G1 todavía, y tarjetas no puede pasarlo sin EV contra cierre.
+
+**3. Decisiones abiertas que cambian qué picks nacen** — las cuatro esperan a Alexis:
+- **Apagar `shift` en tenis.** Medido que RESTA en ATP bo3 (t +6,28) y que C6 lo bate en WTA (t −4,83).
+  Es el único de los cuatro donde el cambio va claramente a favor.
+- **Encender C7** (compilador con marcadores legales) en tenis ATP bo3.
+- **Encender `GP_TT_UNC_FAMILIA`**: endurece el listón de totales de tenis de mesa un 15-18 %.
+- **Encender `GP_TT_DEDUP_EQUIV`**: el catálogo ve cinco apuestas donde hay dos.
+
+**4. D8, las cuatro claves.** Lo hace Alexis en los paneles.
+
+**5. Backlog P1/P2 de la sección 7** — quince tareas, ninguna empezada.
+
+**6. T2.4** (¿ventana o mezcla?) queda **sin contestar y con el número que lo justifica**: con 155 apuestas y
+un intervalo de ROI de 32 puntos sobre el libro entero, sus partes no sostienen ninguna conclusión. Pendiente
+de muestra, no de trabajo.
+
+### Bloqueos de datos que no son trabajo de modelo
+
+- El feed de props de Underdog lleva caído (426 `upgrade_required`, cero tesis activas).
+- El contrato de Underdog sigue sin verificar en lo que decide el signo: falta la tabla de multiplicadores
+  de la casa. Entre 3× y 3,5× el resultado va de −12,71 % a +1,83 %.
+- El 20,6 % de las apuestas de CS2 no tenía resultado localizable. Ya está etiquetado; la causa raíz no.
+- Pinnacle dejó de publicar tenis de mesa y dardos (confirmado desde su propio catálogo). Hecho consumado.
+- `derivadas` devuelve cero picks por la ruta `?motor=`: hay que comprobar la ruta del disco en producción.
+
+---
+
 ## 0. Cómo usar este plan
 
 **Orden.** Las fases van en orden y las tareas dentro de cada fase también, salvo que se indique "paralelizable". La Fase 0 no se salta: todo lo demás mide sobre lo que la Fase 0 arregla.

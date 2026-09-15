@@ -209,6 +209,71 @@ muestras de doce y de cuatro. Se listan para que la tabla cuadre, no para leerlo
   precio 0,50 y tasa 0,05 el listón mínimo es 1,25 pp de ventaja; por debajo de eso lo que parecía una
   oportunidad pequeña era una pérdida esperada.
 
+## 5b. El replay de los motores que no pasaban por la vara (T1.13)
+
+`node scripts/replay-vara.js --dir <volcados de ?motor=> --md`
+
+### Por qué faltaba, y no era pereza
+
+Los ocho motores que quedaron fuera del apartado 2 **no tenían forma de sacar su libro ticket a ticket**.
+`track()` devuelve agregados —n, ROI, CLV medio— y el EV contra el cierre no se puede calcular con
+agregados: es un cálculo ticket a ticket contra la cara contraria del MISMO contrato en la MISMA casa. La
+ruta `?motor=` (15-sep) los abre; `libroCrudo()` hace lo propio en tenis, tenis de mesa, dardos, NFL y
+derivadas. Son **6.202 picks, 5.352 liquidadas**, que hasta hoy no se podían juzgar desde fuera.
+
+### El resultado
+
+| motor | picks | liquidadas | con cierre propio | **con la cara contraria** | veredicto | CLV recortado | ROI a stake plano (IC por evento) |
+|---|---:|---:|---:|---:|---|---:|---|
+| `esports:cs2` | 2.412 | 1.973 | 1.794 | **0** | `cerrar` | +1,07 % | +0,32 % [−7,93, +8,76] |
+| `esports:lol` | 1.257 | 1.187 | 919 | **0** | `cerrar` | +0,12 % | +0,80 % [−5,87, +8,47] |
+| `tenis` | 811 | 776 | 323 | **0** | `sin_cierre_valorable` | −11,26 % | +4,42 % [−7,86, +17,92] |
+| `esports:valorant` | 449 | 430 | 393 | **0** | `cerrar` | +0,20 % | −5,01 % [−20,42, +10,06] |
+| `tt` | 444 | 444 | 114 | **0** | `sin_cierre_valorable` | +0,13 % | −19,51 % [−32,51, −6,81] |
+| `esports:dota2` | 396 | 283 | 228 | **0** | `cerrar` | −0,01 % | −7,51 % [−21,35, +6,52] |
+| `hoops` | 188 | 187 | 136 | **0** | `sin_cierre_valorable` | −0,24 % | +2,19 % [−23,26, +27,97] |
+| `dardos` | 181 | 41 | 19 | **0** | `sin_cierre_valorable` | −6,36 % | −36,47 % [−64,40, −5,36] |
+| `nfl` | 64 | 31 | 0 | **0** | `sin_cierre_valorable` | +7,90 % | −23,00 % [−62,18, +17,29] |
+| `derivadas` | 0 | 0 | 0 | 0 | `sin_liquidadas` | — | — |
+
+### Nueve de nueve: una sola causa, no ocho problemas
+
+**Ningún motor guarda la cara contraria del cierre.** Guardan el suyo —y algunos muy bien: CS2 lo tiene en
+el 91 % de sus picks— pero sin el contrario no se puede quitar el margen, y sin quitar el margen no se puede
+saber si hay dinero. Es exactamente lo que deja a tarjetas sin veredicto. **Es una tarea, no nueve**, y es
+la que desbloquea todo lo demás.
+
+### Los cuatro `cerrar` no vienen del CLV
+
+Los cuatro juegos de esports reciben `cerrar` por la **prueba directa** —¿acierta más la probabilidad del
+modelo o la del precio?— y no por el CLV. CS2 es el caso que resume la auditoría entera en una fila: **CLV
+recortado +1,07 %, y el precio le gana al modelo con t −3,49**. Le ganamos al cierre y perdemos contra la
+casa. Esa es la distinción que la vara vieja no sabía hacer.
+
+### Y una advertencia sobre el −19,51 % de tenis de mesa
+
+Ese número **no es del canal con dinero**. Desglosado por familia:
+
+| familia | n | ROI | IC por evento |
+|---|---:|---:|---|
+| `POINTS_TOTAL` *(la que tiene dinero real, 5 USD planos)* | 105 | **−4,30 %** | **[−28,66, +20,09]** |
+| `GAME_POINTS_TOTAL` | 42 | −37,39 % | [−62,83, −8,50] |
+| `GAME_POINTS_HCP` | 86 | −30,56 % | [−51,59, −7,64] |
+| `GAME_ML` | 75 | −24,69 % | [−45,39, −3,05] |
+| `POINTS_HCP` | 21 | −22,29 % | [−63,60, +16,83] |
+| `ML` | 64 | −18,17 % | [−38,91, +2,07] |
+| `GAMES_HCP` | 51 | −10,41 % | [−36,73, +15,41] |
+
+La familia con dinero es la **menos mala de las siete** y su intervalo contiene el cero con holgura: no hay
+evidencia de que esté perdiendo. Las que sangran de verdad, con el intervalo fuera del cero, son las **tres
+familias de GAME** —el mercado dentro de un game— y ninguna de ellas lleva dinero. Leer el agregado del
+motor como si hablara del canal real habría sido justo el error de mezclar familias que ya escondió tarjetas
+durante semanas.
+
+Dardos (−36,47 % con el intervalo fuera del cero) tiene 41 liquidadas: es una señal, no una conclusión.
+
+---
+
 ## 6. Lo que falta para cerrar la Fase 1
 
 | Tarea | Estado |
@@ -224,7 +289,7 @@ muestras de doce y de cuatro. Se listan para que la tabla cuadre, no para leerlo
 | T1.3 cierres prepartido | el cubo T−1 ya no admite lecturas posteriores al inicio; **falta conectar** `estadoCaptura` en cada motor |
 | T1.6 tablero sin etiqueta de confirmada | pendiente |
 | T1.11 comisiones de Polymarket | **hecho**: tarifa verificada, código desplegado y recálculo EXACTO corrido sobre las 358 liquidadas del ledger (§5). La sombra pasa de +1,41 % bruto a −1,44 % neto |
-| T1.13 replay completo de todos los tracks | este documento cubre las familias con cierre; faltan los motores que no pasan por la vara |
+| T1.13 replay completo de todos los tracks | **hecho** (§5b): diez motores, 6.202 picks, 5.352 liquidadas. Nueve de nueve sin la cara contraria del cierre — una sola causa |
 | T1.14 Pinnacle sin eventos de tenis de mesa | hecho — ver §7 |
 
 ## 7. Fuentes: qué está vivo y qué no (15-sep)

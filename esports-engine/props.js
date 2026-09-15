@@ -36,6 +36,87 @@ const fs = require('fs');
 const path = require('path');
 const UD = require('../data-providers/esports/underdog');
 const CD = require('./cs2-data');
+// El contrato viaja como tupla (selección · línea · cuota), no como cuota suelta: `lib/contrato.js`.
+const CT = require('../lib/contrato');
+
+// ═══ EL CONTRATO DE UNDERDOG (T2.9 / A18, 15-sep-2026) ═══════════════════════════════════════════════════
+//
+// LO QUE ESTABA MAL Y CUÁNTO CUESTA. Hasta hoy el listón de cada pierna era `1 / price_dec`, donde
+// `price_dec` sale del `american_price` que publica la API (−112 ⇒ 1,8929 ⇒ listón 52,83 %). Eso solo
+// sería correcto **si existiera la pierna suelta a ese precio**, y no existe: Underdog es un pick'em y la
+// entrada mínima son DOS piernas con un multiplicador de boleto. La auditoría lo dice sin rodeos: «una API
+// con american_price no prueba que puedan apostarse singles a ese precio».
+//
+// El listón de verdad de una entrada Standard de N piernas con multiplicador M, con piernas independientes
+// y la misma probabilidad, es `p* = (1/M)^(1/N)`:
+//
+//     2 piernas a 3×    → 57,74 %      (2 piernas a 3,5× → 53,45 %)
+//     3 piernas a 6×    → 55,03 %
+//     4 piernas a 10×   → 56,23 %
+//     5 piernas a 20×   → 54,93 %
+//
+// Entre 2,1 y 4,9 puntos por encima del 52,83 % que usábamos. Con la tasa de acierto que la sombra lleva
+// medida (`props_cs2_v2`: 178 de 330, 53,94 %) el boleto de dos piernas da −12,71 % con la tabla A y
+// +1,83 % con la tabla B. **El signo depende de un número que no hemos podido verificar**: el sitio de
+// Underdog devuelve 403 a este entorno y su API devuelve 426. La ficha completa, con las dos tablas, las
+// URLs, la fecha y lo que falta para cerrarla, está en `docs/CONTRATOS_CASA.md`.
+//
+// POR QUÉ DETRÁS DE UN INTERRUPTOR. Cambiar el listón cambia QUÉ TESIS NACEN, y la regla `props_cs2_v2`
+// está congelada desde el 20-ago justamente para que la muestra sea comparable. Así que el cálculo nuevo
+// se publica SIEMPRE (viaja en cada fila y en cada tesis anotada, para poder releer el track con él) y solo
+// DECIDE cuando `GP_PROPS_EV_TICKET=1`. Mientras esté apagado, la sombra sigue naciendo con la regla vieja
+// y con el número nuevo escrito al lado, que es lo que permite comparar sin destruir la ventana.
+const CONTRATO_UNDERDOG = {
+  verificado: false,
+  consultado: '2026-09-15',
+  por_que_no: 'underdogsports.com y help.underdogsports.com devuelven 403 a este entorno; api.underdogfantasy.com/beta/v5 devuelve 426 upgrade_required',
+  ficha: 'docs/CONTRATOS_CASA.md § Underdog',
+  minimo_piernas: 2,
+  maximo_piernas: 8,
+  // dos tablas de fuentes secundarias que NO coinciden en 2 piernas, que es justo donde cambia el signo
+  multiplicadores: {
+    A: { 2: 3, 3: 6, 4: 10, 5: 20 },
+    B: { 2: 3.5, 3: 6, 4: 10, 5: 20, 6: 35, 8: 120 },
+  },
+  // la conservadora manda mientras no haya fuente primaria: sobrestimar el listón descarta alguna tesis
+  // buena, subestimarlo aprueba tesis malas, y solo el segundo error cuesta dinero (mismo criterio que la
+  // comisión de Polymarket en `lib/comisiones.js`).
+  tabla_por_defecto: 'A',
+  anulacion: 'una pierna anulada DEGRADA la entrada al número de piernas inmediato inferior; una entrada que quede con jugadores de un solo equipo se anula y se devuelve',
+  correlacion: 'no se encontró regla que prohíba piernas del mismo partido; el límite es el de un solo equipo',
+};
+const EV_TICKET_ON = String(process.env.GP_PROPS_EV_TICKET || '') === '1';
+const TABLA = process.env.GP_PROPS_UD_TABLA || CONTRATO_UNDERDOG.tabla_por_defecto;
+// El número de piernas con el que se valora el boleto por defecto. Dos es el mínimo del producto y el
+// boleto más favorable de las dos tablas, así que es el caso MÁS generoso posible: si ni con ese hay
+// esperanza, no la hay con ninguno.
+const PIERNAS_REF = Math.max(2, Math.min(8, +(process.env.GP_PROPS_UD_PIERNAS || 2)));
+
+// Listón por pierna de un boleto de N piernas: la probabilidad que necesita cada pierna para que el TICKET
+// quede a cero. Devuelve `null` si esa combinación no existe en la tabla — no se interpola.
+function listonTicket(n = PIERNAS_REF, tabla = TABLA) {
+  const M = (CONTRATO_UNDERDOG.multiplicadores[tabla] || {})[n];
+  if (!(M > 1)) return null;
+  return { n, multiplicador: M, liston: Math.pow(1 / M, 1 / n), tabla };
+}
+
+// EV del TICKET con sus piernas reales. `ps` son las probabilidades de cada pierna. La independencia es una
+// APROXIMACIÓN DECLARADA y su dirección se conoce: dos overs del mismo mapa están correlacionados en
+// positivo (un mapa largo reparte kills a todos), así que `Π p` SUBESTIMA la probabilidad conjunta y por
+// tanto el EV. Es decir, es conservadora para el signo y optimista para la varianza. La exposición conjunta
+// de verdad —simular R1 y R2 con la forma latente compartida— es la P1 del §7.2 de la auditoría y no está
+// hecha; ponerla aquí sin el simulador sería inventar una correlación.
+function evTicket(ps, { n = null, tabla = TABLA } = {}) {
+  const legs = (ps || []).filter((x) => Number.isFinite(x) && x > 0 && x < 1);
+  const N = n || legs.length;
+  const L = listonTicket(N, tabla);
+  if (!L || legs.length !== N) return null;
+  const conjunta = legs.reduce((a, b) => a * b, 1);
+  return { n: N, multiplicador: L.multiplicador, tabla,
+    p_conjunta: +conjunta.toFixed(6), ev: +(L.multiplicador * conjunta - 1).toFixed(6),
+    liston_por_pierna: +L.liston.toFixed(4),
+    supuesto: 'piernas independientes: la correlación real de dos props del mismo mapa es positiva, así que esto subestima el EV y sobreestima el riesgo' };
+}
 
 // El mismo criterio de disco que el resto de esports: histórico al disco persistente (sobrevive deploys);
 // sin él (desarrollo local), al repo.
@@ -221,19 +302,35 @@ async function board({ force = false } = {}) {
     if (pr && pr.veto) { row.status = 'VETO'; row.veto = pr.veto; row.why = pr.why; rows.push(row); continue; }
     row.proj = pr;
     const pOver = 1 - phi((l.line - pr.mu) / pr.sigma);
+    const LT = listonTicket();          // el listón del BOLETO, que es el producto que de verdad existe
     let best = null;
     const evalSides = [];
     for (const s of l.sides) {
       const pSide = s.side === 'over' ? pOver : 1 - pOver;
-      const bar = s.price_dec ? 1 / s.price_dec : 0.5;   // sin precio por pierna, el listón honesto es 50 %
+      // el listón de la PIERNA teórica: `1/price_dec`. Se conserva porque es con lo que nació la muestra
+      // congelada, pero ya NO se presenta como si fuera el precio de nada comprable.
+      const barPierna = s.price_dec ? 1 / s.price_dec : 0.5;
+      // el listón del TICKET: la probabilidad que necesita cada pierna para que el boleto quede a cero
+      const barTicket = LT ? LT.liston : null;
+      const bar = (EV_TICKET_ON && barTicket != null) ? barTicket : barPierna;
       const edge = pSide - bar;
-      const ev = { side: s.side, price_dec: s.price_dec, american: s.american, p_gp: +pSide.toFixed(4), bar: +bar.toFixed(4), edge: +edge.toFixed(4) };
+      const ev = { side: s.side, price_dec: s.price_dec, american: s.american, p_gp: +pSide.toFixed(4),
+        bar: +bar.toFixed(4), edge: +edge.toFixed(4),
+        // los dos listones viajan SIEMPRE, decida el que decida: así el track se puede releer con
+        // cualquiera de los dos sin volver a pedir el tablero (que además ya no responde).
+        bar_pierna: +barPierna.toFixed(4), edge_pierna: +(pSide - barPierna).toFixed(4),
+        bar_ticket: barTicket != null ? +barTicket.toFixed(4) : null,
+        edge_ticket: barTicket != null ? +(pSide - barTicket).toFixed(4) : null,
+        // el EV del boleto de referencia con esta pierna repetida: es el número que la auditoría pide
+        ev_ticket: LT ? evTicket(new Array(LT.n).fill(pSide), { n: LT.n }) : null,
+        decide: EV_TICKET_ON && barTicket != null ? 'ticket' : 'pierna' };
       evalSides.push(ev);
       if (!best || ev.edge > best.edge) best = ev;
     }
     row.p_over = +pOver.toFixed(4);
     row.sides = evalSides;
     row.best = best;
+    row.contrato = LT ? { n: LT.n, multiplicador: LT.multiplicador, tabla: LT.tabla, verificado: CONTRATO_UNDERDOG.verificado } : null;
     if (best && best.edge > EDGE_CAP) { row.status = 'VETO'; row.veto = 'ventaja_no_creible'; row.why = `${(best.edge * 100).toFixed(1)} pp contra una casa no es ventaja: es un fallo de lectura propio.`; }
     else if (best && best.edge >= EDGE_MIN) { row.status = 'SOMBRA'; }
     else { row.status = 'SIN_VENTAJA'; }
@@ -251,6 +348,7 @@ async function board({ force = false } = {}) {
       proyeccion: `kpr encogido (ancla poblacional ${base.popKpr.toFixed(3)}, K=${SHRINK_ROUNDS} rondas) × ${(base.expRounds * 2).toFixed(1)} rondas esperadas en 2 mapas (media reciente medida del pool propio). Dispersión: sd de sus últimos 12 mapas × √2 con suelo poissoniano ×1,15. Headshots: la de kills × proporción de headshot encogida.`,
       ajuste_rival: `medido desde la base propia: media de dpr del cinco rival contra la poblacional (${base.popDpr.toFixed(3)}), exigiendo ≥3 jugadores medidos y recortado a ±12 % porque el resolvedor puede confundir filiales.`,
       listones: `regla ${RULE.version} (congelada el ${RULE.frozen_at}): sombra desde ${(EDGE_MIN * 100).toFixed(0)} pp sobre el listón del precio; veto por encima de ${(EDGE_CAP * 100).toFixed(0)} pp.`,
+      contrato: `Underdog es un pick'em: la pierna suelta al american_price NO existe. El listón del boleto de ${PIERNAS_REF} piernas (tabla ${TABLA}) es ${(() => { const L = listonTicket(); return L ? (100 * L.liston).toFixed(2) + ' %' : 'no medible'; })()}, frente al ${(100 * 0.5283).toFixed(2)} % de la pierna teórica a −112. Decide el ${EV_TICKET_ON ? 'TICKET' : 'listón de la pierna (interruptor GP_PROPS_EV_TICKET apagado: la regla congelada manda)'}. Contrato SIN VERIFICAR contra la casa — ver docs/CONTRATOS_CASA.md.`,
       doctrina: 'familia EN SOMBRA: se anota y se liquida sola, no se publica como pick. Separada por completo del ejecutor en la sombra de la casa.',
     },
   };
@@ -265,6 +363,38 @@ async function board({ force = false } = {}) {
 // tres veces infla la muestra con copias correladas. De cada tesis se queda la línea de MÁS ventaja, y la
 // PRIMERA lectura — la ventaja de un libro lento se mide contra la línea que publicó, no contra la que
 // corrige después.
+//
+// EL DEDUPE, REHECHO EL 15-sep (A18). La clave era `día|jugador|stat|lado` y tenía dos agujeros que la
+// auditoría señala: (1) el DÍA no es la serie —un jugador puede jugar dos series el mismo día y la clave las
+// fundía en una sola tesis, quedándose con la de más ventaja y tirando la otra a la basura sin contarla—; y
+// (2) no llevaba la POLÍTICA, o sea qué mapas cuentan y con qué versión de regla nació. Dos tesis con la
+// misma etiqueta y distinta política no son la misma tesis y no se pueden comparar.
+//
+// La clave nueva es `serie canónica | jugador | stat | lado | política`. La serie canónica la construye
+// `lib/contrato.js` a partir de los DOS nombres del cruce ordenados alfabéticamente, así que «MOUZ vs NAVI»
+// y «NAVI vs MOUZ» producen la misma clave — que es el mismo motivo por el que ese módulo existe.
+const POLITICA = { kills_on_maps_1_2: 'mapas_1_2', headshots_on_maps_1_2: 'mapas_1_2' };
+function claveTesis(r) {
+  const titulo = String((r.match || {}).title || '');
+  const partes = titulo.split(/\s+vs\.?\s+/i).map((s) => s.trim()).filter(Boolean);
+  // OJO CON DOS COSAS DE ESTA CLAVE, las dos aprendidas a base de romperla:
+  //   · `tipoLinea: 'total'` — un más/menos de jugador es un TOTAL: `over` es `over` cotice quien cotice el
+  //     cruce primero. Sin declararlo, `contrato.js` deduce «ninguna» y VOLTEA la cara cuando el proveedor
+  //     lista los equipos al revés, así que «MOUZ vs NAVI» y «NAVI vs MOUZ» daban claves distintas para la
+  //     misma tesis — exactamente lo contrario de lo que este dedupe viene a hacer.
+  //   · la LÍNEA no entra. El mismo over de un jugador a 27,5, a 32,5 y a 34,5 es UNA tesis en tres precios,
+  //     no tres tesis; anotarla tres veces infla la muestra con copias correladas. Es la lección de las 29
+  //     «picks» que eran 8 opiniones, y se conserva.
+  const serie = partes.length === 2
+    ? CT.clave({ deporte: 'cs2', evento: null, participantes: partes, familia: 'PROP_JUGADOR',
+      tipoLinea: 'total', seleccion: r.best.side, periodo: POLITICA[r.stat] || r.stat, casa: r.book, linea: null })
+    // sin los dos nombres no hay serie canónica: se cae al identificador del propio libro, que es estable
+    // dentro de Underdog, y se marca para poder contarlas aparte.
+    : `sin_participantes|${(r.match || {}).id || String(r.match.start_at).slice(0, 10)}`;
+  const politica = `${POLITICA[r.stat] || r.stat}|${RULE.version}`;
+  return `${serie}|${r.slug}|${r.stat}|${r.best.side}|${politica}`;
+}
+
 function recordShadow(bd) {
   try {
     const st = rd();
@@ -273,21 +403,29 @@ function recordShadow(bd) {
     for (const r of bd.rows || []) {
       if (r.status !== 'SOMBRA' || !r.best || !r.match || !r.slug) continue;
       if (!r.match.start_at || Date.parse(r.match.start_at) < Date.now()) continue;  // solo series futuras
-      const day = String(r.match.start_at).slice(0, 10);
-      const tk = `${day}|${r.slug}|${r.stat}|${r.best.side}`;
+      const tk = claveTesis(r);
       const prev = byThesis.get(tk);
       if (!prev || r.best.edge > prev.best.edge) byThesis.set(tk, r);
     }
-    for (const r of byThesis.values()) {
+    for (const [key, r] of byThesis) {
       const day = String(r.match.start_at).slice(0, 10);
-      const key = `${day}|${r.slug}|${r.stat}|${r.best.side}`;
-      if (st.picks[key]) continue;
+      // COMPATIBILIDAD: la clave vieja se comprueba también, para que una tesis ya anotada no se duplique
+      // el día que cambia la clave. Un track que se duplica solo miente el doble.
+      const claveVieja = `${day}|${r.slug}|${r.stat}|${r.best.side}`;
+      if (st.picks[key] || st.picks[claveVieja]) continue;
       st.picks[key] = {
-        key, game: 'cs2', book: r.book, day,
+        key, clave_legado: claveVieja, game: 'cs2', book: r.book, day,
         slug: r.slug, player: r.player, team: r.team, rival: r.rival,
         stat: r.stat, stat_label: r.stat_label, line: r.line, side: r.best.side,
         price_dec: r.best.price_dec, american: r.best.american,
         p_gp: r.best.p_gp, bar: r.best.bar, edge: r.best.edge,
+        // los dos listones y el EV del boleto, escritos en la tesis: sin esto el track solo se puede releer
+        // con el listón con el que nació, y ese es justo el que la auditoría pone en duda
+        bar_pierna: r.best.bar_pierna, edge_pierna: r.best.edge_pierna,
+        bar_ticket: r.best.bar_ticket, edge_ticket: r.best.edge_ticket,
+        ev_ticket: r.best.ev_ticket, decide: r.best.decide,
+        contrato: r.contrato || null,
+        politica: `${POLITICA[r.stat] || r.stat}|${RULE.version}`,
         mu: r.proj.mu, sigma: r.proj.sigma,
         start_at: r.match.start_at, match_title: (r.match || {}).title || null,
         recorded_at: new Date().toISOString(), status: 'ACTIVE',
@@ -505,6 +643,27 @@ function perf(picks, { openOnly = false } = {}) {
     clv_price_n: clvPrice.length, avg_clv_price: mean(clvPrice),
     lines_moved: movedN,
     clv_note: 'CLV = línea + precio. La línea se evalúa con la proyección congelada al anotar, así que mide el movimiento del libro y no la deriva del modelo. En un libro DFS el precio casi no se mueve: el componente que informa es la línea.',
+    // ── EL RETORNO DEL PRODUCTO QUE DE VERDAD EXISTE (T2.9) ──────────────────────────────────────────────
+    // El `roi` de arriba es el de la PIERNA teórica a su american_price, y esa pierna no se puede comprar.
+    // Aquí va el mismo track valorado como BOLETO: con la tasa de acierto observada, qué habría devuelto una
+    // entrada de N piernas. Se publican las dos tablas de multiplicadores porque no coinciden y porque el
+    // signo del negocio depende de cuál sea la buena — que es el hueco que esta casa NO ha podido cerrar.
+    ticket: (() => {
+      if (!done.length) return null;
+      const hit = wins / done.length;
+      const por = {};
+      for (const tabla of Object.keys(CONTRATO_UNDERDOG.multiplicadores)) {
+        por[tabla] = Object.keys(CONTRATO_UNDERDOG.multiplicadores[tabla]).map(Number).sort((a, b) => a - b)
+          .map((n) => {
+            const e = evTicket(new Array(n).fill(hit), { n, tabla });
+            return e ? { piernas: n, multiplicador: e.multiplicador, liston_por_pierna: e.liston_por_pierna,
+              ev_pct: +(100 * e.ev).toFixed(2) } : null;
+          }).filter(Boolean);
+      }
+      return { acierto_observado: +hit.toFixed(4), n: done.length, por_tabla: por,
+        verificado: CONTRATO_UNDERDOG.verificado,
+        aviso: 'piernas independientes y todas con la MISMA probabilidad, que es la tasa observada. Un boleto real mezcla piernas de distinta calidad y correlacionadas; esto es el orden de magnitud, no la liquidación de nadie.' };
+    })(),
   };
 }
 
@@ -526,8 +685,11 @@ function track() {
       return Object.fromEntries(Object.entries(g).map(([k, v]) => [k, { n: v.length, ...perf(v) }]));
     })(),
     at: st.at || null,
+    contrato: { ...CONTRATO_UNDERDOG, decide: EV_TICKET_ON ? 'ticket' : 'pierna', tabla_en_uso: TABLA, piernas_ref: PIERNAS_REF },
     doctrine: 'Familia nueva EN SOMBRA (17-ago): proyección propia de kills (mapas 1-2, CS2) contra líneas de libro blando. Se anota y se liquida sola con el scoreboard propio; no publica picks y no toca el ejecutor en la sombra de la casa. Listón de salida: la muestra tiene que aguantar el mismo escrutinio que el resto de familias.',
   };
 }
 
-module.exports = { board, track, settleShadow, reopenLegacySettled, RULE, EDGE_MIN, EDGE_CAP };
+module.exports = { board, track, settleShadow, reopenLegacySettled, RULE, EDGE_MIN, EDGE_CAP,
+  // T2.9: el contrato del producto y el EV del boleto, expuestos para la sonda y para los tests
+  CONTRATO_UNDERDOG, listonTicket, evTicket, claveTesis, EV_TICKET_ON };

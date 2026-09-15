@@ -1,5 +1,46 @@
 # HANDOFF — estado al 15 de septiembre de 2026
 
+## 🆕 ÚLTIMO TRABAJO (15-sep, tarde): CS2 — EL ASPIRANTE S1, LA COMPARACIÓN Y EL CONTRATO DE UNDERDOG
+
+**Documento:** `docs/CHALLENGERS_CS2_2026-09-15.md` (T2.7, T2.8 y T2.9 del plan). Experimentos E-010 a E-014
+en `docs/REGISTRO_EXPERIMENTOS.md`. Ficha de la casa en `docs/CONTRATOS_CASA.md` § Underdog.
+
+**Tres cosas que cambian cómo se lee CS2 y props:**
+
+1. **La conversión mapa→ronda de `cs2.js` está rota y su sesgo va siempre a favor del lado apostado.**
+   `clampRound` (la constante 0,42) no reproduce el `p_map` que se le da: se desvía de −11,9 a +12,3 puntos,
+   y encima se aplica DOS veces. Medido sobre las 376 apuestas del libro: corregirlo **baja la probabilidad
+   publicada 10,21 pp (IC [−10,93; −9,48]) y lo hace en contra del lado apostado en 371 de 376 filas**.
+   El challenger vive en `esports-engine/cs2-s1.js` (módulo NUEVO, distribución exacta por DP, veto como
+   distribución sobre las 5.040 ramas). **`cs2.js` no se ha tocado.** Aceptación en `tests/cs2-s1.test.js`.
+
+2. **El motor no le gana a una moneda sobre sus propias apuestas.** Log-score de T0: 0,70769 en Pinnacle y
+   0,70096 en Cloudbet, los dos por encima de ln 2 = 0,69315. Ninguna de las doce comparaciones declaradas
+   sobrevive a Benjamini-Hochberg (umbral 0), así que **tampoco se puede declarar que sea peor**: con 106 y
+   63 series no hay poder. EV al cierre negativo en las dos casas (−3,52 % y −4,46 %).
+
+3. **El `+2,2 %` de las props de CS2 no es el retorno de nada comprable.** Underdog es un pick'em con
+   entrada mínima de DOS piernas: la pierna suelta al `american_price` (−112 ⇒ listón 52,83 %) no existe.
+   El listón real del boleto está entre 53,45 % y 57,74 %. Con el acierto observado, el boleto de dos
+   piernas da −12,71 % con una tabla de multiplicadores y +1,83 % con la otra, **y no se ha podido verificar
+   cuál es la buena**: el sitio de Underdog devuelve 403 y su API 426.
+
+**🔴 HALLAZGO LATERAL QUE HAY QUE MIRAR:** el feed de props **lleva caído**.
+`api.underdogfantasy.com/beta/v5/over_under_lines` devuelve **426 `upgrade_required`** y en producción
+`/api/internal/esports?props=1` da `board.available = false`, `n = 0` y **0 tesis activas**. La familia no
+está naciendo y no lo decía ningún sitio.
+
+**Lo que se cambió en código:** `esports-engine/props.js` publica el EV del TICKET y el listón del boleto
+junto al de la pierna (solo DECIDE con `GP_PROPS_EV_TICKET=1`, que nace apagado porque cambiar el listón
+cambia qué tesis nacen y `props_cs2_v2` está congelada), y el dedupe pasa a
+`serie canónica | jugador | stat | lado | política` vía `lib/contrato.js`. Nada toca `cs2.js`,
+`cs2_rounds_v1` ni el ejecutor real.
+
+**Lo que queda abierto:** exportar `closes-cs2.json` (sin el menú completo de líneas no se puede preguntar
+qué habría apostado S1 que T0 no apostó, que es la mitad que falta de E3); el **23 % de anulaciones** del
+hándicap de rondas (115 VOID de 500 liquidadas), sin explicación; y el contrato de Underdog, que necesita la
+tabla de multiplicadores de la propia casa y un comprobante de pago.
+
 ## 🛑 PUNTO DE RETOMA (15-sep, 10:00 UTC) — LÉEME ANTES DE PROPONER NADA
 
 **Hoy se ejecutó la Fase 0 y la mayor parte de la Fase 1 del plan de la auditoría externa.** Los tres

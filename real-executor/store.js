@@ -141,6 +141,8 @@ function stakeDe(prob, odds) {
   // con f = 0 cae al tope en vez de a cero. Cambiarla aquí rompería la única cosa que este ejecutor existe
   // para medir —la diferencia entre papel y dinero sería la diferencia entre dos fórmulas—. La arista se
   // tapa donde corresponde: una apuesta con Kelly no positiva no se coloca (ver `sin_ventaja` en intentar).
+  // La arista sigue existiendo por compatibilidad con la sombra, pero ya no es invisible: `intentar` exige
+  // Kelly positiva antes de llegar aquí, así que esta rama solo se alcanza por una orden manual.
   const st = Math.min(C.stakePct, f || C.stakePct) * banco;
   return Math.min(C.stakeMax, Math.max(C.stakeMin, Math.round(st * 100) / 100));
 }
@@ -247,9 +249,25 @@ function frenos(stake, kickoff, familia = null) {
     return { freno: 'puerta_cerrada', detalle: `la casa bloquea la colocación (${cf.seguidos} seguidas); se reintenta tras ${Math.round(CF_ESPERA_MS / 60000)} min` };
   }
   const s = L.saldo && typeof L.saldo.amount === 'number' ? L.saldo.amount : null;
-  // saldo NULL no frena: "no lo sé" no es "está vacía", y la casa rechaza por fondos con autoridad que
-  // nosotros no tenemos. Saldo conocido y corto sí frena, y se anota con la cifra para poder facturarlo.
-  if (s != null && s - stake < C.minBalance) return { freno: 'sin_fondos', detalle: `saldo ${s.toFixed(2)}, apuesta ${stake}, suelo ${C.minBalance}` };
+  // SALDO DESCONOCIDO O VIEJO SÍ FRENA (15-sep, auditoría externa A08). Hasta hoy un saldo nulo no frenaba,
+  // con un razonamiento defendible: "no lo sé" no es "está vacía", y la casa rechaza por fondos con más
+  // autoridad que nosotros. Pero apostar sin saber el saldo es apostar sin saber la exposición, y el saldo
+  // solo queda nulo si nunca se pudo leer o si la casa lleva horas sin contestar. Ahora se frena y se dice.
+  // `GP_REAL_SALDO_MAX_MIN=0` desactiva la comprobación de antigüedad.
+  const maxMin = Number(process.env.GP_REAL_SALDO_MAX_MIN == null ? 180 : process.env.GP_REAL_SALDO_MAX_MIN);
+  if (s == null) return { freno: 'saldo_desconocido', detalle: 'no hay lectura de saldo de la casa: no se apuesta a ciegas' };
+  if (maxMin > 0 && L.saldo && L.saldo.at) {
+    const edadMin = (Date.now() - Date.parse(L.saldo.at)) / 60000;
+    if (edadMin > maxMin) return { freno: 'saldo_viejo', detalle: `la última lectura de saldo tiene ${Math.round(edadMin)} min (tope ${maxMin}); la exposición real no se conoce` };
+  }
+  if (s - stake < C.minBalance) return { freno: 'sin_fondos', detalle: `saldo ${s.toFixed(2)}, apuesta ${stake}, suelo ${C.minBalance}` };
+  // LA PARADA BLOQUEA (15-sep, A07). Se lee el estado que `paradaVigila` persiste cada hora; no se recalcula
+  // por orden. Bloquea solo las órdenes NUEVAS del canal que saltó; la línea de caja bloquea todos.
+  try {
+    const P = require('./parada');
+    const bq = P.bloqueo(L.parada, familia);
+    if (bq) return { freno: 'parada:' + bq.linea, detalle: bq.detalle };
+  } catch { /* si el módulo no carga, no se inventa un bloqueo */ }
   return null;
 }
 
@@ -506,8 +524,15 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   //    `GP_REAL_EXIGIR_VENTAJA=1` vuelve a filtrarlas si algún día la medición dice que hay que hacerlo.
   const evModelo = (fila.model_prob > 0 && fila.odds_sombra > 1) ? fila.model_prob * fila.odds_sombra - 1 : null;
   fila.ev_modelo_pct = evModelo == null ? null : +(100 * evModelo).toFixed(2);
-  if (on('GP_REAL_EXIGIR_VENTAJA', false) && kellyDe(fila.model_prob, fila.odds_sombra) <= 0) {
-    return parar('sin_ventaja', { prob: fila.model_prob });
+  // EXIGIR VENTAJA PASA A SER LO NORMAL (15-sep, auditoría externa). Estaba en `false` a propósito, para
+  // medir si las picks sin ventaja declarada rendían distinto — y la medición ya está hecha: el 14 % de las
+  // señales salía con EV medio −2,1 % y, por la arista de `stakeDe` (Kelly 0 cae al tope, no a cero), lo
+  // hacía al stake MÁXIMO. Colocar al tope lo que el propio modelo dice que pierde no es medir, es pagar por
+  // aprender algo que ya sabíamos. `GP_REAL_EXIGIR_VENTAJA=0` lo revierte.
+  const kelly = kellyDe(fila.model_prob, fila.odds_sombra);
+  fila.kelly_frac = +kelly.toFixed(5);
+  if (on('GP_REAL_EXIGIR_VENTAJA', true) && kelly <= 0) {
+    return parar('sin_ventaja', { prob: fila.model_prob, ev_modelo_pct: fila.ev_modelo_pct });
   }
   // stake FIJO (1-sep): una orden humana explícita ("coloca esta con $29") manda sobre la fórmula.
   // Se respetan igual el tope duro y todos los frenos; solo se salta el cálculo de Kelly.

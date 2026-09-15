@@ -14733,6 +14733,10 @@ function paradaEstado() {
   L.avisos = L.avisos || {};
   L.paradaMem = L.paradaMem || {};
   const out = P.evaluar({ bets: L.bets || [], picks: db.clubDailyPicks || [], saldo: L.saldo, memoria: L.paradaMem });
+  // 15-sep: el estado se PERSISTE para que `frenos()` pueda consultarlo sin recalcular en cada orden. Una
+  // condición de parada que no para no es un control, es una etiqueta (auditoría externa, A07).
+  L.parada = { at: out.at, estado: out.estado, saltan: out.saltan, bloquea: out.bloquea,
+    lineas: out.lineas.map((x) => ({ id: x.id, canal: x.canal, nombre: x.nombre, salta: x.salta, lectura: x.lectura })) };
   return { out, L, RE };
 }
 async function paradaVigila() {
@@ -14763,8 +14767,9 @@ async function paradaVigila() {
       'QUÉ SIGNIFICA. La línea del núcleo es el percentil 1 de una corrida que SÍ tiene ventaja: caer ahí',
       'teniendo edge de verdad pasa 1 vez de cada 100. No es una mala racha dentro de lo normal.',
       '',
-      'QUÉ NO HACE ESTE CORREO. No se ha apagado nada. El ejecutor sigue como estaba; apagarlo es tu',
-      'decisión. Para pararlo: GP_REAL_ENABLED=false en Render.',
+      out.bloquea
+        ? 'QUÉ HA HECHO YA EL SISTEMA (desde el 15-sep). Las ÓRDENES NUEVAS del canal afectado quedan paradas;\nla caja para todos los canales. Lo ya colocado sigue su curso y se liquida con normalidad. Para levantar\nel bloqueo sin desplegar: GP_PARADA_BLOQUEA=off. Para apagar el ejecutor entero: GP_REAL_ENABLED=false.'
+        : 'QUÉ NO HACE ESTE CORREO. No se ha apagado nada (GP_PARADA_BLOQUEA=off). El ejecutor sigue como\nestaba; apagarlo es tu decisión: GP_REAL_ENABLED=false en Render.',
       '',
       `Estado completo: /api/internal/parada?key=<GP_EXPORT_KEY>`,
     ].join('\n');

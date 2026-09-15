@@ -12027,7 +12027,7 @@ function askToolsFor(sport, { u, lang, org }) {
       return { error: 'no identifiqué a ese peleador' };
     }
     if (name === 'picks_combate' && u.isAdmin) {
-      const rows = (db.combatPicks || []).filter((p) => p.status === 'ACTIVE').slice(0, 12).map((p) => ({ org: p.league, pelea: `${p.event.home} vs ${p.event.away}`, familia: p.family, seleccion: p.selection_name, cuota: p.best_odds, edge_pp: p.edge_blend_pp, lectura: lang === 'en' ? (p.why_ai_en || p.why_en || null) : (p.why_ai_es || p.why_es || null) }));
+      const rows = (db.combatPicks || []).filter((p) => p.status === 'ACTIVE' && !p.control).slice(0, 12).map((p) => ({ org: p.league, pelea: `${p.event.home} vs ${p.event.away}`, familia: p.family, seleccion: p.selection_name, cuota: p.best_odds, edge_pp: p.edge_blend_pp, lectura: lang === 'en' ? (p.why_ai_en || p.why_en || null) : (p.why_ai_es || p.why_es || null) }));
       return { n: rows.length, picks: rows };
     }
     return { error: 'herramienta desconocida' };
@@ -12652,7 +12652,9 @@ function combatFightDossier(C, ev, ft) {
     const tale = (id) => { const s = combatFighterSummary(C, id) || {}; return { edad: s.age, alcance: s.reach_in, guardia: s.stance, record: s.record, forma_reciente: s.form, campamento: s.camp, ko_recibidos: s.ko_losses, minutos_de_jaula: s.cage_min, ultima_pelea: s.last_fight }; };
     base.peleadores = { [ft.f1.name]: tale(ft.f1.id), [ft.f2.name]: tale(ft.f2.id) };
     base.senales = (combatIntelFlags(C, ft, ev.date) || []).map(x => x.es);
-    const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && x.event.canonical_event_id === 'cb-' + ft.comp_id);
+    // el ganador de combate está RETIRADO como pick (15-sep, T1.9): la fila sigue naciendo marcada
+    // `control` y deja de alimentar la lectura de la casa. Ver lib/retiradas.js.
+    const pk = (db.combatPicks || []).find(x => x.status === 'ACTIVE' && !x.control && x.event.canonical_event_id === 'cb-' + ft.comp_id);
     if (pk && (pk.family || 'FIGHT') === 'FIGHT') base.lectura_de_la_casa = { lado: pk.selection_name }; // coherencia, jamás mención
   } catch (e) { console.error('[dossier-fight] parcial:', e.message); } // parcial: mejor esencial que nada, pero VISIBLE
   return base;
@@ -15033,6 +15035,20 @@ function shadowSummary(sinceMs) {
     voids: st.filter((b) => b.result === 'VOID' || b.result === 'PUSH').length,
     superseded: st.filter((b) => b.result === 'SUPERSEDED').length,
     staked, pnl, roi_pct: stakedSet ? +(100 * pnl / stakedSet).toFixed(1) : null,
+    // ── LO QUE NO SE PUDO RESOLVER, Y CUÁNTO PESA (15-sep, T1.7 y §3.3 de la auditoría) ───────────────
+    // Un resultado que no se encuentra NO es una devolución. Tratarlo como VOID lo borra del P&L con un
+    // cero, que es una afirmación —"esta apuesta no movió dinero"— que nadie ha comprobado. Aquí se
+    // cuentan aparte y se publica el RANGO: el P&L si todas hubieran ganado y el P&L si todas hubieran
+    // perdido. Cuando el rango es ancho, el número del medio no se puede leer como si fuera el resultado.
+    ...(() => {
+      const nr = st.filter((b) => b.result === 'DATA_UNRESOLVED' || b.result_code === 'DATA_UNRESOLVED');
+      if (!nr.length) return { no_resueltas: 0 };
+      const maxGan = +nr.reduce((s, b) => s + (b.stake || 0) * ((b.odds || 1) - 1), 0).toFixed(2);
+      const maxPer = +nr.reduce((s, b) => s + (b.stake || 0), 0).toFixed(2);
+      return { no_resueltas: nr.length, no_resueltas_stake: maxPer,
+        pnl_rango: [+(pnl - maxPer).toFixed(2), +(pnl + maxGan).toFixed(2)],
+        no_resueltas_nota: `${nr.length} apuestas sin resultado localizable (${maxPer} de stake). No son devoluciones: el P&L de verdad está en algún punto del rango.` };
+    })(),
     avg_odds: rows.length ? +(rows.reduce((s, b) => s + b.odds, 0) / rows.length).toFixed(2) : null,
     avg_stake: rows.length ? +(staked / rows.length).toFixed(2) : null,
     clv_avg: clvs.length ? +(clvs.reduce((s, c) => s + c, 0) / clvs.length).toFixed(2) : null,
@@ -15086,7 +15102,9 @@ async function shadowWeeklyReport({ force = false } = {}) {
   S.last_report_week = wk; save();
   const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
   const fmt = (x) => (x >= 0 ? '+' : '') + x;
-  const line = (t2, s2) => `${t2}: ${s2.bets} apuestas (${s2.settled} liquidadas: ${s2.w}W-${s2.l}L${s2.voids ? '-' + s2.voids + 'V' : ''}) · apostado $${s2.staked} · P&L $${fmt(s2.pnl)}${s2.roi_pct != null ? ' · ROI ' + fmt(s2.roi_pct) + '%' : ''}${s2.clv_avg != null ? ' · CLV ' + fmt(s2.clv_avg) + '%' : ''}`;
+  // El CLV baja de categoría en este correo (15-sep): se enseña con su nombre —movimiento de línea— y ya no
+  // al lado del ROI como si fuera la otra mitad del veredicto. El veredicto va en su propio bloque, abajo.
+  const line = (t2, s2) => `${t2}: ${s2.bets} apuestas (${s2.settled} liquidadas: ${s2.w}W-${s2.l}L${s2.voids ? '-' + s2.voids + 'V' : ''}${s2.no_resueltas ? ' · ' + s2.no_resueltas + ' SIN RESOLVER' : ''}) · apostado $${s2.staked} · P&L $${fmt(s2.pnl)}${s2.pnl_rango ? ` (rango real $${fmt(s2.pnl_rango[0])} a $${fmt(s2.pnl_rango[1])} por las sin resolver)` : ''}${s2.roi_pct != null ? ' · ROI ' + fmt(s2.roi_pct) + '%' : ''}${s2.clv_avg != null ? ' · movimiento de línea ' + fmt(s2.clv_avg) + '%' : ''}`;
   const cap = (t2, s2) => s2.signals ? `${t2}: ${s2.bets}/${s2.signals} señales ejecutables (${s2.exec_rate_pct}%)${s2.haircut_avg_pct != null ? ' · haircut vs mejor cuota ' + fmt(s2.haircut_avg_pct) + '%' : ''}` : null;
   // LA SOMBRA DE POLYMARKET en el mismo correo del lunes (1-sep): banco $2.000 simulado, fills contra el
   // libro real del CLOB, liquidación por la resolución del venue. La revisión semanal decide si se cablea.
@@ -15095,7 +15113,30 @@ async function shadowWeeklyReport({ force = false } = {}) {
     const PSw = require('./propfirm/polyshadow').estado();
     polyTxt = `\n\n────────────────────────────\nSOMBRA POLYMARKET (prop firm ejecutada directo en PM, banco simulado $${PSw.banco_inicial})\nEquity: $${PSw.equity} (efectivo $${PSw.efectivo} + expuesto $${PSw.expuesto}) · P&L $${fmt(PSw.pnl_usd)}${PSw.roi_pct != null ? ' · ROI ' + fmt(PSw.roi_pct) + '%' : ''}\nEl P&L va NETO de la comisión de la casa desde el 15-sep: bruto $${fmt(PSw.pnl_bruto_usd)}${PSw.roi_bruto_pct != null ? ' (ROI ' + fmt(PSw.roi_bruto_pct) + '%)' : ''} menos $${fmt(PSw.comisiones_usd)} de comisión a tasa ${PSw.tasa_comision}. Cualquier lectura anterior a esa fecha es el bruto.\nPosiciones: ${PSw.abiertas} abiertas · ${PSw.w}W-${PSw.l}L${PSw.slippage_medio_pp != null ? ' · slippage medio ' + fmt(PSw.slippage_medio_pp) + ' pp (fill real vs precio del aviso)' : ''}\nCapacidad: ${PSw.sin_fill} sin fill ahora · ${PSw.no_entro} nunca entraron (límite jamás alcanzado) · ${PSw.sin_token} sin token · ${PSw.ev_tras_comision} frenadas porque la comisión se comía la ventaja\nSi esta sombra da positivo sostenido, se cablea la API real del CLOB y se le mete dinero.`;
   } catch { /* la sombra poly jamás rompe el reporte */ }
-  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}${polyTxt}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
+  // EL VEREDICTO, CON LA VARA NUEVA (15-sep, T1.7). Hasta hoy este correo daba ROI y CLV y dejaba que el
+  // lector sacara la conclusión, que es exactamente cómo "tarjetas" se recordaba como +19 % cuando ya era
+  // +4,8 % con CLV negativo. Ahora la conclusión la escribe `lib/vara.js` y va arriba del todo: EV contra
+  // la probabilidad sin margen del cierre, con incertidumbre por racimos de evento. Si falla, se dice.
+  let varaTxt = '';
+  try {
+    const V = require('./lib/vara');
+    const st2 = S.bets.filter((b) => b.status === 'SETTLED');
+    const f = V.familia(st2, {
+      fecha: (b) => b.settled_at || b.placed_at,
+      clv: (b) => (typeof b.clv_exec === 'number' ? b.clv_exec : (typeof b.clv === 'number' ? b.clv : null)),
+      odds: (b) => Number(b.odds) || null,
+      cierre: (b) => Number(b.close_odds) || null,
+      cierreContraria: (b) => Number(b.close_odds_contraria) || null,
+      gano: (b) => (b.result === 'WIN' ? 1 : b.result === 'LOSS' ? 0 : null),
+      pModelo: (b) => (Number.isFinite(b.model_prob) ? b.model_prob : null),
+      evento: (b) => b.ceid || b.match || b.pick_id,
+    });
+    varaTxt = `\n\n────────────────────────────\nVEREDICTO (lib/vara.js, EV contra el cierre sin margen)\n${String(f.veredicto || '?').toUpperCase()} — ${f.razon || 'sin razón'}\n` +
+      `${f.cierres_in_play ? `Se excluyeron ${f.cierres_in_play} cierres capturados con el partido ya empezado.\n` : ''}` +
+      `El CLV que aparece arriba es diagnóstico de movimiento de línea, no el veredicto: batir al cierre no es ganar dinero.`;
+  } catch (e) { varaTxt = `\n\n(el veredicto de la vara no pudo calcularse esta semana: ${e.message})`; }
+
+  const text = `EJECUTOR EN LA SOMBRA — semana ${wk}\n\nBankroll: $${S.bankroll} (inicio $${S.start_bankroll}, ${fmt(report.pnl_total)} total)${varaTxt}\n\n${line('Últimos 7 días', week)}\n${line('Desde el inicio', all)}\n\n${[cap('Capacidad 7d', week), cap('Capacidad total', all)].filter(Boolean).join('\n') || 'Capacidad: sin señales aún.'}\nEntrada SOLO a precio ejecutable (${SHADOW_EXEC_BOOKS().join('/')}); señal sin mercado en esas casas = NO ejecutable (contada arriba).\n\nSegmentos: ${S.cfg.map(c => c.key).join(', ')} · abiertas ahora: ${all.open}${polyTxt}\n\nPaper-trading: ninguna apuesta real fue colocada.`;
   if (mailer.isConfigured()) {
     try { await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: `[GP Sombra] ${wk}: $${S.bankroll} (${fmt(report.pnl_total)}) · 7d ${week.w}W-${week.l}L $${fmt(week.pnl)}`, text, html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${text.replace(/</g, '&lt;')}</pre>` }); }
     catch (e) { console.error('[shadow] mail:', e.message); }
@@ -16443,6 +16484,13 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     }
     const frozen = db.combatPicks.some(o => o.status === 'ACTIVE' && (o.family || 'FIGHT') === (p.family || 'FIGHT') && o.event.canonical_event_id === p.event.canonical_event_id);
     if (frozen) continue; // la vieja quedó congelada cerca del KO → no se contradice
+    // EL GANADOR DE COMBATE SE RETIRA COMO PICK (15-sep, T1.9). Sale con la probabilidad bruta del modelo,
+    // sin EV contra el cierre y sin descontar lo que cobra la casa; es además el mercado donde GP midió
+    // −8,34 % de CLV. Sin EV no hay veredicto posible, y sin veredicto no puede ser una recomendación. La
+    // fila SIGUE naciendo y liquidándose, marcada `control`: es lo que permitirá saber si retirarla fue
+    // acertado, y apagarla haría imposible ese dato para siempre.
+    const retC = (p.family || 'FIGHT') === 'FIGHT' ? require('./lib/retiradas').versionRetirada('ufc_ganador_bruto') : null;
+    if (retC) { p.control = true; p.retirada = retC; out.control = (out.control || 0) + 1; }
     db.combatPicks.push(p); out.added++;
   }
   return out; // (save/active los maneja el wrapper multi-org)

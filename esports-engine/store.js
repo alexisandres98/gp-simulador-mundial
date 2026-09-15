@@ -866,6 +866,20 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
       ev2.no_pick_reasons = (ev2.no_pick_reasons || []).concat([{ code: 'ventaja_explicada_por_calibracion',
         text: `la ventaja (${ev2.edge_pp} pp) no supera el error de calibración del modelo de rondas en ${Rrow && Rrow.map ? Rrow.map : 'este mapa'} (±${calPp} pp, residuo de ${Rrow && Rrow.calibration ? Rrow.calibration.rounds_residual : '?'} rondas): la diferencia con el mercado la puede producir entera nuestro propio ajuste` }]);
     }
+    // FAMILIA RETIRADA (15-sep, T1.9). Con la vara nueva hay nueve combinaciones deporte+familia+casa cuyo
+    // veredicto es `cerrar`: el precio le gana al modelo con significancia, no es una mala racha. Dejan de
+    // salir como PICK y SIGUEN registrándose, marcadas `control`. Apagarlas del todo destruiría la única
+    // forma de comprobar si retirarlas fue acertado — una puerta cerrada no produce el dato que la
+    // justifica. La casa entra en la clave a propósito: CS2 hándicap de rondas pierde en Bovada y en
+    // Pinnacle y NO está cerrada en Cloudbet, y meterlas en el mismo saco fue lo que escondió esa
+    // diferencia durante semanas.
+    const ret = require('../lib/retiradas').retirada(game, r.family, r.book);
+    if (ret) {
+      ev2.pick = false;
+      ev2.control = true;
+      ev2.retirada = ret;
+      ev2.no_pick_reasons = (ev2.no_pick_reasons || []).concat([{ code: 'familia_retirada', text: ret.lectura }]);
+    }
     const row = { ...ev2, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team,
       calibration_pp: calPp,
       uncertainty_pp: uncF, uncertainty_kind: VOLUME_FAMILIES.has(r.family)

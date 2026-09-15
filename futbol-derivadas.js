@@ -331,6 +331,12 @@ async function record(deps = {}) {
       // cuánta de su "ventaja" era margen de error del propio modelo
       error_cal_pp: esNueva ? r2(100 * (mitades.ERROR_CAL[fam] || 0)) : null,
       rule_version: regla.version, rule_edge_min: liston,
+      // VERSIÓN RETIRADA (15-sep, T1.9). La v1 valoraba la línea del consenso con el precio de otra casa
+      // (A01) y ese error infla la ventaja siempre en la misma dirección: su histórico mide el error, no
+      // el modelo. Sigue naciendo y liquidándose —es el control que fija el suelo de ruido del método—
+      // pero marcada, para que ningún lector la confunda con una lectura buena.
+      ...(require('./lib/retiradas').versionRetirada(regla.version)
+        ? { control: true, retirada: require('./lib/retiradas').versionRetirada(regla.version) } : {}),
       born_at: new Date().toISOString(), status: 'ACTIVE',
       close_odds: null, close_at: null, clv_pct: null, result: null, settled_at: null,
     } });

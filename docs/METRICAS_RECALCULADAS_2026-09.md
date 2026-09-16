@@ -342,6 +342,65 @@ Subido a 40. **El histórico de tenis no se recupera**: eso ya está perdido y h
 
 ---
 
+## 5d. El replay, otra vez, ya con EV (16-sep)
+
+Con 2.996 picks recuperadas, la vara por fin puede juzgar. `node scripts/replay-vara.js --dir <volcados>`.
+
+| motor | liquidadas | con contraria | **EV al cierre** | t | eventos | veredicto | ROI a stake plano |
+|---|---:|---:|---:|---:|---:|---|---|
+| `esports:cs2` | 1.988 | 1.506 | **−3,46 %** | −6,61 | 349 | `cerrar` | +0,17 % [−7,97, +8,39] |
+| `esports:lol` | 1.188 | 892 | **−7,67 %** | −21,09 | 115 | `cerrar` | +0,71 % [−6,60, +8,10] |
+| `esports:valorant` | 430 | 242 | **−7,61 %** | −14,41 | 69 | `cerrar` | −5,01 % [−20,42, +10,06] |
+| `esports:dota2` | 283 | 225 | **−5,27 %** | −3,98 | 48 | `cerrar` | −7,51 % [−21,35, +6,52] |
+| `tt` | 449 | 114 | **−7,60 %** | −6,16 | 35 | `cerrar` | −18,77 % [−31,73, −4,99] |
+| `dardos` | 41 | 18 | −10,96 % | −3,24 | 15 | `muestra_corta` | −36,47 % [−64,40, −5,36] |
+| `tenis`, `hoops`, `nfl` | 1.002 | 0 | — | — | — | `sin_cierre_valorable` | |
+
+**Las cinco familias que se pueden medir tienen esperanza negativa, y ninguna por poco.** Es la respuesta a
+la pregunta con la que empezó la auditoría, y ahora está medida sobre racimos de evento en vez de sobre
+tickets: CS2 con 349 eventos y t −6,61 no es una racha.
+
+### El ROI no dice nada, y aquí se ve de un vistazo
+
+CS2 tiene **ROI +0,17 %** y **EV −3,46 %**. LoL, **+0,71 %** y **−7,67 %**. Los dos ROI son positivos y los
+dos intervalos contienen el cero con quince puntos de holgura; los dos EV son negativos con t de −6 y −21.
+Esto es exactamente lo que la auditoría vino a corregir: durante meses se leyó el ROI y el CLV, que son
+ruido a estas muestras, y no el retorno esperado, que es señal.
+
+### Tenis de mesa: la familia con dinero, y lo que de verdad dice el número
+
+`POINTS_TOTAL` es la que lleva los 5 USD planos. Su EV es **−8,85 % sobre 21 tickets en 18 eventos**, el
+peor de las siete familias de TT. Pero el número hay que leerlo con cuidado, porque **la cuota de entrada es
+idéntica a la del cierre en 17 de esos 21 tickets** (y en el 48,7 % de todo el tenis de mesa con cierre).
+
+Cuando entrada y cierre coinciden, el EV se reduce exactamente a menos el margen de la casa:
+`EV = o·(1/o)/Q − 1 = 1/Q − 1`. Así que ese −8,85 % **no es evidencia de que el modelo pierda contra una
+línea que se mueve**: es lo que cuesta pagar el margen sin capturar ningún movimiento.
+
+Y el margen es el hallazgo de verdad:
+
+| margen por lado en TT (n = 114) | p10 | mediana | p90 |
+|---|---:|---:|---:|
+| | 4,09 % | **4,95 %** | 5,08 % |
+
+**Casi el 5 % por lado.** El margen medido de Cloudbet en el resto de sus mercados es 3,13 %. En el total de
+puntos de tenis de mesa cobra un 58 % más. Para salir a cero en esa familia hace falta una ventaja de unos
+5 puntos porcentuales, y nunca hemos medido tenerla.
+
+Eso es un argumento contra el canal de dinero de TT mucho más fuerte que su ROI, porque no depende de la
+muestra de resultados: el margen se mide con las dos caras de la misma foto, y ahí n = 114.
+
+### Lo que este replay NO dice
+
+- **De tenis, baloncesto y NFL sigue sin saberse nada.** Tenis porque su línea no cabía en la foto del
+  cierre (§5c), los otros dos porque no guardan la cara contraria. No es que salgan mal: es que no salen.
+- **El `cerrar` de tenis de mesa no está probado como fallo de modelo.** Lo que está probado es que, a esos
+  precios y con ese margen, la esperanza es negativa. Distinguir «el modelo falla» de «la casa cobra
+  demasiado» hace falta un cierre que de verdad se mueva, y en esta familia la línea apenas se mueve.
+- **Dardos tiene 18 tickets.** Se lista para que la tabla cuadre.
+
+---
+
 ## 6. Lo que falta para cerrar la Fase 1
 
 | Tarea | Estado |

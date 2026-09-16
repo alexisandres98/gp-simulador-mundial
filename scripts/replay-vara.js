@@ -35,7 +35,12 @@ if (!DIR) { console.error('Falta --dir <carpeta con los volcados de ?motor=>'); 
 // hueco es precisamente lo que el replay tiene que hacer visible.
 const A = {
   odds: (p) => Number(p.odds || p.best_odds) || null,
-  cierre: (p) => Number(p.close_odds || p.close_price || p.close || (p.close_series && p.close_series.last)) || null,
+  // EL CIERRE QUE ENTRA AL EV TIENE QUE SER EL DE LA MISMA CASA QUE LA CONTRARIA (16-sep). `close_odds` y
+  // `close_price` son, en algunos motores, la MEJOR cuota entre casas; emparejar esa con una contraria de
+  // otra casa da una Q que no es el margen de nadie. Por eso manda `close_para_ev` —el precio de la casa con
+  // la que de verdad se emparejó— y solo se cae a los demás cuando no hay contraria y el número se usa
+  // únicamente como diagnóstico de CLV.
+  cierre: (p) => Number(p.close_para_ev || p.close_own || p.close_odds || p.close_price || p.close || (p.close_series && p.close_series.last)) || null,
   cierreContraria: (p) => Number(p.close_odds_contraria || p.close_odds_opuesta) || null,
   clv: (p) => (Number.isFinite(p.clv_pct) ? p.clv_pct : (Number.isFinite(p.clv) ? p.clv : null)),
   gano: (p) => { const r = String(p.result_code || p.result || '').toUpperCase();

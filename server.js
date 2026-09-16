@@ -25814,6 +25814,55 @@ async function anotar(pid){
         motores: salida,
       });
     }
+    // ── ¿LA PROBABILIDAD QUE DECIMOS ES LA QUE OCURRE? (16-sep, A17) ────────────────────────────────────
+    // La auditoría pedía revisar Valorant por miscalibración y sospechaba de la ORIENTACIÓN. Medido sobre
+    // los nueve libros, no hay un solo volteo: en todas las familias los dos lados se desvían en la MISMA
+    // dirección, que es justo lo contrario de la firma de un volteo. Lo que sí hay, en ocho de los nueve
+    // motores, es que el modelo se pasa entre +10 y +16 pp donde el precio acierta a 0-4 pp sobre LAS
+    // MISMAS apuestas. Ver la cabecera de `lib/calibracion.js`.
+    if (p === '/api/internal/calibracion') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const adminC = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!adminC && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      const CAL = require('./lib/calibracion');
+      const libros = {};
+      const meter = (k, arr) => { if (Array.isArray(arr) && arr.length) libros[k] = arr; };
+      try { const ES = require('./esports-engine/store'); for (const g of ES.GAME_ORDER) meter('esports:' + g, ES.picksRaw(g)); } catch (e) { /* sin esports */ }
+      try { meter('tt', require('./tt-engine/store').libroCrudo().picks); } catch (e) { /* sin tt */ }
+      try { meter('tenis', require('./tennis-engine/store').libroCrudo().picks); } catch (e) { /* sin tenis */ }
+      try { meter('dardos', require('./darts-engine/store').libroCrudo().picks); } catch (e) { /* sin dardos */ }
+      try { meter('nfl', require('./nfl-engine/store').libroCrudo().picks); } catch (e) { /* sin nfl */ }
+      try { meter('derivadas', require('./futbol-derivadas').libroCrudo().picks); } catch (e) { /* sin derivadas */ }
+      meter('hoops', db.hoopsPicks || []);
+      meter('clubes', db.clubDailyPicks || []);
+      meter('combate', db.combatPicks || []);
+      const solo = String(url.searchParams.get('motor') || '').toLowerCase();
+      const detalle = url.searchParams.get('detalle') === '1';
+      const salida = {};
+      for (const [k, arr] of Object.entries(libros)) {
+        if (solo && k.toLowerCase() !== solo) continue;
+        try {
+          const r = CAL.examina(arr);
+          if (!detalle) { delete r.tabla; for (const v of Object.values(r.por_familia || {})) delete v.tabla; }
+          salida[k] = r;
+        } catch (e) { salida[k] = { veredicto: 'error', razon: e.message }; }
+      }
+      const cuenta = (v) => Object.values(salida).filter((x) => x.veredicto === v).length;
+      const volteos = Object.entries(salida).flatMap(([k, v]) => (v.orientacion || [])
+        .filter((o) => o.compatible_con_volteo).map((o) => `${k}:${o.familia}`));
+      return json(res, 200, {
+        at: new Date().toISOString(),
+        pregunta: 'Cuando el modelo dice 70 %, ¿ocurre el 70 % de las veces? Y sobre LAS MISMAS apuestas, ¿le pasa lo mismo al precio?',
+        por_que_el_precio_de_control: 'Sin él, "el modelo está descalibrado" podría ser culpa de una muestra rara. Con él se separa el caso en que los DOS fallan igual —que es un problema de cómo se eligen las picks, no del modelo— del caso en que solo falla el modelo.',
+        no_recalibra: 'Esta sonda mide. No cambia ninguna probabilidad publicada ni cómo nace una pick.',
+        resumen: { motores: Object.keys(salida).length,
+          descalibrado: cuenta('modelo_descalibrado'), muestra_sesgada: cuenta('muestra_sesgada'),
+          calibrado: cuenta('calibrado_dentro_del_ruido'), revisar_orientacion: cuenta('revisar_orientacion'),
+          no_evaluable: cuenta('no_evaluable'),
+          familias_compatibles_con_volteo: volteos },
+        motores: salida,
+      });
+    }
     if (p === '/api/internal/vara') {
       const xk = process.env.GP_EXPORT_KEY || '';
       const adminV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();

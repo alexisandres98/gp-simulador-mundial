@@ -72,11 +72,18 @@ t('y dice que la muestra está seleccionada por la ausencia de dato',
 const muchoEnVivo = P.evalua('prueba', libro({ enVivo: 60 }), DECL_OK, CTX_OK);
 t('con un 25 % de cierres capturados en vivo, G0 NO pasa', muchoEnVivo.G0.pasa === false);
 
-// ── 5. LAS PUERTAS SON SECUENCIALES, Y G2-G4 ESTÁN DECLARADAS, NO FINGIDAS ───────────────────────────────
-t('G2, G3 y G4 están escritas con sus comprobaciones', Object.keys(sano.pendientes).length === 3);
-t('y ninguna finge estar comprobada', !sano.pendientes.G3.pasa && Array.isArray(sano.pendientes.G3.comprobaciones));
+// ── 5. LAS PUERTAS SON SECUENCIALES, Y DESDE EL 16-SEP LAS CINCO COMPRUEBAN ─────────────────────────────
+// Hasta el 16-sep, G2, G3 y G4 vivían en un objeto `PENDIENTES` con la lista de lo que HABRÍA que
+// comprobar, y este test comprobaba que estuvieran escritas. Ahora están implementadas (E1-E3), así que lo
+// que hay que fijar es otra cosa: que la secuencia no se pueda saltar y que ninguna pase sin datos. El
+// detalle de cada una vive en tests/puertas-g234.test.js.
+t('las tres puertas nuevas existen como funciones', ['g2', 'g3', 'g4'].every((k) => typeof P[k] === 'function'));
+t('y ninguna pasa sin datos', [P.g2, P.g3, P.g4].every((f) => f([], {}, {}).pasa === false));
 t('G3 lleva escrita la advertencia de las veinte órdenes',
-  /veinte órdenes/.test(sano.pendientes.G3.comprobaciones.join(' ')));
+  /veinte órdenes/.test(JSON.stringify(P.g3([], {}, {}).comprobaciones)));
+// la secuencia: una familia que no pasa G0 no llega ni a tener bloque G2
+const cortada = P.evalua('prueba', [], {});
+t('sin pasar G0 no hay bloque G2', cortada.puerta_actual === 'G0' && !cortada.G2);
 
 // ── 6. LOS COSTES SE DESCUENTAN DE VERDAD ────────────────────────────────────────────────────────────────
 // Polymarket cobra por fill: con la comisión puesta, una ventaja pequeña deja de serlo. Si esto no restara,

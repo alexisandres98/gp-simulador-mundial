@@ -25675,6 +25675,74 @@ async function anotar(pid){
     // MARGEN DENTRO, así que ganarle no es ganar dinero. Aquí se junta todo: margen medido emparejando las
     // dos caras del mercado, CLV recortado por semana y rodante, el neto, el veredicto por regla escrita y
     // el tamaño de ¼ Kelly que sale de esa ventaja. `?bankroll=` para ver el tamaño en dólares.
+    // ── LAS CINCO PUERTAS (16-sep, Fase 3) ────────────────────────────────────────────────────────────
+    // `/api/internal/puertas?key=` dice, familia por familia, en qué puerta está y qué la bloquea. Las
+    // declaraciones que no se pueden deducir del libro —si el reglamento de la casa está documentado, si
+    // hubo validación hacia adelante con competidores— viven aquí, escritas, y con la fecha en la que
+    // alguien hizo ese trabajo. Lo que no está declarado NO pasa: `no_evaluable` bloquea igual que `falla`.
+    if (p === '/api/internal/puertas') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const PU = require('./lib/puertas');
+      const INFp = require('./lib/inferencia');
+      // Lo declarado a 16-sep-2026. Cada `true` tiene detrás un trabajo hecho y un documento; cada `null`
+      // es un hueco reconocido. Mentir aquí sería la única forma de que una puerta no sirviera para nada.
+      const DECL = {
+        'futbol:CARDS': { contrato_documentado: true, contrato_ref: 'docs/CONTRATOS_CASA.md § Cloudbet Booking Markets (15-sep)',
+          liquidador_concuerda: true, liquidador_ref: 'prop-engine/conteo.js — una roja vale dos, desde el 15-sep',
+          walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TARJETAS_2026-09-15.md', competidores: true, costes: 0 },
+        'esports:cs2': { contrato_documentado: null, liquidador_concuerda: null,
+          walkforward: true, walkforward_ref: 'docs/CHALLENGERS_CS2_2026-09-15.md', competidores: true, costes: 0 },
+        'esports:lol': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        'esports:valorant': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        'esports:dota2': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        tt: { contrato_documentado: null, liquidador_concuerda: null,
+          walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TT_2026-09-15.md', competidores: true, costes: 0 },
+        tenis: { contrato_documentado: null, liquidador_concuerda: null,
+          walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TENIS_2026-09-15.md', competidores: true, costes: 0 },
+        dardos: { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        nfl: { contrato_documentado: null, liquidador_concuerda: null, walkforward: true, competidores: null, costes: 0 },
+        hoops: { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+      };
+      const libros = {};
+      const meter = (k, arr) => { if (Array.isArray(arr) && arr.length) libros[k] = arr; };
+      try { const ES = require('./esports-engine/store'); for (const g of ES.GAME_ORDER) meter('esports:' + g, ES.picksRaw(g)); } catch (e) { /* sin esports */ }
+      try { meter('tt', require('./tt-engine/store').libroCrudo().picks); } catch (e) { /* sin tt */ }
+      try { meter('tenis', require('./tennis-engine/store').libroCrudo().picks); } catch (e) { /* sin tenis */ }
+      try { meter('dardos', require('./darts-engine/store').libroCrudo().picks); } catch (e) { /* sin dardos */ }
+      try { meter('nfl', require('./nfl-engine/store').libroCrudo().picks); } catch (e) { /* sin nfl */ }
+      meter('hoops', db.hoopsPicks || []);
+      meter('futbol:CARDS', (db.clubDailyPicks || []).filter((x) => x.family === 'CARDS'));
+
+      // El umbral corregido se calcula sobre EL CONJUNTO, no familia a familia: juzgar una aislada cuando se
+      // están mirando diez es cómo salen los falsos positivos.
+      const pvals = [];
+      for (const [k, arr] of Object.entries(libros)) {
+        const g = PU.g1(arr, DECL[k] || {}, {});
+        const ev = (g.comprobaciones || []).find((x) => x.id === 'ev');
+        if (ev && ev.dato && Number.isFinite(ev.dato.t) && Number.isFinite(ev.dato.n_eventos) && ev.dato.n_eventos > 1) {
+          pvals.push({ k, p: INFp.pDeT(ev.dato.t, ev.dato.n_eventos - 1) });
+        }
+      }
+      let evaluada = null;
+      if (pvals.length) {
+        const bh = INFp.bh(pvals.map((x) => x.p), PU.LISTONES.bh_q);
+        evaluada = { familias: pvals.length, q: PU.LISTONES.bh_q, umbral_p: bh.umbral };
+      }
+      const salida = {};
+      for (const [k, arr] of Object.entries(libros)) salida[k] = PU.evalua(k, arr, DECL[k] || {}, { evaluada });
+      const enG2 = Object.values(salida).filter((x) => x.puerta_actual === 'G2').length;
+      return json(res, 200, {
+        at: new Date().toISOString(),
+        doctrina: 'Las cinco puertas de la Fase 3, en código. Son SECUENCIALES: no se evalúa la señal de una familia cuyo libro no está en orden, porque se estaría midiendo el desorden. Y lo que no se puede comprobar BLOQUEA igual que lo que falla — si `no_evaluable` pasara, una familia sin datos cruzaría las cinco puertas por no tener nada que la contradiga.',
+        regla_del_dinero: 'Esta sonda no decide nada sobre dinero. Dice en qué puerta está cada familia. Encender o apagar un canal lo decide Alexis, y la regla del 13-sep sigue por encima.',
+        listones: PU.LISTONES, comparaciones_multiples: evaluada,
+        resumen: { familias: Object.keys(salida).length, en_G2: enG2,
+          en_G1: Object.values(salida).filter((x) => x.puerta_actual === 'G1').length,
+          en_G0: Object.values(salida).filter((x) => x.puerta_actual === 'G0').length },
+        familias: salida,
+      });
+    }
     if (p === '/api/internal/vara') {
       const xk = process.env.GP_EXPORT_KEY || '';
       const adminV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();

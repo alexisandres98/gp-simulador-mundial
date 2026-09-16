@@ -20219,6 +20219,14 @@ const server = http.createServer(async (req, res) => {
             const g = m.split(':')[1];
             const ES = require('./esports-engine/store');
             if (!ES.GAME_ORDER.includes(g)) return json(res, 400, { error: 'juego desconocido', juegos: ES.GAME_ORDER });
+            // `&cierres=1` saca el ARCHIVO DE CIERRES en crudo (16-sep). Hizo falta para diagnosticar por qué
+            // el emparejado de las dos caras funcionaba en totales y fallaba en hándicaps: sin ver las filas
+            // reales solo se puede especular, y especular sobre un emparejado de precios es cómo se acaba
+            // desvigando contra la apuesta equivocada.
+            if (url.searchParams.get('cierres') === '1') {
+              const cl = ES.closesRaw ? ES.closesRaw(g, { limit: lim || 12 }) : null;
+              return json(res, 200, { motor: m, cierres: cl, exported_at: new Date().toISOString() });
+            }
             const rows = ES.picksRaw(g) || [];
             return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
           }

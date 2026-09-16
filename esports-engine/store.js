@@ -2846,7 +2846,18 @@ function picksRaw(game, { status = null } = {}) {
   return status ? all.filter((p) => p.status === status) : all;
 }
 
-module.exports = {
+
+// El archivo de cierres en crudo (16-sep), para poder auditar el emparejado de las dos caras desde fuera.
+// Solo lectura y acotado: el archivo entero son megas y no hace falta ninguno para diagnosticar.
+function closesRaw(game, { limit = 12 } = {}) {
+  const st = rd(`closes-${game}.json`) || { closes: {} };
+  const ids = Object.keys(st.closes || {});
+  const out = {};
+  for (const id of ids.slice(-limit)) out[id] = st.closes[id];
+  return { game, n_eventos: ids.length, devueltos: Object.keys(out).length, closes: out };
+}
+
+module.exports = { closesRaw,
   clvWhy, closesBoard, tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,

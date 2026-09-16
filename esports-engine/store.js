@@ -1917,6 +1917,30 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     // claves exactas aquí diría "volteado" para "Keyd Stars" contra "Vivo Keyd Stars" aunque el orden sea el mismo
     const flip = aprox ? !(ladoAprox(kh, pk.home, hit.ka, hit.r.a) && ladoAprox(ka, pk.away, hit.kb, hit.r.b)) : hit.ka !== kh;
     if (aprox) { pk.casado_por = 'aproximado'; pk.fuente_nombres = `${hit.r.a} vs ${hit.r.b}`; }
+    // ── EL EMPAREJADO LAXO NO DISTINGUE UNA FILIAL DE UN PATROCINADOR (16-sep) ─────────────────────────
+    // La regla de contención vale para "Vivo Keyd Stars" contra "Keyd Stars" —mismo equipo, patrocinador
+    // delante— y falla exactamente igual de bien para "Spirit Academy" contra "Spirit", que son dos
+    // rosters distintos. Auditado sobre el libro: de las 150 liquidadas por emparejado laxo, once
+    // enfrentamientos (≈65 tickets) cruzan esa frontera.
+    //
+    // NO SE RECHAZA, SE MARCA, y es deliberado. Nuestros datos NO contienen lo que haría falta para
+    // decidir hacia qué lado está el error: ya quedó escrito que Cloudbet listó la final de BLAST Porto
+    // como "Spirit Academy" cuando la realidad decía "Spirit", así que a veces la casa se equivoca y este
+    // emparejado ACIERTA. Rechazar tiraría liquidaciones correctas por una sospecha indecidible; liquidar
+    // en silencio mete tickets dudosos en el EV de la familia. Marcarlos deja las dos cosas a la vista y
+    // reduce el trabajo humano a mirar once enfrentamientos.
+    if (aprox) {
+      try {
+        const FIL = require('../lib/filial');
+        const srcA = flip ? hit.r.b : hit.r.a, srcB = flip ? hit.r.a : hit.r.b;
+        const cr = FIL.cruceEnPar({ pickA: pk.home, pickB: pk.away, fuenteA: srcA, fuenteB: srcB });
+        if (cr) {
+          pk.casado_por = cr.etiqueta;                 // 'aproximado_filial': contable aparte de 'aproximado'
+          pk.filial_aviso = cr.lados[0].aviso;
+          pk.filial_par = cr.resumen;
+        }
+      } catch (e) { /* si el detector no carga, la liquidación sigue como antes */ }
+    }
     // AL VOLTEAR SE VOLTEA TODO LO QUE TIENE LADO (2-sep). Hasta hoy solo se intercambiaban score_a/score_b:
     // kills_a/kills_b y winner se quedaban en la orientación de la FUENTE, así que en toda serie que la
     // fuente listara al revés, KILLS_HANDICAP / KILLS_EQUIPO / KILLS_DNB se liquidaban con los kills del
@@ -2854,6 +2878,69 @@ function picksRaw(game, { status = null } = {}) {
   return status ? all.filter((p) => p.status === status) : all;
 }
 
+// ── AUDITORÍA RETROACTIVA DEL CRUCE DE FILIALES (16-sep) ──────────────────────────────────────────────────
+// El detector de `lib/filial.js` entra en el liquidador y marca lo que se liquide de aquí en adelante. Las
+// que YA están liquidadas quedarían fuera, y son justamente las que importan: son el libro con el que se ha
+// medido el EV de la familia. Esto las recorre y les pone la misma etiqueta, sin tocar ningún resultado.
+//
+// NO RE-LIQUIDA NADA. Ni cambia WIN por LOSS, ni mueve unidades, ni reabre picks. Solo añade tres campos de
+// diagnóstico a las que cruzan. Un resultado ya escrito no se corrige con una sospecha que los datos no
+// pueden resolver — se etiqueta para que se pueda mirar y para que se pueda excluir del EV a mano.
+//
+// Devuelve además las FUSIONES DEL CATÁLOGO, que son el otro medio problema y ese sí es un fallo claro: dos
+// rosters distintos con el mismo id canónico. En CS2 hay dos ("Faze Up Next" con FaZe Clan, "Sangal ALTERS"
+// con Sangal Esports) y de momento no han liquidado nada mal, pero es cuestión de que coincidan en agenda.
+function auditarFiliales(game, { aplicar = false } = {}) {
+  let FIL; try { FIL = require('../lib/filial'); } catch (e) { return { error: 'lib/filial no disponible: ' + e.message }; }
+  const st = rd(PICKS_F(game));
+  const picks = st && st.picks ? st.picks : {};
+  const todas = Object.values(picks);
+
+  const cruces = [];
+  let marcadas = 0;
+  for (const pk of todas) {
+    if (!pk.fuente_nombres) continue;                       // solo las casadas por aproximación tienen el par de la fuente
+    const par = String(pk.fuente_nombres).split(' vs ');
+    if (par.length !== 2) continue;
+    const cr = FIL.cruceEnPar({ pickA: pk.home, pickB: pk.away, fuenteA: par[0], fuenteB: par[1] })
+      || FIL.cruceEnPar({ pickA: pk.home, pickB: pk.away, fuenteA: par[1], fuenteB: par[0] });
+    if (!cr) continue;
+    cruces.push({ pick_id: pk.pick_id, event_id: pk.event_id, at: pk.start_at, competition: pk.competition,
+      apuesta: `${pk.home} vs ${pk.away}`, fuente: pk.fuente_nombres, familia: pk.family,
+      estado: pk.status, resultado: pk.result_code || null, unidades: pk.units, par: cr.resumen });
+    if (aplicar && pk.casado_por !== cr.etiqueta) {
+      pk.casado_por = cr.etiqueta; pk.filial_aviso = cr.lados[0].aviso; pk.filial_par = cr.resumen;
+      pk.filial_auditado_at = new Date().toISOString();
+      marcadas++;
+    }
+  }
+  if (aplicar && marcadas) wr(PICKS_F(game), st);
+
+  // las fusiones se buscan sobre TODOS los nombres que aparecen en el libro
+  const nombres = new Set();
+  for (const pk of todas) { if (pk.home) nombres.add(pk.home); if (pk.away) nombres.add(pk.away); }
+  let fusiones = [];
+  try {
+    const resolve = resolverParaLiquidar(game);
+    if (resolve) fusiones = FIL.fusionesEnCatalogo([...nombres], resolve);
+  } catch (e) { /* sin catálogo para este juego */ }
+
+  const porEvento = new Map();
+  for (const c of cruces) porEvento.set(c.event_id, (porEvento.get(c.event_id) || 0) + 1);
+  const liquidadas = todas.filter((p) => p.status === 'SETTLED' && ['WIN', 'LOSS'].includes(String(p.result_code || '').toUpperCase())).length;
+  return {
+    game, aplicado: !!aplicar, marcadas,
+    n_picks: todas.length, n_liquidadas: liquidadas,
+    cruces_n: cruces.length, cruces_eventos: porEvento.size,
+    cuota_sobre_liquidadas_pct: liquidadas ? +(100 * cruces.length / liquidadas).toFixed(2) : null,
+    unidades_en_juego: +cruces.reduce((a, c) => a + (Number(c.unidades) || 0), 0).toFixed(3),
+    fusiones_catalogo: fusiones,
+    cruces: cruces.slice(0, 200),
+    doctrina: 'Marcar, no re-liquidar. Los datos no pueden decidir si la casa escribió mal el nombre o si '
+      + 'se liquidó con el partido del otro roster; lo que sí pueden es dejarlo contado y a la vista.',
+  };
+}
+
 
 // El archivo de cierres en crudo (16-sep), para poder auditar el emparejado de las dos caras desde fuera.
 // Solo lectura y acotado: el archivo entero son megas y no hace falta ninguno para diagnosticar.
@@ -2865,7 +2952,7 @@ function closesRaw(game, { limit = 12 } = {}) {
   return { game, n_eventos: ids.length, devueltos: Object.keys(out).length, closes: out };
 }
 
-module.exports = { closesRaw,
+module.exports = { closesRaw, auditarFiliales,
   clvWhy, closesBoard, tournamentsBoard, retireCrossedPicks,
   ENGINES, GAME_ORDER, PICK_FAMILIES, PICK_DOCTRINE, DIR,
   slate, overview, ratings, harvest, snapshot, closesCount, marketEvidence, market, analyzeMatch, board, evaluateAll, probFor, boOf,

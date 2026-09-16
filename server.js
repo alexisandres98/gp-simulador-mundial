@@ -20253,13 +20253,29 @@ const server = http.createServer(async (req, res) => {
             return salida(L.n, L.picks);
           }
           if (m === 'hoops') { const rows = db.hoopsPicks || []; return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows); }
-          if (m === 'derivadas') {
-            const FD = require('./futbol-derivadas');
-            const st = FD.estado ? FD.estado() : null;
-            const rows = (st && st.picks) ? Object.values(st.picks) : [];
+          // EL MOTOR QUE DEVOLVÍA CERO PORQUE LA RUTA LLAMABA A UNA FUNCIÓN QUE NO EXISTE (16-sep).
+          // Esto pedía `FD.estado()`; `futbol-derivadas.js` nunca ha exportado `estado`, así que el
+          // ternario caía a `null`, `rows` salía vacío y la ruta contestaba `count: 0` con un 200
+          // impecable. Parecía "las derivadas no tienen libro" cuando lo que pasaba es que nadie lo
+          // estaba leyendo — el mismo cero tranquilizador que acabamos de cazar en `lib/ausencia.js`.
+          // El libro sí existe y se saca por `libroCrudo`, igual que en tenis, TT, dardos y NFL.
+          if (m === 'derivadas' || m === 'futbol-derivadas') {
+            const L = require('./futbol-derivadas').libroCrudo({ limit: lim });
+            return salida(L.n, L.picks);
+          }
+          if (m === 'clubes' || m === 'clubs') {
+            const rows = db.clubDailyPicks || [];
             return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
           }
-          return json(res, 400, { error: 'motor desconocido', motores: ['esports:cs2', 'esports:lol', 'esports:valorant', 'esports:dota2', 'tenis', 'tt', 'dardos', 'nfl', 'hoops', 'derivadas'] });
+          if (m === 'combate' || m === 'combat') {
+            const rows = db.combatPicks || [];
+            return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
+          }
+          if (m === 'goles' || m === 'goal') {
+            const rows = db.goalPicks || [];
+            return salida(rows.length, lim > 0 ? rows.slice(-lim) : rows);
+          }
+          return json(res, 400, { error: 'motor desconocido', motores: ['esports:cs2', 'esports:lol', 'esports:valorant', 'esports:dota2', 'tenis', 'tt', 'dardos', 'nfl', 'hoops', 'derivadas', 'clubes', 'combate', 'goles'] });
         } catch (e) { return json(res, 500, { error: e.message, motor: m }); }
       }
       // ?clubs=1 (17-ago): el feed de CLUBES (el que ve el suscriptor hoy) — las sesiones de contenido lo
@@ -22932,6 +22948,16 @@ const server = http.createServer(async (req, res) => {
       // LA FUENTE DE RESULTADOS, EN CRUDO. Valorant llevaba 94 picks abiertas y CERO liquidadas, y el parte
       // decía que su fuente devuelve 7 filas de UN solo día mientras la cosecha presume de 33.104 series
       // "al día". Una de las dos cosas es mentira y no se puede saber cuál sin mirar el crudo.
+      // `?filiales=<juego>[&aplicar=1]` (16-sep): el cruce equipo ↔ filial en el libro YA liquidado, más
+      // las fusiones del catálogo (dos rosters distintos con el mismo id canónico). Sin `aplicar` solo
+      // informa; con él, escribe la etiqueta `casado_por: 'aproximado_filial'` en las que cruzan. No
+      // re-liquida nada nunca — ver la doctrina en `esports-engine/store.js`.
+      const filg = String(url.searchParams.get('filiales') || '');
+      if (filg) {
+        const ESf = require('./esports-engine/store');
+        if (!ESf.GAME_ORDER.includes(filg)) return json(res, 400, { error: 'juego desconocido', juegos: ESf.GAME_ORDER });
+        return json(res, 200, ESf.auditarFiliales(filg, { aplicar: url.searchParams.get('aplicar') === '1' }));
+      }
       const rawg = String(url.searchParams.get('rawres') || '');
       if (rawg) {
         const RES2 = require('./data-providers/esports/results');
@@ -25741,6 +25767,51 @@ async function anotar(pid){
           en_G1: Object.values(salida).filter((x) => x.puerta_actual === 'G1').length,
           en_G0: Object.values(salida).filter((x) => x.puerta_actual === 'G0').length },
         familias: salida,
+      });
+    }
+    // ── ¿LA AUSENCIA DE DATO SELECCIONA LA MUESTRA? (16-sep) ────────────────────────────────────────────
+    // G0 tapa con un tope del 5 % lo que en CS2 es el suelo físico de la fuente: bo3.gg rechaza el parseo
+    // de ~19 % de los partidos y ninguna fuente libre da rondas POR MAPA de CS2. Con ese tope, CS2 no puede
+    // pasar G0 haga lo que haga nadie — y un listón inalcanzable no es un listón, es un cierre heredado de
+    // un número redondo. Esta sonda mide lo que el tope quiere proteger de verdad: si lo que falta se
+    // parece a lo que está. Ver la cabecera de `lib/ausencia.js`.
+    //
+    // NO ABRE NINGUNA PUERTA. El tope de G0 sigue mandando. Esto pone el número delante para que la
+    // decisión —aceptar una familia con ausencia demostrablemente ignorable, o cerrarla— se tome.
+    if (p === '/api/internal/ausencia') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      const adminA = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();
+      if (!adminA && (!xk || url.searchParams.get('key') !== xk)) return json(res, 404, { error: 'No encontrado' });
+      const AU = require('./lib/ausencia');
+      const libros = {};
+      const meter = (k, arr) => { if (Array.isArray(arr)) libros[k] = arr; };
+      try { const ES = require('./esports-engine/store'); for (const g of ES.GAME_ORDER) meter('esports:' + g, ES.picksRaw(g)); } catch (e) { /* sin esports */ }
+      try { meter('tt', require('./tt-engine/store').libroCrudo().picks); } catch (e) { /* sin tt */ }
+      try { meter('tenis', require('./tennis-engine/store').libroCrudo().picks); } catch (e) { /* sin tenis */ }
+      try { meter('dardos', require('./darts-engine/store').libroCrudo().picks); } catch (e) { /* sin dardos */ }
+      try { meter('nfl', require('./nfl-engine/store').libroCrudo().picks); } catch (e) { /* sin nfl */ }
+      try { meter('derivadas', require('./futbol-derivadas').libroCrudo().picks); } catch (e) { /* sin derivadas */ }
+      meter('hoops', db.hoopsPicks || []);
+      meter('clubes', db.clubDailyPicks || []);
+      meter('futbol:CARDS', (db.clubDailyPicks || []).filter((x) => x.family === 'CARDS'));
+      meter('combate', db.combatPicks || []);
+      const solo = String(url.searchParams.get('motor') || '').toLowerCase();
+      const salida = {};
+      for (const [k, arr] of Object.entries(libros)) {
+        if (solo && k.toLowerCase() !== solo) continue;
+        try { salida[k] = AU.examinaLibro(arr); } catch (e) { salida[k] = { veredicto: 'error', razon: e.message }; }
+      }
+      const cuenta = (v) => Object.values(salida).filter((x) => x.veredicto === v).length;
+      return json(res, 200, {
+        at: new Date().toISOString(),
+        pregunta: 'El peligro de un libro con huecos no es el tamaño del hueco: es que el hueco esté RELACIONADO CON EL RESULTADO. Eso sí se puede comprobar, y es lo que mide esta sonda.',
+        no_abre_puerta: 'El tope del 5 % de G0 sigue mandando. Esto es evidencia para decidir, no permiso para saltarse nada.',
+        listones: AU.LISTONES,
+        resumen: { motores: Object.keys(salida).length, seleccionada: cuenta('seleccionada'),
+          seleccionada_por_composicion: cuenta('seleccionada_por_composicion'),
+          ignorable: cuenta('ignorable_en_lo_observable'), insuficiente: cuenta('insuficiente'),
+          sin_ausencias: cuenta('sin_ausencias'), no_legible: cuenta('libro_no_legible') },
+        motores: salida,
       });
     }
     if (p === '/api/internal/vara') {

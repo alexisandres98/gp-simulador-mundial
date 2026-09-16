@@ -53,6 +53,25 @@ const RAPIDO = flag('--rapido');   // salta COM-Poisson y el histograma: solo Po
 const CONTEO = arg('--conteo', 'antiguo');
 const CN = require('../prop-engine/conteo');
 
+// ── LA FAMILIA (16-sep, A21 de la auditoría externa) ──────────────────────────────────────────────────
+// A21 pide, entre otras cosas, «DAMP y prior de equipo SEPARADOS» para córners. Hoy no lo están: el
+// auto-tune de `server.js` elige UN `TOTALS_DAMP` con un score COMBINADO de córners y tarjetas, así que el
+// valor que gane en una familia se le impone a la otra. Son dos conteos distintos —córners local y visita
+// van correlacionados −0,249 y las tarjetas +0,201— y no hay motivo para que compartan amortiguación.
+//
+// La forma de separarlos no es duplicar este arnés: es PARAMETRIZARLO. Corriéndolo con `--familia corners`,
+// córners elige sus propios `damp`, `prior`, vida media y demás en SU validación interna, sin ver nada de
+// tarjetas. Eso es exactamente la separación que se pedía, y de paso córners gana los challengers C0–C3
+// (los mismos T0–T2b) que tampoco tenía.
+//
+// Sin `--familia`, el comportamiento es byte-idéntico al de tarjetas del 15-sep.
+const FAMILIA = arg('--familia', 'cards');
+if (!['cards', 'corners'].includes(FAMILIA)) { console.error('--familia tiene que ser cards o corners'); process.exit(1); }
+const ES_CORNERS = FAMILIA === 'corners';
+// Las líneas en las que de verdad entra el dinero, por familia. Una calibración excelente en 2,5 tarjetas
+// no dice nada sobre el under de 5,5, y lo mismo vale para córners: el mercado vive en 8,5-10,5.
+const LINEAS_POR_FAMILIA = { cards: [4.5, 5.5, 6.5], corners: [8.5, 9.5, 10.5] };
+
 // ── CARGA ─────────────────────────────────────────────────────────────────────────────────────────────
 // Una fila por partido terminado y sin prórroga, con tarjetas de los dos lados.
 // TARJETAS = amarillas + rojas, que es lo que cuenta el modelo y lo que liquidamos hoy. OJO: si Cloudbet
@@ -70,12 +89,18 @@ function carga() {
       if (m.et) continue;                                   // la prórroga no son 90' y el mercado sí lo es
       if (!m.home || !m.away) continue;
       const hy = m.home.yellows, ay = m.away.yellows;
-      if (hy == null && ay == null) continue;                // sin dato de tarjetas no hay nada que aprender
+      const hc = m.home.corners, ac = m.away.corners;
+      // el dato que hace falta depende de la familia: sin él no hay nada que aprender de ESA familia
+      if (ES_CORNERS ? (hc == null && ac == null) : (hy == null && ay == null)) continue;
       const t = Date.parse(m.date || '');
       if (!isFinite(t)) continue;
       const am = (Number(hy) || 0) + (Number(ay) || 0);
       const ro = (Number(m.home.reds) || 0) + (Number(m.away.reds) || 0);
-      const y = CONTEO === 'casa' ? CN.conteoCasa(am, ro) : CN.conteoAntiguo(am, ro);
+      // CÓRNERS NO TIENEN CONTEO DE CASA QUE VALGA. La regla de Cloudbet para tarjetas (una roja vale dos)
+      // no tiene equivalente aquí: un córner es un córner. `--conteo casa` se ignora en esta familia y se
+      // dice, en vez de aplicarlo en silencio sobre un conteo al que no se aplica.
+      const y = ES_CORNERS ? (Number(hc) || 0) + (Number(ac) || 0)
+        : (CONTEO === 'casa' ? CN.conteoCasa(am, ro) : CN.conteoAntiguo(am, ro));
       // T0 se ajusta con prop-engine, que lee `yellows`/`reds` del objeto crudo. Para que T0 vea la MISMA
       // escala que los demás, el crudo se reescribe: toda la roja se pasa a la casilla de amarillas cuando
       // el conteo es el de la casa. No hay otra forma de reajustarlo sin tocar el motor de producción.
@@ -141,8 +166,12 @@ function t0Predice(entreno, evalua) {
     const fit = fits[f.liga];
     if (!fit) { out.push(null); continue; }
     let proj; try { proj = PE.project(fit, { home: f.local, away: f.visita, closeness1x2: paridad(f) }); } catch { proj = null; }
-    if (!proj || !(proj.cards.total > 0)) { out.push(null); continue; }
-    out.push({ pmf: C.nb(proj.cards.total, proj.cards.r_total), mu: proj.cards.total, ley: 'nb' });
+    // T0 = EL MODELO DE PRODUCCIÓN DE ESTA FAMILIA. `prop-engine` proyecta las dos en la misma pasada y
+    // con el mismo `TOTALS_DAMP`; aquí se lee solo la que se está juzgando, que es la mitad del punto de
+    // A21: córners y tarjetas dejan de compartir hiperparámetros por el hecho de compartir motor.
+    const pf = ES_CORNERS ? proj.corners : proj.cards;
+    if (!pf || !(pf.total > 0)) { out.push(null); continue; }
+    out.push({ pmf: C.nb(pf.total, pf.r_total), mu: pf.total, ley: 'nb' });
   }
   return out;
 }
@@ -338,7 +367,7 @@ function elige(entreno, opciones) {
 }
 
 // ── PUNTUACIÓN ────────────────────────────────────────────────────────────────────────────────────────
-const LINEAS = [4.5, 5.5, 6.5];   // las que Cloudbet ofrece de verdad y en las que entra el dinero
+const LINEAS = LINEAS_POR_FAMILIA[FAMILIA];   // las que la casa ofrece de verdad y en las que entra el dinero
 
 // Se guarda UNA FILA POR PARTIDO Y ASPIRANTE, no un agregado. Sin las filas no hay comparación pareada, y
 // sin comparación pareada la diferencia entre dos modelos se mide contra la varianza de los partidos en vez
@@ -391,8 +420,13 @@ function main() {
   const t0 = filas[0].t, tN = filas[filas.length - 1].t;
   console.log(`Partidos: ${filas.length}  ligas: ${new Set(filas.map((f) => f.liga)).size}  ` +
     `de ${new Date(t0).toISOString().slice(0, 10)} a ${new Date(tN).toISOString().slice(0, 10)}`);
-  console.log(`Tarjetas por partido: media ${C.momentos(filas.map((f) => f.y)).media.toFixed(3)}  ` +
-    `varianza ${C.momentos(filas.map((f) => f.y)).varianza.toFixed(3)}\n`);
+  const mom = C.momentos(filas.map((f) => f.y));
+  console.log(`${ES_CORNERS ? 'Córners' : 'Tarjetas'} por partido: media ${mom.media.toFixed(3)}  ` +
+    `varianza ${mom.varianza.toFixed(3)}  (razón varianza/media ${(mom.varianza / mom.media).toFixed(3)})`);
+  // La razón varianza/media es la que decide si Poisson tiene alguna posibilidad: vale 1 exactamente bajo
+  // Poisson. En tarjetas sale por encima (sobredispersión) y en córners conviene mirarla antes de nada,
+  // porque si saliera cerca de 1 las cuatro leyes darían casi lo mismo y la comparación no diría gran cosa.
+  console.log(`Líneas evaluadas: ${LINEAS.join(' · ')}\n`);
 
   // Bloques mensuales sobre la segunda mitad del histórico: el primer bloque necesita entrenamiento detrás.
   const inicioEval = t0 + (tN - t0) * 0.45;

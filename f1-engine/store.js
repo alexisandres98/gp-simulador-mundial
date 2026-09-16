@@ -219,10 +219,26 @@ function raceBoard(round) {
       car_idx: r2(100 + 20 * f.car_v), drv_idx: r2(100 + 20 * f.drv_v), car_n: f.car_n, drv_n: f.drv_n,
     };
   }).sort((a, b) => (b.p_win || 0) - (a.p_win || 0));
+
+  // ── LA MONOTONÍA, QUE LA MEZCLA DEL GANADOR PUEDE ROMPER (16-sep, A34 de la auditoría externa) ─────────
+  // Ganar implica podio e implica puntuar, así que p_win ≤ p_podium ≤ p_top6 ≤ p_points SIEMPRE. Las cuatro
+  // salen de las mismas simulaciones y ahí la cadena se cumple por construcción... salvo que `p_win` NO es
+  // la de la simulación: es el ENSAMBLE del modelo con el prior de casilla (`winBlend`), y la mezcla se
+  // aplica solo a ese escalón. Si el ensamble sube a un piloto por encima de su propio podio simulado, la
+  // ficha publica que gana más veces de las que sube al podio — que no es una imprecisión, es imposible.
+  //
+  // No se corrige el número aquí: recortarlo tiraría la información del ensamble, que está validado, y
+  // mezclar los cuatro escalones es un cambio de modelo. Se DETECTA y se publica, que es lo que permite
+  // decidir con el dato delante en vez de descubrirlo en una captura de pantalla.
+  const monot = SIM.violacionesDeMonotonia(rows);
   return {
     available: true, race: { season: next.season, round: next.round, name: next.name, circuit: next.circuit, country: next.country, locality: next.locality, date: next.date, time: next.time, quali: next.quali, sprint: next.sprint },
     state, state_label: state === 'POST_QUALI' ? 'pos-clasificación (parrilla real)' : 'pre-clasificación (GP estima la parrilla)',
     rows, attribution: ATTRIB, doctrine: DOCTRINE,
+    monotonia: { coherente: monot.length === 0, violaciones: monot,
+      ...(monot.length ? { aviso: 'p_win sale del ENSAMBLE con el prior de casilla y podio/top6/puntos de la '
+        + 'simulación cruda: la mezcla se aplica a un solo escalón de la cadena y por eso puede romperla. '
+        + 'Una ficha que diga "gana el 35 %, sube al podio el 32 %" es imposible, no imprecisa.' } : {}) },
     last_completed: d.meta.last_completed, overlay_at: d.overlay_at,
     note: 'ganador = ensamble validado del modelo con el prior de casilla cuando hay parrilla; podio, top-6, puntos, abandono y orden esperado salen de las MISMAS simulaciones del field completo. Índices coche/piloto: 100 = media del campo.',
   };
@@ -722,8 +738,14 @@ function duel(a, b) {
   };
   const ia = find(a), ib = find(b);
   if (!ia || !ib) return { available: false, why: `no encuentro a "${!ia ? a : b}" en el field vigente` };
-  const p = SIM.h2hProb(field, { ...d.priors.sim, gridW: state === 'POST_QUALI' ? d.priors.sim.gridW : 0, seed: next.season * 100 + next.round }, ia, ib);
-  return { available: true, race: next.name, state, a: { id: ia, name: (d.drivers[ia] || {}).name }, b: { id: ib, name: (d.drivers[ib] || {}).name }, p_a_beats_b: r3(p) };
+  // `detalle` trae las tres masas: gana A, gana B y DEVOLUCIÓN por doble abandono (16-sep, A34). El duelo de
+  // pilotos lo devuelven todas las casas grandes cuando ninguno de los dos termina clasificado, así que
+  // `p` es P(gana A | RESUELVE) — que es lo que se compara con la cuota. Antes esa masa se repartía a cara
+  // o cruz, lo que inflaba la probabilidad siempre en la misma dirección.
+  const h = SIM.h2hProb(field, { ...d.priors.sim, gridW: state === 'POST_QUALI' ? d.priors.sim.gridW : 0, seed: next.season * 100 + next.round }, ia, ib, { detalle: true });
+  return { available: true, race: next.name, state, a: { id: ia, name: (d.drivers[ia] || {}).name }, b: { id: ib, name: (d.drivers[ib] || {}).name },
+    p_a_beats_b: h ? r3(h.p) : null,
+    reglamento: h ? { p_devolucion: r3(h.p_push), p_a_bruta: r3(h.p_a_bruta), p_b_bruta: r3(h.p_b_bruta), nota: h.nota } : null };
 }
 
 // ── mercado en espera + sonda ───────────────────────────────────────────────────────────────────────────

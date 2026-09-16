@@ -107,11 +107,66 @@ const ERROR_CAL = {
   // ya abierta en v1; se anota para que la tabla la juzgue con la misma vara que a las nuevas
   btts: 0.009,
 };
+// ── LO QUE ESTE ERROR MIDE, Y LO QUE NO (16-sep, A22 de la auditoría externa) ────────────────────────────
+//
+// La tabla de arriba se midió resolviendo λ_local y λ_visita del **CIERRE REAL DE PINNACLE** y derivando la
+// mitad de ahí. Eso responde una pregunta muy concreta y muy útil: *dado un λ correcto, ¿cuánto se desvía
+// la estructura de partición en mitades?* La respuesta —entre 0,008 y 0,058— es la que está escrita.
+//
+// Pero NO es la pregunta que decide una pick. En producción λ no sale del cierre de Pinnacle: sale de
+// NUESTRO modelo. Y nuestro λ trae su propio error, que se suma. El error total de lo que publicamos es:
+//
+//     error(derivada publicada)  ≈  error(estructura de mitades)  ⊕  error(λ del modelo)
+//
+// Transportar el primero como si fuera el total es exactamente lo que A22 señala, y tiene un efecto con
+// signo conocido: **subestima el listón**. Una familia cuyo listón real debería ser 3 + 5,8 + x pp se está
+// exigiendo 3 + 5,8, así que nacen picks que no deberían nacer.
+//
+// EL SEGUNDO TÉRMINO NO ESTÁ MEDIDO, Y NO SE INVENTA. Medirlo exige rehacer las 33 mil validaciones con el
+// λ que el modelo habría dado en cada partido, no con el que el cierre implicaba — y eso es reconstruir la
+// pila de clubes point-in-time para tres temporadas. Hasta que exista:
+//
+//   · `listonDe()` sigue devolviendo lo mismo que hasta hoy, para no cambiar en silencio qué picks nacen;
+//   · pero DECLARA que su error es parcial, con `listonDetalle()`, y eso viaja a la sonda y a la pick;
+//   · y `SUELO_METODO` se mantiene como cota para las familias sin medición, que ya era lo correcto.
+//
+// La cota inferior del término que falta se puede acotar por arriba con lo que ya sabemos: la calibración
+// del modelo de clubes contra el precio se midió el 16-sep en `lib/calibracion.js` y en fútbol de clubes no
+// hay muestra suficiente para darle un número, así que ni siquiera se puede acotar todavía. Eso también es
+// un resultado y es mejor decirlo que rellenarlo con un 2 % de aspecto razonable.
+const PROCEDENCIA_ERROR = {
+  medido_con: 'λ resuelta del CIERRE de Pinnacle (1X2 sin vig para el reparto, over/under 2,5 sin vig para el ritmo)',
+  n_partidos: 33335,
+  cubre: 'el error de la ESTRUCTURA de partición en mitades, dado un λ correcto',
+  no_cubre: 'el error del λ DEL MODELO, que es el que de verdad se usa al publicar. Se suma al de arriba y no está medido.',
+  consecuencia: 'el listón que sale de aquí es una COTA INFERIOR del listón correcto: subestima, no sobreestima.',
+  para_cerrarlo: 'rehacer las 33.335 validaciones con el λ point-in-time del modelo de clubes en vez del implícito del cierre',
+};
+
 // El listón de una familia: su propio error más el listón base. Una familia que se desvía 5pp no puede
 // cobrar una ventaja de 3pp, porque esos 3pp caben enteros dentro de su error.
 function listonDe(familia, base = 0.03) {
   const e = ERROR_CAL[familia];
   return e == null ? base + SUELO_METODO : +(base + e).toFixed(4);
+}
+
+// El mismo número, con su procedencia y su hueco. Es lo que tiene que leer cualquiera que vaya a decidir
+// con él: un listón que se presenta como completo cuando le falta un término es peor que uno que se
+// presenta como parcial, porque el segundo invita a cerrarlo.
+function listonDetalle(familia, base = 0.03) {
+  const e = ERROR_CAL[familia];
+  const medido = e != null;
+  return {
+    familia, liston: listonDe(familia, base),
+    base, error_estructura: medido ? e : SUELO_METODO,
+    error_estructura_medido: medido,
+    error_lambda_modelo: null,
+    completo: false,
+    aviso: medido
+      ? 'listón PARCIAL: cubre el error de la estructura de mitades (medido con λ del cierre de Pinnacle) pero NO el del λ del modelo, que es el que se usa al publicar. Subestima.'
+      : `familia sin error de calibración medido: se usa el suelo del método (${SUELO_METODO}) como cota, y tampoco cubre el error del λ del modelo.`,
+    procedencia: PROCEDENCIA_ERROR,
+  };
 }
 
 // ── LAS MATRICES DE CADA MITAD ──────────────────────────────────────────────────────────────────────────
@@ -372,6 +427,6 @@ function todas(lh, la) {
   return M ? mercados(lh, la).concat(mercadosFt(dist.buildMatrix(lh, la).matrix)) : [];
 }
 
-module.exports = { CUOTA_1T, RHO_MITAD, MEDICION, ERROR_CAL, CONTROL, SUELO_METODO, listonDe,
+module.exports = { CUOTA_1T, listonDetalle, PROCEDENCIA_ERROR, RHO_MITAD, MEDICION, ERROR_CAL, CONTROL, SUELO_METODO, listonDe,
   matrices, matrizMitad, mercados, mercadosFt, todas, descansoFinal, margenDist, conteoDist, ahJusto, totalJusto,
   idDe, gira, tagLinea, tagAh, FAMILIAS: Object.keys(ERROR_CAL) };

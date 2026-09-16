@@ -64,8 +64,24 @@ function simulateRace(field, cfg) {
   }));
 }
 
-// duelo H2H entre dos ids sobre el MISMO conjunto de simulaciones (correlación real del field)
-function h2hProb(field, cfg, idA, idB) {
+// ── DUELO H2H, CON LA REGLA DE LA CASA (16-sep, A34 de la auditoría externa) ─────────────────────────────
+//
+// EL ERROR QUE TENÍA. Un piloto que abandona recibía `v = −1e9 − rnd()`, así que **dos abandonos se
+// resolvían a cara o cruz**: la mitad de esa masa se contaba como "gana A". Por reglamento no es así. En un
+// duelo de pilotos, todas las casas grandes liquidan por vueltas completadas y **DEVUELVEN LA APUESTA si
+// ninguno de los dos termina clasificado** (o si completan lo mismo). Una devolución no es media victoria:
+// a cuota 1,90, ganar la mitad de los dobles abandonos paga 1,90 sobre esa masa y una devolución paga 1,00.
+//
+// Con un 8-12 % de abandono por piloto —lo normal en F1— el doble abandono ronda el 1 % de las carreras, y
+// contar la mitad de ese 1 % como victoria infla la probabilidad medio punto. Medio punto sobre un listón de
+// ventaja de 4 pp es un octavo del listón, siempre en la misma dirección.
+//
+// Es el mismo tratamiento que `goal-engine/mitades.js` le da a `h1_draw_no_bet`: la probabilidad justa de un
+// mercado que devuelve es CONDICIONAL a que resuelva, y hay que calcularla así para poder compararla con un
+// precio que también devuelve.
+//
+// Devuelve las tres masas y, además, `p` = P(gana A | resuelve), que es lo que se compara con la cuota.
+function h2hProb(field, cfg, idA, idB, { detalle = false } = {}) {
   const n = field.length;
   const sims = cfg.sims || 4000;
   const sigma = cfg.sigma != null ? cfg.sigma : 0.9;
@@ -74,13 +90,47 @@ function h2hProb(field, cfg, idA, idB) {
   const ia = field.findIndex((f) => f.id === idA), ib = field.findIndex((f) => f.id === idB);
   if (ia < 0 || ib < 0) return null;
   const gz = field.map((f) => (f.grid ? -((f.grid - (n + 1) / 2) / ((n - 1) / 2 || 1)) : 0));
-  let wa = 0;
+  let wa = 0, wb = 0, push = 0;
   for (let s = 0; s < sims; s++) {
-    const va = rnd() < (field[ia].dnf || 0) ? -1e9 - rnd() : field[ia].perf + gridW * gz[ia] + sigma * gauss(rnd);
-    const vb = rnd() < (field[ib].dnf || 0) ? -1e9 - rnd() : field[ib].perf + gridW * gz[ib] + sigma * gauss(rnd);
-    if (va > vb) wa++;
+    const da = rnd() < (field[ia].dnf || 0);
+    const db = rnd() < (field[ib].dnf || 0);
+    if (da && db) { push++; continue; }                  // ninguno clasificado: devolución
+    if (da) { wb++; continue; }                          // solo abandona A: gana B, sin simular nada más
+    if (db) { wa++; continue; }
+    const va = field[ia].perf + gridW * gz[ia] + sigma * gauss(rnd);
+    const vb = field[ib].perf + gridW * gz[ib] + sigma * gauss(rnd);
+    if (va > vb) wa++; else wb++;
   }
-  return wa / sims;
+  const resuelven = wa + wb;
+  const p = resuelven > 0 ? wa / resuelven : null;       // la que se compara con el precio
+  if (!detalle) return p;
+  return {
+    p, p_a_bruta: wa / sims, p_b_bruta: wb / sims, p_push: push / sims,
+    sims, resuelven,
+    nota: 'p = P(gana A | resuelve). El doble abandono DEVUELVE la apuesta por reglamento, así que la '
+      + 'probabilidad justa es condicional a que resuelva — igual que un draw-no-bet. Repartir esa masa a '
+      + 'cara o cruz infla la probabilidad medio punto, siempre en la misma dirección.',
+  };
 }
 
-module.exports = { simulateRace, h2hProb, rng, gauss };
+// ── LA MONOTONÍA, QUE NO ES OPCIONAL ────────────────────────────────────────────────────────────────────
+// Ganar la carrera implica subir al podio, y subir al podio implica puntuar. Por construcción el simulador
+// lo cumple —son condiciones anidadas sobre las MISMAS simulaciones— y precisamente por eso conviene
+// comprobarlo: si alguien calibra una familia sin las otras, o encoge el podio hacia una referencia y no el
+// ganador, la monotonía se rompe y el sistema publica que un piloto gana más veces de las que puntúa.
+// Devuelve las violaciones, no un booleano: un "false" sin decir quién ni cuánto no sirve para arreglarlo.
+function violacionesDeMonotonia(filas, { tol = 1e-9 } = {}) {
+  const out = [];
+  for (const r of filas || []) {
+    const w = r.p_win, po = r.p_podium, t6 = r.p_top6, pt = r.p_points;
+    const pares = [['p_win ≤ p_podium', w, po], ['p_podium ≤ p_top6', po, t6], ['p_top6 ≤ p_points', t6, pt]];
+    for (const [que, a, b] of pares) {
+      if (Number.isFinite(a) && Number.isFinite(b) && a > b + tol) {
+        out.push({ id: r.id, regla: que, valores: [a, b], exceso: +(a - b).toFixed(6) });
+      }
+    }
+  }
+  return out;
+}
+
+module.exports = { simulateRace, h2hProb, violacionesDeMonotonia, rng, gauss };

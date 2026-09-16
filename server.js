@@ -26379,6 +26379,75 @@ async function anotar(pid){
         motores: salida,
       });
     }
+    // ── EL ENCOGIMIENTO AL PRECIO, FAMILIA POR FAMILIA (16-sep, M1 · Fase B1) ──────────────────────────
+    // Ajusta `c` —cuánto peso merece el modelo POR ENCIMA del precio— hacia adelante en cada familia y
+    // enseña si fuera de muestra el encogido bate al precio. Es SOLO MEDIDA: esta sonda no cambia ninguna
+    // pick. Aplicar el `c` es la doble corrida que manda el plan, y va aparte.
+    //
+    // El precio contra el que se encoge es **el cierre SIN MARGEN**, reconstruido con sus dos caras
+    // (`close_odds` + `close_odds_contraria`), que es lo que cada motor guarda desde el 15-sep. Dos cosas
+    // que hay que decir en voz alta y no esconder en el código:
+    //  1. Al PUBLICAR se encoge hacia el precio VIVO, no hacia el cierre, porque el cierre no existe
+    //     todavía. `c` se ajusta contra el cierre porque es la mejor estimación disponible de la verdad;
+    //     que la aplicación use un precio más ruidoso es una aproximación DECLARADA, no un descuido.
+    //  2. Una fila sin la cara contraria del cierre NO entra, y se cuenta en `descartes`. Rellenar el
+    //     margen a ojo es el fallo que hoy mismo costó cinco días de márgenes falsos.
+    if (p === '/api/internal/encogimiento') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const EN = require('./lib/encogimiento');
+      const fams = {}, avisos = [];
+      const minN = Math.max(30, Number(url.searchParams.get('min')) || EN.N_MIN_AJUSTE);
+      // Los motores nombran lo mismo de seis maneras. El accesor habla los seis idiomas o devuelve null, y
+      // un null se cuenta como descarte con su motivo — nunca como una fila que «no existía».
+      const gano = (x) => { const r = String(x.result_code || x.result || '').toUpperCase();
+        return r === 'WIN' || r === 'WON' ? 1 : (r === 'LOSS' || r === 'LOST' ? 0 : null); };
+      const pMod = (x) => { const v = [x.p_gp, x.p_model, x.model_prob, x.p_modelo].find((y) => Number.isFinite(y));
+        return Number.isFinite(v) ? v : null; };
+      const cierre = (x) => [x.close_odds, x.close_own, x.close_price].find((y) => Number.isFinite(y) && y > 1) || null;
+      const cuando = (x) => Date.parse(x.settled_at || x.created_at || x.at || x.start_at || 0);
+      const evDe = (x) => x.event_id || x.match_id || x.series_id || x.ceid || x.cb_event_id || null;
+      const mete = (clave, filas) => {
+        if (!Array.isArray(filas) || filas.length < minN) return;
+        try {
+          fams[clave] = EN.paraFamilia(filas, { nMin: minN,
+            pGp: pMod, gano, fecha: cuando, evento: evDe,
+            pMkt: (x) => EN.pMercado({ odds: cierre(x), odds_contraria: x.close_odds_contraria }) });
+        } catch (e) { avisos.push(`${clave}: ${e.message}`); }
+      };
+      const porFamilia = (rows, pre) => {
+        const g = {};
+        for (const x of (rows || [])) (g[`${pre} · ${x.family || x.familia || '?'} · ${x.book || '?'}`] ||= []).push(x);
+        for (const [k, v] of Object.entries(g)) mete(k, v);
+      };
+      try { const ES = require('./esports-engine/store');
+        for (const gme of ES.GAME_ORDER) { const tr = ES.track(gme, { limit: 100000 }); porFamilia(tr && tr.recent, gme); }
+      } catch (e) { avisos.push(`esports: ${e.message}`); }
+      for (const [dep, mod] of [['tt', './tt-engine/store'], ['dardos', './darts-engine/store'], ['tenis', './tennis-engine/store']]) {
+        try { const tr = require(mod).track({ limit: 100000 }); porFamilia(tr && tr.recent, dep); }
+        catch (e) { avisos.push(`${dep}: ${e.message}`); }
+      }
+      const orden = Object.entries(fams).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || b[1].n - a[1].n);
+      const aporta = orden.filter(([, v]) => v.veredicto === 'el_modelo_aporta');
+      return json(res, 200, {
+        at: new Date().toISOString(), min_muestra: minN,
+        formula: 'p* = σ( logit(p_cierre sin margen) + c · [logit(p_gp) − logit(p_cierre sin margen)] )',
+        que_es_c: 'cuánto peso merece el modelo POR ENCIMA del precio. c = 0 → publica el precio; c = 1 → publica el modelo. Suelo 0 (nunca apostar contra el propio modelo), techo 1 (nunca extrapolarlo más allá de sí mismo).',
+        como_se_ajusta: 'walk-forward: se ajusta con lo anterior y se puntúa con lo siguiente, bloque a bloque. Si fuera de muestra NINGÚN c > 0 bate al precio, se publica c = 0 aunque el ajuste completo pida otra cosa.',
+        no_cambia_picks: 'Esta sonda MIDE. No aplica nada: la doble corrida de 14 días es la que decide cuándo la probabilidad encogida pasa a publicar.',
+        resumen: { familias: orden.length, el_modelo_aporta: aporta.length,
+          el_modelo_no_aporta: orden.filter(([, v]) => v.veredicto === 'el_modelo_no_aporta').length,
+          muestra_corta: orden.filter(([, v]) => !v.suficiente).length,
+          c_mediano: orden.length ? orden.map(([, v]) => v.c).sort((x, y) => x - y)[orden.length >> 1] : null },
+        tabla: orden.map(([k, v]) => ({ familia: k, c: v.c, veredicto: v.veredicto,
+          n_utilizables: v.n_utilizables, n_entradas: v.n_entradas,
+          fuera_de_muestra_n: v.fuera_de_muestra ? v.fuera_de_muestra.n : null,
+          mejora_sobre_precio: v.fuera_de_muestra ? v.fuera_de_muestra.mejora_sobre_precio : null,
+          penaliza_modelo_crudo: v.fuera_de_muestra ? v.fuera_de_muestra.penalizacion_del_modelo_crudo : null,
+          ic_de_c: v.ic_de_c ? v.ic_de_c.ic : null, descartes: v.descartes })),
+        familias: Object.fromEntries(orden), avisos,
+      });
+    }
     if (p === '/api/internal/vara') {
       const xk = process.env.GP_EXPORT_KEY || '';
       const adminV = (() => { const uu = getUser(req); return uu && uu.isAdmin; })();

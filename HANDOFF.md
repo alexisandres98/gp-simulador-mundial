@@ -1,4 +1,38 @@
-# HANDOFF — estado al 15 de septiembre de 2026
+# HANDOFF — estado al 16 de septiembre de 2026
+
+## 🎯 PUNTO DE RETOMA (16-sep, noche): EJECUTAR `docs/PLAN_RENTABILIDAD_2026-09-16.md`
+
+**Todo el backlog de la auditoría (§7, quince tareas) está hecho y desplegado** (11 commits del 16-sep,
+health 200). Lo que queda es el plan nuevo, con las decisiones ya tomadas. **Empezar por la Fase A**:
+
+1. **A1 — los archivos de resultados de clubes.** `results-<liga>.json` tiene **cero filas** en laliga,
+   irlanda, brasilb, suiza y polonia; 1.807 derivadas en `DATA_UNRESOLVED` por eso. Diagnóstico ya puesto
+   (`diag_marcador` en la pasada de derivadas, `/api/internal/implicito?key=&run=1`). Bloquea dos de los
+   cuatro candidatos a dinero.
+2. **A3 — la tabla de multiplicadores de Underdog** (decide el signo: 3× → −12,71 %, 3,5× → +1,83 %).
+3. **A4 — margen de Cloudbet en córners y HTFT/2T** con `lib/margen.js`.
+4. **A5 — leer los tres reglamentos** y cerrar `contrato_documentado` contra
+   `docs/LIQUIDADORES_DECLARADOS_2026-09-16.md`.
+
+**Lo hecho el 16-sep, en una línea cada uno** (todo con doc, test y sonda):
+`lib/ausencia.js` (¿la ausencia selecciona la muestra? CS2 sí, t 2,80) · `lib/filial.js` (65 tickets de
+CS2 liquidados cruzando equipo↔academia) · `lib/calibracion.js` (nueve motores descalibrados +6 a +16 pp;
+cero volteos) · `lib/zona.js` (el saque de NFL estaba 4-5 h desplazado) · A12 (fuga del holdout de
+lesiones) · A13 (WNBA a 200, no 240) · A14 (breakeven 0,52381) · A21 (`corners_v2` gana t −3,87; árbitro
+mejora tarjetas y empeora córners) · A22 (segunda mitad condicionada: 0,177 goles de rango) · A26 (DP de
+dardos: ruido, 0,026) · **A27 (calibración de dardos sesgada hasta +9,95 puntos)** · A28 (NFL generaba
+marcadores imposibles) · A29 (hora y roster de NFL) · A33/A34 (la mezcla con el mercado rompe la
+coherencia método↔ganador y ganador↔podio) · A36 (12 de 28 fuentes sin ficha; CC BY-SA no prohíbe uso
+comercial) · H-L1/L2 (recorte del reparto de LoL deja fuera el 3,81 %) · D-Dota (serie a medias ya no
+liquida). Sondas nuevas: `/api/internal/ausencia`, `/api/internal/calibracion`,
+`/api/internal/esports?filiales=cs2`.
+
+**Una corrección propia que conviene recordar:** la sonda de ausencia informó de 83 % en derivadas y era
+21,5 % — el accesor no reconocía `won`/`lost`/`half_won`. Arreglado con test. Moraleja vigente: **cada
+motor nombra el veredicto a su manera; un accesor que no habla su idioma devuelve un número con pinta de
+medición, no un "no sé".**
+
+---
 
 ## 🆕 ÚLTIMO TRABAJO (15-sep, tarde): CS2 — EL ASPIRANTE S1, LA COMPARACIÓN Y EL CONTRATO DE UNDERDOG
 

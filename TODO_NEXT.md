@@ -1,5 +1,10 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🎯 16-sep — EL PLAN QUE MANDA: `docs/PLAN_RENTABILIDAD_2026-09-16.md`
+
+Decisiones tomadas (por orden de Alexis, "tómalas tú"). Fases A→F. La A empieza por el punto de abajo
+(los archivos de resultados de clubes). El backlog §7 de la auditoría está **completo**.
+
 ## 🚨 16-sep — LAS DERIVADAS DE FÚTBOL NO PUEDEN LIQUIDAR: FALTAN LOS ARCHIVOS DE RESULTADOS
 
 Descubierto al desplegar `/api/internal/ausencia`. **1.807 de 8.418 derivadas (21,5 %) se cierran sin

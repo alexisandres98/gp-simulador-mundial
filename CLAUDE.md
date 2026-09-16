@@ -5,6 +5,15 @@
 ## Qué es
 **GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
 
+## 🎯 EL PLAN QUE MANDA AHORA (16-sep-2026) — `docs/PLAN_RENTABILIDAD_2026-09-16.md`
+Alexis ordenó el 16-sep: "toma las decisiones tú mismo, incluidas las de modelo; el objetivo es
+rentabilidad". Las decisiones **ya están tomadas** en ese documento (M1-M11 modelo, R1-R5 dinero) y **no se
+reabren**: se ejecutan en el orden de sus fases A→F. Los únicos candidatos a dinero son cuatro (Polymarket
+`fútbol·No`, HTFT/2T condicional, córners v2, tarjetas v2); todo lo demás es control y no recibe ingeniería
+de modelo. La regla del dinero del 13-sep sigue intacta: nada pasa a real sin cruzar G2.
+Diagnóstico que lo ordena: `docs/CALIBRACION_2026-09-16.md` — el modelo se pasa 6-16 pp donde el precio
+acierta a 0-4, en nueve de doce motores.
+
 ## 🔬 LA AUDITORÍA EXTERNA (15-sep-2026) — LO PRIMERO DESPUÉS DE LA REGLA DEL DINERO
 Una auditoría independiente revisó los modelos, los precios y la evidencia. Está íntegra en
 `docs/AUDITORIA_EXTERNA_2026-09-15.md`, el plan de ejecución en `docs/PLAN_TRABAJO_AUDITORIA_2026-09-15.md` y

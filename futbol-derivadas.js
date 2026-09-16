@@ -631,10 +631,39 @@ function track() {
 
 // EL LIBRO CRUDO, TICKET A TICKET (15-sep, T1.13). `track()` agrega; la vara necesita las filas para
 // calcular el EV contra la cara contraria del mismo contrato. Ver la nota larga en la ruta de exportación.
+// ── REABRIR LAS QUE SE CERRARON SIN MARCADOR (16-sep, A1 del plan de rentabilidad) ───────────────────────
+// Las picks que a las 72 h no encontraron marcador final quedaron en `DATA_UNRESOLVED`, y el liquidador solo
+// mira las `ACTIVE`: por muy lleno que quede ahora el archivo de resultados, esas 1.807 no se volverían a
+// mirar nunca. Esto las devuelve a ACTIVE para que lo reintente.
+//
+// DOS CANDADOS, y los dos importan. Solo se reabren las que fallaron por falta de MARCADOR FINAL —las de
+// descanso y las incoherentes son huecos de OTRA fuente y reabrirlas solo las volvería a cerrar—, y solo
+// UNA VEZ: `reabierta_at` queda en la pick, así que una segunda llamada no las toca. Sin esa marca, cada
+// pasada del cron las estaría reabriendo y volviendo a cerrar indefinidamente.
+//
+// No toca `units`, ni `result`, ni el P&L de nada ya liquidado: solo pone en cola de reintento lo que se
+// cerró por un fallo nuestro de datos.
+function reabrirSinMarcador(re = /sin marcador final|sin marcador a las 72 h/i) {
+  const st = rd();
+  let n = 0;
+  for (const p of Object.values(st.picks || {})) {
+    if (String(p.result || '') !== 'DATA_UNRESOLVED') continue;
+    if (!re.test(String(p.unresolved_motivo || ''))) continue;
+    if (p.reabierta_at) continue;
+    p.status = 'ACTIVE';
+    p.reabierta_at = new Date().toISOString();
+    p.reabierta_desde = p.unresolved_motivo || null;
+    delete p.result; delete p.unresolved_motivo; delete p.unresolved_at;
+    n++;
+  }
+  if (n) wr(st);
+  return n;
+}
+
 function libroCrudo({ limit = 0 } = {}) {
   const st = rd();
   const picks = Object.values(st.picks || {});
   return { n: picks.length, picks: limit > 0 ? picks.slice(-limit) : picks };
 }
 
-module.exports = { RULE, RULE2, FUERA, record, closes, settle, track, tabla, contrario, NECESITA_DESCANSO, libroCrudo };
+module.exports = { RULE, RULE2, FUERA, record, closes, settle, track, tabla, contrario, NECESITA_DESCANSO, libroCrudo, reabrirSinMarcador };

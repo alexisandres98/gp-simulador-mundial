@@ -103,16 +103,32 @@ const CLUB_DATA_DISK = path.join(path.dirname(DB_FILE), 'clubs');
 function persistClubFinal(lgKey, p) {
   if (!lgKey || !p || p.status !== 'final' || p.hg == null || p.ag == null) return false;
   try {
-    const f = clubDataFile(`results-${lgKey}.json`);
+    // ── LA CURA NO CURABA NADA EN LAS LIGAS QUE MÁS LO NECESITABAN (16-sep) ───────────────────────────────
+    // Esto escribía en `clubDataFile(...)`, que es un resolutor de LECTURA: devuelve el disco persistente
+    // solo `if (fs.existsSync(d))` y, si no, el directorio del REPO. O sea que la primera escritura de una
+    // liga que todavía no tenía fichero en disco iba al repo — y el repo en Render se recrea en cada deploy.
+    // El resultado es exactamente lo que se ve: las ligas con fichero viejo del repo se iban curando y las
+    // que empezaban de cero NUNCA llegaban al disco. `laliga`, `irlanda`, `brasilb`, `suiza` y `polonia`
+    // llevan cero filas, y con ellas 1.807 derivadas en DATA_UNRESOLVED porque no hay marcador final.
+    //
+    // Se separa: se LEE de donde esté (repo o disco, por `clubDataFile`) y se ESCRIBE SIEMPRE al disco
+    // persistente, creando el directorio si hace falta. La primera escritura de una liga nueva se lleva
+    // consigo lo que hubiera en el repo, así que la línea de base no se pierde.
+    const lectura = clubDataFile(`results-${lgKey}.json`);
+    const f = path.join(CLUB_DATA_DISK, `results-${lgKey}.json`);
+    try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); } catch { /* ya existe */ }
     let doc = { league: lgKey, rows: [] };
-    try { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nuevo */ }
-    const id = `live-${lgKey}-${p.home_id}-${p.away_id}-${new Date(p.at || Date.now()).toISOString().slice(0, 10)}`;
+    try { const j = JSON.parse(fs.readFileSync(lectura, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nuevo */ }
+    // la fecha que manda es la del PARTIDO; `at` (cuándo lo vimos) solo sirve de respaldo
+    const cuando = p.kickoff_at ? +new Date(p.kickoff_at) : null;
+    const fecha = new Date(Number.isFinite(cuando) && cuando > 0 ? cuando : (p.at || Date.now()));
+    const id = `live-${lgKey}-${p.home_id}-${p.away_id}-${fecha.toISOString().slice(0, 10)}`;
     // dedup por el par de equipos dentro de ±2 días: el mismo partido puede llegar por ESPN y por TSA
-    const ko = +new Date(p.at || Date.now());
+    const ko = +fecha;
     const dup = doc.rows.some((r) => String(r.home_id) === String(p.home_id) && String(r.away_id) === String(p.away_id)
       && Math.abs(+new Date(r.date || 0) - ko) < 2 * 86400e3);
     if (dup) return false;
-    doc.rows.push({ id, date: new Date(p.at || Date.now()).toISOString(), home_id: p.home_id, away_id: p.away_id,
+    doc.rows.push({ id, date: fecha.toISOString(), home_id: p.home_id, away_id: p.away_id,
       hg: p.hg, ag: p.ag, winner: p.winner || (p.hg > p.ag ? p.home_id : p.ag > p.hg ? p.away_id : null), src: 'live' });
     const tmp = f + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(doc)); fs.renameSync(tmp, f);
@@ -6725,7 +6741,12 @@ async function clubScoresSync({ force = false } = {}) {
         const winner = H.winner ? hId : A.winner ? aId : null;
         const detail = (ev.status && ev.status.type && ev.status.type.detail) || '';
         const key = clubScoreKey(lgKey, hId, aId);
-        const payload = { league: lgKey, home_id: hId, away_id: aId, hg, ag, status: state === 'post' ? 'final' : 'live', minute, at: Date.now() };
+        // LA FECHA DEL PARTIDO, NO LA DE LA PASADA (16-sep). `at` es cuándo lo vio el servidor, y
+        // `persistClubFinal` lo estaba guardando como la FECHA del partido en el archivo de resultados.
+        // `derivadasScore` empareja con una ventana de ±2 días contra el saque de la pick, así que un
+        // partido procesado tarde —o reprocesado en un backfill— cae fuera y deja la pick sin marcador.
+        // Es lo que explica los tres casos `fuera_de_ventana: true` (superettan, sudamericana, libertadores).
+        const payload = { league: lgKey, home_id: hId, away_id: aId, hg, ag, status: state === 'post' ? 'final' : 'live', minute, at: Date.now(), kickoff_at: ev.date || (c && c.date) || null };
         if (state === 'post') { payload.winner = winner; if (hPen != null && aPen != null) { payload.hpen = hPen; payload.apen = aPen; } payload.detail = detail; }
         if (state === 'in') out.live++; else out.final++;
         const prev = db.clubResults[key];
@@ -6878,7 +6899,7 @@ async function clubResultsTsaSync({ force = false, mode = 'full' } = {}) {
           league: lgKey, home_id: hId, away_id: aId, hg, ag,
           status: fin ? 'final' : 'live',
           minute: fin ? 90 : clubClockMinute(Date.parse(m.utc_date || 0)),
-          at: Date.now(), src: 'tsa',
+          at: Date.now(), kickoff_at: m.utc_date || null, src: 'tsa',
         };
         if (fin) { payload.winner = hg > ag ? hId : ag > hg ? aId : null; payload.detail = 'FT'; db.clubTsaSeen[m.id] = Date.now(); }
         // Elo dinámico SOLO al cerrar y una única vez (mismo criterio que la rama ESPN)
@@ -22773,6 +22794,114 @@ const server = http.createServer(async (req, res) => {
     // 9-sep: las familias de PRECIO del proceso implícito (fútbol y baloncesto) + lo transferido de tenis de mesa
     // a las sombras existentes (incertidumbre, cierres por cubo, misma casa). `?run=1` fuerza la pasada de fútbol;
     // `?hoops=1` la de baloncesto; `?buckets=1` el barrido fino de cierres de clubes.
+    // ── EL BACKFILL DE RESULTADOS DE CLUBES (16-sep, A1 del plan de rentabilidad) ───────────────────────
+    // `results-<liga>.json` tenía CERO filas en laliga, irlanda, brasilb, suiza y polonia, y con ellas 1.807
+    // derivadas cerradas sin marcador. La causa era doble y las dos están arregladas arriba:
+    //   · `persistClubFinal` escribía por `clubDataFile()`, que es un resolutor de LECTURA y devuelve el
+    //     REPO cuando el fichero no existe en disco — así que la primera escritura de una liga nueva se
+    //     perdía en el siguiente deploy;
+    //   · y guardaba `date: Date.now()` en vez de la fecha del partido, que es contra lo que empareja el
+    //     liquidador con su ventana de ±2 días.
+    // Eso cura el futuro. Lo pasado necesita un backfill, y tiene que correrlo el SERVIDOR: el script
+    // `scripts/clubs-results-backfill.js` escribe en el repo desde el portátil de alguien, que es
+    // exactamente el problema que esta ruta viene a quitar de en medio.
+    //
+    // `?liga=` una o varias separadas por coma, o `todas`. `&dias=` cuántos hacia atrás (tope 120).
+    if (p === '/api/internal/clubs-backfill') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const tsaKey = process.env.THESTATSAPI_KEY || '';
+      if (!tsaKey) return json(res, 200, { error: 'sin THESTATSAPI_KEY: el backfill no puede correr' });
+      let RT = null;
+      try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { RT = null; }
+      if (!RT || !RT.leagues) return json(res, 500, { error: 'sin ratings.json' });
+      const pedidas = String(url.searchParams.get('liga') || '').toLowerCase();
+      const dias = Math.min(120, Math.max(1, +(url.searchParams.get('dias') || 45)));
+      const ligas = (pedidas === 'todas' || !pedidas)
+        ? Object.keys(RT.leagues).filter((k) => RT.leagues[k].comp && RT.leagues[k].season)
+        : pedidas.split(',').map((x) => x.trim()).filter((x) => RT.leagues[x] && RT.leagues[x].comp && RT.leagues[x].season);
+      if (!ligas.length) return json(res, 400, { error: 'ninguna liga válida', ejemplo: 'liga=laliga,suiza o liga=todas' });
+      const desde = new Date(Date.now() - dias * 86400e3).toISOString().slice(0, 10);
+      const hasta = new Date(Date.now() + 86400e3).toISOString().slice(0, 10);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const out = { desde, hasta, ligas: {}, at: new Date().toISOString() };
+      try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); } catch { /* ya existe */ }
+      for (const lg of ligas) {
+        const L = RT.leagues[lg];
+        const o = { paginas: 0, vistos: 0, nuevos: 0, ya_estaban: 0, sin_marcador: 0 };
+        try {
+          // se lee lo que haya (repo o disco) y se escribe SIEMPRE al disco, igual que `persistClubFinal`
+          const lectura = clubDataFile(`results-${lg}.json`);
+          const destino = path.join(CLUB_DATA_DISK, `results-${lg}.json`);
+          let doc = { league: lg, rows: [] };
+          try { const j = JSON.parse(fs.readFileSync(lectura, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nueva */ }
+          const antes = doc.rows.length;
+          for (let page = 1; page <= 12; page++) {
+            const u = `https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}`
+              + `&status=finished&date_from=${desde}&date_to=${hasta}&per_page=50&page=${page}`;
+            let j = null;
+            try {
+              const r = await fetch(u, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(25000) });
+              j = r.ok ? await r.json().catch(() => null) : null;
+            } catch { j = null; }
+            const data = (j && j.data) || [];
+            o.paginas++;
+            for (const m of data) {
+              o.vistos++;
+              const sc = m.score || {};
+              const hg = Number(sc.home), ag = Number(sc.away);
+              if (!Number.isFinite(hg) || !Number.isFinite(ag)) { o.sin_marcador++; continue; }
+              const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
+              if (!hId || !aId) { o.sin_marcador++; continue; }
+              const ko = +new Date(m.utc_date || 0) || Date.now();
+              const dup = doc.rows.some((r2) => String(r2.home_id) === hId && String(r2.away_id) === aId
+                && Math.abs(+new Date(r2.date || 0) - ko) < 2 * 86400e3);
+              if (dup) { o.ya_estaban++; continue; }
+              doc.rows.push({ id: m.id || `bf-${lg}-${hId}-${aId}-${new Date(ko).toISOString().slice(0, 10)}`,
+                date: new Date(ko).toISOString(), home_id: hId, away_id: aId, hg, ag,
+                winner: sc.winner || (hg > ag ? hId : ag > hg ? aId : null), src: 'backfill' });
+              o.nuevos++;
+            }
+            const meta = (j && j.meta) || {};
+            if (!data.length || page >= (meta.total_pages || 1)) break;
+            await sleep(5200);                                  // el mismo ritmo educado que el script
+          }
+          if (o.nuevos) {
+            const tmp = destino + '.tmp';
+            fs.writeFileSync(tmp, JSON.stringify(doc)); fs.renameSync(tmp, destino);
+            try { if (global._clubsResults) delete global._clubsResults[lg]; } catch { /* */ }
+          }
+          o.filas_antes = antes; o.filas_despues = doc.rows.length; o.destino = destino;
+        } catch (e) { o.error = e.message; }
+        out.ligas[lg] = o;
+        await sleep(1200);
+      }
+      out.resumen = { ligas: ligas.length,
+        nuevos: Object.values(out.ligas).reduce((a, x) => a + (x.nuevos || 0), 0),
+        con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k) };
+      return json(res, 200, out);
+    }
+    // ── REABRIR LAS DERIVADAS QUE SE CERRARON SIN MARCADOR (16-sep, A1) ─────────────────────────────────
+    // Una vez el backfill llena los archivos, las 1.807 picks en `DATA_UNRESOLVED` siguen cerradas: el
+    // liquidador solo mira las `ACTIVE`. Esto las devuelve a ACTIVE para que lo reintente **una vez**, y
+    // solo las que se cerraron por falta de MARCADOR FINAL — no las de descanso ni las incoherentes, que
+    // son huecos de otra fuente. Deja la marca `reabierta_at` para poder contarlo después.
+    if (p === '/api/internal/derivadas-reabrir') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const aplicar = url.searchParams.get('aplicar') === '1';
+      const D = require('./futbol-derivadas');
+      const L = D.libroCrudo({});
+      const MOTIVOS = /sin marcador final|reclasificado el 15-sep: sin marcador a las 72 h/i;
+      const cand = (L.picks || []).filter((q) => String(q.result || '') === 'DATA_UNRESOLVED'
+        && MOTIVOS.test(String(q.unresolved_motivo || '')) && !q.reabierta_at);
+      const porLiga = {};
+      for (const q of cand) porLiga[q.league || '?'] = (porLiga[q.league || '?'] || 0) + 1;
+      let reabiertas = 0;
+      if (aplicar && typeof D.reabrirSinMarcador === 'function') reabiertas = D.reabrirSinMarcador(MOTIVOS);
+      return json(res, 200, { candidatas: cand.length, por_liga: porLiga, aplicado: aplicar, reabiertas,
+        nota: 'solo las cerradas por falta de MARCADOR FINAL; las de descanso y las incoherentes son huecos de otra fuente y no se tocan. Se reintenta UNA vez y queda la marca `reabierta_at`.' });
+    }
     if (p === '/api/internal/implicito') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

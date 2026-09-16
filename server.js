@@ -5806,7 +5806,12 @@ async function clubsPlayerPropsSweep({ force = false } = {}) {
 const DERIV_NUEVAS = !/^(0|false|no|off)$/i.test(String(process.env.GP_DERIV_NUEVAS || 'on').trim());
 const DERIV_NUEVAS_H = Number(process.env.GP_DERIV_NUEVAS_HORAS) || 48;
 
-const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', kleague: 'kor.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
+const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argentina: 'arg.1', colombia: 'col.1', paraguay: 'par.1', csl: 'chn.1', j1: 'jpn.1', premier: 'eng.1', laliga: 'esp.1', bundesliga: 'ger.1', seriea: 'ita.1', ligue1: 'fra.1', brasilb: 'bra.2', chile: 'chi.1', noruega: 'nor.1', suecia: 'swe.1', finlandia: 'fin.1', irlanda: 'irl.1', dinamarca: 'den.1', rusia: 'rus.1', suiza: 'sui.1',
+  // 16-sep (A1): cinco ligas que SÍ cubre ESPN y que nunca estuvieron en este mapa. Entre las cuatro
+  // primeras se llevaban 670 de las 1.840 derivadas sin liquidar, y no por falta de fuente: por falta de
+  // renglón. Medido a mano sobre los 35 días anteriores al 16-sep, eventos publicados por ESPN:
+  // ned.1 45 · fra.2 45 · ger.2 36 · sco.1 24 · aut.1 24.
+  eredivisie: 'ned.1', ligue2: 'fra.2', bundesliga2: 'ger.2', escocia: 'sco.1', austria: 'aut.1',
   // 5-ago: las 9 nuevas (ESPN cubre las 9 con slug propio; el fallback TSA sigue de red de seguridad)
   championship: 'eng.2', league1: 'eng.3', league2: 'eng.4', serieb: 'ita.2', laliga2: 'esp.2', portugal: 'por.1', belgica: 'bel.1', turquia: 'tur.1', grecia: 'gre.1',
   // 12-ago (reporte Alexis: "el partido del PSG y el del Madrid son HOY y el sistema no los ve"): ligas
@@ -5821,7 +5826,30 @@ const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argenti
   libertadores: 'conmebol.libertadores', sudamericana: 'conmebol.sudamericana', leaguescup: 'concacaf.leagues.cup',
   saudi: 'ksa.1', aleague: 'aus.1', uclq: 'uefa.champions_qual', eflcup: 'eng.league_cup', facup: 'eng.fa',
   dfbpokal: 'ger.dfb_pokal', copadelrey: 'esp.copa_del_rey', coppaitalia: 'ita.coppa_italia',
-  coupefrance: 'fra.coupe_de_france' }; // polonia sin ESPN (sin vivo; resultados por TSA)
+  coupefrance: 'fra.coupe_de_france' };
+// ── LO QUE ESPN NO NOS DA, MEDIDO Y CON SU MOTIVO (16-sep, A1) ───────────────────────────────────────────
+// Antes esto era un comentario al final del mapa que decía «polonia sin ESPN». Era verdad y estaba
+// incompleto, y lo incompleto costó caro: `kleague: 'kor.1'` llevaba quién sabe cuánto en el mapa siendo un
+// slug MUERTO —ESPN responde 400 a `kor.1` en cualquier fecha, probado en abril-25, agosto-25, mayo-26 y
+// septiembre-26—, así que la liga figuraba como cubierta, no tenía marcador en vivo por ESPN y acumuló 195
+// derivadas sin liquidar sin que ninguna sonda lo dijera. Un slug que no existe es peor que un hueco
+// declarado, porque el hueco declarado se ve.
+// Hay DOS maneras distintas de no tener datos y no conviene confundirlas:
+//  · `sin_slug`  — ESPN devuelve 400 a ese slug SIEMPRE. La liga no existe para ESPN.
+//  · `muda`      — ESPN devuelve 200 y hasta el nombre de la liga en `leagues[0].name`, y no publica NI UN
+//                  partido. Es la más traicionera: parece cobertura y es un cero que en realidad es «no
+//                  miré». Medido barriendo los 35 días anteriores al 16-sep, uno a uno.
+const CLUB_SIN_ESPN = {
+  kleague:    { modo: 'sin_slug', probado: 'kor.1', nota: 'HTTP 400 en 2025-04-20, 2025-08-10, 2026-05-01 y las cinco fechas del barrido; también 400 en kor.2 y kor.k_league_1' },
+  polonia:    { modo: 'sin_slug', probado: 'pol.1', nota: 'HTTP 400 siempre; también 400 en pol.ekstraklasa' },
+  liga3:      { modo: 'sin_slug', probado: 'ger.3', nota: 'HTTP 400 siempre; también 400 en ger.3_liga' },
+  suiza:      { modo: 'muda', probado: 'sui.1', nota: '200 con nombre «Swiss Super League» y 0 partidos en 35 días seguidos' },
+  irlanda:    { modo: 'muda', probado: 'irl.1', nota: '200 con nombre «Irish Premier Division» y 0 partidos en 35 días seguidos' },
+  finlandia:  { modo: 'muda', probado: 'fin.1', nota: '200 y 0 partidos en 35 días seguidos, con la Veikkausliiga en plena temporada' },
+  superettan: { modo: 'muda', probado: 'swe.2', nota: '200 con nombre «Swedish SuperEttan» y 0 partidos en 35 días seguidos' },
+};
+// Las tres `muda` siguen en CLUB_ESPN a propósito: el slug es el correcto y si ESPN empieza a publicarlas
+// las recogeremos sin tocar nada. Lo que NO se permite es que su cero pase por una lectura.
 // alias ESPN(normalizado) → nombre de NUESTRO roster (normalizado), para los abreviados con guion/marca.
 const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atletico mineiro', 'atletico go': 'atletico goianiense', 'red bull new york': 'new york red bulls', 'lafc': 'los angeles', 'dc united': 'd c united', 'atletico junior': 'junior', 'gimnasia mendoza': 'gimnasia y esgrima mendoza', 'gimnasia la plata': 'gimnasia y esgrima', 'newells old boys': 'newell s old boys', 'xolos': 'club tijuana', 'xolos de tijuana': 'club tijuana', 'tijuana': 'club tijuana',
   // Rusia: ESPN transcribe distinto que TSA (Dinamo/Dynamo, Tolyatti/Togliatti, Krylia/Krylya) → sin alias el
@@ -17809,6 +17837,102 @@ const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128,
   eflcup: 48, facup: 45, dfbpokal: 81, copadelrey: 143, coppaitalia: 137, coupefrance: 66, aleague: 188,
   frauen: 82 };
 
+// ── BACKFILL DE RESULTADOS DE CLUBES POR API-FOOTBALL (16-sep, A1) ───────────────────────────────────────
+// UNA petición por liga: AF acepta `from`/`to` de verdad, así que 24 ligas de 45 días son 24 llamadas contra
+// una cuota de 75.000 al día. La versión por ESPN necesitaba 45 llamadas POR LIGA y aun así dejaba fuera
+// siete ligas enteras (CLUB_SIN_ESPN).
+//
+// DOS DETALLES DE CONTRATO QUE NO SON COSMÉTICOS:
+//  1. El marcador que vale es el de los 90 minutos (`score.fulltime`), no `goals`, que incluye la prórroga.
+//     En liga da igual porque no hay prórroga, pero esta misma ruta sirve copas —y ahí un 1-1 que acaba 2-1
+//     en la prórroga liquida distinto en cada mercado. Si `score.fulltime` no viene, se usa `goals` y la
+//     fila queda marcada con `marcador_de: 'goals'` para que se sepa cuál se usó.
+//  2. Solo entran los estados TERMINADOS de verdad: FT, AET y PEN. Un partido suspendido (`SUSP`), aplazado
+//     (`PST`), abandonado (`ABD`) o cancelado (`CANC`) NO es un resultado; es la ausencia de uno, y meterlo
+//     como 0-0 sería fabricar el dato que falta.
+const AF_TERMINADOS = new Set(['FT', 'AET', 'PEN']);
+async function clubsBackfillAf({ RT, ligas, dias, afk, sinFuente }) {
+  const host = process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io';
+  const temporada = +(process.env.API_FOOTBALL_SEASON || 2026);
+  const iso = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10);
+  const desde = iso(-dias), hasta = iso(0);
+  const out = { fuente: 'api-football', temporada, desde, hasta, ligas: {}, sin_fuente: sinFuente, at: new Date().toISOString() };
+  try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); } catch { /* ya existe */ }
+  const afMapTodo = global._clubAfMap || {};
+  for (const lg of ligas) {
+    const L = RT.leagues[lg] || {};
+    const id = CLUB_AF_LEAGUE[lg];
+    const o = { af_league: id, pedidas: 0, fixtures: 0, terminados: 0, nuevos: 0, ya_estaban: 0, sin_resolver: 0, no_terminados: {} };
+    try {
+      const lectura = clubDataFile(`results-${lg}.json`);
+      const destino = path.join(CLUB_DATA_DISK, `results-${lg}.json`);
+      let doc = { league: lg, rows: [] };
+      try { const j = JSON.parse(fs.readFileSync(lectura, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nueva */ }
+      o.filas_antes = doc.rows.length;
+      // dos maneras de resolver el equipo, y la buena primero: el id de AF, que no se parece a nada
+      const porAf = {};
+      for (const [tid, t] of Object.entries((afMapTodo[lg] || {}))) if (t && t.af_id) porAf[String(t.af_id)] = tid;
+      const idx = {};
+      for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
+      const resolver = (afId, name) => (afId != null && porAf[String(afId)]) || clubBestNameMatch(idx, name || '');
+      const r = await fetch(`https://${host}/fixtures?league=${id}&season=${temporada}&from=${desde}&to=${hasta}`,
+        { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(25000) });
+      o.pedidas = 1; o.http = r.status;
+      if (!r.ok) { o.error = `HTTP ${r.status}`; out.ligas[lg] = o; continue; }
+      const j = await r.json().catch(() => null);
+      if (!j) { o.error = 'respuesta ilegible'; out.ligas[lg] = o; continue; }
+      if (Array.isArray(j.errors) ? j.errors.length : (j.errors && Object.keys(j.errors).length)) o.avisos_af = j.errors;
+      const fx = Array.isArray(j.response) ? j.response : [];
+      o.fixtures = fx.length;
+      for (const f of fx) {
+        const st = ((f.fixture || {}).status || {}).short || '';
+        if (!AF_TERMINADOS.has(st)) { o.no_terminados[st] = (o.no_terminados[st] || 0) + 1; continue; }
+        o.terminados++;
+        const T = f.teams || {}, H = T.home || {}, A = T.away || {};
+        const hId = resolver(H.id, H.name), aId = resolver(A.id, A.name);
+        if (!hId || !aId || hId === aId) { o.sin_resolver++; (o.nombres_sin_resolver = o.nombres_sin_resolver || []).length < 12 && o.nombres_sin_resolver.push(`${H.name} vs ${A.name}`); continue; }
+        const ft = ((f.score || {}).fulltime) || {};
+        let hg = Number(ft.home), ag = Number(ft.away), deDonde = 'score.fulltime';
+        if (!Number.isFinite(hg) || !Number.isFinite(ag)) { hg = Number((f.goals || {}).home); ag = Number((f.goals || {}).away); deDonde = 'goals'; }
+        if (!Number.isFinite(hg) || !Number.isFinite(ag)) continue;
+        const ko = +new Date((f.fixture || {}).date || 0) || null;
+        if (!ko) continue;
+        const dup = doc.rows.some((r2) => String(r2.home_id) === String(hId) && String(r2.away_id) === String(aId)
+          && Math.abs(+new Date(r2.date || 0) - ko) < 2 * 86400e3);
+        if (dup) { o.ya_estaban++; continue; }
+        doc.rows.push({ id: `af-${lg}-${(f.fixture || {}).id}`, date: new Date(ko).toISOString(),
+          home_id: hId, away_id: aId, hg, ag,
+          winner: hg > ag ? hId : ag > hg ? aId : null,
+          src: 'backfill-af', af_status: st, marcador_de: deDonde });
+        o.nuevos++;
+      }
+      if (o.nuevos) {
+        const tmp = destino + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(doc)); fs.renameSync(tmp, destino);
+        try { if (global._clubsResults) delete global._clubsResults[lg]; } catch { /* */ }
+        try { if (global._askFormMemo) delete global._askFormMemo[lg]; } catch { /* */ }
+      }
+      o.filas_despues = doc.rows.length; o.destino = destino;
+      // Un cero que en realidad era «no miré» no se cuenta como cero.
+      if (!o.fixtures) o.cero_declarado = `AF respondió 200 y no trajo un solo partido de ${desde} a ${hasta} `
+        + `para la liga ${id} en la temporada ${temporada} — comprobar que la temporada es la correcta antes `
+        + 'de leer esto como «no hubo partidos»';
+    } catch (e) { o.error = e.message; }
+    out.ligas[lg] = o;
+  }
+  const V = Object.values(out.ligas);
+  out.resumen = { ligas: ligas.length, peticiones: V.reduce((a, x) => a + (x.pedidas || 0), 0),
+    nuevos: V.reduce((a, x) => a + (x.nuevos || 0), 0),
+    ya_estaban: V.reduce((a, x) => a + (x.ya_estaban || 0), 0),
+    sin_resolver: V.reduce((a, x) => a + (x.sin_resolver || 0), 0),
+    con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k),
+    cero_declarado: Object.entries(out.ligas).filter(([, x]) => x.cero_declarado).map(([k]) => k) };
+  out.nota = 'AF cubre las siete ligas que ESPN no (ver CLUB_SIN_ESPN) y gasta UNA petición por liga. El '
+    + 'marcador que se guarda es el de los 90 minutos; los partidos suspendidos, aplazados o abandonados se '
+    + 'cuentan aparte en `no_terminados` y NO se guardan como resultado.';
+  return out;
+}
+
 // ===== Motor de contexto por evento (jun-28). Evalúa TODOS los fixtures canónicos próximos con la capa de
 // contexto en vivo (buildH2HDeep: forma/plantilla/lesiones/descanso/táctico) y persiste el resultado como
 // v2_probability_snapshot + context_observations (idempotente por input_hash). Esto hace que /x muestre la capa
@@ -22833,24 +22957,38 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/clubs-backfill') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      // POR QUÉ ESPN Y NO TheStatsAPI (16-sep). El primer intento fue por TSA, que es lo que usa el script
-      // manual, y devolvió **429 USAGE_LIMIT_EXCEEDED: la cuota MENSUAL está agotada**. Eso no solo mata el
-      // backfill: TSA es una de las dos fuentes que alimentan los resultados en vivo, así que la rama TSA de
-      // `clubResultsTsaSync` lleva caída sin que lo dijera ningún sitio — y eso explica por qué el archivo no
-      // se curaba solo ni siquiera donde la ruta de escritura era correcta.
-      // ESPN no tiene cuota, acepta un rango de fechas en el mismo endpoint de marcador que ya usamos cada
-      // pasada, y cubre con slug propio todas las ligas que importan salvo `polonia`, que se declara.
+      // QUÉ FUENTE Y POR QUÉ (16-sep, reescrito después de medirlo). Se probaron las tres que tenemos:
+      //
+      //  · TheStatsAPI — **429 USAGE_LIMIT_EXCEEDED, cuota MENSUAL agotada.** No solo mata el backfill: TSA
+      //    es una de las dos ramas que alimentan los resultados en vivo, así que llevaba caída sin que lo
+      //    dijera ningún sitio.
+      //  · ESPN — sin cuota, pero **no acepta rangos de fecha** (`dates=20260901-20260910` → 400; un solo día
+      //    → 200) y hay que pedir día a día, y sobre todo NO CUBRE SIETE de nuestras ligas: `kor.1`, `pol.1`
+      //    y `ger.3` no existen para ESPN (400 en cualquier fecha) y `sui.1`, `irl.1`, `fin.1` y `swe.2`
+      //    devuelven 200 con el nombre de la liga y CERO partidos en 35 días seguidos. Ver CLUB_SIN_ESPN.
+      //  · API-Football — plan **Ultra: 75.000 peticiones al día, 2.115 gastadas**. Acepta rango de fechas,
+      //    devuelve el partido entero en UNA petición por liga y cubre **las siete que ESPN no**: polonia 58
+      //    resultados, kleague 53, superettan 63, liga3 60, suiza 42, finlandia 42, irlanda 27, todos con
+      //    marcador final, en la ventana 1-ago → 16-sep.
+      //
+      // Es decir: la fuente buena estaba pagada, sin estrenar y ya mapeada en `CLUB_AF_LEAGUE`, y el backfill
+      // iba por la peor de las tres. AF manda; ESPN queda de reserva con `&fuente=espn`.
       let RT = null;
       try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { RT = null; }
       if (!RT || !RT.leagues) return json(res, 500, { error: 'sin ratings.json' });
+      const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+      const fuente = String(url.searchParams.get('fuente') || (afk ? 'af' : 'espn')).toLowerCase();
+      const MAPA = fuente === 'af' ? CLUB_AF_LEAGUE : CLUB_ESPN;
+      if (fuente === 'af' && !afk) return json(res, 400, { error: 'sin API_FOOTBALL_KEY; usa &fuente=espn' });
       const pedidas = String(url.searchParams.get('liga') || '').toLowerCase();
       const dias = Math.min(120, Math.max(1, +(url.searchParams.get('dias') || 45)));
-      const todas = Object.keys(RT.leagues).filter((k) => CLUB_ESPN[k]);
+      const todas = Object.keys(RT.leagues).filter((k) => MAPA[k]);
       const ligas = (pedidas === 'todas' || !pedidas) ? todas
         : pedidas.split(',').map((x) => x.trim()).filter(Boolean);
-      const sinEspn = ligas.filter((k) => !CLUB_ESPN[k]);
-      const conEspn = ligas.filter((k) => CLUB_ESPN[k]);
-      if (!conEspn.length) return json(res, 400, { error: 'ninguna liga con slug de ESPN', sin_espn: sinEspn, ejemplo: 'liga=laliga,suiza o liga=todas' });
+      const sinEspn = ligas.filter((k) => !MAPA[k]);
+      const conEspn = ligas.filter((k) => MAPA[k]);
+      if (!conEspn.length) return json(res, 400, { error: `ninguna liga con id de ${fuente}`, sin_fuente: sinEspn, ejemplo: 'liga=laliga,suiza o liga=todas' });
+      if (fuente === 'af') return json(res, 200, await clubsBackfillAf({ RT, ligas: conEspn, dias, afk, sinFuente: sinEspn }));
       const yyyymmdd = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = { fuente: 'espn', dias, ligas: {}, sin_espn: sinEspn, at: new Date().toISOString() };
@@ -22859,6 +22997,7 @@ const server = http.createServer(async (req, res) => {
         const L = RT.leagues[lg] || {};
         const code = CLUB_ESPN[lg];
         const o = { slug: code, ventanas: 0, eventos: 0, finales: 0, nuevos: 0, ya_estaban: 0, sin_resolver: 0 };
+        if (CLUB_SIN_ESPN[lg]) o.cobertura = CLUB_SIN_ESPN[lg];
         try {
           const lectura = clubDataFile(`results-${lg}.json`);
           const destino = path.join(CLUB_DATA_DISK, `results-${lg}.json`);
@@ -22868,15 +23007,16 @@ const server = http.createServer(async (req, res) => {
           const idx = {};
           for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
           const resolver = (name) => clubBestNameMatch(idx, name);
-          // ESPN devuelve como mucho unas semanas por llamada: se trocea en ventanas de 10 días
-          for (let off = -dias; off < 1; off += 10) {
-            const desde = yyyymmdd(off), hasta = yyyymmdd(Math.min(0, off + 9));
+          // Un día por llamada: el scoreboard de fútbol de ESPN rechaza los rangos con 400.
+          for (let off = -dias; off < 1; off += 1) {
+            const dia = yyyymmdd(off);
             let ev = null;
             try {
-              const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${desde}-${hasta}&limit=200`, { signal: AbortSignal.timeout(20000) });
+              const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${dia}&limit=200`, { signal: AbortSignal.timeout(20000) });
               if (o.ventanas === 0) o.http = r.status;
-              ev = r.ok ? await r.json().catch(() => null) : null;
-            } catch (e) { if (o.ventanas === 0) o.fallo_red = e.message; }
+              if (!r.ok) o.http_no_ok = (o.http_no_ok || 0) + 1;
+              else { o.dias_ok = (o.dias_ok || 0) + 1; ev = await r.json().catch(() => null); }
+            } catch (e) { o.fallo_red = o.fallo_red || e.message; o.dias_caidos = (o.dias_caidos || 0) + 1; }
             o.ventanas++;
             const eventos = (ev && Array.isArray(ev.events)) ? ev.events : [];
             o.eventos += eventos.length;
@@ -22903,7 +23043,7 @@ const server = http.createServer(async (req, res) => {
                 winner: H.winner ? hId : A.winner ? aId : (hg > ag ? hId : ag > hg ? aId : null), src: 'backfill-espn' });
               o.nuevos++;
             }
-            await sleep(350);                                     // ritmo educado; ESPN no pide más
+            await sleep(120);                                     // ritmo educado; ESPN no pide más
           }
           if (o.nuevos) {
             const tmp = destino + '.tmp';
@@ -22912,16 +23052,25 @@ const server = http.createServer(async (req, res) => {
             try { if (global._askFormMemo) delete global._askFormMemo[lg]; } catch { /* */ }
           }
           o.filas_despues = doc.rows.length; o.destino = destino;
+          // Un cero que en realidad era «no miré» no se cuenta como cero. Si NINGÚN día respondió, la liga
+          // no se ha leído: se declara, en vez de pasar por una liga sin partidos en 45 días.
+          if (!o.dias_ok) o.error = `ninguno de los ${o.ventanas} días respondió (${o.http_no_ok || 0} no-ok, ${o.dias_caidos || 0} caídos)`;
+          else if (!o.eventos) o.cero_declarado = o.cobertura
+            ? `ESPN responde y no publica nada para esta liga (${o.cobertura.modo}): ${o.cobertura.nota}`
+            : `${o.dias_ok} días respondieron 200 y ninguno traía un partido — o la liga está parada o ESPN dejó de publicarla; NO se lea como «sin resultados»`;
         } catch (e) { o.error = e.message; }
         out.ligas[lg] = o;
       }
       out.resumen = { ligas: conEspn.length,
         nuevos: Object.values(out.ligas).reduce((a, x) => a + (x.nuevos || 0), 0),
         sin_resolver: Object.values(out.ligas).reduce((a, x) => a + (x.sin_resolver || 0), 0),
-        con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k) };
+        con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k),
+        cero_declarado: Object.entries(out.ligas).filter(([, x]) => x.cero_declarado).map(([k]) => k) };
+      out.sin_cobertura_espn = CLUB_SIN_ESPN;
       out.nota_tsa = 'TheStatsAPI devuelve 429 USAGE_LIMIT_EXCEEDED (cuota mensual agotada), así que su rama '
-        + 'del sincronizador de resultados está caída y este backfill no la usa. `polonia` no tiene slug de '
-        + 'ESPN y por tanto no se puede recuperar hasta que TSA vuelva o se le encuentre otra fuente.';
+        + 'del sincronizador de resultados está caída y este backfill no la usa. Con TSA fuera, las siete '
+        + 'ligas de `sin_cobertura_espn` no tienen NINGUNA fuente de resultados: no es que falten datos, es '
+        + 'que no hay de dónde sacarlos hasta que vuelva la cuota o se contrate otra fuente.';
       return json(res, 200, out);
     }
     // ── REABRIR LAS DERIVADAS QUE SE CERRARON SIN MARCADOR (16-sep, A1) ─────────────────────────────────
@@ -28579,6 +28728,26 @@ server.listen(PORT, () => {
   // de cada 30 segundos sobre 45 ligas. Un partido que termina pasada la medianoche UTC, o una pasada que
   // se perdió, se recogen aquí: cada 10 minutos con los DOS días anteriores.
   setInterval(() => { clubScoresSync({ force: true, diasAtras: 2 }).catch(e => console.error('[clubs] scores catch-up:', e.message)); }, 10 * 60 * 1000);
+  // RED DE SEGURIDAD POR API-FOOTBALL (16-sep, A1). Las otras dos ramas estaban las DOS caídas a la vez
+  // —TSA por cuota mensual agotada, ESPN por pedir rangos que devuelven 400— y nadie se enteró porque las
+  // dos fallaban en silencio. Ésta barre TODAS las ligas de los últimos 7 días una vez cada 6 horas: son
+  // ~24 peticiones por pasada, 96 al día, contra una cuota de 75.000. El coste es despreciable y lo que
+  // compra es que ninguna liga vuelva a quedarse sin resultados sin que se vea.
+  // OJO: la suscripción Ultra de AF vence el 23-sep-2026. Cuando venza, esta rama se apaga sola con un 4xx
+  // y volvemos a depender de ESPN, que no cubre siete ligas. Está anotado en TODO_NEXT.
+  const barridoAf = async () => {
+    const afk = process.env.API_FOOTBALL_KEY || process.env.VITE_API_FOOTBALL_KEY || '';
+    if (!afk || /^(0|false|off)$/i.test(String(process.env.GP_CLUBS_AF_BACKFILL || ''))) return;
+    let RT = null;
+    try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { return; }
+    if (!RT || !RT.leagues) return;
+    const ligas = Object.keys(RT.leagues).filter((k) => CLUB_AF_LEAGUE[k]);
+    const r = await clubsBackfillAf({ RT, ligas, dias: 7, afk, sinFuente: [] });
+    global._clubsAfBarrido = { at: r.at, resumen: r.resumen };
+    if (r.resumen && r.resumen.nuevos) console.log('[clubs] barrido AF:', r.resumen.nuevos, 'resultados nuevos');
+  };
+  setTimeout(() => { barridoAf().catch(e => console.error('[clubs] barrido AF:', e.message)); }, 3 * 60 * 1000);
+  setInterval(() => { barridoAf().catch(e => console.error('[clubs] barrido AF:', e.message)); }, 6 * 3600 * 1000);
   // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. DOS cadencias:
   // 'live' cada 90s pero SOLO ligas con partido en curso (2-6 requests) → marcador en vivo real en las 24
   // ligas; 'full' cada 12min barre todas para recoger finales que se hayan escapado. Throttles propios.

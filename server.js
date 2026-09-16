@@ -26393,7 +26393,17 @@ async function anotar(pid){
       // el resultado se llama distinto en cada sombra; aquí se normaliza a true/false/null
       const ganoDe = (x) => { const r = x.result_code || x.result; return r === 'WIN' ? true : (r === 'LOSS' ? false : null); };
       const jsread = (dir, file) => { try { return require('./lib/jsonstore').readJson(path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, 'db.json')), dir), file, 'vara'); } catch { return null; } };
-      const filasDeCierres = (cl) => { const out = []; for (const c of Object.values((cl && cl.closes) || {})) for (const r of (c.rows || [])) out.push(r); return out; };
+      // EL PARTIDO VIAJA CON LA FILA (16-sep, A4). El archivo de cierres está indexado POR PARTIDO y este
+      // aplanado tiraba la clave, así que `lib/margen.js` recibía miles de filas sin nada que dijera de qué
+      // partido venía cada una y acababa emparejando el over de un partido con el under de otro. Ahora la
+      // clave se estampa en cada fila (sin pisarla si la fila ya trae la suya).
+      const filasDeCierres = (cl) => {
+        const out = [];
+        for (const [clave, c] of Object.entries((cl && cl.closes) || {})) {
+          for (const r of (c.rows || [])) out.push(r && r.event_id != null ? r : { ...r, event_id: clave });
+        }
+        return out;
+      };
       // ── esports: el archivo de cierres guarda las dos caras, así que aquí el margen SÍ se puede medir
       for (const game of ['cs2', 'lol', 'valorant', 'dota2']) {
         let ES = null; try { ES = require('./esports-engine/store'); } catch { break; }

@@ -22706,10 +22706,33 @@ const server = http.createServer(async (req, res) => {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const SH = require('./esports-engine/lol-gen-shadow');
+      const GEN = require('./esports-engine/lol-gen');
       const out = { at: new Date().toISOString() };
       if (url.searchParams.get('run') === '1') out.pasada = await SH.job().catch((e) => ({ error: e.message }));
       out.track = SH.track();
-      try { out.validacion = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'esports', 'lol', 'gen-priors.json'), 'utf8')); delete out.validacion.generador.calibracion; } catch { out.validacion = null; }
+      // LA VALIDACIÓN TIENE QUE SER LA DEL CÓDIGO QUE CORRE (16-sep, H-L2 de la auditoría externa).
+      // Esto servía `gen-priors.json` tal cual, y ese artefacto se ajustó con `lol-gen-1` mientras el
+      // generador de producción es `lol-gen-2`. No es un detalle de numeración: el cambio de v1 a v2 fue
+      // el CASADO DE LIGAS (LCK Challengers League → LCK CL, y liga desconocida = n_eff 20), o sea la clave
+      // con la que se buscan las celdas. Un MAE de 7,65 kills medido con otra asignación de liga no dice
+      // nada sobre lo que hoy se publica, y presentarlo sin más es dar por validado lo que no lo está.
+      try {
+        const v = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'esports', 'lol', 'gen-priors.json'), 'utf8'));
+        if (v.generador) delete v.generador.calibracion;
+        const casan = String(v.version) === String(GEN.CONST.version);
+        out.validacion = { ...v, version_del_codigo: GEN.CONST.version, corresponde: casan,
+          ...(casan ? {} : { aviso: `ESTA VALIDACIÓN NO ES DE ESTE GENERADOR: se ajustó con "${v.version}" y `
+            + `en producción corre "${GEN.CONST.version}". El cambio entre las dos versiones fue el casado de `
+            + 'ligas, que es justo la clave con la que se buscan las celdas, así que estos números no '
+            + 'respaldan lo que se publica hoy. Re-ajustar con `node scripts/lol-gen-fit.js --write`.' }) };
+        out.validacion_vigente = casan;
+      } catch { out.validacion = null; out.validacion_vigente = false; }
+      // el recorte del reparto del ganador, con lo que la base dice que deja fuera (H-L1)
+      out.recorte_reparto = { rango: [0.50, 0.95],
+        base_ganador_con_menos_kills_pct: 3.81, base_empates_pct: 1.29, base_n: 97587,
+        nota: 'el generador afirma que el ganador del mapa nunca hace menos kills que el perdedor; en la base '
+          + 'propia pasa el 3,81 % de las veces (una de cada 26) y hay un 1,29 % de empates. El sesgo cae sobre '
+          + 'KILLS_HANDICAP y KILLS_DNB, que son las que generan picks. Medir: node scripts/lol-gen-reparto.js' };
       return json(res, 200, out);
     }
     // 9-sep: las familias de PRECIO del proceso implícito (fútbol y baloncesto) + lo transferido de tenis de mesa

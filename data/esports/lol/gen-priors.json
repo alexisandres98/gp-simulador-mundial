@@ -1,6 +1,6 @@
 {
- "version": "lol-gen-1",
- "at": "2026-09-09T07:48:55.036Z",
+ "version": "lol-gen-2",
+ "at": "2026-09-16T15:24:32.845Z",
  "from": "2024-01",
  "to": "2026-09",
  "n_pred": 38761,
@@ -15,7 +15,7 @@
   "circuito": 4425
  },
  "const": {
-  "version": "lol-gen-1",
+  "version": "lol-gen-2",
   "window_days": 365,
   "league_days": 240,
   "shrink_k": 30,
@@ -138,5 +138,7 @@
  "skill_vs_liga_pct": -0.74,
  "skill_vs_liga_hist_pct": -0.11,
  "lectura": "walk-forward mensual 2024-01→2026-09, 38761 partidas; pMap = 0,5 (sin fuerza). El generador se compara con la liga plana en log-loss de \"más de L\" con L = mediana ± 3.",
- "veredicto": "El generador (liga×parche, acople paliza→duración/ritmo, reparto del ganador) bate a la Poisson plana de liga en un 6,5 % de log-loss multilínea (dispersión), pero al histograma empírico de la liga solo en un 0,3-0,5 %: la estructura no aporta sobre la FORMA de la liga cuando pMap = 0,5. Sesgo conocido: en las colas (mediana ± 3) el over realizado supera al predicho en 4-5 pp en walk-forward (la tendencia al alza de kills se come la ventana). La sombra mide contra el mercado, que es la pregunta; leer las tesis under con ese sesgo delante."
+ "veredicto": "El generador (liga×parche, acople paliza→duración/ritmo, reparto del ganador) bate a la Poisson plana de liga en un 6,5 % de log-loss multilínea (dispersión), pero al histograma empírico de la liga solo en un 0,3-0,5 %: la estructura no aporta sobre la FORMA de la liga cuando pMap = 0,5. Sesgo conocido: en las colas (mediana ± 3) el over realizado supera al predicho en 4-5 pp en walk-forward (la tendencia al alza de kills se come la ventana). La sombra mide contra el mercado, que es la pregunta; leer las tesis under con ese sesgo delante.",
+ "veredicto_reconfirmado": "16-sep: re-ajustado con lol-gen-2 (el artefacto decía lol-gen-1 mientras producción corría v2). Las métricas salen IDÉNTICAS —MAE 7,65, log-loss 0,6966, Brier 0,2517—, así que el casado de ligas por alias no movió la validación: el desajuste era contable, no sustantivo. Y queda a la vista lo que importa: skill_vs_liga_pct = −0,74 %, el generador PIERDE contra la liga plana.",
+ "recorte_reparto_ganador": "El generador recorta el reparto del ganador a [0,50 , 0,95], o sea afirma que quien gana el mapa nunca hace menos kills que quien lo pierde. En la base propia eso pasa el 3,81 % de las veces (97.587 partidas) más un 1,29 % de empates: probabilidad cero a algo que ocurre una de cada 26, y un 5,1 % de masa apilada en el borde. Cae entero sobre KILLS_HANDICAP y KILLS_DNB. Medir: node scripts/lol-gen-reparto.js"
 }

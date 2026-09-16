@@ -92,10 +92,40 @@ const aimKey = (a) => a.kind + a.n;
 // sí aplica el bust exacto; solo la elección de objetivo usa esta vista. Por encima de 170 la política es
 // T20 (con el cambio a T19 cuando el 20 está "tapado" fuera del alcance de un modelo regional).
 const POLICY_CACHE = new Map();
-function policyFor(sk) {
+
+// ── EL ESTADO QUE LA POLÍTICA NO VE (16-sep, A26 de la auditoría externa) ────────────────────────────────
+// La política y la dinámica no estaban de acuerdo sobre lo que cuesta un bust:
+//   · el kernel de visita devuelve EXACTAMENTE a `r0`, el marcador con el que EMPEZÓ la visita;
+//   · esta DP, cuyo estado es (r, d), no conoce `r0` y lo aproxima con `r`, el marcador ANTES DE ESTE DARDO.
+// Coinciden solo si el bust ocurre en el primer dardo. En el segundo o el tercero, la DP cree que un bust
+// devuelve a donde está ahora —después de haber puntuado— cuando en realidad devuelve a donde estaba antes
+// de puntuar. O sea: la DP **subestima el coste de fallar** justo en los dardos donde más se falla, y por
+// tanto elige objetivos más agresivos de lo que debería en los tramos de cierre.
+//
+// La unificación es ampliar el estado a (r0, r, d). El bust ya no se aproxima: vale `W(r0, r0, 3)`, que es
+// exactamente lo que hace la dinámica. La tabla pasa de 171×3 a 171×171×3 ≈ 87k entradas — grande, no
+// prohibitiva, y solo se calcula para los marcadores alcanzables (r ≤ r0).
+//
+// VA APAGADA POR DEFECTO. Encenderla cambia la política, y con ella la distribución de visitas, los 180s y
+// el precio de cada familia de dardos: eso cambia qué picks nacen y lo decide Alexis, no este archivo
+// (regla del dinero, 13-sep). `GP_DARTS_DP_EXACTO=1` la enciende; `scripts/darts-dp-sensibilidad.js` mide
+// lo que cuesta la aproximación antes de decidir.
+const DP_EXACTO = () => /^(1|true|on|yes)$/i.test(String(process.env.GP_DARTS_DP_EXACTO || '').trim());
+
+// EL REDONDEO DE LA CLAVE TAMBIÉN ES UNA APROXIMACIÓN, Y TAMBIÉN SE MIDE. `pT` entra en pasos de 0,1 y `pD`
+// en pasos de 0,05: dos jugadores cuyo triple difiera en menos de 0,1 comparten política. Es lo que hace
+// que la calibración por bisección no recompute la DP en cada paso —sin eso, ajustar un jugador cuesta
+// minutos— pero significa que la política servida no es la del jugador, sino la del jugador redondeado.
+// `GP_DARTS_DP_FINO=1` afina la rejilla (pT ×40, pD ×100) para poder medir el coste de ese redondeo.
+const DP_FINO = () => /^(1|true|on|yes)$/i.test(String(process.env.GP_DARTS_DP_FINO || '').trim());
+
+function policyFor(sk, { exacto = null, fino = null } = {}) {
+  const EX = exacto == null ? DP_EXACTO() : !!exacto;
+  const FI = fino == null ? DP_FINO() : !!fino;
+  if (EX) return policyExacta(sk, FI);
   // la política depende sobre todo de la precisión al doble; el triple entra en pasos gruesos (0,1) para que
   // la calibración por bisección no recompute la DP en cada paso
-  const key = [Math.round(sk.pT * 10), Math.round(sk.pD * 20)].join('|');
+  const key = [Math.round(sk.pT * (FI ? 40 : 10)), Math.round(sk.pD * (FI ? 100 : 20)), FI ? 'f' : 'g'].join('|');
   let pol = POLICY_CACHE.get(key);
   if (pol) return pol;
   const W = []; // W[r][d] d∈{1,2,3}
@@ -132,12 +162,81 @@ function policyFor(sk) {
     }
     if (delta < 1e-7) break;
   }
-  pol = { W, best, key };
+  pol = { W, best, key, exacto: false };
   POLICY_CACHE.set(key, pol);
   return pol;
 }
-function aimFor(pol, r, d) {
+
+// ── LA POLÍTICA EXACTA: EL ESTADO INCLUYE EL MARCADOR DE INICIO DE LA VISITA ─────────────────────────────
+// W[r0][r][d] = dardos esperados hasta cerrar, estando en `r` con `d` dardos en la mano dentro de una visita
+// que empezó en `r0`. Un bust cuesta W[r0][r0][3] + medio dardo, que es LO QUE DE VERDAD PASA en la
+// dinámica. Se resuelve por barridos igual que la aproximada, y solo sobre los estados alcanzables (r ≤ r0).
+//
+// Nótese que W[r][r][3] es exactamente la función de valor "al empezar una visita en r", así que la
+// recursión cierra sobre sí misma sin necesidad de un nivel extra.
+const POLICY_EXACTA_CACHE = new Map();
+function policyExacta(sk, fino = false) {
+  const key = 'EX|' + [Math.round(sk.pT * (fino ? 40 : 10)), Math.round(sk.pD * (fino ? 100 : 20))].join('|');
+  let pol = POLICY_EXACTA_CACHE.get(key);
+  if (pol) return pol;
+  const N = 170;
+  // W[r0][r][d], d ∈ {1,2,3}; solo se usan r ≤ r0
+  const W = []; const best = [];
+  for (let r0 = 0; r0 <= N; r0++) {
+    W[r0] = []; best[r0] = [];
+    for (let r = 0; r <= N; r++) { W[r0][r] = [0, 0, 0, 0]; best[r0][r] = [null, null, null, null]; }
+  }
+  const kern = new Map(); for (const a of ACTIONS) kern.set(aimKey(a), dartKernel(a, sk, false));
+  // valor de "empezar una visita en x": si x > 170 la política es T20 y no hay tabla; se usa la cota de la
+  // frontera, que es el mismo tratamiento que ya hace `aimFor`
+  const inicio = (x) => (x <= 0 ? 0 : x > N ? W[N][N][3] : W[x][x][3]);
+  const val = (r0, r, d) => (r === 0 ? 0 : W[r0][r][d === 0 ? 3 : d]);
+  for (let sweep = 0; sweep < 60; sweep++) {
+    let delta = 0;
+    for (let r0 = 2; r0 <= N; r0++) {
+      for (let r = 2; r <= r0; r++) {
+        for (let d = 1; d <= 3; d++) {
+          if (d === 3 && r !== r0) continue;               // con tres dardos en la mano, r ES el inicio
+          let bestV = Infinity, bestA = null;
+          for (const a of ACTIONS) {
+            const aScore = a.kind === 'DB' ? 50 : a.kind === 'SB' ? 25 : (a.kind === 'S' ? 1 : a.kind === 'D' ? 2 : 3) * a.n;
+            if (aScore > r) continue;
+            if (r - aScore === 1) continue;
+            if (r - aScore === 0 && !(a.kind === 'D' || a.kind === 'DB')) continue;
+            if ((a.kind === 'S' || a.kind === 'SB') && !((r - aScore <= 40 && (r - aScore) % 2 === 0) || r - aScore === 50)) continue;
+            let v = 1;
+            for (const [y, p] of kern.get(aimKey(a))) {
+              const t = R.applyDart(r, y);
+              if (t.type === 'FINISH') continue;
+              // AQUÍ ESTÁ LA DIFERENCIA CON LA APROXIMADA: el bust vuelve a `r0`, no a `r`.
+              if (t.type === 'BUST') v += p * (inicio(r0) + 0.5);
+              else if (d - 1 === 0) v += p * inicio(t.r);   // se acabó la visita: la siguiente empieza en t.r
+              else v += p * val(r0, t.r, d - 1);
+            }
+            if (v < bestV - 1e-12) { bestV = v; bestA = a; }
+          }
+          if (bestV === Infinity) continue;
+          delta = Math.max(delta, Math.abs(bestV - W[r0][r][d]));
+          W[r0][r][d] = bestV; best[r0][r][d] = bestA;
+        }
+      }
+    }
+    if (delta < 1e-7) break;
+  }
+  pol = { W, best, key, exacto: true };
+  if (POLICY_EXACTA_CACHE.size > 60) POLICY_EXACTA_CACHE.clear();
+  POLICY_EXACTA_CACHE.set(key, pol);
+  return pol;
+}
+
+// `r0` es el marcador con el que empezó la visita. La política aproximada lo ignora —ése es justamente el
+// desajuste de A26— y la exacta lo usa. Se pasa siempre; quien no lo tenga puede omitirlo y se supone `r`.
+function aimFor(pol, r, d, r0 = null) {
   if (r > 170) return { kind: 'T', n: 20 };
+  if (pol && pol.exacto) {
+    const R0 = Math.min(170, Math.max(r, r0 == null ? r : r0));
+    return (pol.best[R0] && pol.best[R0][r] && pol.best[R0][r][d]) || pol.best[r][r][3] || { kind: 'T', n: 20 };
+  }
   return pol.best[r][d] || { kind: 'T', n: 20 };
 }
 
@@ -182,7 +281,9 @@ function visitKernel(r0, sk, pol, { doubleIn = false } = {}) {
     if (d === 0) { add(opened ? r : UNOPENED, 3, false, null, scored === 180, p); return; }
     let aim;
     if (!opened) aim = { kind: 'D', n: 20 };                    // apertura: los profesionales van al D20 (prior declarado)
-    else aim = aimFor(pol, r, d);
+    // el marcador de inicio de la visita viaja a la política: con la exacta decide el coste del bust, con la
+    // aproximada se ignora y el comportamiento es el de siempre
+    else aim = aimFor(pol, r, d, startR);
     for (const [y, py] of dartKernel(aim, sk, prevT)) {
       const t = R.applyDart(r, y, { doubleIn, opened });
       const dartsUsed = 4 - d;
@@ -203,8 +304,10 @@ function visitKernel(r0, sk, pol, { doubleIn = false } = {}) {
 //   darts: PMF del total de dardos tirados hasta cerrar; expDarts; mass residual tras KMAX
 //   checkout: PMF del valor del checkout terminal (puntos anotados en la visita que cierra)
 //   dbl: PMF del doble con el que cierra; p180Leg: E[180s por leg]; visits: PMF de visitas
-function soloLeg(sk, { doubleIn = false, start = null, kmax = KMAX } = {}) {
-  const pol = policyFor(sk);
+function soloLeg(sk, { doubleIn = false, start = null, kmax = KMAX, pol: polDada = null, politica = null } = {}) {
+  // `pol` permite inyectar una política ya calculada — lo usa `scripts/darts-dp-sensibilidad.js` para
+  // comparar la aproximada contra la exacta sobre el MISMO jugador. `politica` pasa opciones a `policyFor`.
+  const pol = polDada || policyFor(sk, politica || {});
   const r0 = start != null ? start : (doubleIn ? UNOPENED : 501);
   const KC = new Map(); // kernel por marcador, perezoso
   const kernelOf = (r) => { let k = KC.get(r); if (!k) { k = visitKernel(r, sk, pol, { doubleIn }); KC.set(r, k); } return k; };

@@ -332,3 +332,158 @@ familia no puede pasar de sombra, y su EV declarado es «no medible», no «posi
   de los Scorchers («If a Scorcher is voided or tied, it counts as a loss»).
 - Extractos del centro de ayuda de Underdog servidos por el buscador (`help.underdogsports.com`, artículos
   13780101, 8974260, 13161362 y 10905524), inaccesibles por fetch directo (403).
+
+---
+
+# A5 · LOS TRES REGLAMENTOS — 16-sep-2026
+
+**Qué se pedía.** Leer los reglamentos de Cloudbet, Pinnacle y Bovada y cerrar `contrato_documentado` en
+las nueve familias que lo tenían en `null`.
+
+**Resultado en una línea: uno de los tres se obtuvo entero, dos están fuera de alcance de este entorno.**
+
+| casa | intento | resultado |
+|---|---|---|
+| **Cloudbet** | `www.cloudbet.com/en/help/sports-betting-rules` | **200 — reglamento completo, 2.177 líneas, 60+ deportes.** Es la fuente de todo lo que sigue |
+| Pinnacle | `help.pinnacle.com/hc/en-us` | **bloqueado por la política de egreso** del entorno (`connect_rejected`) |
+| Pinnacle | `www.pinnacle.com/{en,es}/rules`, `/betting-resources/rules/esports` | 404 |
+| Bovada | `help.bovada.lv/hc/en-us` | **bloqueado por la política de egreso** (`connect_rejected`) |
+| Bovada | `www.bovada.lv/rules`, `/help/sports-betting[-rules]` | 404 |
+
+Esto importa para el veredicto y no es un detalle: **casi ninguna familia opera en una sola casa.** Medido
+sobre los cierres del 16-sep, cs2, lol, valorant, dota2 y dardos operan en **pinnacle + bovada + cloudbet**
+(dardos además polymarket) y tt en **cloudbet + bovada**. Un contrato está documentado cuando lo está para
+TODAS las casas en las que la familia cruza, así que resolver Cloudbet no basta para poner un `true` en
+ninguna de ellas — pero sí convierte «no sabemos nada» en «falta esto y sabemos exactamente qué».
+
+---
+
+## Lo que Cloudbet contesta, con su texto
+
+### Esports — la prórroga CUENTA
+
+> «Any overtime or other tiebreaker method used is considered valid in determining results.»
+
+Contesta la pregunta pendiente de `esports:cs2` y `esports:valorant`. **Y abre una del lado del modelo:**
+si el mercado de rondas incluye la prórroga, un total de rondas tiene una cola derecha más gorda que la que
+sale de simular solo el tiempo reglamentario. Anotado como pendiente de modelo, no de contrato.
+
+### Esports — otras cuatro reglas que nos afectan
+
+> «If a Map is void due to retirement, default, disconnection, disqualification, walkover, or other admin
+> decision, all bets on the **Match** are void. Bets on any individual Maps that are played to completion
+> will have action.»
+
+Un mapa anulado tumba **el partido entero**, no solo ese mapa. Nuestro liquidador de series ya exige serie
+terminada desde el 16-sep, lo cual va en la misma dirección, pero la regla es más amplia.
+
+> «Match-period Handicap, Money Line and Over/Under markets use **Maps won** as scoring units.»
+> «Total Maps Markets: **Tied Maps are not counted** towards Total Maps markets.»
+> «If a Match isn't started **30 hours** after its scheduled starting time all bets on that Match are void.»
+
+### Esports — CS:GO, y aquí el reglamento se quedó atrás
+
+> «Rounds **1-15** constitute the first half of CS:GO Maps.»
+> «Rounds 1-12 constitute the first half of Valorant Maps.»
+
+Valorant cuadra. **CS:GO no: la regla es de MR15 y CS2 se juega a MR12**, así que la primera mitad son las
+rondas 1-12. Cloudbet no ha actualizado esa línea al juego actual. Cualquier mercado de primera mitad de CS2
+queda **ambiguo por el propio reglamento** y no se puede declarar documentado.
+
+### Esports — kills
+
+**LoL:** su sub-apartado no define kill, así que manda la regla general —
+> «"Kill" markets will be resulted using the Match summary.»
+— y en LoL el match summary cuenta kills de campeón, que es lo que modelamos. **Cuadra.**
+
+**Dota 2: definido, y la definición se contradice con sus propios precios.** Texto literal:
+
+> «The following will be counted as a kill in Dota 2: Player kills · **Tower kills of the opposing team** ·
+> **Creep kills of the opposing team**. The following will not be counted as a kill in Dota 2: A teammate
+> deny · Suicide · Death from neutral creeps · Death from the Roshan.»
+
+Leído al pie de la letra, los creeps de línea contarían y los totales de kills irían en **centenares**.
+Cloudbet publica líneas de ~45-55. Las dos lecturas difieren en un orden de magnitud, así que **la
+ambigüedad misma bloquea el contrato** de `dota2 KILLS`: no es que no lo hayamos leído, es que lo hemos
+leído y dice dos cosas.
+
+### Tenis — la regla que teníamos mal
+
+Éste era el `contrato_pendiente` escrito palabra por palabra («el ganador se paga y el hándicap se devuelve;
+nuestro liquidador aplica la misma regla a las tres»). **Confirmado contra la fuente primaria:**
+
+> «One full set must be completed for money line / winner wagers to stand. If less than 1 set is completed,
+> all money line wagers will be void. The winner of the match is the participant declared the victor by the
+> umpire of the match.»
+>
+> «If a tennis match is not completed because of a player retirement or disqualification, all Handicap and
+> Total Games wagers will be void, **regardless of the score of the match**.»
+
+Nuestro liquidador anulaba las tres. **Arreglado** en `tennis-engine/store.js`: el ganador se anula solo si
+la retirada llegó antes de completar un set, y el hándicap y el total se anulan siempre. Fijado en
+`tests/tenis-retiro.test.js`.
+
+Cuánto pesaba: **3 picks de ML** anuladas por retiro sobre 199 liquidadas (1,5 %). Poco, pero el sesgo no es
+neutro — el que se retira suele ir perdiendo, así que lo que se borraba del track eran sobre todo aciertos
+sobre el favorito — y crece con la muestra. Las tres filas históricas se dejan como están; las nuevas llevan
+`contrato: 'cloudbet_2026-09-16'` para poder separar las dos cohortes.
+
+### Tenis de mesa — la regla es uniforme, pero tiene una palabra que importa
+
+> «If a player retires all **undecided** markets are considered void.»
+> «In the case of a match not being finished all **undecided** markets are considered void.»
+
+Uniforme entre familias, sí, pero **«undecided»**: un mercado ya determinado se paga. En nuestro
+`POINTS_TOTAL` eso significa que si el total ya pasó la línea, el *over* está decidido y **se paga** aunque
+haya retirada; el *under* se anula. Es asimétrico y nuestro liquidador no lo tiene escrito. Pendiente.
+
+### Dardos
+
+> «Match Wagers: The player progressing to the next round will be deemed the winner, providing one of the
+> players has thrown a dart at the start of the first leg. If the first dart is not thrown, all bets are void.»
+> «Sets Wagers: The full number of sets required to win the match must be completed. If for any reason the
+> match is awarded to a contestant before the full number of sets is completed, all sets wagers are void.»
+> «In the case of a match not being finished all undecided markets are considered void.»
+
+No dice nada de si los 180 del desempate cuentan, que es justo la pregunta pendiente. **Sigue abierta.**
+
+### Baloncesto — la prórroga
+
+> «Any wager on the game or the 2nd half will include any overtime that may occur, unless otherwise specified.»
+> «Any wager on the 4th quarter does **not** include any overtime.»
+> «Market: Odd/Even is graded upon regular time only.»
+
+Y el mínimo para que haya acción: **35 minutos** en todas las ligas, **43** en NBA, 36 en pretemporada NBA.
+
+### Fútbol americano — la prórroga y el empate
+
+> «Bets on the Game and 2nd Half-periods include points scored in overtime.»
+> «If a game is suspended with fewer than 55 minutes completed and is not completed within 12 hours, all
+> bets on the Game-period will be void and bets on completed periods will have action.»
+
+Contesta la mitad de la pregunta de NFL (la prórroga en hándicap y total: **cuenta**). **El empate en
+moneyline no lo dice el apartado de fútbol americano**, así que esa mitad sigue abierta.
+
+---
+
+## Veredicto por familia
+
+Ninguna pasa a `contrato_documentado: true`, y por un motivo que ahora está medido en vez de supuesto: cada
+una cruza en dos o tres casas y solo tenemos el reglamento de una. Lo que cambia es que el hueco pasa de
+«nadie lo ha mirado» a una lista corta y concreta.
+
+| familia | Cloudbet | qué falta |
+|---|---|---|
+| `esports:cs2` | prórroga **resuelta** (cuenta) | Pinnacle y Bovada; y la primera mitad de CS2, que el propio reglamento de Cloudbet deja ambigua (dice MR15) |
+| `esports:lol` | kills **resueltos** (match summary = kills de campeón) | Pinnacle y Bovada |
+| `esports:valorant` | prórroga **resuelta**; primera mitad 1-12 **cuadra** | Pinnacle y Bovada; y Valorant sigue sin fuente de resultados propia |
+| `esports:dota2` | kills **leídos y contradictorios** con sus propias líneas | resolver la contradicción con la casa; Pinnacle y Bovada |
+| `tt` | retiro **resuelto**, con el matiz de «undecided» sin implementar | escribir el matiz en el liquidador; Bovada |
+| `tenis` | retiro **resuelto y ARREGLADO en el código** | Pinnacle y Bovada |
+| `dardos` | el reglamento **no menciona** los 180 del desempate | preguntar a la casa; Pinnacle, Bovada y Polymarket |
+| `nfl` | prórroga en hándicap y total **resuelta** (cuenta) | el empate en moneyline; y las casas de The Odds API |
+| `hoops` | prórroga **resuelta** + mínimos de tiempo | las casas de The Odds API; picks apagadas de todas formas |
+
+**Lo que cerraría el resto:** los reglamentos de Pinnacle y Bovada, que este entorno no puede alcanzar
+(política de egreso). Los abre cualquiera con un navegador normal en `help.pinnacle.com` y
+`help.bovada.lv`, y con eso se cierran seis de las nueve.

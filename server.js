@@ -26182,50 +26182,68 @@ async function anotar(pid){
         'futbol:CARDS': { contrato_documentado: true, contrato_ref: 'docs/CONTRATOS_CASA.md § Cloudbet Booking Markets (15-sep)',
           liquidador_concuerda: true, liquidador_ref: 'prop-engine/conteo.js — una roja vale dos, desde el 15-sep',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TARJETAS_2026-09-15.md', competidores: true, costes: 0 },
-        // EL LIQUIDADOR SÍ SE PUEDE DECLARAR; EL CONTRATO DE LA CASA NO (16-sep). `docs/LIQUIDADORES_DECLARADOS_2026-09-16.md`
-        // escribe, familia por familia, qué regla aplica NUESTRO código: el push de la línea entera, el
-        // margen del local, qué pasa con el mapa que no se jugó, qué pasa con una serie a medias. Eso es la
-        // mitad de `liquidador_concuerda` y se puede afirmar leyendo el código.
-        // La otra mitad —qué dice el reglamento de la casa— exige a un humano abriendo la página de reglas
-        // de Cloudbet, Pinnacle y Bovada, y sin eso `contrato_documentado` se queda en `null`. Rellenarlo
-        // con un `true` sería exactamente el fallo que esta puerta existe para impedir, y peor que dejarlo
-        // vacío: una familia declarada en falso pasa a G1 y ahí ya nadie vuelve a mirar.
-        // `liquidador_declarado` no es una puerta: es la pista para quien vaya a cerrar el contrato.
+        // EL LIQUIDADOR SÍ SE PUEDE DECLARAR; EL CONTRATO DE LA CASA, A MEDIAS (16-sep, A5).
+        // `docs/LIQUIDADORES_DECLARADOS_2026-09-16.md` escribe, familia por familia, qué regla aplica
+        // NUESTRO código. Eso es la mitad de `liquidador_concuerda` y se puede afirmar leyendo el código.
+        //
+        // La otra mitad —qué dice el reglamento de la casa— se atacó en A5 y el resultado es asimétrico:
+        // **el reglamento de Cloudbet se obtuvo entero** (2.177 líneas, 60+ deportes) y contesta seis de las
+        // nueve preguntas pendientes; **Pinnacle y Bovada están fuera de alcance de este entorno** (sus
+        // centros de ayuda los rechaza la política de egreso, y sus rutas de reglas en el sitio principal
+        // dan 404). Y eso decide el veredicto, porque **casi ninguna familia opera en una sola casa**:
+        // medido sobre los cierres del 16-sep, cs2, lol, valorant, dota2 y dardos cruzan en pinnacle +
+        // bovada + cloudbet, y tt en cloudbet + bovada. Un contrato está documentado cuando lo está para
+        // TODAS las casas donde la familia cruza, así que ninguna pasa todavía a `true`.
+        //
+        // Lo que cambia es el hueco: de «nadie lo ha mirado» a una lista corta con nombre y apellidos.
+        // `contrato_cloudbet` guarda lo resuelto con su cita; `contrato_pendiente`, lo que falta.
+        // Rellenar `contrato_documentado` con un `true` prematuro sería exactamente el fallo que esta
+        // puerta existe para impedir, y peor que dejarlo vacío: una familia declarada en falso pasa a G1 y
+        // ahí ya nadie vuelve a mirar.
         'esports:cs2': { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
-          contrato_pendiente: 'Cloudbet y Pinnacle: ¿las rondas de prórroga cuentan en RONDAS / RONDAS_EQUIPO / RONDAS_HANDICAP?',
+          contrato_cloudbet: 'RESUELTO: la prórroga CUENTA — «Any overtime or other tiebreaker method used is considered valid in determining results»',
+          contrato_pendiente: 'Pinnacle y Bovada (reglamentos inalcanzables). Y la primera mitad de CS2 la deja ambigua el PROPIO reglamento de Cloudbet, que sigue diciendo «Rounds 1-15 constitute the first half of CS:GO Maps» — regla de MR15 con el juego ya en MR12',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_CS2_2026-09-15.md', competidores: true, costes: 0 },
         'esports:lol': { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
-          contrato_pendiente: '¿qué cuenta como kill para la casa (ejecuciones, torres, monstruos)?',
+          contrato_cloudbet: 'RESUELTO: su sub-apartado no define kill, así que manda la regla general — «"Kill" markets will be resulted using the Match summary» — y en LoL el match summary cuenta kills de campeón, que es lo que modelamos',
+          contrato_pendiente: 'Pinnacle y Bovada (reglamentos inalcanzables)',
           walkforward: null, competidores: null, costes: 0 },
         'esports:valorant': { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
-          contrato_pendiente: 'rondas de prórroga; y Valorant además NO TIENE FUENTE DE RESULTADOS propia',
+          contrato_cloudbet: 'RESUELTO: la prórroga cuenta, y la primera mitad son las rondas 1-12, que CUADRA con el juego',
+          contrato_pendiente: 'Pinnacle y Bovada; y Valorant además NO TIENE FUENTE DE RESULTADOS propia',
           walkforward: null, competidores: null, costes: 0 },
         'esports:dota2': { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
-          contrato_pendiente: '¿qué cuenta como kill?; y la serie a medias, ya resuelta por nuestro lado el 16-sep',
+          contrato_cloudbet: 'LEÍDO Y CONTRADICTORIO: «counted as a kill: Player kills · Tower kills of the opposing team · Creep kills of the opposing team». Al pie de la letra los creeps de línea contarían y los totales irían en centenares; la casa publica líneas de 45-55. Las dos lecturas difieren en un orden de magnitud',
+          contrato_pendiente: 'resolver esa contradicción CON la casa — no es que no se haya leído, es que dice dos cosas; y Pinnacle y Bovada',
           walkforward: null, competidores: null, costes: 0 },
         tt: { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Tenis de mesa',
-          contrato_pendiente: 'EL RETIRO, que en TT es frecuente y nuestro liquidador no lo tiene escrito',
+          contrato_cloudbet: 'RESUELTO: «If a player retires all UNDECIDED markets are considered void». Uniforme entre familias, pero con el matiz de «undecided»: en POINTS_TOTAL, si el total ya pasó la línea el over está decidido y SE PAGA; el under se anula',
+          contrato_pendiente: 'escribir ese matiz asimétrico en nuestro liquidador, que hoy no lo tiene; y Bovada',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TT_2026-09-15.md', competidores: true, costes: 0 },
         tenis: { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Tenis',
-          contrato_pendiente: 'EL RETIRO, y con reglas DISTINTAS por familia dentro de la misma casa: el ganador se paga y el hándicap se devuelve. Nuestro liquidador aplica la misma regla a las tres.',
+          contrato_cloudbet: 'RESUELTO Y ARREGLADO EN EL CÓDIGO: el ganador se anula SOLO si la retirada llegó antes de completar un set («One full set must be completed for money line wagers to stand… The winner is the participant declared the victor by the umpire»), y el hándicap y el total se anulan SIEMPRE («regardless of the score»). Nuestro liquidador anulaba las tres; corregido en tennis-engine/store.js con tests/tenis-retiro.test.js',
+          contrato_pendiente: 'Pinnacle y Bovada (reglamentos inalcanzables)',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TENIS_2026-09-15.md', competidores: true, costes: 0 },
         dardos: { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Dardos',
-          contrato_pendiente: '¿cuentan los 180 del desempate?; el formato por ronda SÍ viene certificado por la PDC',
+          contrato_cloudbet: 'LEÍDO Y NO CONTESTA: el apartado de dardos cubre el ganador y los sets, y NO MENCIONA los 180 del desempate, que es justo la pregunta',
+          contrato_pendiente: 'preguntar a la casa por los 180 del desempate; y Pinnacle, Bovada y Polymarket',
           walkforward: null, competidores: null, costes: 0 },
         nfl: { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § NFL',
-          contrato_pendiente: 'la prórroga en hándicap y total; el empate en moneyline',
+          contrato_cloudbet: 'MEDIA RESUELTA: la prórroga CUENTA en hándicap y total — «Bets on the Game and 2nd Half-periods include points scored in overtime»',
+          contrato_pendiente: 'el empate en moneyline, que el apartado de fútbol americano NO trata; y las casas de The Odds API',
           walkforward: true, competidores: null, costes: 0 },
         hoops: { contrato_documentado: null, liquidador_concuerda: null,
           liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Baloncesto',
-          contrato_pendiente: 'la prórroga; picks apagadas de todas formas',
+          contrato_cloudbet: 'RESUELTO: la prórroga cuenta en el partido y en la 2ª parte, NO en el 4º cuarto, y el par/impar se juzga solo con el tiempo reglamentario. Mínimos para que haya acción: 35 min en general, 43 en NBA',
+          contrato_pendiente: 'las casas de The Odds API; picks apagadas de todas formas',
           walkforward: null, competidores: null, costes: 0 },
       };
       const libros = {};

@@ -1001,15 +1001,54 @@ async function settleShadow({ voidDays = 10, only = null } = {}) {
       for (let i = 0; i < setsA.length; i++) { if (setsA[i] > setsB[i]) wa++; else if (setsB[i] > setsA[i]) wb++; }
       // el ganador es quien ganó los sets; la bandera de ESPN solo desempata si los sets no lo dicen
       const aWon = wa !== wb ? wa > wb : (ca.winner === true || (ca.winner == null && gA > gB));
+      // ── EL RETIRO NO SE LIQUIDA IGUAL EN LAS TRES FAMILIAS (16-sep, A5) ────────────────────────────────
+      // Hasta hoy un retiro anulaba las TRES, con el comentario «las casas difieren». Ya no hay que
+      // suponerlo: el reglamento de Cloudbet, leído el 16-sep, dice cosas DISTINTAS por familia y lo dice
+      // literalmente (`docs/CONTRATOS_CASA.md § Cloudbet · Tenis`):
+      //
+      //   · Ganador — «One full set must be completed for money line / winner wagers to stand. If less
+      //     than 1 set is completed, all money line wagers will be void. The winner of the match is the
+      //     participant declared the victor by the umpire of the match.» Es decir: con un set completo,
+      //     el ganador SE PAGA, y gana el que el juez declara vencedor — el que se retira, pierde.
+      //   · Hándicap y total de juegos — «If a tennis match is not completed because of a player
+      //     retirement or disqualification, all Handicap and Total Games wagers will be void, REGARDLESS
+      //     of the score of the match.» Ahí sí, anulación siempre.
+      //
+      // Anular el ganador cuando la casa lo paga no es conservador: es borrar del track justo los partidos
+      // que acaban en retirada, que no son una muestra cualquiera (el que se retira suele ir perdiendo).
+      // Se contaron 3 picks de ML históricas anuladas así sobre 199 liquidadas — poco, pero el sesgo no se
+      // arregla solo y crece con la muestra.
+      const setsCompletados = (() => {
+        let n = 0;
+        for (let i = 0; i < Math.min(setsA.length, setsB.length); i++) {
+          const a = setsA[i], b = setsB[i];
+          if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+          // un set está completo si alguien llegó a 6 con dos de margen, o a 7 (7-5 / 7-6)
+          const hi = Math.max(a, b), lo = Math.min(a, b);
+          if ((hi >= 6 && hi - lo >= 2) || hi === 7) n++;
+        }
+        return n;
+      })();
+      // el ganador se anula SOLO si la retirada llegó antes de completar un set
+      const mlVoid = retired && setsCompletados < 1;
       let win = null;
-      if (p.family === 'ML') win = retired ? null : (p.side === 'a' ? (aWon ? 1 : 0) : (aWon ? 0 : 1));
+      if (p.family === 'ML') win = mlVoid ? null : (p.side === 'a' ? (aWon ? 1 : 0) : (aWon ? 0 : 1));
       if (p.family === 'TOTAL') { const total = gA + gB; win = retired ? null : (p.side === 'over' ? (total > p.line ? 1 : total === p.line ? null : 0) : (total < p.line ? 1 : total === p.line ? null : 0)); }
       if (p.family === 'SPREAD') { const v = (gA - gB) + p.line; win = retired ? null : (p.side === 'a' ? (v > 0 ? 1 : v === 0 ? null : 0) : (v < 0 ? 1 : v === 0 ? null : 0)); }
+      const anulada = p.family === 'ML' ? mlVoid : retired;
       p.status = 'SETTLED';
-      p.result = retired ? 'VOID' : win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
-      if (retired) p.void_reason = 'retiro/walkover: liquidación VOID por regla de sombra (las casas difieren; T-0442)';
-      p.final = { games_a: gA, games_b: gB, sets_a: setsA, sets_b: setsB, status };
-      p.units = win == null || retired ? 0 : win ? +(p.odds - 1).toFixed(3) : -1;
+      p.result = anulada ? 'VOID' : win == null ? 'PUSH' : win ? 'WIN' : 'LOSS';
+      if (retired) {
+        p.contrato = 'cloudbet_2026-09-16';                      // cohorte: antes de esta fecha se anulaban las tres
+        p.void_reason = anulada
+          ? (p.family === 'ML'
+            ? `retiro/walkover con ${setsCompletados} sets completos: la casa anula el ganador si no se completó un set`
+            : 'retiro/walkover: la casa anula hándicap y total de juegos sea cual sea el marcador')
+          : undefined;
+        if (!anulada) p.nota_liquidacion = `retiro/walkover con ${setsCompletados} set(s) completo(s): el ganador SE PAGA (el que se retira pierde)`;
+      }
+      p.final = { games_a: gA, games_b: gB, sets_a: setsA, sets_b: setsB, status, sets_completados: setsCompletados };
+      p.units = win == null || anulada ? 0 : win ? +(p.odds - 1).toFixed(3) : -1;
       const cl = closes.closes[p.event_id];
       if (cl) {
         let cp = null, cpFuente = null;

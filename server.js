@@ -8174,10 +8174,27 @@ function derivadasLambdas(ceid, meta) {
   // estas familias se corrigen con él o estarían midiendo contra un modelo distinto del que publicamos
   return [l[0] * clubObserverLambdaFactor(lg, hId), l[1] * clubObserverLambdaFactor(lg, aId)];
 }
+// ── POR QUÉ NO SE ENCUENTRA EL MARCADOR, NO SOLO CUÁNTAS VECES (16-sep) ─────────────────────────────────
+// La sonda `/api/internal/ausencia` destapó que el 21,5 % de las derivadas se cierra sin resultado, y esta
+// función devolvía `null` por CUATRO motivos distintos sin distinguirlos: la pick no trae liga, el club
+// local no resuelve, el visitante no resuelve, o el archivo de resultados de esa liga no tiene el partido.
+// Son cuatro arreglos distintos —un campo que falta, un alias, otro alias, una cosecha que no cubre esa
+// competición— y sin saber cuál es hay que adivinar. Es el mismo diagnóstico que el liquidador de esports
+// lleva desde el 22-ago y por el mismo motivo.
+// El contador es por proceso: se reinicia con el deploy, igual que los demás de esta casa.
+const _dScoreDiag = global._derivScoreDiag = global._derivScoreDiag || { sin_liga: 0, sin_local: 0, sin_visita: 0, sin_fila: 0, ok: 0, ligas: {} };
 function derivadasScore(p) {
-  const lg = p.league; if (!lg) return null;
+  const anota = (que) => {
+    _dScoreDiag[que]++;
+    const lg2 = p.league || '(sin liga)';
+    const o = _dScoreDiag.ligas[lg2] || (_dScoreDiag.ligas[lg2] = { sin_local: 0, sin_visita: 0, sin_fila: 0, ok: 0, ejemplo: null });
+    if (o[que] != null) o[que]++;
+    if (que !== 'ok' && !o.ejemplo) o.ejemplo = `${p.home} vs ${p.away} (${String(p.kickoff_at || '').slice(0, 10)})`;
+  };
+  const lg = p.league; if (!lg) { anota('sin_liga'); return null; }
   const hId = resolveClubId(lg, p.home), aId = resolveClubId(lg, p.away);
-  if (!hId || !aId) return null;
+  if (!hId) { anota('sin_local'); return null; }
+  if (!aId) { anota('sin_visita'); return null; }
   try {
     global._clubsResults = global._clubsResults || {};
     if (!global._clubsResults[lg]) { try { global._clubsResults[lg] = JSON.parse(fs.readFileSync(clubDataFile(`results-${lg}.json`), 'utf8')).rows || []; } catch { global._clubsResults[lg] = []; } }
@@ -8185,7 +8202,19 @@ function derivadasScore(p) {
     const row = global._clubsResults[lg].find((m) => m.hg != null
       && ((m.home_id === hId && m.away_id === aId) || (m.home_id === aId && m.away_id === hId))
       && Math.abs(+new Date(m.date) - ko) < 2 * 86400e3);
-    if (!row) return null;
+    if (!row) {
+      anota('sin_fila');
+      // ¿el par existe en el archivo aunque sea fuera de la ventana de dos días? Eso separa un problema de
+      // COBERTURA (la cosecha no trae esa competición) de uno de FECHA (la trae con otro día).
+      const o = _dScoreDiag.ligas[lg];
+      if (o && o.fuera_de_ventana == null) {
+        const porNombre = global._clubsResults[lg].find((m) => (m.home_id === hId && m.away_id === aId) || (m.home_id === aId && m.away_id === hId));
+        o.fuera_de_ventana = !!porNombre;
+        o.filas_en_el_archivo = global._clubsResults[lg].length;
+      }
+      return null;
+    }
+    anota('ok');
     // el marcador SIEMPRE orientado a NUESTRO local: si el archivo lo trae al revés, se gira. Liquidar un
     // hándicap con los lados cambiados invierte el resultado, que es peor que no liquidarlo.
     return row.home_id === hId ? { homeGoals: row.hg, awayGoals: row.ag } : { homeGoals: row.ag, awayGoals: row.hg };
@@ -8310,6 +8339,12 @@ async function derivadasJob({ force = false } = {}) {
     // `settle` pasó a ser asíncrona el 13-sep: las familias de mitad necesitan ir a buscar el marcador al
     // descanso. Sin este `await` la pasada terminaría antes que la liquidación y el informe saldría vacío.
     out.settle = await D.settle({ scoreFor: derivadasScore, descansoFor: derivadasDescanso }).catch((e) => ({ error: e.message }));
+    // POR QUÉ NO SE ENCUENTRA EL MARCADOR (16-sep). La sonda de ausencia destapó un 21,5 % de derivadas sin
+    // resultado y `derivadasScore` devolvía null por cuatro motivos distintos sin distinguirlos. Ahora los
+    // separa —sin liga, el local no resuelve, el visitante no resuelve, el archivo no tiene la fila— y por
+    // liga, con un ejemplo y con si el par aparece FUERA de la ventana de dos días (que separa un problema
+    // de cobertura de uno de fecha).
+    out.diag_marcador = global._derivScoreDiag || null;
     // 9-sep: el PROCESO IMPLÍCITO (1X2 ↔ total por casa + desviación frente al tablero), familia de precio en
     // su propia sombra (`implied-engine/`). Mismo mapa de eventos y mismo marcador que las derivadas.
     try { out.implicito = await require('./implied-engine/run-futbol').job({ dbc, qevents, scoreFor: derivadasScore }); } catch (e) { out.implicito = { error: e.message }; }

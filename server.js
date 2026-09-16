@@ -22810,94 +22810,95 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/internal/clubs-backfill') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
-      const tsaKey = process.env.THESTATSAPI_KEY || '';
-      if (!tsaKey) return json(res, 200, { error: 'sin THESTATSAPI_KEY: el backfill no puede correr' });
+      // POR QUÉ ESPN Y NO TheStatsAPI (16-sep). El primer intento fue por TSA, que es lo que usa el script
+      // manual, y devolvió **429 USAGE_LIMIT_EXCEEDED: la cuota MENSUAL está agotada**. Eso no solo mata el
+      // backfill: TSA es una de las dos fuentes que alimentan los resultados en vivo, así que la rama TSA de
+      // `clubResultsTsaSync` lleva caída sin que lo dijera ningún sitio — y eso explica por qué el archivo no
+      // se curaba solo ni siquiera donde la ruta de escritura era correcta.
+      // ESPN no tiene cuota, acepta un rango de fechas en el mismo endpoint de marcador que ya usamos cada
+      // pasada, y cubre con slug propio todas las ligas que importan salvo `polonia`, que se declara.
       let RT = null;
       try { RT = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { RT = null; }
       if (!RT || !RT.leagues) return json(res, 500, { error: 'sin ratings.json' });
       const pedidas = String(url.searchParams.get('liga') || '').toLowerCase();
       const dias = Math.min(120, Math.max(1, +(url.searchParams.get('dias') || 45)));
-      const ligas = (pedidas === 'todas' || !pedidas)
-        ? Object.keys(RT.leagues).filter((k) => RT.leagues[k].comp && RT.leagues[k].season)
-        : pedidas.split(',').map((x) => x.trim()).filter((x) => RT.leagues[x] && RT.leagues[x].comp && RT.leagues[x].season);
-      if (!ligas.length) return json(res, 400, { error: 'ninguna liga válida', ejemplo: 'liga=laliga,suiza o liga=todas' });
-      const desde = new Date(Date.now() - dias * 86400e3).toISOString().slice(0, 10);
-      const hasta = new Date(Date.now() + 86400e3).toISOString().slice(0, 10);
+      const todas = Object.keys(RT.leagues).filter((k) => CLUB_ESPN[k]);
+      const ligas = (pedidas === 'todas' || !pedidas) ? todas
+        : pedidas.split(',').map((x) => x.trim()).filter(Boolean);
+      const sinEspn = ligas.filter((k) => !CLUB_ESPN[k]);
+      const conEspn = ligas.filter((k) => CLUB_ESPN[k]);
+      if (!conEspn.length) return json(res, 400, { error: 'ninguna liga con slug de ESPN', sin_espn: sinEspn, ejemplo: 'liga=laliga,suiza o liga=todas' });
+      const yyyymmdd = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      const out = { desde, hasta, ligas: {}, at: new Date().toISOString() };
+      const out = { fuente: 'espn', dias, ligas: {}, sin_espn: sinEspn, at: new Date().toISOString() };
       try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); } catch { /* ya existe */ }
-      for (const lg of ligas) {
-        const L = RT.leagues[lg];
-        const o = { paginas: 0, vistos: 0, nuevos: 0, ya_estaban: 0, sin_marcador: 0 };
+      for (const lg of conEspn) {
+        const L = RT.leagues[lg] || {};
+        const code = CLUB_ESPN[lg];
+        const o = { slug: code, ventanas: 0, eventos: 0, finales: 0, nuevos: 0, ya_estaban: 0, sin_resolver: 0 };
         try {
-          // se lee lo que haya (repo o disco) y se escribe SIEMPRE al disco, igual que `persistClubFinal`
           const lectura = clubDataFile(`results-${lg}.json`);
           const destino = path.join(CLUB_DATA_DISK, `results-${lg}.json`);
           let doc = { league: lg, rows: [] };
           try { const j = JSON.parse(fs.readFileSync(lectura, 'utf8')); if (j && Array.isArray(j.rows)) doc = j; } catch { /* nueva */ }
-          const antes = doc.rows.length;
-          for (let page = 1; page <= 12; page++) {
-            const u = `https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}`
-              + `&status=finished&date_from=${desde}&date_to=${hasta}&per_page=50&page=${page}`;
-            let j = null;
+          o.filas_antes = doc.rows.length;
+          const idx = {};
+          for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
+          const resolver = (name) => clubBestNameMatch(idx, name);
+          // ESPN devuelve como mucho unas semanas por llamada: se trocea en ventanas de 10 días
+          for (let off = -dias; off < 1; off += 10) {
+            const desde = yyyymmdd(off), hasta = yyyymmdd(Math.min(0, off + 9));
+            let ev = null;
             try {
-              const r = await fetch(u, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(25000) });
-              // EL CRUDO DE LA PRIMERA PÁGINA, SIEMPRE. Sin esto, «0 vistos» no distingue una temporada
-              // caducada de una clave rechazada de un filtro que la API no admite — tres arreglos distintos.
-              if (page === 1) { o.http = r.status; o.url = u.replace(/Bearer[^&]*/, ''); }
-              j = r.ok ? await r.json().catch(() => null) : null;
-              if (page === 1) {
-                o.meta = (j && j.meta) || null;
-                if (!r.ok) { try { o.cuerpo = (await r.text()).slice(0, 300); } catch { /* ya consumido */ } }
-              }
-            } catch (e) { j = null; if (page === 1) o.fallo_red = e.message; }
-            const data = (j && j.data) || [];
-            o.paginas++;
-            for (const m of data) {
-              o.vistos++;
-              const sc = m.score || {};
-              const hg = Number(sc.home), ag = Number(sc.away);
-              if (!Number.isFinite(hg) || !Number.isFinite(ag)) { o.sin_marcador++; continue; }
-              const hId = String(m.home_team && m.home_team.id), aId = String(m.away_team && m.away_team.id);
-              if (!hId || !aId) { o.sin_marcador++; continue; }
-              const ko = +new Date(m.utc_date || 0) || Date.now();
-              const dup = doc.rows.some((r2) => String(r2.home_id) === hId && String(r2.away_id) === aId
+              const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${desde}-${hasta}&limit=200`, { signal: AbortSignal.timeout(20000) });
+              if (o.ventanas === 0) o.http = r.status;
+              ev = r.ok ? await r.json().catch(() => null) : null;
+            } catch (e) { if (o.ventanas === 0) o.fallo_red = e.message; }
+            o.ventanas++;
+            const eventos = (ev && Array.isArray(ev.events)) ? ev.events : [];
+            o.eventos += eventos.length;
+            for (const e of eventos) {
+              const c = e.competitions && e.competitions[0]; if (!c) continue;
+              const st = e.status && e.status.type && e.status.type.state;
+              if (st !== 'post') continue;                        // solo terminados
+              o.finales++;
+              const H = (c.competitors || []).find((x) => x.homeAway === 'home');
+              const A = (c.competitors || []).find((x) => x.homeAway === 'away');
+              if (!H || !A) continue;
+              const hId = resolver((H.team && (H.team.displayName || H.team.name)) || '');
+              const aId = resolver((A.team && (A.team.displayName || A.team.name)) || '');
+              if (!hId || !aId || hId === aId) { o.sin_resolver++; continue; }
+              const hg = Number(H.score), ag = Number(A.score);
+              if (!Number.isFinite(hg) || !Number.isFinite(ag)) continue;
+              const ko = +new Date(e.date || c.date || 0) || null;
+              if (!ko) continue;
+              const dup = doc.rows.some((r2) => String(r2.home_id) === String(hId) && String(r2.away_id) === String(aId)
                 && Math.abs(+new Date(r2.date || 0) - ko) < 2 * 86400e3);
               if (dup) { o.ya_estaban++; continue; }
-              doc.rows.push({ id: m.id || `bf-${lg}-${hId}-${aId}-${new Date(ko).toISOString().slice(0, 10)}`,
-                date: new Date(ko).toISOString(), home_id: hId, away_id: aId, hg, ag,
-                winner: sc.winner || (hg > ag ? hId : ag > hg ? aId : null), src: 'backfill' });
+              doc.rows.push({ id: `espn-${lg}-${e.id}`, date: new Date(ko).toISOString(),
+                home_id: hId, away_id: aId, hg, ag,
+                winner: H.winner ? hId : A.winner ? aId : (hg > ag ? hId : ag > hg ? aId : null), src: 'backfill-espn' });
               o.nuevos++;
             }
-            const meta = (j && j.meta) || {};
-            if (!data.length || page >= (meta.total_pages || 1)) break;
-            await sleep(5200);                                  // el mismo ritmo educado que el script
+            await sleep(350);                                     // ritmo educado; ESPN no pide más
           }
           if (o.nuevos) {
             const tmp = destino + '.tmp';
             fs.writeFileSync(tmp, JSON.stringify(doc)); fs.renameSync(tmp, destino);
             try { if (global._clubsResults) delete global._clubsResults[lg]; } catch { /* */ }
+            try { if (global._askFormMemo) delete global._askFormMemo[lg]; } catch { /* */ }
           }
-          o.filas_antes = antes; o.filas_despues = doc.rows.length; o.destino = destino;
-          // Si no se vio nada, se pregunta a la API SIN filtro de estado ni de fecha: si tampoco hay nada,
-          // la temporada de `ratings.json` está caducada; si hay partidos, el filtro es lo que sobra.
-          if (!o.vistos) {
-            try {
-              const u2 = `https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&per_page=5`;
-              const r2 = await fetch(u2, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(20000) });
-              const j2 = r2.ok ? await r2.json().catch(() => null) : null;
-              const d2 = (j2 && j2.data) || [];
-              o.sin_filtros = { http: r2.status, n: d2.length, total: (j2 && j2.meta && j2.meta.total) || null,
-                muestra: d2.slice(0, 3).map((m) => `${(m.home_team || {}).name} vs ${(m.away_team || {}).name} ${String(m.utc_date || '').slice(0, 10)} [${m.status}]`) };
-            } catch (e) { o.sin_filtros = { error: e.message }; }
-          }
+          o.filas_despues = doc.rows.length; o.destino = destino;
         } catch (e) { o.error = e.message; }
         out.ligas[lg] = o;
-        await sleep(1200);
       }
-      out.resumen = { ligas: ligas.length,
+      out.resumen = { ligas: conEspn.length,
         nuevos: Object.values(out.ligas).reduce((a, x) => a + (x.nuevos || 0), 0),
+        sin_resolver: Object.values(out.ligas).reduce((a, x) => a + (x.sin_resolver || 0), 0),
         con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k) };
+      out.nota_tsa = 'TheStatsAPI devuelve 429 USAGE_LIMIT_EXCEEDED (cuota mensual agotada), así que su rama '
+        + 'del sincronizador de resultados está caída y este backfill no la usa. `polonia` no tiene slug de '
+        + 'ESPN y por tanto no se puede recuperar hasta que TSA vuelva o se le encuentre otra fuente.';
       return json(res, 200, out);
     }
     // ── REABRIR LAS DERIVADAS QUE SE CERRARON SIN MARCADOR (16-sep, A1) ─────────────────────────────────

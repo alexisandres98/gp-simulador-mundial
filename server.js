@@ -13301,6 +13301,23 @@ async function hoopsCloseSnapshots() {
         const newest = q.reduce((mx, x) => (String(x.seen) > String(mx) ? x.seen : mx), '');
         p.closes = p.closes || { buckets: {}, last: null };
         if (CL.record(p.closes, p.event.kickoff_at, { own: own ? own.o : null, best: q.reduce((mx, x) => (x.o > mx ? x.o : mx), 0) || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now)) cubos++;
+        // ── LA CARA CONTRARIA (16-sep) ───────────────────────────────────────────────────────────────
+        // `m.q` ya tiene los DOS lados del mercado —`groupMarkets` los agrupa juntos y hasta normaliza la
+        // línea del hándicap a la del local— y aquí se leía solo el de la pick. Mismo descuido que en
+        // tarjetas y en esports: sin la contraria no se puede quitar el margen y la vara no da veredicto.
+        // Se empareja contra la MISMA casa que el cierre `own`; si esa casa no cotiza el otro lado, se dice.
+        const otroLado = (m.sides || []).find((x) => x !== p.selection_code);
+        const qContra = otroLado ? m.q[otroLado] : null;
+        if (own && qContra && qContra.length) {
+          const oc = qContra.find((x) => x.book === own.book);
+          if (oc && oc.o > 1 && own.o > 1) {
+            const Q = 1 / own.o + 1 / oc.o;
+            if (Q > 1) {
+              p.close_odds_contraria = oc.o; p.close_para_ev = own.o; p.close_para_ev_casa = own.book;
+              p.close_margen_lado_pct = +(100 * (Q - 1) / 2).toFixed(3); p.close_contraria_motivo = null;
+            } else p.close_contraria_motivo = `Q = ${Q.toFixed(6)} ≤ 1: las dos caras no pueden ser de la misma casa y el mismo momento`;
+          } else p.close_contraria_motivo = `la casa del cierre (${own.book}) no cotizaba el otro lado en esa pasada`;
+        } else if (own) p.close_contraria_motivo = 'la pasada no trajo el otro lado del mercado';
       }
       if (cubos) save();
     }

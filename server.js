@@ -22842,8 +22842,15 @@ const server = http.createServer(async (req, res) => {
             let j = null;
             try {
               const r = await fetch(u, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(25000) });
+              // EL CRUDO DE LA PRIMERA PÁGINA, SIEMPRE. Sin esto, «0 vistos» no distingue una temporada
+              // caducada de una clave rechazada de un filtro que la API no admite — tres arreglos distintos.
+              if (page === 1) { o.http = r.status; o.url = u.replace(/Bearer[^&]*/, ''); }
               j = r.ok ? await r.json().catch(() => null) : null;
-            } catch { j = null; }
+              if (page === 1) {
+                o.meta = (j && j.meta) || null;
+                if (!r.ok) { try { o.cuerpo = (await r.text()).slice(0, 300); } catch { /* ya consumido */ } }
+              }
+            } catch (e) { j = null; if (page === 1) o.fallo_red = e.message; }
             const data = (j && j.data) || [];
             o.paginas++;
             for (const m of data) {
@@ -22872,6 +22879,18 @@ const server = http.createServer(async (req, res) => {
             try { if (global._clubsResults) delete global._clubsResults[lg]; } catch { /* */ }
           }
           o.filas_antes = antes; o.filas_despues = doc.rows.length; o.destino = destino;
+          // Si no se vio nada, se pregunta a la API SIN filtro de estado ni de fecha: si tampoco hay nada,
+          // la temporada de `ratings.json` está caducada; si hay partidos, el filtro es lo que sobra.
+          if (!o.vistos) {
+            try {
+              const u2 = `https://api.thestatsapi.com/api/football/matches?competition_id=${L.comp}&season_id=${L.season}&per_page=5`;
+              const r2 = await fetch(u2, { headers: { Authorization: `Bearer ${tsaKey}` }, signal: AbortSignal.timeout(20000) });
+              const j2 = r2.ok ? await r2.json().catch(() => null) : null;
+              const d2 = (j2 && j2.data) || [];
+              o.sin_filtros = { http: r2.status, n: d2.length, total: (j2 && j2.meta && j2.meta.total) || null,
+                muestra: d2.slice(0, 3).map((m) => `${(m.home_team || {}).name} vs ${(m.away_team || {}).name} ${String(m.utc_date || '').slice(0, 10)} [${m.status}]`) };
+            } catch (e) { o.sin_filtros = { error: e.message }; }
+          }
         } catch (e) { o.error = e.message; }
         out.ligas[lg] = o;
         await sleep(1200);

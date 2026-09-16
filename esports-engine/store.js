@@ -1707,6 +1707,9 @@ function closeOddsFor(pk, closes) {
     contraria: null, margen_lado_pct: null, contraria_motivo: 'la cuota propia es interpolada: no hay mercado real contra el que emparejarla' };
 }
 
+// Versión de la lógica de emparejado de las dos caras del cierre. Subirla hace que el relleno reintente
+// TODAS las que quedaron sin contraria. v2 = se añadió la segunda convención de signo del hándicap.
+const CONTRARIA_V = 2;
 const RES = require('../data-providers/esports/results');
 
 // RE-LIQUIDACIÓN DE LAS FAMILIAS CON LADO EN KILLS (2-sep). Hasta el arreglo del volteo, KILLS_HANDICAP,
@@ -1755,12 +1758,17 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     // falta en TODAS, incluidas las que ya tenían CLV. El archivo de cierres conserva el mercado entero, así
     // que esto recupera hacia atrás lo que hasta ahora no se leía — hasta donde llegue la poda del archivo.
     const faltaClv = p.clv_pct == null;
-    const faltaContraria = p.close_odds_contraria == null && p.close_contraria_motivo == null;
+    // SELLO DE VERSIÓN DEL EMPAREJADO (16-sep). El relleno anterior solo miraba si el campo estaba vacío, así
+    // que en cuanto escribía un motivo no volvía a intentarlo nunca — y las 294 picks de hándicap que había
+    // rechazado por Q ≤ 1 se habrían quedado fuera para siempre, justo las que el arreglo de la segunda
+    // convención de signo viene a recuperar. Con el sello, cambiar la lógica del emparejado basta para que
+    // se reintenten solas en el siguiente barrido. Las que ya tienen contraria no se tocan.
+    const faltaContraria = p.close_odds_contraria == null && p.close_contraria_v !== CONTRARIA_V;
     if (!faltaClv && !faltaContraria) continue;
     const co = closeOddsFor(p, closes0);
     if (!co) continue;
     if (faltaClv) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.close_captura = co.captura || null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
-    if (faltaContraria) { p.close_odds_contraria = co.contraria || null; p.close_margen_lado_pct = co.margen_lado_pct ?? null; p.close_contraria_motivo = co.contraria_motivo || null; if (co.contraria) contrariasNuevas++; }
+    if (faltaContraria) { p.close_odds_contraria = co.contraria || null; p.close_margen_lado_pct = co.margen_lado_pct ?? null; p.close_contraria_motivo = co.contraria_motivo || null; p.close_contraria_v = CONTRARIA_V; if (co.contraria) contrariasNuevas++; }
   }
   if (contrariasNuevas) backfilled += 0;   // se cuenta aparte en el parte; no infla el contador de CLV
   if (backfilled || contrariasNuevas) wr(PICKS_F(game), st);

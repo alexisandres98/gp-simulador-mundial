@@ -707,6 +707,13 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
 
   fila.status = 'PLACED';
   fila.motivo = null;
+  // AL LIBRO QUE NO SE PUEDE REESCRIBIR (16-sep, R5). Un fill es el momento en que sale dinero de verdad,
+  // y es justo el hecho que hay que poder demostrar que se anotó ANTES de conocer el resultado. El libro
+  // es append-only y encadenado; que falle no puede impedir que la apuesta se registre aquí, así que el
+  // error se traga y la apuesta sigue su curso — pero el libro deja de verificar y la sonda lo dice.
+  try { require('../lib/libro').anota('fill', { ref: fila.ref_id, familia: fila.familia, pick: fila.pick_id,
+    match: fila.match, side: fila.side, line: fila.line, stake: stakeFinal,
+    odds_sombra: fila.odds_sombra, odds_real: Number(cuerpo.price || (cuerpo.bet && cuerpo.bet.price) || sel.price) || sel.price }); } catch { /* el libro nunca bloquea una colocación */ }
   // una aceptada demuestra que la cuenta puede operar: el contador de rechazos de cuenta se limpia
   if (L.rechazos_cuenta && L.rechazos_cuenta.seguidos) L.rechazos_cuenta = { seguidos: 0, limpiado: new Date().toISOString() };
   fila.odds_real = Number(cuerpo.price || (cuerpo.bet && cuerpo.bet.price) || sel.price) || sel.price;

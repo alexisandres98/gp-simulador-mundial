@@ -24072,7 +24072,19 @@ const server = http.createServer(async (req, res) => {
           for (const k of Object.keys(L.avisos || {})) if (k.startsWith('parada:')) delete L.avisos[k]; RE.save(); }
         return json(res, 200, await paradaVigila());
       }
-      try { const { out, RE } = paradaEstado(); RE.save(); return json(res, 200, out); }
+      // LA VERIFICACIÓN DE LA CADENA VIAJA CON LA PARADA (16-sep, R5 · E4). Es el sitio correcto: la parada
+      // es la sonda que decide si se sigue arriesgando dinero, y si el libro que sostiene esa decisión no
+      // verifica, la decisión no se puede tomar. Una cadena rota no apaga nada por sí sola —apagar es de
+      // Alexis— pero sale en la misma pantalla y con el mismo peso que las cuatro líneas de parada.
+      try { const { out, RE } = paradaEstado(); RE.save();
+        let libro = null;
+        try { libro = require('./lib/libro').estado(); } catch (e) { libro = { ok: false, motivo: e.message }; }
+        out.libro = libro;
+        if (libro && libro.ok === false) {
+          out.aviso_libro = `EL LIBRO NO VERIFICA (${libro.motivo || 'motivo desconocido'}${libro.rota_en ? `, asiento ${libro.rota_en}` : ''}). `
+            + 'Todo lo anterior a ese punto sigue siendo verificable; a partir de ahí, el registro no demuestra nada.';
+        }
+        return json(res, 200, out); }
       catch (e) { return json(res, 500, { error: e.message }); }
     }
     if (p === '/api/internal/ventana-tarjetas') {

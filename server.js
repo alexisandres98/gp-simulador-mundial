@@ -6695,7 +6695,7 @@ function sampleClubMomentum(RT) {
     if (!db.clubResults[k] && (!last || Date.now() - (last.at || 0) > 12 * 3600e3)) delete db.clubMomentum[k];
   }
 }
-async function clubScoresSync({ force = false } = {}) {
+async function clubScoresSync({ force = false, diasAtras = 0 } = {}) {
   if (!/^(1|true|yes|on)$/i.test(String(process.env.GP_CLUBS_SHADOW_ENABLED || '').trim())) return { skipped: 'off' };
   if (_clubScoresRunning) return { skipped: 'running' };
   if (!force && Date.now() - _clubScoresLast < 25 * 1000) return { skipped: 'throttle' };
@@ -6710,8 +6710,24 @@ async function clubScoresSync({ force = false } = {}) {
     clubsEnsureCups(RT); // 13-ago: marcadores y LIQUIDACIÓN también para copas (slugs en CLUB_ESPN)
     db.clubResults = db.clubResults || {};
     clubEloReconcileFit(); // F0.4: si el fit base cambió, resetear el overlay dinámico
-    const fromD = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
-    const toD = new Date(Date.now() + 1 * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
+    // ── ESPN NO ACEPTA RANGO DE FECHAS EN FÚTBOL (16-sep) ─────────────────────────────────────────────────
+    // Aquí se pedía `dates=<hace 2 días>-<mañana>` y ese endpoint devuelve **400** con un rango: el de
+    // fútbol admite UN SOLO DÍA. Comprobado contra la API: `dates=20260914-20260917` → 400,
+    // `dates=20260914` → 200 con sus eventos. Y como el fallo era un 400, `r.ok` salía falso, `events`
+    // quedaba en null y el bucle hacía `continue` **en silencio, en todas las ligas, cada 30 segundos**.
+    //
+    // O sea: la rama de ESPN del sincronizador de resultados de clubes llevaba caída sin decirlo, y la otra
+    // rama —TheStatsAPI— devuelve 429 por cuota mensual agotada. Las DOS fuentes de marcador final estaban
+    // muertas a la vez. Eso es lo que dejó `results-<liga>.json` a cero en cinco ligas y 1.807 derivadas sin
+    // marcador, y no se veía porque un `continue` no deja rastro.
+    //
+    // La pasada rápida (cada 30 s) pide SOLO HOY: un día por liga, o sea el MISMO número de llamadas que
+    // antes. Los días anteriores los recoge `dias_atras`, que usa la pasada lenta — multiplicar por cuatro
+    // las llamadas de la pasada de 30 segundos sobre 45 ligas no es una opción.
+    const diaEspn = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10).replace(/-/g, '');
+    const diasAPedir = [0];
+    for (let k = 1; k <= Math.max(0, Math.min(7, diasAtras)); k++) diasAPedir.push(-k);
+    out.dias = diasAPedir.map(diaEspn);
     let anyChange = false;
     const clubAlerts = []; // transiciones inicio/gol para alertas de clubes seguidos (31-ago)
     for (const [lgKey, L] of Object.entries(RT.leagues || {})) {
@@ -6720,14 +6736,21 @@ async function clubScoresSync({ force = false } = {}) {
       const idx = {};
       for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
       const matchId = (name) => clubBestNameMatch(idx, name); // mismo matcher desambiguado que resolveClubId
-      let events = null;
-      try {
-        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${fromD}-${toD}&limit=80`, { signal: AbortSignal.timeout(12000) });
-        events = r.ok ? await r.json().catch(() => null) : null;
-      } catch { /* liga sin datos este ciclo */ }
-      if (!events || !Array.isArray(events.events)) continue;
+      // un día por llamada, y se juntan los eventos de los días pedidos
+      const eventos = [];
+      let algunaOk = false;
+      for (const off of diasAPedir) {
+        try {
+          const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${code}/scoreboard?dates=${diaEspn(off)}&limit=80`, { signal: AbortSignal.timeout(12000) });
+          if (!r.ok) { out.http_no_ok = (out.http_no_ok || 0) + 1; out.ultimo_http = r.status; continue; }
+          algunaOk = true;
+          const j = await r.json().catch(() => null);
+          if (j && Array.isArray(j.events)) eventos.push(...j.events);
+        } catch { /* liga sin datos este ciclo */ }
+      }
+      if (!algunaOk) { out.ligas_sin_respuesta = (out.ligas_sin_respuesta || 0) + 1; continue; }
       out.leagues++;
-      for (const ev of events.events) {
+      for (const ev of eventos) {
         const c = ev.competitions && ev.competitions[0]; if (!c) continue;
         const state = ev.status && ev.status.type && ev.status.type.state; // pre|in|post
         if (state !== 'in' && state !== 'post') continue;
@@ -28552,6 +28575,10 @@ server.listen(PORT, () => {
   // Gate por env dentro de la función; ESPN es gratis. Arranca a los 20 s (deja al boot respirar).
   setTimeout(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 20 * 1000);
   setInterval(() => { clubScoresSync().catch(e => console.error('[clubs] scores:', e.message)); }, 30 * 1000);
+  // PASADA LENTA DE RECOGIDA (16-sep). La rápida pide solo HOY para no multiplicar por cuatro las llamadas
+  // de cada 30 segundos sobre 45 ligas. Un partido que termina pasada la medianoche UTC, o una pasada que
+  // se perdió, se recogen aquí: cada 10 minutos con los DOS días anteriores.
+  setInterval(() => { clubScoresSync({ force: true, diasAtras: 2 }).catch(e => console.error('[clubs] scores catch-up:', e.message)); }, 10 * 60 * 1000);
   // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. DOS cadencias:
   // 'live' cada 90s pero SOLO ligas con partido en curso (2-6 requests) → marcador en vivo real en las 24
   // ligas; 'full' cada 12min barre todas para recoger finales que se hayan escapado. Throttles propios.

@@ -25740,18 +25740,51 @@ async function anotar(pid){
         'futbol:CARDS': { contrato_documentado: true, contrato_ref: 'docs/CONTRATOS_CASA.md § Cloudbet Booking Markets (15-sep)',
           liquidador_concuerda: true, liquidador_ref: 'prop-engine/conteo.js — una roja vale dos, desde el 15-sep',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TARJETAS_2026-09-15.md', competidores: true, costes: 0 },
+        // EL LIQUIDADOR SÍ SE PUEDE DECLARAR; EL CONTRATO DE LA CASA NO (16-sep). `docs/LIQUIDADORES_DECLARADOS_2026-09-16.md`
+        // escribe, familia por familia, qué regla aplica NUESTRO código: el push de la línea entera, el
+        // margen del local, qué pasa con el mapa que no se jugó, qué pasa con una serie a medias. Eso es la
+        // mitad de `liquidador_concuerda` y se puede afirmar leyendo el código.
+        // La otra mitad —qué dice el reglamento de la casa— exige a un humano abriendo la página de reglas
+        // de Cloudbet, Pinnacle y Bovada, y sin eso `contrato_documentado` se queda en `null`. Rellenarlo
+        // con un `true` sería exactamente el fallo que esta puerta existe para impedir, y peor que dejarlo
+        // vacío: una familia declarada en falso pasa a G1 y ahí ya nadie vuelve a mirar.
+        // `liquidador_declarado` no es una puerta: es la pista para quien vaya a cerrar el contrato.
         'esports:cs2': { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
+          contrato_pendiente: 'Cloudbet y Pinnacle: ¿las rondas de prórroga cuentan en RONDAS / RONDAS_EQUIPO / RONDAS_HANDICAP?',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_CS2_2026-09-15.md', competidores: true, costes: 0 },
-        'esports:lol': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
-        'esports:valorant': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
-        'esports:dota2': { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        'esports:lol': { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
+          contrato_pendiente: '¿qué cuenta como kill para la casa (ejecuciones, torres, monstruos)?',
+          walkforward: null, competidores: null, costes: 0 },
+        'esports:valorant': { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
+          contrato_pendiente: 'rondas de prórroga; y Valorant además NO TIENE FUENTE DE RESULTADOS propia',
+          walkforward: null, competidores: null, costes: 0 },
+        'esports:dota2': { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Esports',
+          contrato_pendiente: '¿qué cuenta como kill?; y la serie a medias, ya resuelta por nuestro lado el 16-sep',
+          walkforward: null, competidores: null, costes: 0 },
         tt: { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Tenis de mesa',
+          contrato_pendiente: 'EL RETIRO, que en TT es frecuente y nuestro liquidador no lo tiene escrito',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TT_2026-09-15.md', competidores: true, costes: 0 },
         tenis: { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Tenis',
+          contrato_pendiente: 'EL RETIRO, y con reglas DISTINTAS por familia dentro de la misma casa: el ganador se paga y el hándicap se devuelve. Nuestro liquidador aplica la misma regla a las tres.',
           walkforward: true, walkforward_ref: 'docs/CHALLENGERS_TENIS_2026-09-15.md', competidores: true, costes: 0 },
-        dardos: { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
-        nfl: { contrato_documentado: null, liquidador_concuerda: null, walkforward: true, competidores: null, costes: 0 },
-        hoops: { contrato_documentado: null, liquidador_concuerda: null, walkforward: null, competidores: null, costes: 0 },
+        dardos: { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Dardos',
+          contrato_pendiente: '¿cuentan los 180 del desempate?; el formato por ronda SÍ viene certificado por la PDC',
+          walkforward: null, competidores: null, costes: 0 },
+        nfl: { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § NFL',
+          contrato_pendiente: 'la prórroga en hándicap y total; el empate en moneyline',
+          walkforward: true, competidores: null, costes: 0 },
+        hoops: { contrato_documentado: null, liquidador_concuerda: null,
+          liquidador_declarado: 'docs/LIQUIDADORES_DECLARADOS_2026-09-16.md § Baloncesto',
+          contrato_pendiente: 'la prórroga; picks apagadas de todas formas',
+          walkforward: null, competidores: null, costes: 0 },
       };
       const libros = {};
       const meter = (k, arr) => { if (Array.isArray(arr) && arr.length) libros[k] = arr; };

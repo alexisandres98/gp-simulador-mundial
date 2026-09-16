@@ -6186,16 +6186,44 @@ function clubPropsFit(league) {
       // Brasileirão +0.003 con DAMP~0.5). Grid-search: elige el DAMP con mejor skill COMBINADO (córners+cards)
       // vs baseline de liga, SOLO si no empeora la calibración (calErr≤0.06). Default 0 si nada mejora (=
       // comportamiento anterior byte-idéntico). Memo por mtime → corre solo cuando el backfill actualiza data.
-      let bestDamp = 0, bestScore = -Infinity, bestBt = null;
-      for (const damp of [0, 0.25, 0.5]) {
+      // UN ÓPTIMO POR FAMILIA, Y LA REJILLA HASTA 1 (16-sep, M4). Antes se elegía UN damp con la SUMA de los
+      // dos skills, así que córners y tarjetas negociaban entre ellas: la que más pesara en la suma decidía
+      // por las dos. Y la rejilla paraba en 0,5 mientras las dos pedían 1 con frecuencia, o sea que el
+      // óptimo podía estar fuera de donde se buscaba. Ahora cada familia elige el suyo por su PROPIO skill,
+      // con su PROPIA puerta de calibración, y la rejilla llega a 1.
+      // Sigue siendo byte-idéntico cuando las dos eligen lo mismo, porque el damp por familia cae a
+      // `TOTALS_DAMP` si no se pone (ver `dampDe` en prop-engine/model.js).
+      const REJILLA_DAMP = [0, 0.25, 0.5, 1];
+      const porFam = { corners_total: { damp: 0, score: -Infinity }, cards_total: { damp: 0, score: -Infinity } };
+      const barridos = [];
+      let btBase = null;
+      for (const damp of REJILLA_DAMP) {
         let bt = null; try { bt = pe.backtest(matches, { TOTALS_DAMP: damp }); } catch { continue; }
-        const c = (bt.families && bt.families.corners_total) || {}, k = (bt.families && bt.families.cards_total) || {};
-        if ((c.cal_err != null && c.cal_err > 0.06) || (k.cal_err != null && k.cal_err > 0.06)) { if (damp === 0 && !bestBt) { bestBt = bt; } continue; }
-        const score = (c.skill_vs_baseline || 0) + (k.skill_vs_baseline || 0);
-        if (score > bestScore) { bestScore = score; bestDamp = damp; bestBt = bt; }
+        if (damp === 0) btBase = bt;
+        const fila = { damp };
+        for (const fam of ['corners_total', 'cards_total']) {
+          const f = (bt.families && bt.families[fam]) || {};
+          fila[fam] = { skill: f.skill_vs_baseline ?? null, cal_err: f.cal_err ?? null };
+          // la puerta de calibración se aplica POR FAMILIA: que los córners se descalibren no tiene por qué
+          // costarle el óptimo a las tarjetas
+          if (f.cal_err != null && f.cal_err > 0.06) continue;
+          const s = f.skill_vs_baseline;
+          if (Number.isFinite(s) && s > porFam[fam].score) { porFam[fam].score = s; porFam[fam].damp = damp; }
+        }
+        barridos.push(fila);
       }
-      const fit = pe.fit(matches, { TOTALS_DAMP: bestDamp });
-      out = { fit, backtest: bestBt, matches: matches.length, totals_damp: bestDamp };
+      const dampCorners = porFam.corners_total.damp, dampCards = porFam.cards_total.damp;
+      const fit = pe.fit(matches, { TOTALS_DAMP: 0, TOTALS_DAMP_CORNERS: dampCorners, TOTALS_DAMP_CARDS: dampCards });
+      // el backtest que se guarda es el de la combinación elegida; si las dos coinciden es el de siempre
+      let bestBt = btBase;
+      try { bestBt = pe.backtest(matches, { TOTALS_DAMP: 0, TOTALS_DAMP_CORNERS: dampCorners, TOTALS_DAMP_CARDS: dampCards }); } catch { /* se queda el de damp 0 */ }
+      out = { fit, backtest: bestBt, matches: matches.length,
+        totals_damp: dampCorners === dampCards ? dampCorners : null,
+        totals_damp_corners: dampCorners, totals_damp_cards: dampCards,
+        damp_por_familia: porFam, damp_barrido: barridos,
+        damp_nota: dampCorners === dampCards
+          ? `las dos familias eligen ${dampCorners}: salida idéntica a la de un solo amortiguador`
+          : `córners piden ${dampCorners} y tarjetas ${dampCards}: con un solo número una de las dos iba a perder` };
     }
   } catch { out = null; }
   global._clubProps[league] = { stamp, out };

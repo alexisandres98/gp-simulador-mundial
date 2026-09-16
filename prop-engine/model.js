@@ -34,7 +34,9 @@ function fitDispersion(samples, { min = 2, max = 400 } = {}) {
 // datos (nada hardcodeado) con shrinkage a 1 por muestra chica. DISEÑO MULTI-COMPETICIÓN (post-Mundial):
 // cada dataset/competición hace su propio fit y sus fases se etiquetan libres (m.phase: 'regular'|'playoff'|
 // 'group'|'knockout'|...) → el mismo código escala a decenas de torneos simultáneos sin tocar nada.
-const DEFAULTS = { PRIOR_MATCHES: 4, REF_PRIOR: 14, REF_CLAMP: 0.2, GAME_STATE_WEIGHT: 0.5, GS_CLAMP: 0.25, TOTALS_DAMP: 0, PHASE_PRIOR: 10 };
+const DEFAULTS = { PRIOR_MATCHES: 4, REF_PRIOR: 14, REF_CLAMP: 0.2, GAME_STATE_WEIGHT: 0.5, GS_CLAMP: 0.25, TOTALS_DAMP: 0,
+  // null = usa TOTALS_DAMP. Se separan desde el 16-sep (M4): ver `dampDe` mas abajo.
+  TOTALS_DAMP_CORNERS: null, TOTALS_DAMP_CARDS: null, PHASE_PRIOR: 10 };
 
 // Fase de un partido del dataset: etiqueta explícita m.phase, o derivada del nombre de ronda.
 function phaseOf(m) { return m.phase || (/group|grupo|apertura|regular/i.test(m.round || '') ? 'group' : 'knockout'); }
@@ -142,17 +144,27 @@ function project(fitres, { home, away, lambdas = null, referee = null, closeness
   const muCardsAway = baseCardsAway * refMult * closeMult;
 
   // Totales con la señal de EQUIPOS amortiguada hacia la media de liga (ver TOTALS_DAMP arriba).
-  const dampTotal = (rawSum, leagueMean) => leagueMean * Math.pow(rawSum / (leagueMean || 1), cfg.TOTALS_DAMP);
+  //
+  // UN AMORTIGUADOR POR FAMILIA (16-sep, M4). Córners y tarjetas llevaban el MISMO número, elegido por la
+  // suma de sus dos skills, y no lo piden igual: las tarjetas ganan señal de equipo y de árbitro donde los
+  // córners no, y con un solo número una de las dos siempre sale perdiendo por el bien de la otra. Ahora
+  // cada una tiene el suyo. `TOTALS_DAMP` sigue siendo el valor por defecto de las dos, así que mientras
+  // ambas elijan lo mismo la salida es byte a byte la de antes.
+  const dampDe = (fam) => {
+    const v = fam === 'corners' ? cfg.TOTALS_DAMP_CORNERS : cfg.TOTALS_DAMP_CARDS;
+    return Number.isFinite(v) ? v : cfg.TOTALS_DAMP;
+  };
+  const dampTotal = (rawSum, leagueMean, fam) => leagueMean * Math.pow(rawSum / (leagueMean || 1), dampDe(fam));
   return {
     home, away, phase: phase || null,
     corners: {
       home: muCornersHome * phCorners, away: muCornersAway * phCorners,
-      total: dampTotal(muCornersHome + muCornersAway, league.totalCornersMean) * phCorners,
+      total: dampTotal(muCornersHome + muCornersAway, league.totalCornersMean, 'corners') * phCorners,
       r_total: league.rCornersTotal, r_team: league.rCornersTeam, phase_mult: phCorners,
     },
     cards: {
       home: muCardsHome * phCards, away: muCardsAway * phCards,
-      total: dampTotal(baseCardsHome + baseCardsAway, league.totalCardsMean) * refMult * closeMult * phCards,
+      total: dampTotal(baseCardsHome + baseCardsAway, league.totalCardsMean, 'cards') * refMult * closeMult * phCards,
       r_total: league.rCardsTotal, r_team: league.rCardsTeam, ref_mult: refMult, close_mult: closeMult, phase_mult: phCards,
     },
     sample: { home_n: th.n, away_n: ta.n, league_matches: league.matches },

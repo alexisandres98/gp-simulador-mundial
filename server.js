@@ -17851,18 +17851,60 @@ const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128,
 //     (`PST`), abandonado (`ABD`) o cancelado (`CANC`) NO es un resultado; es la ausencia de uno, y meterlo
 //     como 0-0 sería fabricar el dato que falta.
 const AF_TERMINADOS = new Set(['FT', 'AET', 'PEN']);
+// Ligas partidas en dos torneos con id propio en AF. `CLUB_AF_LEAGUE` guarda uno solo y el otro medio año
+// desaparece: paraguay tenía el Apertura (250, 24-ene → 24-may) y el Clausura (252, 24-jul → 29-nov) no
+// estaba en ninguna parte, así que de julio en adelante la liga devolvía cero partidos legítimamente.
+const CLUB_AF_EXTRA = { paraguay: [252] };
+// AF avisa de que te has pasado de peticiones por minuto con **HTTP 200, `response` vacío y el motivo
+// enterrado en `errors.rateLimit`**. Es decir, un cero que en realidad era «no miré», igual que los otros
+// dos de este mismo día. Se detecta y se reintenta; si tras los reintentos sigue limitado se declara ERROR,
+// nunca un cero.
+function afLimitado(j) {
+  const e = j && j.errors;
+  if (!e) return false;
+  const txt = Array.isArray(e) ? e.join(' ') : Object.entries(e).map(([k, v]) => k + ' ' + v).join(' ');
+  return /rate\s*limit|too many requests/i.test(txt);
+}
+// QUÉ TEMPORADA ES LA DE HOY, PREGUNTÁNDOSELO A AF EN VEZ DE SUPONERLA (16-sep). `API_FOOTBALL_SEASON=2026`
+// vale para casi todas y falla en las que no siguen el año natural europeo: la J1 japonesa pasó al calendario
+// otoño-primavera y su temporada corriente es **2027** (7-ago-2026 → 6-jun-2027), así que pedir 2026 devolvía
+// cero. Una suposición que acierta cuarenta veces y falla una es peor que una pregunta, porque el fallo sale
+// con la misma cara que un acierto. Se cachea 24 h: son 47 peticiones al día contra una cuota de 75.000.
+async function afTemporadaDe(id, afk, host, porDefecto) {
+  const C = (global._afTempCache = global._afTempCache || {});
+  const hit = C[id];
+  if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.v;
+  try {
+    const r = await fetch(`https://${host}/leagues?id=${id}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(15000) });
+    if (r.ok) {
+      const j = await r.json().catch(() => null);
+      const ss = (((j || {}).response || [])[0] || {}).seasons || [];
+      const hoy = new Date().toISOString().slice(0, 10);
+      // la que cubre HOY manda sobre la que AF marca `current`: en una liga partida las dos pueden estar
+      // marcadas, y la que nos sirve es la que está corriendo
+      const cubre = ss.find((s) => s.start && s.end && s.start <= hoy && hoy <= s.end);
+      const marcada = ss.find((s) => s.current);
+      const v = (cubre && cubre.year) || (marcada && marcada.year) || porDefecto;
+      C[id] = { at: Date.now(), v, cubre: !!cubre };
+      return v;
+    }
+  } catch { /* si no se puede preguntar, se usa el de siempre */ }
+  C[id] = { at: Date.now(), v: porDefecto };
+  return porDefecto;
+}
 async function clubsBackfillAf({ RT, ligas, dias, afk, sinFuente }) {
   const host = process.env.API_FOOTBALL_HOST || 'v3.football.api-sports.io';
   const temporada = +(process.env.API_FOOTBALL_SEASON || 2026);
   const iso = (off) => new Date(Date.now() + off * 86400e3).toISOString().slice(0, 10);
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   const desde = iso(-dias), hasta = iso(0);
-  const out = { fuente: 'api-football', temporada, desde, hasta, ligas: {}, sin_fuente: sinFuente, at: new Date().toISOString() };
+  const out = { fuente: 'api-football', temporada_por_defecto: temporada, desde, hasta, ligas: {}, sin_fuente: sinFuente, at: new Date().toISOString() };
   try { fs.mkdirSync(CLUB_DATA_DISK, { recursive: true }); } catch { /* ya existe */ }
   const afMapTodo = global._clubAfMap || {};
   for (const lg of ligas) {
     const L = RT.leagues[lg] || {};
-    const id = CLUB_AF_LEAGUE[lg];
-    const o = { af_league: id, pedidas: 0, fixtures: 0, terminados: 0, nuevos: 0, ya_estaban: 0, sin_resolver: 0, no_terminados: {} };
+    const ids = [CLUB_AF_LEAGUE[lg], ...(CLUB_AF_EXTRA[lg] || [])].filter((x) => x != null);
+    const o = { af_leagues: ids, temporadas: {}, pedidas: 0, fixtures: 0, terminados: 0, nuevos: 0, ya_estaban: 0, sin_resolver: 0, no_terminados: {} };
     try {
       const lectura = clubDataFile(`results-${lg}.json`);
       const destino = path.join(CLUB_DATA_DISK, `results-${lg}.json`);
@@ -17875,15 +17917,31 @@ async function clubsBackfillAf({ RT, ligas, dias, afk, sinFuente }) {
       const idx = {};
       for (const [tid, t] of Object.entries(L.ratings || {})) idx[clubNorm(t.name)] = tid;
       const resolver = (afId, name) => (afId != null && porAf[String(afId)]) || clubBestNameMatch(idx, name || '');
-      const r = await fetch(`https://${host}/fixtures?league=${id}&season=${temporada}&from=${desde}&to=${hasta}`,
-        { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(25000) });
-      o.pedidas = 1; o.http = r.status;
-      if (!r.ok) { o.error = `HTTP ${r.status}`; out.ligas[lg] = o; continue; }
-      const j = await r.json().catch(() => null);
-      if (!j) { o.error = 'respuesta ilegible'; out.ligas[lg] = o; continue; }
-      if (Array.isArray(j.errors) ? j.errors.length : (j.errors && Object.keys(j.errors).length)) o.avisos_af = j.errors;
-      const fx = Array.isArray(j.response) ? j.response : [];
+      const fx = [];
+      for (const id of ids) {
+        const te = await afTemporadaDe(id, afk, host, temporada);
+        o.temporadas[id] = te;
+        // hasta tres intentos: el límite por minuto de AF viene con HTTP 200 y el cuerpo vacío
+        let j = null;
+        for (let intento = 1; intento <= 3; intento++) {
+          const r = await fetch(`https://${host}/fixtures?league=${id}&season=${te}&from=${desde}&to=${hasta}`,
+            { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(25000) });
+          o.pedidas++; o.http = r.status;
+          if (!r.ok) { o.error = `HTTP ${r.status} en la liga AF ${id}`; j = null; break; }
+          j = await r.json().catch(() => null);
+          if (!j) { o.error = `respuesta ilegible en la liga AF ${id}`; break; }
+          if (!afLimitado(j)) break;
+          o.limitado = (o.limitado || 0) + 1;
+          if (intento === 3) { o.error = `AF limitó las peticiones por minuto en la liga ${id} tras 3 intentos — esto NO es «cero partidos»`; j = null; break; }
+          await espera(intento * 4000);
+        }
+        if (!j) continue;
+        if (Array.isArray(j.errors) ? j.errors.length : (j.errors && Object.keys(j.errors).length)) o.avisos_af = j.errors;
+        if (Array.isArray(j.response)) fx.push(...j.response);
+        await espera(400);                                   // ritmo: AF corta por minuto, no por día
+      }
       o.fixtures = fx.length;
+      if (o.error) { out.ligas[lg] = o; continue; }          // no se escribe nada con la lectura rota
       for (const f of fx) {
         const st = ((f.fixture || {}).status || {}).short || '';
         if (!AF_TERMINADOS.has(st)) { o.no_terminados[st] = (o.no_terminados[st] || 0) + 1; continue; }
@@ -17915,8 +17973,9 @@ async function clubsBackfillAf({ RT, ligas, dias, afk, sinFuente }) {
       o.filas_despues = doc.rows.length; o.destino = destino;
       // Un cero que en realidad era «no miré» no se cuenta como cero.
       if (!o.fixtures) o.cero_declarado = `AF respondió 200 y no trajo un solo partido de ${desde} a ${hasta} `
-        + `para la liga ${id} en la temporada ${temporada} — comprobar que la temporada es la correcta antes `
-        + 'de leer esto como «no hubo partidos»';
+        + `para ${ids.map((x) => `${x} (temporada ${o.temporadas[x]})`).join(' + ')} — la temporada se le `
+        + 'preguntó a AF, así que o la liga está parada o el torneo que corre ahora tiene OTRO id (mira '
+        + 'CLUB_AF_EXTRA). No se lea como «no hubo partidos»';
     } catch (e) { o.error = e.message; }
     out.ligas[lg] = o;
   }
@@ -17925,6 +17984,7 @@ async function clubsBackfillAf({ RT, ligas, dias, afk, sinFuente }) {
     nuevos: V.reduce((a, x) => a + (x.nuevos || 0), 0),
     ya_estaban: V.reduce((a, x) => a + (x.ya_estaban || 0), 0),
     sin_resolver: V.reduce((a, x) => a + (x.sin_resolver || 0), 0),
+    limitado: V.reduce((a, x) => a + (x.limitado || 0), 0),
     con_error: Object.entries(out.ligas).filter(([, x]) => x.error).map(([k]) => k),
     cero_declarado: Object.entries(out.ligas).filter(([, x]) => x.cero_declarado).map(([k]) => k) };
   out.nota = 'AF cubre las siete ligas que ESPN no (ver CLUB_SIN_ESPN) y gasta UNA petición por liga. El '

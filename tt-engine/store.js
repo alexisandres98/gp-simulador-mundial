@@ -827,10 +827,20 @@ function track({
   const w = done.filter((p) => p.result === 'WIN').length, l = done.filter((p) => p.result === 'LOSS').length;
   const units = done.reduce((s, p) => s + (p.units || 0), 0);
   const clv = done.filter((p) => p.clv_pct != null);
-  const agg = (keyOf, extra) => { const o = {}; for (const p of done) { const k = keyOf(p); if (k == null) continue; const F = o[k] = o[k] || { n: 0, w: 0, units: 0, clv: [], clvOwn: [], ...(extra ? extra(p) : {}) }; F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0; if (p.clv_pct != null) F.clv.push(p.clv_pct); if (p.clv_own_pct != null) F.clvOwn.push(p.clv_own_pct); } return o; };
+  const agg = (keyOf, extra) => { const o = {}; for (const p of done) { const k = keyOf(p); if (k == null) continue; const F = o[k] = o[k] || { n: 0, w: 0, units: 0, clv: [], clvOwn: [], margen: [], ev: [], ...(extra ? extra(p) : {}) }; F.n++; if (p.result === 'WIN') F.w++; F.units += p.units || 0; if (p.clv_pct != null) F.clv.push(p.clv_pct); if (p.clv_own_pct != null) F.clvOwn.push(p.clv_own_pct); if (p.close_margen_lado_pct != null) F.margen.push(p.close_margen_lado_pct); if (p.close_odds_contraria > 1) { const cP = Number(p.close_para_ev || p.close_own || p.close_price); if (cP > 1 && p.odds > 1) { const Q = 1 / cP + 1 / p.close_odds_contraria; if (Q > 1) F.ev.push(100 * (p.odds * ((1 / cP) / Q) - 1)); } } } return o; };
   const sd = (a) => { if (a.length < 2) return null; const m = a.reduce((x, y) => x + y, 0) / a.length; return r2(Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1))); };
   const mean = (a) => (a.length ? r2(a.reduce((x, y) => x + y, 0) / a.length) : null);
-  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, F]) => [k, { ...Object.fromEntries(Object.entries(F).filter(([kk]) => !['n', 'w', 'units', 'clv', 'clvOwn'].includes(kk))), n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units), roi_pct: F.n ? r2(100 * F.units / F.n) : null, clv_avg_pct: mean(F.clv), clv_n: F.clv.length, clv_sd: sd(F.clv), clv_own_avg_pct: mean(F.clvOwn), clv_own_n: F.clvOwn.length, clv_own_sd: sd(F.clvOwn), clv_own_beat_pct: F.clvOwn.length ? r2(100 * F.clvOwn.filter((x) => x > 0).length / F.clvOwn.length) : null, note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
+  // MEDIANA, no media, para el margen: una pareja mal emparejada que se cuele mueve la media y no la mediana.
+  const mediana = (a) => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return r2(b[(b.length - 1) >> 1]); };
+  const fam = (o) => Object.fromEntries(Object.entries(o).map(([k, F]) => [k, { ...Object.fromEntries(Object.entries(F).filter(([kk]) => !['n', 'w', 'units', 'clv', 'clvOwn', 'margen', 'ev'].includes(kk))), n: F.n, hit_pct: F.n ? r2(100 * F.w / F.n) : null, units: r2(F.units), roi_pct: F.n ? r2(100 * F.units / F.n) : null, clv_avg_pct: mean(F.clv), clv_n: F.clv.length, clv_sd: sd(F.clv), clv_own_avg_pct: mean(F.clvOwn), clv_own_n: F.clvOwn.length, clv_own_sd: sd(F.clvOwn), clv_own_beat_pct: F.clvOwn.length ? r2(100 * F.clvOwn.filter((x) => x > 0).length / F.clvOwn.length) : null, // EL MARGEN QUE COBRA LA CASA, MEDIDO EN ESTA FAMILIA (16-sep). No es un dato de color: es el listón.
+      // En el total de puntos sale una MEDIANA del 4,95 % por lado sobre 114 observaciones, contra el 3,13 %
+      // que Cloudbet cobra en sus otros mercados — un 58 % más. Para salir a cero ahí hace falta una ventaja
+      // de unos 5 puntos porcentuales, y nunca hemos medido tenerla. Se mide con las dos caras de la MISMA
+      // foto, así que no depende de la muestra de resultados: con n = 114 ya es un número serio.
+      margen_lado_pct: mediana(F.margen), margen_n: F.margen.length,
+      // y el retorno esperado al cierre, que es el veredicto (el ROI de arriba es ruido a estas muestras)
+      ev_cierre_pct: mean(F.ev), ev_n: F.ev.length,
+      note: k === 'ML' ? 'familia de referencia (benchmark), jamás pick' : undefined }]));
   // la curva de cierre por cubo (T−60…T−1, own/best/pinnacle) por familia — el "cuándo" del edge
   const curve = (() => { try { const CL = require('../implied-engine/closes'); const byF = {}; for (const p of done) (byF[p.family] = byF[p.family] || []).push(p); return Object.fromEntries(Object.entries(byF).map(([f, l]) => [f, CL.summarize(l.filter((p) => p.close_series).map((p) => ({ odds: p.odds, closes: { buckets: p.close_series } })))])); } catch { return null; } })();
   return {

@@ -240,6 +240,36 @@ function snapshotCloses(rows) {
       spread_line: med(sp.map((x) => x.line)), spread_price: med(sp.map((x) => x.price)),
       total_line: med(tt.map((x) => x.line)), total_price: med(tt.map((x) => x.price)),
       ml_home: med(mlh), ml_away: med(mla),
+      // ── LAS DOS CARAS, POR CASA (16-sep) ────────────────────────────────────────────────────────────
+      // Hasta hoy aquí solo se guardaba la MEDIANA de un lado (`spread_price` es el del local,
+      // `total_price` el del over). Con una sola cara no se puede quitar el margen y la vara no puede dar
+      // veredicto — es el tapón que el replay del 15-sep encontró en nueve motores. La mediana entre casas
+      // tampoco sirve: para desvigar hacen falta las dos caras de la MISMA casa y la MISMA pasada, así que
+      // se guarda por casa y el emparejado se hace después contra el libro que corresponda.
+      por_casa: (() => {
+        const o = {};
+        for (const bk of ev.bookmakers || []) {
+          const k = String(bk.key || bk.title || '').toLowerCase(); if (!k) continue;
+          const e = o[k] = o[k] || {};
+          for (const mk of bk.markets || []) {
+            if (mk.key === 'spreads') {
+              const h = (mk.outcomes || []).find((x) => x.name === ev.home_team), a = (mk.outcomes || []).find((x) => x.name === ev.away_team);
+              if (h && h.point != null) { e.spread_line_home = -h.point; e.spread_home = h.price; }
+              if (a && a.point != null) e.spread_away = a.price;
+            }
+            if (mk.key === 'totals') {
+              const ov = (mk.outcomes || []).find((x) => x.name === 'Over'), un = (mk.outcomes || []).find((x) => x.name === 'Under');
+              if (ov && ov.point != null) { e.total_line = ov.point; e.total_over = ov.price; }
+              if (un && un.point != null) e.total_under = un.price;
+            }
+            if (mk.key === 'h2h') {
+              const h = (mk.outcomes || []).find((x) => x.name === ev.home_team), a = (mk.outcomes || []).find((x) => x.name === ev.away_team);
+              if (h) e.ml_home = h.price; if (a) e.ml_away = a.price;
+            }
+          }
+        }
+        return o;
+      })(),
     };
   }
   st.at = new Date().toISOString();

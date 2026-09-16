@@ -1672,7 +1672,18 @@ function closeOddsFor(pk, closes) {
   const cap = c.captura || null;
   if (exactas.length) {
     const r = mejor(exactas);
-    return r && r.odds ? { odds: r.odds, src: 'exacta', pre_min: r.pre_min ?? null, captura: cap } : null;
+    if (!r || !r.odds) return null;
+    // LA CARA CONTRARIA, QUE YA ESTABA GUARDADA (16-sep). `c.rows` trae el mercado ENTERO de la pasada —las
+    // dos caras, por casa— y hasta hoy solo se leía el lado de la pick. Sin la contraria no se puede quitar
+    // el margen y la vara no puede dar veredicto: era el tapón de los nueve motores del replay del 15-sep.
+    // `carasDelCierre` exige misma casa y misma pasada, y rechaza las parejas con Q ≤ 1 (un arbitraje contra
+    // sí misma no existe: si sale, el emparejado está mal y darlo por bueno inflaría el EV a nuestro favor).
+    let contra = null;
+    try { contra = require('../implied-engine/closes').carasDelCierre(r, c.rows); } catch { contra = null; }
+    return { odds: r.odds, src: 'exacta', pre_min: r.pre_min ?? null, captura: cap,
+      contraria: contra && contra.cuota_contraria ? contra.cuota_contraria : null,
+      margen_lado_pct: contra && contra.margen_lado_pct != null ? contra.margen_lado_pct : null,
+      contraria_motivo: contra ? contra.motivo : 'no calculada' };
   }
 
   // ── sin línea exacta: la escalera de la misma casa ──────────────────────────────────────────
@@ -1690,7 +1701,10 @@ function closeOddsFor(pk, closes) {
   const pInterp = abajo.p + t * (arriba.p - abajo.p);
   if (!(pInterp > 0.01 && pInterp < 0.99)) return null;
   const preMin = escalera.reduce((mn, r) => (r.pre_min != null && (mn == null || r.pre_min < mn) ? r.pre_min : mn), null);
-  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada', pre_min: preMin, captura: cap };
+  // una cuota INTERPOLADA no tiene cara contraria porque no existió: es un precio que hemos construido
+  // nosotros entre dos líneas reales. Devig contra una cara inventada sería inventarse también el margen.
+  return { odds: +(1 / pInterp).toFixed(3), src: 'interpolada', pre_min: preMin, captura: cap,
+    contraria: null, margen_lado_pct: null, contraria_motivo: 'la cuota propia es interpolada: no hay mercado real contra el que emparejarla' };
 }
 
 const RES = require('../data-providers/esports/results');
@@ -1734,12 +1748,22 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
   // después —o se recuperaba al migrar los ids— el dato se perdía para siempre. El cierre es un hecho del
   // pasado: si está, se usa, aunque la pick ya esté cerrada.
   let backfilled = 0;
+  let contrariasNuevas = 0;
   for (const p of Object.values(st.picks)) {
-    if (p.status !== 'SETTLED' || p.clv_pct != null) continue;
+    if (p.status !== 'SETTLED') continue;
+    // dos rellenos distintos: el de siempre (picks sin CLV) y el de la CARA CONTRARIA (16-sep), que hace
+    // falta en TODAS, incluidas las que ya tenían CLV. El archivo de cierres conserva el mercado entero, así
+    // que esto recupera hacia atrás lo que hasta ahora no se leía — hasta donde llegue la poda del archivo.
+    const faltaClv = p.clv_pct == null;
+    const faltaContraria = p.close_odds_contraria == null && p.close_contraria_motivo == null;
+    if (!faltaClv && !faltaContraria) continue;
     const co = closeOddsFor(p, closes0);
-    if (co) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.close_captura = co.captura || null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
+    if (!co) continue;
+    if (faltaClv) { p.close_odds = co.odds; p.close_src = co.src; p.close_pre_min = co.pre_min ?? null; p.close_captura = co.captura || null; p.clv_pct = +(((p.odds / co.odds) - 1) * 100).toFixed(2); backfilled++; }
+    if (faltaContraria) { p.close_odds_contraria = co.contraria || null; p.close_margen_lado_pct = co.margen_lado_pct ?? null; p.close_contraria_motivo = co.contraria_motivo || null; if (co.contraria) contrariasNuevas++; }
   }
-  if (backfilled) wr(PICKS_F(game), st);
+  if (contrariasNuevas) backfilled += 0;   // se cuenta aparte en el parte; no infla el contador de CLV
+  if (backfilled || contrariasNuevas) wr(PICKS_F(game), st);
 
   // MIGRACIÓN DE UNA VEZ (15-sep, A03). Los VOID que este motor escribió por caducidad o por parseo
   // descartado no eran devoluciones de la casa: eran huecos de dato disfrazados de cero. Se reclasifican
@@ -1948,7 +1972,8 @@ async function settlePicks(game, { sinceDays = 4, maxDias = 30 } = {}) {
     pk.settled_at = new Date().toISOString();
     pk.result_source = r.source;
     const co = closeOddsFor(pk, closes);
-    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.close_captura = co.captura || null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2); }
+    if (co) { pk.close_odds = co.odds; pk.close_src = co.src; pk.close_pre_min = co.pre_min ?? null; pk.close_captura = co.captura || null; pk.clv_pct = +(((pk.odds / co.odds) - 1) * 100).toFixed(2);
+      pk.close_odds_contraria = co.contraria || null; pk.close_margen_lado_pct = co.margen_lado_pct ?? null; pk.close_contraria_motivo = co.contraria_motivo || null; }
     try { Object.assign(pk, closeExtrasFor(pk, closes)); } catch { /* la medición extra nunca bloquea la liquidación */ }
     settled++;
   }

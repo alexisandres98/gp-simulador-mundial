@@ -9505,11 +9505,20 @@ async function refreshClubPickPrices() {
     if (!ceid) continue;
     try {
       let rows = [];
+      let rowsContraRefresco = null;
       if (p.family === 'SOLID') {
         rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND lower(side)=$2 AND observed_at > now() - interval '3 hours'`, [ceid, String(p.selection_code || '').toLowerCase()])).rows;
       } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
         const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
-        rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND lower(side)=$4 AND observed_at > now() - interval '3 hours'`, [ceid, fam, p.line, String(p.side || '').toLowerCase()])).rows;
+        // SE PIDEN LAS DOS CARAS EN LA MISMA CONSULTA (16-sep). Antes el `lower(side)=$4` traía solo el lado
+        // de la pick, y sin la contraria no hay forma de quitar el margen de la casa: es lo que dejaba a
+        // tarjetas —la familia con dinero real— sin veredicto posible. Traerlas juntas no cuesta una llamada
+        // más ni un índice distinto, y garantiza que las dos son de la MISMA pasada, que es justo lo que el
+        // desvigado necesita.
+        const ladoP = String(p.side || '').toLowerCase();
+        const ambas = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o, lower(side) side FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at > now() - interval '3 hours'`, [ceid, fam, p.line])).rows;
+        rows = ambas.filter((x) => x.side === ladoP);
+        rowsContraRefresco = ambas.filter((x) => x.side === ({ over: 'under', under: 'over' }[ladoP] || '\u0000'));
       } else if (p.family === 'PLAYER') {
         rows = (await dbc.query(`SELECT sportsbook_code b, odds_decimal::float o FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at > now() - interval '3 hours'`, [ceid, p.player_family, p.pid])).rows;
       }
@@ -9525,7 +9534,7 @@ async function refreshClubPickPrices() {
       p.odds_refreshed_at = new Date().toISOString();
       // 9-sep: la misma lectura entra al cierre por cubo (T−60/−30/−10) de la MISMA casa de creación, la mejor y
       // Pinnacle. `clubPicksCloseBuckets` (cada 3 min) rellena los cubos finos; aquí solo se aprovecha la consulta.
-      try { clubPickCloseRecord(p, rows, ko, now); } catch { /* nunca bloquea el refresco */ }
+      try { clubPickCloseRecord(p, rows, ko, now, rowsContraRefresco); } catch { /* nunca bloquea el refresco */ }
       refreshed++;
     } catch { /* siguiente ciclo */ }
   }
@@ -9536,7 +9545,7 @@ async function refreshClubPickPrices() {
 // `rows` = [{ b: casa, o: cuota, seen? }] de la selección exacta de la pick. Guarda en `p.closes` una lectura por
 // cubo T−60/−30/−10/−5/−1 con tres referencias: la casa donde nació (own), la mejor (best) y Pinnacle. La
 // cotización de fondo se refresca cada ~10 min desde The Odds API, así que los cubos finos llevan `age_min`.
-function clubPickCloseRecord(p, rows, ko, now = Date.now()) {
+function clubPickCloseRecord(p, rows, ko, now = Date.now(), rowsContra = null) {
   if (!rows || !rows.length) return null;
   const CL = require('./implied-engine/closes');
   // EL CIERRE ES ANTES DEL SAQUE (15-sep, A11 de la auditoría externa). La ventana de `clubPicksCloseBuckets`
@@ -9553,6 +9562,26 @@ function clubPickCloseRecord(p, rows, ko, now = Date.now()) {
   p.closes = p.closes || { buckets: {}, last: null };
   const b = CL.record(p.closes, ko, { own: own ? own.o : null, best: best || null, pinnacle: pin ? pin.o : null, age_min: newest ? (now - Date.parse(newest)) / 60000 : undefined }, now);
   if (p.closes.last) p.close_captura = CL.etiquetaCaptura(est);
+  // ── LA CARA CONTRARIA DEL CIERRE (16-sep) ────────────────────────────────────────────────────────────
+  // La consulta de `clubPicksCloseBuckets` ya traía las DOS caras del mercado y un filtro tiraba una. Sin
+  // ella no se puede quitar el margen de la casa, y sin eso la vara no puede decir si tarjetas gana dinero:
+  // es la familia con dinero real y llevaba desde el principio sin veredicto posible por este detalle.
+  //
+  // Se empareja SIEMPRE contra la MISMA CASA que el cierre `own` —la casa donde nació la pick—, nunca
+  // contra la mejor de cada lado entre casas: eso daría una Q menor que 1, un arbitraje que no existió, y
+  // un EV inflado en la dirección que nos conviene. Si esa casa no cotiza la contraria, se dice y ya está.
+  if (own && Array.isArray(rowsContra) && rowsContra.length) {
+    const oc = rowsContra.find((r) => r.b === own.b);
+    if (oc && oc.o > 1) {
+      p.close_odds_contraria = oc.o;
+      p.close_para_ev = own.o;
+      p.close_para_ev_casa = own.b;
+      const Q = 1 / own.o + 1 / oc.o;
+      p.close_margen_lado_pct = +(100 * (Q - 1) / 2).toFixed(3);
+      if (Q <= 1) { p.close_odds_contraria = null; p.close_contraria_motivo = `Q = ${Q.toFixed(6)} ≤ 1: las dos caras no pueden ser de la misma casa y el mismo momento`; }
+      else p.close_contraria_motivo = null;
+    } else p.close_contraria_motivo = `la casa del cierre (${own.b}) no cotizaba la cara contraria en esa pasada`;
+  } else if (own) p.close_contraria_motivo = 'la pasada no trajo filas de la cara contraria';
   return b;
 }
 let _clubBucketsBusy = false;
@@ -9577,11 +9606,19 @@ async function clubPicksCloseBuckets() {
     for (const p of cerca) {
       const fam = p.family === 'SOLID' ? 'match_winner' : p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
       const side = String(p.family === 'SOLID' ? p.selection_code : p.side || '').toLowerCase();
-      const rows = r.rows.filter((x) => x.ceid === p.event.canonical_event_id && x.fam === fam && x.side === side && (fam === 'match_winner' || Math.abs(x.line - p.line) < 0.01));
+      const mismoMercado = r.rows.filter((x) => x.ceid === p.event.canonical_event_id && x.fam === fam
+        && (fam === 'match_winner' || Math.abs(x.line - p.line) < 0.01));
+      const rows = mismoMercado.filter((x) => x.side === side);
       if (!rows.length) continue;
+      // LA CARA CONTRARIA YA VENÍA EN LA MISMA CONSULTA y este filtro la tiraba (16-sep). Para totales es el
+      // lado opuesto de la MISMA línea; para el ganador no hay contraria de dos caras (son tres vías), así
+      // que ahí se deja nula y la vara lo dirá en vez de inventarse un margen.
+      const contrario = fam === 'match_winner' ? null
+        : { over: 'under', under: 'over' }[side] || null;
+      const rowsContra = contrario ? mismoMercado.filter((x) => x.side === contrario) : null;
       leidas++;
       const ko = Date.parse(p.event.kickoff_at);
-      if (clubPickCloseRecord(p, rows, ko, now)) cubos++;
+      if (clubPickCloseRecord(p, rows, ko, now, rowsContra)) cubos++;
     }
     if (cubos) save();
     return { candidatas: cerca.length, leidas, cubos_nuevos: cubos };

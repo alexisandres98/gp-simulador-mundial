@@ -613,6 +613,24 @@ async function settleShadow({ voidDays = 12 } = {}) {
         if (best) { p.close_price = best.odds; p.clv_pct = +((p.odds / best.odds - 1) * 100).toFixed(2); p.close_source = best.book; }
         if (pin) { p.close_pin = pin.odds; p.clv_pin_pct = +((p.odds / pin.odds - 1) * 100).toFixed(2); }
         if (!best) p.close_missing = 'línea no cotizada al cierre';
+        // LA CARA CONTRARIA, QUE YA ESTABA GUARDADA (16-sep). `cl.rows` es el mercado ENTERO de la pasada —las
+        // dos caras, por casa— y hasta hoy solo se leía el lado de la pick. Sin la contraria no se puede
+        // quitar el margen, y sin eso la vara no da veredicto: era el tapón que el replay del 15-sep
+        // encontró en nueve motores de nueve. Se empareja contra la fila de la MISMA casa de la que salió el
+        // cierre que se está usando (`own` si lo hay, si no la mejor): el margen de una casa no se puede
+        // medir con la cara de otra, y `carasDelCierre` rechaza además las parejas con Q ≤ 1.
+        const refCara = pin || best;
+        if (refCara) {
+          try {
+            const cc = require('../implied-engine/closes').carasDelCierre(refCara, cl.rows || []);
+            p.close_odds_contraria = cc.cuota_contraria || null;
+            p.close_margen_lado_pct = cc.margen_lado_pct ?? null;
+            p.close_contraria_motivo = cc.motivo || null;
+            // el cierre que consume la vara tiene que ser el de la MISMA casa que la contraria, no el mejor
+            // entre casas: mezclarlos daría un margen que no es el de nadie
+            if (cc.cuota_contraria) { p.close_para_ev = cc.cuota; p.close_para_ev_casa = cc.casa; }
+          } catch { /* la cara contraria nunca bloquea la liquidación */ }
+        }
         // CÓMO SE CAPTURÓ ESE CIERRE (15-sep, A11): `prepartido`, `in_play` o `desconocido`. La vara lo usa
         // para dejar fuera del EV lo que se capturó con el partido ya rodando.
         p.close_captura = cl.captura || null;

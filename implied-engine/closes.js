@@ -246,6 +246,50 @@ function salud(items) {
     lectura: bloque ? `${bloque} de ${n} tesis tienen cubos escritos en la misma pasada (antes del 11-sep): en esas la CURVA no se puede leer, el CLV sí.` : 'curva limpia: cada cubo, una lectura propia.' };
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+// LAS DOS CARAS DEL CIERRE (16-sep-2026)
+// ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+//
+// EL PROBLEMA QUE RESUELVE. El replay del 15-sep (`docs/METRICAS_RECALCULADAS_2026-09.md` §5b) dejó a nueve
+// motores de nueve con el veredicto «no se puede saber»: sin la cara CONTRARIA del cierre no se puede quitar
+// el margen de la casa, y sin quitarlo no hay retorno esperado. Se anotó como la tarea que desbloquea todo
+// lo demás.
+//
+// Y AL IR A ARREGLARLO RESULTÓ QUE EL DATO YA ESTABA. Los motores de esports, tenis de mesa y dardos guardan
+// en su archivo de cierres las filas ENTERAS del mercado —las dos caras, por casa, de la misma pasada— y lo
+// único que leían era el lado de la pick. No era un problema de captura: era un problema de lectura. Esto lo
+// lee.
+//
+// POR QUÉ NO SIRVE CUALQUIER PAREJA. Para quitar el margen hacen falta las dos caras DEL MISMO CONTRATO, en
+// la MISMA CASA y de la MISMA PASADA. Emparejar la mejor cuota de cada lado entre casas distintas da una Q
+// menor que 1 —un arbitraje que no existió— y con ella el EV sale inflado hacia arriba, que es justo la
+// dirección en la que este sistema ya se ha equivocado varias veces. Por eso se delega en `parContrario` de
+// `lib/contrato.js`, que exige casa y momento, y por eso cuando no hay pareja legítima se devuelve el motivo
+// en vez de una aproximación.
+function carasDelCierre(objetivo, filas, { toleranciaMs = null } = {}) {
+  const CT = require('../lib/contrato');
+  if (!objetivo) return { propia: null, contraria: null, motivo: 'sin fila propia' };
+  const opts = { detalle: true };
+  if (toleranciaMs != null) opts.toleranciaMs = toleranciaMs;
+  const r = CT.parContrario(objetivo, filas || [], opts);
+  const contraria = r && r.fila ? r.fila : null;
+  const cuotaDe = (f) => (f ? Number(f.cuota != null ? f.cuota : (f.odds != null ? f.odds : f.precio)) : null);
+  const ca = cuotaDe(objetivo), cb = cuotaDe(contraria);
+  const out = { propia: objetivo, contraria, cuota: ca, cuota_contraria: cb,
+    casa: objetivo.book || objetivo.casa || null, motivo: contraria ? null : ((r && r.motivo) || 'sin cara contraria') };
+  if (ca > 1 && cb > 1) {
+    const Q = 1 / ca + 1 / cb;
+    out.Q = +Q.toFixed(6);
+    out.margen_lado_pct = +(100 * (Q - 1) / 2).toFixed(3);
+    // UNA Q MENOR QUE 1 NO ES UNA GANGA, ES UN ERROR DE EMPAREJADO. Significa que las dos caras no son del
+    // mismo mercado o no son del mismo momento; ninguna casa cotiza un arbitraje contra sí misma. Se rechaza
+    // y se dice, porque tomarla por buena inflaría el EV de esa familia en la dirección que nos conviene.
+    if (Q <= 1) { out.contraria = null; out.cuota_contraria = null; out.motivo = `Q = ${out.Q} ≤ 1: las dos caras no pueden ser del mismo mercado y el mismo momento en la misma casa`; out.sospechosa = true; }
+  }
+  return out;
+}
+
 module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, summarize, rescatar, salud,
   // 15-sep (A11): el inicio REAL manda sobre el programado, y desde hoy está CONECTADO en los ocho sitios
   // que capturan cierres — fútbol derivadas, esports, tenis de mesa, dardos, baloncesto (las dos rutas del
@@ -253,4 +297,6 @@ module.exports = { BUCKETS, KEYS, bucketFor, minutesToStart, record, clvPct, sum
   // (`prepartido` | `in_play` | `desconocido`) y cuenta con `cuenta()`; `lib/vara.js` excluye las `in_play`
   // del EV y las publica aparte en `cierres_in_play`. Se conectaron TODOS a la vez a propósito: hacerlo a
   // medias en unos motores y no en otros haría incomparables sus cierres.
-  inicioDe, estadoCaptura, etiquetaCaptura, cuenta, diagInPlay, cierreValorable };
+  inicioDe, estadoCaptura, etiquetaCaptura, cuenta, diagInPlay, cierreValorable,
+  // 16-sep: las dos caras del cierre, que en tres motores ya estaban guardadas y no se leían
+  carasDelCierre };

@@ -18,6 +18,16 @@
 'use strict';
 
 const fs = require('fs');
+// ── EL SAQUE ESTABA CUATRO O CINCO HORAS DESPLAZADO (16-sep, A29 de la auditoría externa) ───────────────
+// Aquí ponía `Date.parse(g.date + 'T' + g.time + ':00Z')`. `g.time` viene de `gametime` de nflverse, que es
+// hora del ESTE de Estados Unidos; pegarle una `Z` detrás no la convierte, la declara UTC. Un partido de la
+// 1 de la tarde en Nueva York quedaba anotado a la 1 de la tarde UTC — cuatro horas antes en septiembre y
+// cinco en enero, porque la temporada cruza el cambio de hora.
+// De ese número cuelgan el pronóstico del tiempo (que se pedía para la hora equivocada), la ventana de
+// captura del cierre —así que el "último precio antes del saque" podía ser de cuatro horas DESPUÉS— y la
+// espera de 3,2 h para liquidar. `lib/zona.js` lo convierte con la base de zonas del sistema, sin tabla de
+// reglas de horario de verano que se quede vieja.
+const Z = require('../lib/zona');
 const path = require('path');
 const D = require('./data');
 const { simulate } = require('./simulate');
@@ -280,7 +290,7 @@ function snapshotCloses(rows) {
 async function weatherFor(g) {
   const data = D.load();
   const v = data.venues[g.stadium_id];
-  const kickoff = Date.parse(g.date + 'T' + (g.time || '17:00') + ':00Z');
+  const kickoff = Z.nflKickoffUtc(g.date, g.time);
   if (!v || !(kickoff > Date.now() - 4 * 3600e3) || kickoff - Date.now() > 8 * 864e5) return null;
   if (v.roof === 'dome' || v.roof === 'closed') return { roof: v.roof, note: 'techo cerrado: el clima no juega.' };
   const key = g.stadium_id + ':' + g.date;
@@ -566,7 +576,7 @@ async function recordShadow() {
   let n = 0;
   for (const row of s.games) {
     const g = M.data.games.find((x) => x.id === row.id);
-    const kickoff = Date.parse(g.date + 'T' + (g.time || '17:00') + ':00Z');
+    const kickoff = Z.nflKickoffUtc(g.date, g.time);
     if (!(kickoff > Date.now() && kickoff - Date.now() < 6 * 864e5)) continue;
     const model = gameModel(g, M, { withFan: true });
     const mk = marketFor(g, odds);

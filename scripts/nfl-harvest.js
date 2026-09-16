@@ -51,6 +51,12 @@ const ARG = Object.fromEntries(process.argv.slice(2).map((s) => {
   const m = s.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] === undefined ? true : m[2]] : [s, true];
 }));
 
+// LA TEMPORADA ACTUAL NO ES EL AÑO NATURAL SIN MÁS. La NFL empieza en septiembre y termina en febrero, así
+// que en enero y febrero el año natural ya ha cambiado pero la temporada sigue siendo la del año anterior.
+// Sin esto, en enero se pediría `stats_player_week_2027` —que no existe— y se declararía «sin datos de la
+// temporada actual» justo en los playoffs.
+const TEMPORADA_ACTUAL = (() => { const d = new Date(); return d.getUTCMonth() >= 2 ? d.getUTCFullYear() : d.getUTCFullYear() - 1; })();
+
 const SEASONS_STATS = (() => { const out = []; for (let y = 2016; y <= new Date().getUTCFullYear(); y++) out.push(y); return out; })();
 
 async function dl(url, file) {
@@ -195,7 +201,18 @@ function aggregate() {
       const id = r.player_id; if (!id) continue;
       const p = players[id] = players[id] || { id, name: r.player_display_name || r.player_name, pos: r.position,
         group: r.position_group, headshot: r.headshot_url || null, team: r.team, seasons: {} };
-      p.name = r.player_display_name || p.name; p.pos = r.position || p.pos; p.team = r.team;   // el último visto manda
+      // EL EQUIPO, CON LA TEMPORADA EN LA QUE SE VIO (16-sep, A29 de la auditoría externa). `p.team = r.team`
+      // con «el último visto manda» está BIEN mientras la temporada en curso tenga filas; el problema es que
+      // en la semana 1 todavía no las tiene, así que lo último visto es de la temporada ANTERIOR — y en la
+      // NFL cambia de equipo alrededor de un cuarto de los jugadores de posición cada verano. Quien lee
+      // `p.team` no podía distinguir «este es su equipo de 2026» de «este era su equipo en 2025», y la nota
+      // del fichero ya lo admitía sin dar forma de comprobarlo.
+      // Ahora el equipo viaja con su sello y además se guarda el equipo POR TEMPORADA, que es lo que permite
+      // a quien consume decidir: usar el de 2026 si existe, o negarse a afirmar nada si no.
+      p.name = r.player_display_name || p.name; p.pos = r.position || p.pos;
+      p.team = r.team;
+      p.team_temporada = +r.season; p.team_semana = +r.week;
+      (p.team_por_temporada = p.team_por_temporada || {})[r.season] = r.team;
       if (r.headshot_url) p.headshot = r.headshot_url;
       const S2 = p.seasons[r.season] = p.seasons[r.season] || { g: 0, att: 0, cmp: 0, pyds: 0, ptd: 0, ints: 0, pepa: 0,
         car: 0, ryds: 0, rtd: 0, repa: 0, tgt: 0, rec: 0, recyds: 0, rectd: 0, sacks: 0 };
@@ -222,9 +239,19 @@ function aggregate() {
   }
   fs.mkdirSync(AGG_DIR, { recursive: true }); fs.writeFileSync(path.join(AGG_DIR, 'players.json'), JSON.stringify({
     at: new Date().toISOString(), n: Object.keys(kept2).length,
-    note: 'directorio de jugadores con volumen real en las dos últimas temporadas (nflverse stats_player_week). Totales por temporada; la posición/equipo es la ÚLTIMA vista — el roster 2026 real se confirma con la Semana 1 (sin feed licenciado de roster, NFL-0069).',
+    temporada_actual: TEMPORADA_ACTUAL,
+    note: 'directorio de jugadores con volumen real en las dos últimas temporadas (nflverse stats_player_week). '
+      + 'Totales por temporada. El equipo es el ÚLTIMO VISTO y viene sellado con `team_temporada`/`team_semana`, '
+      + 'más `team_por_temporada` con el equipo de cada año: en la semana 1 la temporada en curso todavía no '
+      + 'tiene filas, así que «lo último visto» es del año anterior y en la NFL cambia de equipo alrededor de un '
+      + 'cuarto de los jugadores de posición cada verano. Quien necesite el roster vigente tiene que mirar '
+      + '`team_por_temporada[temporada_actual]` y negarse si no está, en vez de leer `team` a secas '
+      + '(sin feed licenciado de roster, NFL-0069).',
     players: kept2,
   }));
+  const conActual = Object.values(kept2).filter((p) => p.team_por_temporada && p.team_por_temporada[TEMPORADA_ACTUAL]).length;
+  log(`  jugadores con equipo confirmado en ${TEMPORADA_ACTUAL}: ${conActual} de ${Object.keys(kept2).length}`
+    + (conActual === 0 ? '  ⚠ NINGUNO: `team` es del año anterior en todos' : ''));
   log(`  players.json: ${Object.keys(kept2).length} jugadores con volumen`);
 
   // ── META ───────────────────────────────────────────────────────────────────────────────────────────────

@@ -67,8 +67,27 @@ function load() {
     tw: (tw && tw.rows) || [],
     venues: (venues && venues.venues) || {},
     players: (players && players.players) || {},
+    // EL ROSTER VIGENTE NO SE SUPONE (16-sep, A29). `p.team` es el último equipo VISTO, y en la semana 1 lo
+    // último visto es del año anterior — en la NFL cambia de equipo alrededor de un cuarto de los jugadores
+    // de posición cada verano. `equipoDe()` devuelve el equipo de la temporada pedida o `null`, nunca el del
+    // año pasado disfrazado de actual; `equipoVisto()` sigue dando lo de antes para quien solo quiera pintar
+    // una ficha histórica.
+    playersMeta: { temporada_actual: (players && players.temporada_actual) || null, at: (players && players.at) || null },
     priors: priors || null,
     at: (games && games.at) || null,
+  };
+  data.equipoDe = (jugador, temporada) => {
+    const p = typeof jugador === 'string' ? data.players[jugador] : jugador;
+    if (!p) return null;
+    const t = temporada || data.playersMeta.temporada_actual || data.currentSeason;
+    if (p.team_por_temporada && p.team_por_temporada[t]) return p.team_por_temporada[t];
+    // sin fila de esa temporada no se afirma nada: devolver el equipo del año pasado sería el fallo de A29
+    return null;
+  };
+  data.equipoVisto = (jugador) => {
+    const p = typeof jugador === 'string' ? data.players[jugador] : jugador;
+    if (!p) return null;
+    return { team: p.team || null, temporada: p.team_temporada || null, semana: p.team_semana || null };
   };
   // índice: partidos ordenados por fecha (el orden ES el point-in-time)
   data.games.sort((a, b) => String(a.date).localeCompare(String(b.date)));

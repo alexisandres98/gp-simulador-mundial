@@ -42,3 +42,33 @@ Leaguepedia, mismo veto a uso `betting_commercial`. El espejo de HuggingFace dej
 de Leaguepedia en las tres tablas ⇒ players y drafts casan con games por `GameId`).
 Oracle's Elixir se volvió a intentar como atajo (la cuota de descarga de Drive seguía agotada; una copia al
 Drive del propietario tampoco es descargable por la vía disponible) — no entró ningún dato de OE.
+
+## Corrección 16-sep-2026 — CC BY-SA no es lo que decía esta ficha (A36 de la auditoría externa)
+
+Esta ficha clasifica Leaguepedia como `research_attribution_ccbysa` con `betting_commercial_ok: **NO**`.
+**La decisión operativa está bien** —LoL admin-only, todas las familias en sombra, probabilidad anclada a
+mercado— pero el motivo escrito no lo está, y razonar mal sobre una licencia calibra mal las decisiones en
+los dos sentidos.
+
+**CC BY-SA 4.0 NO prohíbe el uso comercial.** Eso es BY-**NC**-SA, que es otra licencia: la de Sackmann en
+tenis, donde la prohibición sí es explícita y real. CC BY-SA permite expresamente el uso comercial. Sus dos
+obligaciones son otras:
+
+1. **BY** — crédito, enlace a la licencia e indicación de si se hicieron cambios.
+2. **SA** — si se distribuye *material adaptado*, hay que licenciarlo bajo los mismos términos.
+
+Así que la razón por la que LoL es admin-only **no es la licencia**. Son estas tres, y separarlas permite
+saber cuál se puede levantar y cuál no:
+
+| motivo real | ¿se puede levantar? |
+|---|---|
+| **ShareAlike.** Publicar una pick derivada podría considerarse material adaptado, y eso arrastraría la obligación de licenciar la salida bajo CC BY-SA. | Sí, con análisis legal: depende de si el rating derivado es «material adaptado» o un hecho no protegible. Es justo lo que LOL-0049 tiene que contestar. |
+| **Términos de uso de Fandom**, distintos de la licencia del contenido, que limitan la cosecha automática. | Con acuerdo, o con una fuente licenciada (GRID). |
+| **Riot prohíbe funcionalidad de apuestas** en su Developer API; aunque Leaguepedia no es Riot, el dato de fondo son partidas oficiales de Riot. | No por nuestra parte. Es la restricción más dura y la que empuja al camino GRID. |
+
+Una prohibición atribuida a la licencia equivocada es frágil: el día que alguien lea CC BY-SA y vea que
+permite uso comercial, la restricción entera pierde autoridad aunque siga siendo correcta por los otros
+tres motivos. Por eso se corrige el texto y **no** la decisión.
+
+> No es asesoramiento legal. La revisión formal (LOL-0049) sigue pendiente.
+> Vista cruzada de las 28 fuentes de la casa: `docs/FUENTES_INVENTARIO_2026-09-16.md`.

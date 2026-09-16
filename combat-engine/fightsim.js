@@ -376,7 +376,46 @@ function core(pa, pb, M, H, { rounds = 3, roundMin = 5, n = 20000, seed = 17, ca
     sims: n, rounds_sched: rounds,
     hazards: { ko_a_per_min: r4(H.ko_a), ko_b_per_min: r4(H.ko_b), sub_a_per_min: r4(H.sub_a), sub_b_per_min: r4(H.sub_b), stand_share: H.stand_share },
   };
+  // ── COHERENCIA MÉTODO ↔ GANADOR (16-sep, A33 de la auditoría externa) ────────────────────────────────
+  // Aquí sale coherente POR CONSTRUCCIÓN —todo cuenta las mismas simulaciones— y el comentario de arriba lo
+  // dice desde el módulo 141. Pero «por construcción» solo vale mientras nadie toque un nodo del árbol por
+  // separado, y eso es exactamente lo que pasa después: `combat-engine/monitor.js` mezcla el GANADOR con el
+  // mercado (BLEND_W = 0,5) y deja los métodos crudos. A partir de ahí P(A gana) ya no es la suma de sus
+  // tres rutas, y una ficha puede decir «gana el 60 %» encima de tres métodos que suman 54 %.
+  // Es el mismo defecto que en F1, donde `p_win` se mezcla con el prior de casilla y el podio no.
+  // Se comprueba y se publica; no se recorta, porque recortar tiraría la mezcla, que está validada.
+  out.coherencia = coherenciaMetodos(out);
   return out;
+}
+
+// Comprueba que el vector de método reconstruye el de ganador, y el de decisión el de decisión. Devuelve
+// las violaciones con su tamaño, no un booleano: un `false` sin decir cuánto no sirve para arreglarlo.
+function coherenciaMetodos(o, { tol = 0.002 } = {}) {
+  if (!o || !o.win || !o.method) return null;
+  const m = o.method, w = o.win, d = o.decision || {};
+  const fallos = [];
+  const chk = (que, suma, debe) => {
+    if (!Number.isFinite(suma) || !Number.isFinite(debe)) return;
+    if (Math.abs(suma - debe) > tol) fallos.push({ que, suma: +suma.toFixed(5), debe: +debe.toFixed(5), dif: +(suma - debe).toFixed(5) });
+  };
+  chk('método de A reconstruye P(gana A)', (m.a_ko || 0) + (m.a_sub || 0) + (m.a_dec || 0), w.a);
+  chk('método de B reconstruye P(gana B)', (m.b_ko || 0) + (m.b_sub || 0) + (m.b_dec || 0), w.b);
+  chk('los tres resultados suman 1', (w.a || 0) + (w.b || 0) + (w.draw || 0), 1);
+  chk('el vector de método suma 1',
+    (m.a_ko || 0) + (m.a_sub || 0) + (m.a_dec || 0) + (m.b_ko || 0) + (m.b_sub || 0) + (m.b_dec || 0) + (m.draw || 0), 1);
+  if (d.ud_a != null) {
+    chk('los tipos de decisión de A reconstruyen su decisión', (d.ud_a || 0) + (d.sd_a || 0) + (d.md_a || 0), m.a_dec);
+    chk('los tipos de decisión de B reconstruyen su decisión', (d.ud_b || 0) + (d.sd_b || 0) + (d.md_b || 0), m.b_dec);
+  }
+  if (o.distance && Number.isFinite(o.distance.prob) && Number.isFinite(o.distance.finish_prob)) {
+    chk('llegar al final y terminar antes suman 1', o.distance.prob + o.distance.finish_prob, 1);
+    chk('las decisiones son exactamente las que llegan al final',
+      (m.a_dec || 0) + (m.b_dec || 0) + (m.draw || 0), o.distance.prob);
+  }
+  return { coherente: fallos.length === 0, tol, fallos,
+    ...(fallos.length ? { aviso: 'el vector de método y el de ganador dejaron de cuadrar. Sale coherente de '
+      + 'la simulación, así que si aquí falla es porque alguien tocó un nodo del árbol por separado — el '
+      + 'sospechoso habitual es la mezcla con el mercado, que se aplica al GANADOR y no a los métodos.' } : {}) };
 }
 
 // ---- 4) INCERTIDUMBRE (módulo 146) ----------------------------------------------------------------------
@@ -403,4 +442,4 @@ function uncertainty(out, pa, pb, M) {
   };
 }
 
-module.exports = { simulate, core, solveTilt, solveFinish, hazards, roundEdge, uncertainty, rng, gauss, factorContexto, priorsOficiales, calibracionRutas };
+module.exports = { simulate, coherenciaMetodos, core, solveTilt, solveFinish, hazards, roundEdge, uncertainty, rng, gauss, factorContexto, priorsOficiales, calibracionRutas };

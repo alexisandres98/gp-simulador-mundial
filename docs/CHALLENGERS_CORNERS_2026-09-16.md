@@ -32,19 +32,34 @@ de tarjetas es idéntico al del 15-sep.
 
 ## Lo que eligió cada familia, por su cuenta
 
+Las dos corridas son comparables entre sí: mismo arnés, mismos ficheros, `--rapido` en las dos.
+
 | | tarjetas | córners |
 |---|---|---|
-| amortiguación de fuerzas de equipo (`damp`) | **0** en la mayoría de bloques | **1** en 9 de 10 bloques |
-| paridad (el multiplicador 1,06 − 0,25·gap) | elegida en 9 de 10 | **elegida en 0 de 10** |
-| vida media | 365 d | 730 d al principio, **90-180 d** desde marzo |
-| prior de liga | 20 | 60 |
+| **paridad** (el multiplicador 1,06 − 0,25·gap) | elegida en **9 de 10** bloques | elegida en **0 de 10** |
+| amortiguación de fuerzas de equipo (`damp`) | entre 0,25 y 1 | **1 en 9 de 10** |
+| vida media | **90 d** casi siempre | 730 d al principio, 90-180 d desde marzo |
+| prior de liga | 5-60, inestable | 60 estable |
+| **el árbitro, aislado** (T2b − T2a) | **−0,00309** (t −3,80): MEJORA | **+0,00087** (t 2,12): EMPEORA |
 
-**Van en direcciones opuestas.** Las tarjetas quieren el total de la liga con paridad y sin fuerzas de
-equipo; los córners quieren las fuerzas de equipo ENTERAS y ninguna paridad. Forzarles el mismo `damp` es
-garantizar que al menos una de las dos está mal servida.
+Dos contrastes se sostienen con claridad, y son los que importan:
 
-Y la vida media se acorta a la mitad de temporada: en córners lo reciente pesa más que en tarjetas, lo cual
-tiene sentido — un cambio de entrenador cambia el volumen de centros mucho antes que la disciplina.
+1. **La paridad: 9 de 10 contra 0 de 10.** Un partido parejo se pica más —las tarjetas lo quieren en casi
+   todos los bloques— y no se sacan más córners por ser parejo. Es un sí y un no rotundos sobre la misma
+   señal.
+2. **El árbitro va en direcciones opuestas y con significación en las dos.** Mejora las tarjetas (t −3,80)
+   y empeora los córners (t +2,12). Eso valida exactamente la configuración que hay hoy en producción:
+   `GP_CARDS_REF` encendido desde el 15-sep y `GP_CORNERS_REF` apagado — cada uno por su propia medición y
+   no por una regla común.
+
+Sobre `damp` el contraste es menos limpio de lo que esperaba: las dos familias lo eligen distinto de cero
+en casi todos los bloques, así que el problema no es tanto «0 contra 1» como que **el auto-tune de
+producción solo ofrece `[0, 0,25, 0,5]` y las dos familias piden con frecuencia 1**. La rejilla se queda
+corta por arriba para las dos, y encima les impone un único valor.
+
+Y la vida media apunta al revés de lo que dicta la intuición: las tarjetas quieren 90 días casi siempre —lo
+reciente manda, seguramente porque las instrucciones a los árbitros cambian dentro de la temporada— y los
+córners empiezan pidiendo 730 y se acortan a partir de marzo.
 
 ## El resultado: T2a gana a producción, y con holgura
 
@@ -66,9 +81,8 @@ Con Benjamini–Hochberg al 10 % (umbral 0,01304):
 - **PIERDE contra T0: `T1|poisson`** — Poisson a secas es peor que lo que hay.
 - Empate: el resto.
 
-Esto es lo contrario de lo que pasó en tarjetas, donde ningún aspirante le ganaba a T0 de forma robusta. En
-córners **las fuerzas de equipo sí aportan**, y se ve en que `T2a|nb` − `T1|nb` es la mayor parte de la
-mejora: −0,00365 contra −0,00101.
+En córners **las fuerzas de equipo sí aportan**, y se ve en que `T2a|nb` − `T1|nb` es la mayor parte de la
+mejora: −0,00365 contra −0,00101. El nivel dinámico solo (T1) no basta; lo que gana es añadirle el equipo.
 
 ## El árbitro: fuera de producción, y ahora con el número
 
@@ -80,8 +94,13 @@ demás:
 Positivo significa PEOR. El árbitro **empeora** la predicción de córners, y el intervalo no toca el cero.
 
 Eso responde la segunda parte de A21 sin ambigüedad: `GP_CORNERS_REF` está apagado por defecto y **debe
-seguir apagado**. No es prudencia, es la medición. (Contrasta con tarjetas, donde el árbitro sí entra a
-producción desde el 15-sep por orden de Alexis y con su propia evidencia.)
+seguir apagado**. No es prudencia, es la medición.
+
+Y el contraste con tarjetas es directo, porque el mismo aislamiento corrido sobre la misma base da
+**−0,00309 con t −3,80**: el árbitro **mejora** las tarjetas con la misma contundencia con la que empeora
+los córners. Las dos configuraciones de producción —`GP_CARDS_REF` encendido desde el 15-sep,
+`GP_CORNERS_REF` apagado— quedan cada una respaldada por su propia medición, que es exactamente lo que A21
+pedía al separar las familias.
 
 ## Calibración en las líneas que se ofrecen
 

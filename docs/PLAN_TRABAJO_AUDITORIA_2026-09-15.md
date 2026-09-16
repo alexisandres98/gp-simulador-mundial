@@ -31,6 +31,32 @@
 Además, el 15-sep: confirmado el total depositado (2.280,92 USDT, la conciliación cierra a cero exacto) y
 aplicada la migración de las filas sin resultado localizable (10 filas, 8 de CS2 y 2 de tarjetas).
 
+### ESTADO DE LAS PUERTAS AL 16-SEP (Fase 3 arrancada)
+
+`/api/internal/puertas?key=` — las cinco puertas convertidas en código (`lib/puertas.js`).
+
+**Ninguna de las diez familias pasa G0.** Esa es la foto real, y ahora es una cifra y no una impresión.
+
+| familia | G0 | qué la bloquea |
+|---|---|---|
+| **`futbol:CARDS`** | **6 de 7** | solo le falta la cara contraria del cierre, que empieza a acumularse hoy |
+| `esports:lol` | 5 de 7 | contrato y liquidador sin declarar |
+| `esports:cs2` | 4 de 7 | **11,8 % sin resultado localizable** (tope 5 %), y contrato/liquidador sin declarar |
+| `esports:valorant`, `esports:dota2`, `tt` | 4 de 7 | contrato, liquidador y cierres |
+| `tenis`, `dardos`, `nfl`, `hoops` | 3 de 7 | cierres, contrato y liquidador |
+
+Dos cosas que la puerta saca a la luz y que no estaban en ninguna lista:
+
+- **Tarjetas está a UNA comprobación de G0.** Contrato documentado, liquidador concordante, identidad
+  completa, cero cierres en vivo, 890 filas legibles, cero sin resolver. Lo único que le falta es la cara
+  contraria, y el arreglo ya está puesto: es cuestión de que pasen partidos.
+- **CS2 tiene un 11,8 % de apuestas sin resultado localizable**, más del doble del tope. Con esa proporción,
+  su ROI y su EV están calculados sobre una muestra seleccionada por la propia ausencia de dato. Es un P0 de
+  integridad que no estaba identificado y que bloquea a la familia con más muestra de la casa.
+
+**El umbral corregido del conjunto** (Benjamini–Hochberg al 10 % sobre las cinco familias con EV estimable)
+es **p ≤ 0,000346**. Se publica al lado de cada veredicto individual.
+
 ### Lo que queda, por orden de importancia
 
 **1. LA CARA CONTRARIA DEL CIERRE. Una tarea, no nueve.** El replay del apartado 5b de

@@ -45,7 +45,14 @@ ok(near(sum(leg.checkout), 1, 1e-6), 'solo: la PMF del checkout suma 1');
 ok(leg.checkout.every(([c]) => R.canFinish(c, 3)), 'solo: todos los checkouts son alcanzables en ≤3 dardos');
 ok(leg.exp180 < 2 && leg.exp180 > 0.05, 'solo: 180s por leg en rango');
 const c100 = K.calibrate({ avg: 100, per180: 0.5, checkoutPct: 0.42 });
-ok(near(c100.fitted.avg3, 100, 0.6), `calibración: media 100 → ${c100.fitted.avg3.toFixed(2)}`);
+// EL CONTRATO CAMBIÓ EL 16-SEP (M6 · A27). `avg` es la media OBSERVADA que publica la fuente, medida en
+// PARTIDOS con legs censurados —el que pierde el leg nunca tira el checkout— y ya NO es la media del
+// solo-leg: el kernel invierte la curva de censura y ajusta la de solo-leg que produciría esa observada.
+// Así que lo que hay que comprobar es que la bisección clave SU objetivo, y que el objetivo esté por
+// debajo de la observada en el grueso del circuito, que es la dirección que midió A27.
+ok(near(c100.fitted.avg3, c100.target.avg, 0.6), `calibración: la bisección clava su objetivo (${c100.target.avg} → ${c100.fitted.avg3.toFixed(2)})`);
+ok(c100.target.avg_observada === 100 && c100.target.censura_pp < 0,
+  `calibración: media observada 100 → objetivo de solo-leg ${c100.target.avg} (censura ${c100.target.censura_pp})`);
 ok(near(c100.fitted.exp180, 0.5, 0.05), `calibración: 180/leg 0,5 → ${c100.fitted.exp180.toFixed(3)}`);
 const c80 = K.calibrate({ avg: 80, checkoutPct: 0.3 });
 ok(c80.sk.pT < c100.sk.pT, 'calibración: menos media → menos precisión al triple');

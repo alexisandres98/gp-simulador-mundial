@@ -29,7 +29,7 @@ const parseAt = (s) => Date.parse(String(s || '').replace(' ', 'T') + (String(s 
 
 // Constantes congeladas del ajuste (scripts/lol-gen-fit.js las valida; cambiarlas sin re-validar es mentir)
 const CONST = {
-  version: 'lol-gen-2',       // 2: casado de liga por alias (LCK Challengers League → LCK CL) y liga desconocida = n_eff 20
+  version: 'lol-gen-3',       // 2: casado de liga por alias · 3 (16-sep, M7): el recorte del reparto baja de 0,50 a 0,30
   window_days: 365,        // ventana de la celda liga×parche
   league_days: 240,        // ventana de la liga (sin parche)
   shrink_k: 30,            // partidas de prior: celda → liga → circuito
@@ -41,6 +41,16 @@ const CONST = {
   recent_max_shift: 0.15,  // tope del desplazamiento del centro (log)
   sims: 20000,
   seed: 77,
+  // ── EL RECORTE DEL REPARTO DEL GANADOR (16-sep, M7) ──────────────────────────────────────────────────
+  // Estaba clavado en [0,50 , 0,95] dentro de `simulate`, y ese suelo AFIRMA que quien gana el mapa nunca
+  // hace menos kills que quien lo pierde. En la base propia eso pasa el **3,81 %** de las veces sobre
+  // 97.587 partidas, más un 1,29 % de empates: probabilidad CERO a algo que ocurre una de cada veintiséis,
+  // y un 5,1 % de masa apilada contra el borde. Cae entero sobre KILLS_HANDICAP y KILLS_DNB, que son
+  // justo las familias que preguntan por la diferencia entre los dos equipos.
+  // Se baja a 0,30, que deja sitio a los mapas que se ganan perdiendo el conteo sin abrir la puerta a
+  // repartos imposibles, y se saca a constante para que el número se vea y se pueda medir.
+  share_min: 0.50,
+  share_max: 0.95,
 };
 
 // ── ESTADÍSTICOS DE UN CONJUNTO DE PARTIDAS ─────────────────────────────────────────────────────────────
@@ -141,7 +151,7 @@ function simulate(P, pMapA, { sims = CONST.sims, seed = CONST.seed } = {}) {
   for (let i = 0; i < sims; i++) {
     const aWins = rnd() < pMapA;
     let shareW = P.share_win + P.share_win_sd * normal(rnd);
-    shareW = Math.max(0.5, Math.min(0.95, shareW));
+    shareW = Math.max(CONST.share_min, Math.min(CONST.share_max, shareW));
     const d = shareW - 0.5;
     const z1 = normal(rnd), z2 = rho * z1 + Math.sqrt(1 - rho * rho) * normal(rnd);
     const llen = P.llen + P.b_len * (d - P.d_mean) + P.sd_len * z1;

@@ -368,15 +368,71 @@ const CAL_CACHE = new Map();
 // `per180` es por LEG; `per180Visit` es por VISITA (180s / (dardos/3)), que es lo que sale de un leaderboard
 // con puntos y dardos pero sin legs. Se acepta cualquiera de las dos; por visita se compara con
 // exp180 / (expDarts/3) del propio kernel, así la conversión a legs la hace el motor y no una regla de tres.
+// ── LA CENSURA DEL LEG (16-sep, M6 · A27) ───────────────────────────────────────────────────────────────
+// `calibrate()` persigue la media de un leg que SIEMPRE se termina. La fuente (Darts Orakel) mide PARTIDOS,
+// donde la mitad de los legs se pierden y **el que pierde nunca tira el checkout** — que es la parte cara
+// del leg. Así que la media que publica la fuente no es la media que el kernel estaba ajustando, y la
+// diferencia no es pequeña ni constante: medida con `scripts/darts-censura.js` sobre 4.000-6.000 legs por
+// perfil contra un rival de 94, va de **+18,8 puntos** en un jugador de 70 a **−6,4** en uno de 115.
+// Es MONÓTONA y comprime: todo el mundo parece rondar los 94-100 mire donde mire. Eso significaba que los
+// jugadores flojos salían calibrados mucho más fuertes de lo que son, y los muy fuertes más flojos.
+//
+// La cura es invertir la curva: dada la media OBSERVADA que trae la fuente, se busca la media de solo-leg
+// que la produciría, y ES ÉSA la que se ajusta. La tabla de abajo es la curva medida, no una fórmula: cada
+// par es una simulación, y entre pares se interpola linealmente.
+//
+// DOS COSAS QUE HAY QUE SABER ANTES DE CREÉRSELA:
+//  1. **El rival de referencia es uno solo (94 de media).** La censura depende de con quién juegas: contra
+//     un rival más fuerte pierdes más legs y la media se infla más. Usar un rival fijo es la aproximación
+//     que el propio plan especifica, y es una aproximación, no una medida.
+//  2. **Fuera del rango medido NO se extrapola.** La curva cubre medias observadas de 88,79 a 108,58. Por
+//     debajo y por encima se recorta al extremo y se marca `censura_fuera_de_rango`, porque extrapolar una
+//     curva de censura es inventarse cuántos checkouts no tiró alguien de quien no se ha medido nada.
+const CENSURA_CURVA = [
+  [70, 88.794], [72.5, 89.021], [75, 90.108], [77.5, 91.269], [80, 92.048], [82.5, 92.663],
+  [85, 93.221], [87.5, 95.370], [90, 96.370], [92.5, 97.293], [95, 98.403], [97.5, 99.939],
+  [100, 100.793], [102.5, 102.135], [105, 102.804], [107.5, 105.212], [110, 106.633],
+  [112.5, 108.008], [115, 108.575],
+];
+const CENSURA_ON = () => !/^(0|false|off|no)$/i.test(String(process.env.GP_DARTS_CENSURA ?? '1').trim());
+// media observada → media de solo-leg. Monótona por construcción de la tabla; búsqueda lineal e
+// interpolación, que con diecinueve puntos es de sobra y no esconde nada.
+function soloLegDeObservada(obs) {
+  const n = CENSURA_CURVA.length;
+  const lo = CENSURA_CURVA[0], hi = CENSURA_CURVA[n - 1];
+  if (!(obs > lo[1])) return { solo: lo[0], fuera_de_rango: 'por debajo' };
+  if (!(obs < hi[1])) return { solo: hi[0], fuera_de_rango: 'por encima' };
+  for (let i = 1; i < n; i++) {
+    const a = CENSURA_CURVA[i - 1], b = CENSURA_CURVA[i];
+    if (obs <= b[1]) {
+      const w = (obs - a[1]) / (b[1] - a[1] || 1);
+      return { solo: +(a[0] + w * (b[0] - a[0])).toFixed(3), fuera_de_rango: null };
+    }
+  }
+  return { solo: hi[0], fuera_de_rango: 'por encima' };
+}
+
 function calibrate({ avg, per180 = null, per180Visit = null, checkoutPct = null }, { doubleIn = false } = {}) {
   // se redondea a media unidad de media y a dos centésimas de 180/leg: dos jugadores casi iguales comparten
   // calibración, y la caché deja de ser decorativa
-  const a = Math.round(2 * Math.min(115, Math.max(45, +avg || 80))) / 2;
+  // la media que llega es la OBSERVADA (medida en partidos, con legs censurados). Se convierte a la de
+  // solo-leg que la produciría ANTES de redondear y de construir la clave de caché, para que dos jugadores
+  // con la misma media observada compartan calibración igual que antes.
+  const obsCruda = Math.min(115, Math.max(45, +avg || 80));
+  const inv = CENSURA_ON() ? soloLegDeObservada(obsCruda) : { solo: obsCruda, fuera_de_rango: null };
+  const a = Math.round(2 * inv.solo) / 2;
   const cp = Math.round(100 * (checkoutPct != null && checkoutPct > 0 ? Math.min(0.6, Math.max(0.15, checkoutPct)) : (0.22 + 0.2 * (a - 60) / 45))) / 100;
   const p180 = per180 != null && per180 > 0 ? Math.round(50 * Math.min(1.2, per180)) / 50 : null;
   const p180v = p180 == null && per180Visit != null && per180Visit > 0 ? Math.round(200 * Math.min(0.4, per180Visit)) / 200 : null;
   const key = [a, p180 != null ? p180 : 'x', p180v != null ? 'v' + p180v : 'x', cp, doubleIn ? 1 : 0].join('|');
-  const hit = CAL_CACHE.get(key); if (hit) return hit;
+  // LA CACHÉ GUARDA LA FÍSICA, NO EL RELATO (16-sep). La clave es la media YA corregida, así que dos
+  // llamadas con medias observadas distintas pueden caer en la misma entrada — es correcto para las
+  // destrezas, y era mentira para los metadatos: una consulta por 94 devolvía `avg_observada: 98` porque
+  // esa fue la que llenó la entrada. Se reusa la calibración y se reescribe lo que es de ESTA llamada.
+  const meta = { avg_observada: +obsCruda.toFixed(2), censura_aplicada: CENSURA_ON(),
+    censura_pp: CENSURA_ON() ? +(a - obsCruda).toFixed(3) : 0, censura_fuera_de_rango: inv.fuera_de_rango };
+  const hit = CAL_CACHE.get(key);
+  if (hit) return { ...hit, target: { ...hit.target, ...meta } };
   // DOS OBSERVABLES, DOS PARÁMETROS. La media identifica la precisión al triple (pT) dada la calidad del
   // fallo; la tasa de 180s identifica el ARRASTRE dentro de la visita (rho: cuánto sube el segundo y tercer
   // triple tras acertar el primero) — que es justo lo que separa a dos jugadores de la misma media con
@@ -397,7 +453,10 @@ function calibrate({ avg, per180 = null, per180Visit = null, checkoutPct = null 
   } else fitT(11);
   sk = skills({ pT, pD: cp, rho, s });
   leg = soloLeg(sk, { doubleIn });
-  const out = { sk, leg, identified, target: { avg: a, per180: p180, per180Visit: p180v, checkoutPct: cp }, fitted: { avg3: leg.avg3, exp180: leg.exp180, exp180Visit: leg.exp180 / (leg.expDarts / 3), expDarts: leg.expDarts } };
+  const out = { sk, leg, identified,
+    target: { avg: a, per180: p180, per180Visit: p180v, checkoutPct: cp,
+      // la media que trajo la fuente y la que de verdad se ajustó, para que la corrección se vea
+      ...meta }, fitted: { avg3: leg.avg3, exp180: leg.exp180, exp180Visit: leg.exp180 / (leg.expDarts / 3), expDarts: leg.expDarts } };
   if (CAL_CACHE.size > 400) CAL_CACHE.clear();
   CAL_CACHE.set(key, out);
   return out;

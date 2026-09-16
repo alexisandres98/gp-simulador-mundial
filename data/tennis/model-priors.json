@@ -1,5 +1,5 @@
 {
- "model_version": "tennis-sr-1",
+ "model_version": "tennis-sr-1+m8-shift-off",
  "built_at": "2026-08-18T15:55:49.833Z",
  "dev_end": 20250101,
  "tours": {
@@ -308,7 +308,8 @@
       "bo3"
      ],
      "note": "C6: residuo empírico por formato × tercil de expGames (desarrollo). store.js solo lo usa en ATP bo3; bo5 y WTA se guardan sin usar (no demostrados)."
-    }
+    },
+    "gamesCal_nota": "M8 (16-sep): en ATP bo3 el desplazamiento NO se apaga y el motivo importa. Ahi la produccion es C6, la tabla de residuos, y esa tabla esta medida como desviacion respecto al centro YA DESPLAZADO (`x = calG + residuo`). Apagar el shift sin reajustar la tabla deja los residuos colgando de otro centro, que es peor que el shift. La evidencia de M8 (C0_shift pierde por Delta log +0,14639, t +7,26) es contra el compilador crudo, no contra C6."
    },
    "dev": {
     "elo_mix": {
@@ -403,8 +404,8 @@
     "tourSpwStart": 0.57,
     "gamesCal": {
      "bo3": [
-      3.11673028652258,
-      0.7790035032206774
+      0,
+      1
      ],
      "bo5": [
       0,
@@ -531,7 +532,18 @@
      "built_at": "2026-09-02T16:08:45.275Z",
      "used_in_production": [],
      "note": "C6: residuo empírico por formato × tercil de expGames (desarrollo). store.js solo lo usa en ATP bo3; bo5 y WTA se guardan sin usar (no demostrados)."
-    }
+    },
+    "gamesCal_previo": {
+     "bo3": [
+      3.11673028652258,
+      0.7790035032206774
+     ],
+     "bo5": [
+      0,
+      1
+     ]
+    },
+    "gamesCal_nota": "M8 (16-sep): APAGADO. En WTA bo3 el desplazamiento SI era la produccion, y medido resta: C0_shift pierde contra el compilador crudo por Delta log +0,14639 con t +7,26 (docs/CHALLENGERS_TENIS_2026-09-15.md). El valor anterior queda en gamesCal_previo para poder releer el track por cohortes."
    },
    "dev": {
     "elo_mix": {

@@ -274,6 +274,74 @@ Dardos (−36,47 % con el intervalo fuera del cero) tiene 41 liquidadas: es una 
 
 ---
 
+## 5c. La cara contraria del cierre: ya estaba guardada (16-sep)
+
+El §5b dejó nueve motores de nueve sin veredicto por falta de la cara contraria del cierre, y lo anotó como
+la tarea que desbloqueaba todo lo demás. **Al ir a hacerla resultó que el dato ya estaba en casi todos.** No
+era un problema de captura: era de lectura.
+
+| motor | guardaba las dos caras | lo que fallaba |
+|---|---|---|
+| esports (4 juegos) | **sí**, `c.rows` con el mercado entero por casa | `closeOddsFor` leía solo el lado de la pick |
+| tenis de mesa, dardos | **sí**, `c.rows` | igual |
+| **tarjetas** (dinero real) | **sí** — la consulta ya traía las dos | un `x.side === side` tiraba una, y el refresco pedía `lower(side)=$4` |
+| tenis ATP | **sí**, `bb[casa][lado]` desde el 9-sep | ya estaba leído desde el 15-sep |
+| NFL | **no**: la mediana de un solo lado | único caso real de captura; arreglado, solo hacia adelante |
+
+### Lo recuperado
+
+| motor | liquidadas | con la cara contraria | % | margen medio por lado |
+|---|---:|---:|---:|---:|
+| `esports:cs2` | 1.987 | 1.505 | 75,7 % | 4,01 % |
+| `esports:lol` | 1.188 | 892 | 75,1 % | 4,55 % |
+| `esports:dota2` | 283 | 225 | 79,5 % | 3,86 % |
+| `esports:valorant` | 430 | 242 | 56,3 % | 4,90 % |
+| `tt` | 449 | 114 | 25,4 % | 4,70 % |
+| `dardos` | 41 | 18 | 43,9 % | 3,46 % |
+| **total** | **4.378** | **2.996** | **68,4 %** | |
+
+En tenis de mesa y dardos el 25,4 % y el 43,9 % **son el techo, no un fallo**: solo 117 y 19 picks tenían
+cierre guardado, y de esas se recuperaron 114 y 18. Prácticamente todas.
+
+### El hándicap tenía dos convenciones de signo y solo conocíamos una
+
+Los totales salieron a la primera con márgenes de 3,1-3,5 % —el 3,13 % que Cloudbet tiene medido— y los
+hándicaps daban **Q menor que 1 en 294 picks de CS2**. Una Q menor que 1 es un arbitraje de una casa contra
+sí misma: no existe, así que el emparejado estaba mal.
+
+Mirando las filas reales (hubo que abrir una sonda para verlas): **Bovada publica las dos caras del hándicap
+con la MISMA línea** —`home −2,5 @ 2,05` y `away −2,5 @ 1,741`— porque el signo lo lleva implícito el lado.
+Sus cuotas dan Q = 1,062, o sea 3,1 % por lado: son la pareja buena. `lib/contrato.js` asume la convención
+estándar (`home −2,5` ↔ `away +2,5`), así que no las encontraba y en eventos con varias líneas acababa
+cogiendo otra fila.
+
+El arreglo **no es relajar el emparejado**: es admitir la segunda convención y **dejar que decida la Q**. Un
+mercado de dos caras, en una casa, en un momento, tiene siempre margen pequeño y positivo, así que se exige
+que la Q caiga entre 1,0005 y 1,15 —donde están todos los márgenes medidos de esta casa—. Si no cae ninguna
+candidata, o caen dos, no se empareja y se dice el motivo. Un hueco declarado es mejor que un margen
+inventado, que es el error que infla el EV en la dirección que nos conviene.
+
+### Tenis: el problema no era la cara contraria
+
+De las 583 picks de total y hándicap liquidadas, **453 tienen su línea fuera de la foto del cierre**. El
+síntoma se vio ayer —el 78 % sin CLV, con 3 juegos de distancia mediana al consenso— y se leyó como «el
+mercado no cotiza nuestra línea». La causa real es otra: la foto del cierre se recortaba a las **12** líneas
+más cercanas al consenso, y hemos apostado **71 líneas distintas**. La nuestra se quedaba fuera.
+
+Subido a 40. **El histórico de tenis no se recupera**: eso ya está perdido y hay que decirlo.
+
+### Lo que sigue sin tener cierre valorable
+
+- **NFL**: solo hacia adelante, era el único con un problema de captura de verdad.
+- **Tenis histórico**: la línea no está en la foto. Irrecuperable.
+- **El ganador**, en todos los deportes: sus dos caras se guardan como la mejor cuota por lado ENTRE casas,
+  y desvigar eso fabrica un mercado que no existió. Se declara, no se aproxima.
+- **Tarjetas**: el arreglo está puesto pero **todavía no hay muestra**, porque la captura solo ocurre en la
+  ventana de ≤95 min antes del saque. El contador del preregistro de `cards_under_v2` empieza a subir desde
+  hoy, no hacia atrás.
+
+---
+
 ## 6. Lo que falta para cerrar la Fase 1
 
 | Tarea | Estado |

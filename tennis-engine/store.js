@@ -208,7 +208,13 @@ function mejorPorLado(out, consenso) {
 // mercado se movía medio juego, la pick se quedaba sin cierre: 9 de 77 TOTAL tenían CLV (§6.5). Aquí van
 // todas las líneas cotizadas con la mejor cuota de cada lado y su casa, hasta 12 por evento (las más
 // cercanas al consenso), para que la liquidación encuentre la línea exacta de la pick.
-const MAX_LINEAS_CIERRE = 12;
+// CUÁNTAS LÍNEAS SE GUARDAN DEL CIERRE. Era 12 y no llegaba (16-sep): de las 583 picks de total y hándicap
+// liquidadas, 453 tienen su línea FUERA de la foto del cierre, y las 71 líneas distintas que hemos apostado
+// no caben en doce. El síntoma se veía desde ayer —el 78 % de esas picks sin CLV, con 3 juegos de distancia
+// mediana al consenso— pero se leía como «el mercado no cotiza nuestra línea»; la causa real es que la foto
+// se recortaba a las doce más cercanas al consenso y la nuestra se quedaba fuera. Cada línea guardada son
+// unos pocos bytes. El histórico no se recupera: esto solo arregla hacia adelante.
+const MAX_LINEAS_CIERRE = 40;
 function lineasDe(rows, consenso, lados) {
   const por = new Map();
   for (const x of rows) {

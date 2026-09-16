@@ -1,5 +1,49 @@
 # TODO_NEXT.md — GP Simulador
 
+## 🚨 16-sep — LAS DERIVADAS DE FÚTBOL NO PUEDEN LIQUIDAR: FALTAN LOS ARCHIVOS DE RESULTADOS
+
+Descubierto al desplegar `/api/internal/ausencia`. **1.807 de 8.418 derivadas (21,5 %) se cierran sin
+resultado**, y el diagnóstico nuevo (`diag_marcador` en la pasada de derivadas) dice exactamente por qué:
+
+```
+ok 9 · sin_liga 0 · sin_local 30 · sin_visita 28 · sin_fila 2304
+```
+
+**No es un problema de nombres** —30 y 28 fallos de resolución— **es que el archivo de resultados no tiene
+el partido**. Y en varias ligas ni siquiera tiene filas:
+
+| liga | filas en `results-<liga>.json` | picks sin marcador |
+|---|---:|---:|
+| laliga | **0** | 206 |
+| irlanda | **0** | 162 |
+| brasilb | **0** | 96 |
+| suiza | **0** | 86 |
+| polonia | **0** | 86 |
+| escocia | 19 | 118 |
+| liga3 | 30 | 173 |
+| eredivisie | 33 | 98 |
+| ligue2 | 36 | 72 |
+| eflcup | 58 | 320 |
+
+Que La Liga tenga cero filas no se explica por recencia. **La cosecha de resultados de clubes no está
+llenando `results-<liga>.json` en el disco de Render**, y sin ese archivo las quince familias derivadas no
+pueden liquidarse — que es como decir que llevan desde el 20-ago generando picks que nadie puede juzgar.
+
+**Aviso de lectura:** el contador es por proceso y se reinicia con el deploy, así que la corrida de arriba
+está dominada por partidos del 14-15 de septiembre, cuyos resultados pueden no haber entrado todavía.
+Eso explicaría parte del `sin_fila` pero **no** las ligas con cero filas.
+
+Tres casos más (`superettan`, `sudamericana`, `libertadores`) traen `fuera_de_ventana: true`: ahí el par SÍ
+está en el archivo pero con una fecha a más de dos días del saque. Eso es un problema distinto —de fecha,
+probablemente de zona horaria— y tiene su propio arreglo.
+
+**Siguiente paso:** comprobar por qué el trabajo de cosecha no escribe `results-<liga>.json`, empezando por
+laliga que es la más visible. Hasta entonces, cualquier lectura del rendimiento de las derivadas está hecha
+sobre el 78,5 % que sí resolvió, y ese subconjunto tiene la cuota de entrada sesgada (2,389 contra 2,243,
+t −3,70).
+
+---
+
 ## 🔬 15-sep — LO QUE QUEDA DE LA FASE 1 DE LA AUDITORÍA (lo primero)
 
 Plan completo en `docs/PLAN_TRABAJO_AUDITORIA_2026-09-15.md`. Hecho hoy: la vara nueva, la inferencia por

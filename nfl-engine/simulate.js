@@ -171,6 +171,19 @@ function simulate({ muMargin, muTotal, priors, n = 20000, seed = 17, marginalize
       const p = pool[(rnd() * pool.length) | 0];
       m = Math.round(muMargin + p[0] + (marginalize ? discreteNoise(rnd, sm) : 0));
       t = Math.max(2, Math.round(muTotal + p[1] + (marginalize ? discreteNoise(rnd, st) : 0)));
+      // ── EL MARCADOR TIENE QUE EXISTIR (16-sep, A28 de la auditoría externa) ───────────────────────────
+      // Aquí margen y total se redondean POR SEPARADO, y de ahí salen pares que no corresponden a ningún
+      // marcador posible. Dos condiciones, y las dos son aritmética, no modelo:
+      //   · local = (t + m)/2 y visitante = (t − m)/2, así que t y m tienen que tener LA MISMA PARIDAD.
+      //     Un margen de 3 con un total de 20 significa 11,5 a 8,5.
+      //   · y t ≥ |m|, porque el equipo que pierde no puede anotar negativo.
+      // La rama del atlas no tiene este problema: copia pares (m, t) de partidos reales, que cumplen las
+      // dos por construcción. Ésta sí, y las picks de hándicap y total se cotizan desde estas mismas filas.
+      // Se corrige moviendo el TOTAL, que es lo que menos distorsiona: el margen es lo que ancla el
+      // hándicap y el modelo tiene medido su error contra el cierre; el total absorbe el punto sin cambiar
+      // de lado ningún mercado de hándicap.
+      if (t < Math.abs(m)) t = Math.abs(m);
+      if (((t - m) & 1) !== 0) t += 1;                 // misma paridad; subir mantiene t ≥ |m|
     }
     margins[i] = m; totals[i] = t;
     if (m > 0) homeWin++; else if (m === 0) tie++;

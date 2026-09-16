@@ -26407,8 +26407,18 @@ async function anotar(pid){
       const cierre = (x) => [x.close_odds, x.close_own, x.close_price].find((y) => Number.isFinite(y) && y > 1) || null;
       const cuando = (x) => Date.parse(x.settled_at || x.created_at || x.at || x.start_at || 0);
       const evDe = (x) => x.event_id || x.match_id || x.series_id || x.ceid || x.cb_event_id || null;
+      // UNA FAMILIA POR DEBAJO DEL MÍNIMO NO DESAPARECE: SE DECLARA (16-sep). La primera versión hacía
+      // `return` y dardos entero se esfumó de la tabla sin aviso — se veía igual que «dardos no existe».
+      // Una familia con pocas filas y una familia que no está son cosas distintas y tienen que verse
+      // distintas.
       const mete = (clave, filas) => {
-        if (!Array.isArray(filas) || filas.length < minN) return;
+        if (!Array.isArray(filas) || !filas.length) return;
+        if (filas.length < minN) {
+          fams[clave] = { c: 0, n: filas.length, n_entradas: filas.length, n_utilizables: null,
+            suficiente: false, veredicto: 'muestra_corta',
+            razon: `${filas.length} filas en el libro, hacen falta ${minN} para ajustar. Se publica el precio (c = 0).` };
+          return;
+        }
         try {
           fams[clave] = EN.paraFamilia(filas, { nMin: minN,
             pGp: pMod, gano, fecha: cuando, evento: evDe,
@@ -26464,7 +26474,9 @@ async function anotar(pid){
           el_modelo_no_aporta: orden.filter(([, v]) => v.veredicto === 'el_modelo_no_aporta').length,
           muestra_corta: orden.filter(([, v]) => !v.suficiente).length,
           c_mediano: orden.length ? orden.map(([, v]) => v.c).sort((x, y) => x - y)[orden.length >> 1] : null },
+        c_no_distinguible_de_cero: orden.filter(([, v]) => v.c_no_distinguible_de_cero).map(([k]) => k),
         tabla: orden.map(([k, v]) => ({ familia: k, c: v.c, veredicto: v.veredicto,
+          c_no_distinguible_de_cero: !!v.c_no_distinguible_de_cero, aviso_c: v.aviso_c || null,
           n_utilizables: v.n_utilizables, n_entradas: v.n_entradas,
           fuera_de_muestra_n: v.fuera_de_muestra ? v.fuera_de_muestra.n : null,
           mejora_sobre_precio: v.fuera_de_muestra ? v.fuera_de_muestra.mejora_sobre_precio : null,

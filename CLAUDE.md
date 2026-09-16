@@ -5,7 +5,31 @@
 ## Qué es
 **GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
 
-## 🎯 EL PLAN QUE MANDA AHORA (16-sep-2026) — `docs/PLAN_RENTABILIDAD_2026-09-16.md`
+## ✅ EL PLAN DE RENTABILIDAD ESTÁ EJECUTADO ENTERO (16-sep-2026, noche)
+Las seis fases (A→F) del plan están hechas. El resultado, en una línea: **de los cuatro candidatos a
+dinero, tres se cerraron con medición y el cuarto sigue esperando muestra.** Ninguno se cayó por falta de
+trabajo; se cayeron porque al medirlos no estaban.
+
+| candidato | veredicto | dónde está medido |
+|---|---|---|
+| **C1** Polymarket `fútbol·No` | **no pasa G1** — t 0,49, IC del ROI [−15,6 · +26,4] % | `docs/POLYMARKET_FUTBOL_NO_2026-09.md` |
+| **C2** HTFT / 2T condicional | **cerrado** — el precio YA lleva la condicionalidad del descanso | `docs/HTFT_CIERRE_2026-09-16.md` |
+| **C3** córners v2 | **cerrado** — margen 3,95-4,50 %/lado | `docs/MARGEN_CLOUDBET_2026-09-16.md` |
+| **C5** Underdog props | **retirada** — la tabla de pagos no se puede verificar | `docs/CONTRATOS_CASA.md § Underdog` |
+| **C4** tarjetas `cards_under_v2` | esperando muestra · punto de decisión ≈ **20-oct** | sin cambios |
+
+**Y el encogimiento (M1) dice que el modelo no aporta nada por encima del precio en ninguna familia
+medible**: `c` mediano = 0, y las tres familias con `c` > 0 tienen el intervalo pegado al cero
+(`docs/ENCOGIMIENTO_2026-09-16.md`). La doble corrida de 14 días está congelada y corriendo **en sombra**:
+por orden de Alexis del 16-sep, **el feed sigue publicando con la probabilidad cruda**. La decisión de qué
+publicar a los 14 días es suya y está planteada con sus tres caminos en ese documento.
+
+**Ninguna familia pasa de G0.** Las cinco puertas están en código (`lib/puertas.js`), las cuatro que
+faltaban implementadas el 16-sep. El registro de decisiones vive en `docs/DECISIONES_EJECUTADAS.md`.
+
+Plan original, con las decisiones M1-M11 y R1-R5: `docs/PLAN_RENTABILIDAD_2026-09-16.md`
+
+## 🎯 EL PLAN QUE MANDABA (16-sep-2026) — `docs/PLAN_RENTABILIDAD_2026-09-16.md`
 Alexis ordenó el 16-sep: "toma las decisiones tú mismo, incluidas las de modelo; el objetivo es
 rentabilidad". Las decisiones **ya están tomadas** en ese documento (M1-M11 modelo, R1-R5 dinero) y **no se
 reabren**: se ejecutan en el orden de sus fases A→F. Los únicos candidatos a dinero son cuatro (Polymarket
@@ -39,7 +63,10 @@ certificación estadística — a cuota 1,91 el intervalo del ROI con 100 apuest
 hoy **no hay una sola familia en todo el sistema de la que se pueda decir con seguridad "mete dinero ahí"**,
 y eso está medido, no opinado (HANDOFF §📊).
 
-**Dónde hay dinero de verdad:** SOLO Cloudbet `cards_under_v1` (~258 USDT) + tenis de mesa a 5 USD.
+**Dónde hay dinero de verdad (16-sep, noche): EN NINGÚN SITIO.** Los tres canales reales están apagados —
+tarjetas desde el 13-sep con los fondos fuera, CS2 retirado (R2) y **tenis de mesa apagado el 16-sep (R1)**,
+que cerró en **tablas exactas**: 60 liquidadas, 300 USDT apostados, 33-27, P&L 0,00. `GP_REAL_ENABLED` sigue
+en `true` a propósito: es la llave maestra del ejecutor, no de un canal, y mantiene viva la conciliación.
 **CS2 en Pinnacle NO tiene dinero** (`cs2_real: "pausado"`). **Polymarket TAMPOCO** (banco simulado 2.000).
 Todo lo demás es papel. Si alguien pide "sacar el dinero de CS2 o de Polymarket", no hay nada que sacar.
 

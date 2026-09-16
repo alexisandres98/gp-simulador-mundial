@@ -63,3 +63,23 @@ Las 60 apuestas llevan `envios: 0` y aun así están colocadas y pagadas. **No e
 cuenta envíos: cuenta cuántas veces hubo que **estrenar referencia nueva tras un rechazo de la casa**
 (`real-executor/store.js`, la referencia solo se quema si la casa llegó a hablar). Una apuesta aceptada a la
 primera tiene `envios: 0` por definición. Queda anotado aquí porque el nombre invita a leerlo mal.
+
+---
+
+## 16-sep-2026 (noche) — el resto del plan
+
+| # | qué | estado |
+|---|---|---|
+| **M1** (B1) | Encogimiento al precio. Módulo, sonda, y **doble corrida congelada** el 16-sep 21:32 UTC con 35 familias (3 con `c` > 0, las tres con el intervalo pegado al cero). | en sombra, **el feed no cambia** |
+| **M4** (B4) | `TOTALS_DAMP` por familia, rejilla ampliada a [0 · 0,25 · 0,5 · 1]. | aplicado |
+| **M6** (B3) | Dardos: `calibrate()` invierte la curva de censura del leg. `GP_DARTS_CENSURA=0` revierte. Las dos aproximaciones del DP siguen apagadas **para siempre**. | aplicado |
+| **M7** (B3) | LoL: recorte del reparto 0,50 → 0,30, versión `lol-gen-3`. | aplicado |
+| **M8** (B3) | Tenis: `shift` apagado **solo en WTA**. En ATP bo3 no se toca porque la producción es C6 y su tabla de residuos está medida alrededor del centro desplazado. | aplicado |
+| **M11** (B3) | Valorant congelado. Nada que tocar: no tiene fuente de resultados. | declarado |
+| **E1-E3** | G2, G3 y G4 en código. Antes eran una lista de lo que habría que comprobar. | aplicado |
+| **E4 / R5** | Libro append-only con cadena de hashes (`lib/libro.js`), conectado al fill del ejecutor real y verificado desde `/api/internal/parada`. | aplicado |
+
+**Orden de Alexis del 16-sep:** *«no bloquees las picks en el feed»*. La doble corrida de M1 vive
+enteramente en sombra y **la creación de picks no se ha tocado**: el feed sigue publicando con la
+probabilidad cruda. A los 14 días la decisión de qué publicar es suya, con los tres caminos escritos en
+`docs/ENCOGIMIENTO_2026-09-16.md`.

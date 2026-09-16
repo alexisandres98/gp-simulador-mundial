@@ -8262,6 +8262,14 @@ function derivadasScore(p) {
     const o = _dScoreDiag.ligas[lg2] || (_dScoreDiag.ligas[lg2] = { sin_local: 0, sin_visita: 0, sin_fila: 0, ok: 0, ejemplo: null });
     if (o[que] != null) o[que]++;
     if (que !== 'ok' && !o.ejemplo) o.ejemplo = `${p.home} vs ${p.away} (${String(p.kickoff_at || '').slice(0, 10)})`;
+    // LOS NOMBRES QUE NO RESUELVEN, ESCRITOS (16-sep). Un contador dice que fallan 28; la lista dice CUÁLES,
+    // que es lo único con lo que se puede arreglar el emparejamiento. Sin ella hay que adivinar el nombre
+    // que la casa usa, y el que usa ESPN, y el que usa AF, para cada equipo.
+    if (que === 'sin_local' || que === 'sin_visita') {
+      const nom = que === 'sin_local' ? p.home : p.away;
+      const L = (o.nombres_sin_resolver = o.nombres_sin_resolver || []);
+      if (nom && L.length < 25 && !L.includes(nom)) L.push(nom);
+    }
   };
   const lg = p.league; if (!lg) { anota('sin_liga'); return null; }
   const hId = resolveClubId(lg, p.home), aId = resolveClubId(lg, p.away);
@@ -8283,6 +8291,24 @@ function derivadasScore(p) {
         const porNombre = global._clubsResults[lg].find((m) => (m.home_id === hId && m.away_id === aId) || (m.home_id === aId && m.away_id === hId));
         o.fuera_de_ventana = !!porNombre;
         o.filas_en_el_archivo = global._clubsResults[lg].length;
+      }
+      // CUÁNTOS DÍAS DE DIFERENCIA (16-sep). Saber que el par está «fuera de la ventana» no dice si sobran
+      // horas o meses, y son dos problemas distintos: unas horas es huso o retraso de kickoff y se arregla
+      // ensanchando la ventana; meses es que el par se repite (ida y vuelta, o dos temporadas) y ensanchar
+      // la ventana emparejaría la pick con el partido EQUIVOCADO, que es peor que no liquidarla.
+      if (o && Number.isFinite(ko) && ko > 0) {
+        let mejor = null;
+        for (const m of global._clubsResults[lg]) {
+          if (m.hg == null) continue;
+          if (!((m.home_id === hId && m.away_id === aId) || (m.home_id === aId && m.away_id === hId))) continue;
+          const d = Math.abs(+new Date(m.date) - ko) / 86400e3;
+          if (mejor == null || d < mejor) mejor = d;
+        }
+        if (mejor != null) {
+          const dias = Math.round(mejor * 10) / 10;
+          (o.desfases = o.desfases || []).length < 20 && o.desfases.push(dias);
+          o.desfase_min = o.desfase_min == null ? dias : Math.min(o.desfase_min, dias);
+        }
       }
       return null;
     }

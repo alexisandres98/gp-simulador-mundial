@@ -26420,12 +26420,37 @@ async function anotar(pid){
         for (const x of (rows || [])) (g[`${pre} · ${x.family || x.familia || '?'} · ${x.book || '?'}`] ||= []).push(x);
         for (const [k, v] of Object.entries(g)) mete(k, v);
       };
+      const traidasEs = {};
       try { const ES = require('./esports-engine/store');
-        for (const gme of ES.GAME_ORDER) { const tr = ES.track(gme, { limit: 100000 }); porFamilia(tr && tr.recent, gme); }
+        for (const gme of ES.GAME_ORDER) {
+          const tr = ES.track(gme, { limit: 100000 });
+          const filas = (tr && tr.recent) || [];
+          traidasEs[gme] = filas.length;
+          if (!filas.length) avisos.push(`${gme}: el motor respondió y trajo 0 filas`);
+          porFamilia(filas, gme);
+        }
       } catch (e) { avisos.push(`esports: ${e.message}`); }
-      for (const [dep, mod] of [['tt', './tt-engine/store'], ['dardos', './darts-engine/store'], ['tenis', './tennis-engine/store']]) {
-        try { const tr = require(mod).track({ limit: 100000 }); porFamilia(tr && tr.recent, dep); }
-        catch (e) { avisos.push(`${dep}: ${e.message}`); }
+      // CADA MOTOR TIENE SU FIRMA, Y EQUIVOCARSE NO DA ERROR: DA CERO (16-sep). La primera versión de esta
+      // sonda llamaba a los tres con `track({ limit })`. `tt` y `dardos` lo aceptan, pero **tenis es
+      // `track(tour, { limit })`**: el objeto de opciones entraba como `tour`, `p.tour === tour` no casaba
+      // con nada y la familia entera desaparecía de la tabla **sin un solo aviso**. Es el mismo fallo que
+      // hoy dejó muertos dos surtidores de resultados y la sombra de props, esta vez cometido aquí mismo.
+      // Por eso ahora cada llamada lleva su firma Y se declara cuántas filas trajo: un motor que devuelve
+      // cero tiene que decirlo, nunca desaparecer.
+      const traidas = {};
+      const conFirma = [
+        ['tt', () => require('./tt-engine/store').track({ limit: 100000 })],
+        ['dardos', () => require('./darts-engine/store').track({ limit: 100000 })],
+        ['tenis', () => require('./tennis-engine/store').track(null, { limit: 100000 })],
+      ];
+      for (const [dep, leer] of conFirma) {
+        try {
+          const tr = leer();
+          const filas = (tr && tr.recent) || [];
+          traidas[dep] = filas.length;
+          if (!filas.length) avisos.push(`${dep}: el motor respondió y trajo 0 filas — comprobar la firma de track() antes de leerlo como «sin picks»`);
+          porFamilia(filas, dep);
+        } catch (e) { traidas[dep] = null; avisos.push(`${dep}: ${e.message}`); }
       }
       const orden = Object.entries(fams).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || b[1].n - a[1].n);
       const aporta = orden.filter(([, v]) => v.veredicto === 'el_modelo_aporta');

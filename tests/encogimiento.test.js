@@ -126,5 +126,38 @@ t('dos corridas del mismo libro dan el mismo c', r1 === r2, `${r1} vs ${r2}`);
 t('el resultado dice que no decide si una familia es invertible',
   /lib\/vara\.js y las puertas/.test(String(A.no_decide_dinero || '')), String(A.no_decide_dinero || '').slice(0, 80));
 
-console.log(fallos ? `\n${fallos} FALLOS` : '\nTodo correcto');
+
+// ── 11. EL HUECO DEL PRECIO SE INTERROGA ────────────────────────────────────────────────────────────────
+// En los libros reales falta la cara contraria del cierre hasta en el 40 % de las filas. Un `c` ajustado
+// sobre la mitad que sí la tiene sale limpio y puede ser falso. Se comprueba que el módulo distingue un
+// hueco inocente de uno que selecciona.
+const con = [], sinInocente = [], sinCulpable = [];
+{
+  const r = rng(999);
+  for (let i = 0; i < 200; i++) {
+    const g = 0.3 + 0.4 * r();
+    con.push({ g, y: r() < g ? 1 : 0, ev: 'c' + Math.floor(i / 2) });
+  }
+  for (let i = 0; i < 120; i++) {
+    const g = 0.3 + 0.4 * r();                                // misma distribución: hueco inocente
+    sinInocente.push({ g, y: r() < g ? 1 : 0, ev: 'i' + Math.floor(i / 2) });
+    const g2 = 0.70 + 0.20 * r();                             // sistemáticamente más alta: hueco culpable
+    sinCulpable.push({ g: g2, y: r() < g2 ? 1 : 0, ev: 'x' + Math.floor(i / 2) });
+  }
+}
+const hIno = E.huecoDelPrecio(con, sinInocente);
+t('un hueco con la misma distribución se declara ignorable',
+  hIno.veredicto === 'hueco_ignorable_en_lo_observable', hIno.veredicto + ' · ' + String(hIno.razon).slice(0, 90));
+t('y avisa de que eso NO es prueba de inocencia',
+  /no es prueba de que el hueco sea inocente/i.test(String(hIno.razon)));
+const hMal = E.huecoDelPrecio(con, sinCulpable);
+t('un hueco con probabilidades sistemáticamente más altas se declara seleccionado',
+  hMal.veredicto === 'hueco_seleccionado', hMal.veredicto);
+t('y el placebo es lo que lo delata',
+  /probabilidad del propio modelo/i.test(String(hMal.razon)), String(hMal.razon).slice(0, 130));
+t('sin hueco se dice sin hueco', E.huecoDelPrecio(con, []).veredicto === 'sin_hueco');
+t('con pocas filas a un lado no se inventa veredicto',
+  E.huecoDelPrecio(con, sinInocente.slice(0, 5)).veredicto === 'insuficiente');
+
+console.log(fallos ? `\n${fallos} FALLOS (total)` : '\nTodo correcto (total)');
 process.exit(fallos ? 1 : 0);

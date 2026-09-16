@@ -89,6 +89,25 @@ t('con una sola familia, la cuota dominante es 1 pero el exceso es 0',
   fam && fam.dominante_cuota === 1 && Math.abs(fam.dominante_exceso) < 1e-9,
   fam ? `cuota ${fam.dominante_cuota} exceso ${fam.dominante_exceso}` : 'sin composición de familia');
 
+// ── 6b. EL VOCABULARIO DE CADA MOTOR ────────────────────────────────────────────────────────────────────
+// Segunda pasada del mismo fallo, y merece su propio test. `futbol-derivadas` escribe `won`, `lost`,
+// `push`, `half_won` y `half_lost` —las dos últimas porque un cuarto asiático puede ganar media apuesta— y
+// el módulo solo reconocía WIN/LOSS/VOID/PUSH. De sus 6.611 liquidadas veía 369, y la tasa de ausencia
+// salía 83 % cuando la real es 21,5 %. Un cuádruple, y en la dirección alarmante.
+const derivadas = [];
+for (let i = 0; i < 300; i++) {
+  const v = ['won', 'lost', 'push', 'half_won', 'half_lost'][i % 5];
+  derivadas.push({ event_id: 'ev' + Math.floor(i / 2), status: 'SETTLED', result: v,
+    odds: 1.9, p_gp: 0.55, family: 'F', book: 'cloudbet', competition: 'liga' });
+}
+for (let i = 0; i < 60; i++) derivadas.push({ event_id: 'nr' + i, status: 'RESULT_PENDING', result: 'DATA_UNRESOLVED', odds: 1.9, p_gp: 0.55, family: 'F', book: 'cloudbet', competition: 'liga' });
+const dv = AU.examinaLibro(derivadas);
+t('se reconocen won/lost/push de futbol-derivadas', dv.n_observadas === 300, `observadas ${dv.n_observadas}`);
+t('y half_won / half_lost de los cuartos asiáticos también',
+  dv.n_total === 360 && dv.n_ausentes === 60, `total ${dv.n_total} ausentes ${dv.n_ausentes}`);
+t('así que la tasa sale 16,7 % y no 80 %', dv.tasa_ausencia_pct === 16.67,
+  `${dv.tasa_ausencia_pct} %`);
+
 // ── 7. REPRODUCIBLE ─────────────────────────────────────────────────────────────────────────────────────
 const a = AU.examinaLibro(libro({ sesga: true })), b = AU.examinaLibro(libro({ sesga: true }));
 t('dos corridas del mismo libro dan el mismo t', JSON.stringify(a.contrastes.map((x) => x.t)) === JSON.stringify(b.contrastes.map((x) => x.t)));

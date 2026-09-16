@@ -787,6 +787,50 @@ function marcadorCoherente(setsA, setsB, bestOf) {
   return Math.max(wa, wb) === need && setsA.length <= 2 * need - 1;
 }
 
+
+// ── RELLENO HACIA ATRÁS DE LA CARA CONTRARIA (16-sep) ────────────────────────────────────────────────────
+// `settleShadow` solo mira las picks ABIERTAS, así que el EV al cierre nunca llegaba a las ya liquidadas, y
+// son casi todas (784 de 784 el 16-sep). Aquí la pareja no hay que buscarla: `lineasDe` guarda desde el
+// 9-sep `bb[casa][lado]` con los dos lados de cada línea por casa, así que las dos caras del MISMO libro
+// están una al lado de la otra. El ganador queda fuera a propósito: `ml_a`/`ml_b` son la mejor cuota por
+// lado ENTRE casas y desvigarlas fabricaría un mercado que no existió.
+const CONTRARIA_V = 2;
+function rellenarContrarias() {
+  const st = rdD('picks.json') || { picks: [] };
+  const closes = rdD('closes.json') || { closes: {} };
+  const EV = require('../lib/ev');
+  let mirados = 0, rellenadas = 0, sinBb = 0;
+  for (const p of st.picks || []) {
+    if (p.status !== 'SETTLED') continue;
+    if (p.ev_cierre_pct != null || p.close_contraria_v === CONTRARIA_V) continue;
+    if (p.family !== 'TOTAL' && p.family !== 'SPREAD') continue;
+    const cl = closes.closes[p.event_id];
+    if (!cl) continue;
+    mirados++;
+    p.close_contraria_v = CONTRARIA_V;
+    const ln = ((p.family === 'TOTAL' ? cl.totals_all : cl.spreads_all) || []).find((x) => x.line === p.line);
+    if (!ln) { p.ev_cierre_motivo = `línea ${p.line} no cotizada al cierre`; continue; }
+    if (!ln.bb) { sinBb++; p.ev_cierre_motivo = 'el cierre de este evento se guardó antes de que existiera el desglose por casa (9-sep)'; continue; }
+    const libro = ln.bb[p.book] || null;
+    if (!libro) { p.ev_cierre_motivo = `la casa de la pick (${p.book}) no cotizaba esa línea al cierre`; continue; }
+    const otro = { over: 'under', under: 'over', a: 'b', b: 'a' }[p.side];
+    const propia = libro[p.side], contraria = libro[otro];
+    if (!(propia > 1) || !(contraria > 1)) { p.ev_cierre_motivo = 'la casa cotizaba un solo lado de esa línea al cierre'; continue; }
+    p.close_own = propia; p.clv_own_pct = +((p.odds / propia - 1) * 100).toFixed(2);
+    p.close_odds_contraria = contraria;
+    const e = EV.evDeTicket({ entrada: p.odds, cierre: propia, cierreContraria: contraria });
+    if (e.ok) {
+      p.ev_cierre_pct = e.ev_pct; p.q_cierre = e.q_cierre; p.Q_cierre = e.Q;
+      p.margen_lado_cierre_pct = e.margen_lado_pct; p.close_margen_lado_pct = e.margen_lado_pct;
+      p.p_break_even = +(1 / p.odds).toFixed(4);
+      if (p.p_model != null) p.edge_information_pp = +(100 * (p.p_model - e.q_cierre)).toFixed(2);
+      p.ev_cierre_motivo = null; rellenadas++;
+    } else p.ev_cierre_motivo = e.motivo;
+  }
+  if (mirados) wrD('picks.json', st);
+  return { mirados, rellenadas, sin_desglose_por_casa: sinBb };
+}
+
 async function settleShadow({ voidDays = 10, only = null } = {}) {
   const st = rdD('picks.json') || { picks: [] };
   // MIGRACIÓN DE UNA VEZ (15-sep, A03 de la auditoría). De los tres VOID que escribe este motor, solo uno
@@ -1051,6 +1095,7 @@ async function resettleShadow({ voidDays = 60 } = {}) {
 }
 
 function track(tour, { limit = 40 } = {}) {
+  try { rellenarContrarias(); } catch { /* nunca bloquea la lectura del track */ }
   const st = rdD('picks.json') || { picks: [] };
   const settleDiag = rdD('settle-diag.json') || null;
   const mine = st.picks.filter((p) => tour == null || p.tour === tour);
@@ -1492,7 +1537,7 @@ function libroCrudo({ limit = 0 } = {}) {
   return { n: picks.length, picks: limit > 0 ? picks.slice(-limit) : picks };
 }
 
-module.exports = { loadBoard, matchDetail, libroCrudo,
+module.exports = { rellenarContrarias, loadBoard, matchDetail, libroCrudo,
   DISK_DIR, DOCTRINE, refreshOdds, board, agenda, recordShadow, settleShadow, resettleShadow, marcadorCoherente, track,
   playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, simMatch, modelCard, modelSnapshot,
   eventModel, marketOf, gamesPmf, distProbs, ajustesGanador,

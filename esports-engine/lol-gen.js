@@ -49,7 +49,7 @@ const CONST = {
   // justo las familias que preguntan por la diferencia entre los dos equipos.
   // Se baja a 0,30, que deja sitio a los mapas que se ganan perdiendo el conteo sin abrir la puerta a
   // repartos imposibles, y se saca a constante para que el número se vea y se pueda medir.
-  share_min: 0.50,
+  share_min: 0.30,
   share_max: 0.95,
 };
 

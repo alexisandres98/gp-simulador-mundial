@@ -83,5 +83,43 @@ const sinPareja = EV.evDeTicket({ entrada: 2.00, cierre: r1.cuota, cierreContrar
 t('con las dos caras, el EV se puede calcular', conPareja.ok === true, `EV ${conPareja.ev_pct} %`);
 t('sin la contraria, el EV NO se calcula y lo dice', sinPareja.ok === false && /contraria/.test(sinPareja.motivo));
 
+// ── 6. LAS DOS CONVENCIONES DE SIGNO DEL HÁNDICAP (16-sep) ───────────────────────────────────────────────
+// Medido en el archivo de cierres real: Bovada publica las dos caras del hándicap con la MISMA línea
+// (`home −2,5 @ 2,05` y `away −2,5 @ 1,741`), porque el signo lo lleva implícito el lado. Su Q es 1,062, un
+// margen del 3,1 % por lado, que es justo el que esa casa tiene medido: son la pareja buena. Con la
+// normalización estricta no se encontraban, y en eventos con varias líneas el emparejado cogía otra fila.
+const bovada = [
+  fila({ side: 'home', line: -2.5, odds: 2.05, book: 'bovada' }),
+  fila({ side: 'away', line: -2.5, odds: 1.741, book: 'bovada' }),
+];
+const r6 = CL.carasDelCierre(bovada[0], bovada);
+t('empareja el hándicap escrito con la misma línea en los dos lados', r6.cuota_contraria === 1.741,
+  `cogió ${r6.cuota_contraria}`);
+t('y deja constancia de qué convención usó', r6.convencion === 'misma_linea_los_dos_lados');
+t('y el margen sale el de la casa (3,1 % por lado)', Math.abs(r6.margen_lado_pct - 3.1) < 0.2, `${r6.margen_lado_pct} %`);
+
+// PERO NO VALE CUALQUIER PAREJA CON LA MISMA LÍNEA. Quien decide es la Q: si el margen que sale no es
+// plausible, esas dos filas no son las dos caras de nada y no se emparejan.
+const noPareja = [
+  fila({ side: 'home', line: -2.5, odds: 2.05, book: 'bovada' }),
+  fila({ side: 'away', line: -2.5, odds: 4.50, book: 'bovada' }),   // Q = 0,71: imposible en una sola casa
+];
+t('una pareja con margen imposible NO se acepta aunque la línea coincida',
+  CL.carasDelCierre(noPareja[0], noPareja).contraria === null);
+
+// Y SI HAY DOS CANDIDATAS PLAUSIBLES, TAMPOCO: ambiguo es ambiguo, y elegir una a ojo es inventarse el
+// margen. Preferimos un hueco declarado.
+const ambiguo = [
+  fila({ side: 'home', line: -2.5, odds: 2.05, book: 'bovada' }),
+  fila({ side: 'away', line: -2.5, odds: 1.741, book: 'bovada' }),
+  fila({ side: 'away', line: -2.5, odds: 1.80, book: 'bovada', team: null, map: 1 }),
+];
+const r7 = CL.carasDelCierre(ambiguo[0], ambiguo);
+t('con dos candidatas plausibles no se empareja y se dice', r7.contraria === null && /ambiguo/.test(r7.motivo || ''),
+  r7.motivo);
+
+// La convención estándar sigue funcionando igual que antes: este test no la rompe.
+t('la convención del signo volteado sigue emparejando', CL.carasDelCierre(mercado[0], mercado).cuota_contraria === 1.95);
+
 console.log(fallos ? `\n${fallos} FALLOS` : '\nTodo correcto');
 process.exit(fallos ? 1 : 0);

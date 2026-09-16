@@ -278,6 +278,53 @@ function carasDelCierre(objetivo, filas, { toleranciaMs = null } = {}) {
   const ca = cuotaDe(objetivo), cb = cuotaDe(contraria);
   const out = { propia: objetivo, contraria, cuota: ca, cuota_contraria: cb,
     casa: objetivo.book || objetivo.casa || null, motivo: contraria ? null : ((r && r.motivo) || 'sin cara contraria') };
+  // ── LOS HÁNDICAPS Y LAS DOS CONVENCIONES DE SIGNO (16-sep) ──────────────────────────────────────────
+  // `lib/contrato.js` normaliza asumiendo la convención estándar: la contraria de `home −2,5` es
+  // `away +2,5`. Pero no todos los proveedores la siguen. Medido en el archivo de cierres de CS2, Bovada
+  // publica las DOS caras con la MISMA línea —`home −2,5 @ 2,05` y `away −2,5 @ 1,741`— porque el signo lo
+  // lleva implícito el lado. Esas dos filas SON la pareja buena: su Q es 1,062, o sea un margen del 3,1 %
+  // por lado, que es exactamente el que tiene medido esa casa.
+  //
+  // Con la normalización estricta esa pareja no se encuentra, y en eventos con varias líneas el emparejado
+  // acababa cogiendo otra fila y dando Q < 1. Así que para hándicaps se prueba también la otra convención,
+  // y QUIEN DECIDE ES LA Q: un mercado de dos caras de una casa en un momento tiene siempre un margen
+  // pequeño y positivo. Si ninguna candidata cae en ese rango, o si caen DOS, no se empareja y se dice —
+  // preferimos un hueco declarado a un margen inventado, que es el error que infla el EV a nuestro favor.
+  const esHandicap = /handicap|hcp|spread/i.test(String(objetivo.family || objetivo.familia || ''));
+  if (!contraria && esHandicap) {
+    const lado = String(objetivo.side != null ? objetivo.side : objetivo.lado).toLowerCase();
+    const opuesto = { home: 'away', away: 'home', a: 'b', b: 'a', over: 'under', under: 'over' }[lado] || null;
+    const casaObj = objetivo.book || objetivo.casa;
+    const mismaLinea = (x, y) => Math.abs(Number(x) - Number(y)) < 0.01;
+    const candidatas = (filas || []).filter((f) => f && f !== objetivo
+      && String(f.side != null ? f.side : f.lado).toLowerCase() === opuesto
+      && (f.book || f.casa) === casaObj
+      && String(f.family || f.familia) === String(objetivo.family || objetivo.familia)
+      && (f.map || null) === (objetivo.map || null)
+      && (f.team || null) === (objetivo.team || null)
+      && mismaLinea(f.line != null ? f.line : f.linea, objetivo.line != null ? objetivo.line : objetivo.linea));
+    const plausibles = candidatas.filter((f) => {
+      const c = Number(f.odds != null ? f.odds : (f.cuota != null ? f.cuota : f.precio));
+      if (!(c > 1) || !(ca > 1)) return false;
+      const Q = 1 / ca + 1 / c;
+      return Q > 1.0005 && Q <= 1.15;      // los márgenes medidos de la casa van del 2,2 % al 3,5 % por lado
+    });
+    if (plausibles.length === 1) {
+      out.contraria = plausibles[0];
+      out.cuota_contraria = Number(plausibles[0].odds != null ? plausibles[0].odds : plausibles[0].cuota);
+      out.convencion = 'misma_linea_los_dos_lados';
+      out.motivo = null;
+    } else if (plausibles.length > 1) {
+      out.motivo = `${plausibles.length} candidatas a cara contraria con margen plausible: ambiguo, no se empareja`;
+    }
+  }
+  const cb2 = out.cuota_contraria;
+  if (ca > 1 && cb2 > 1 && out.contraria) { const cbX = cb2; const QX = 1 / ca + 1 / cbX;
+    out.Q = +QX.toFixed(6); out.margen_lado_pct = +(100 * (QX - 1) / 2).toFixed(3);
+    if (QX <= 1) { out.contraria = null; out.cuota_contraria = null; out.sospechosa = true;
+      out.motivo = `Q = ${out.Q} ≤ 1: las dos caras no pueden ser del mismo mercado y el mismo momento en la misma casa`; }
+    return out;
+  }
   if (ca > 1 && cb > 1) {
     const Q = 1 / ca + 1 / cb;
     out.Q = +Q.toFixed(6);

@@ -541,6 +541,42 @@ async function recordShadow() {
   return { recorded: n, total: st.picks.length };
 }
 // liquidación con el resultado oficial de la PDC (legs/sets) y, para 180s, con la estadística de Orakel (PC)
+
+// ── RELLENO HACIA ATRÁS DE LA CARA CONTRARIA (16-sep) ────────────────────────────────────────────────────
+// `settleShadow` solo mira las picks ABIERTAS, así que la cara contraria del cierre nunca llegaba a las que
+// ya estaban liquidadas — y son casi todas. El archivo de cierres conserva el mercado entero mientras no lo
+// pode, así que esto recupera hacia atrás lo que hasta ahora no se leía. El sello de versión hace que un
+// cambio en la lógica de emparejado las reintente solas, en vez de dejarlas congeladas con el primer motivo
+// que se escribió (fue justo lo que pasó con los hándicaps de CS2).
+const CONTRARIA_V = 2;
+function rellenarContrarias() {
+  const st = rd('picks.json') || { picks: [] };
+  const closes = rd('closes.json') || { closes: {} };
+  const CL = require('../implied-engine/closes');
+  let n = 0, mirados = 0;
+  for (const p of st.picks || []) {
+    if (p.status !== 'SETTLED') continue;
+    if (p.close_odds_contraria != null || p.close_contraria_v === CONTRARIA_V) continue;
+    const cl = closes.closes[p.event_id];
+    if (!cl || !cl.rows) continue;
+    mirados++;
+    const same = (cl.rows || []).filter((x) => x.family === p.family && x.side === p.side
+      && (x.participant || null) === (p.participant || null) && (p.line == null || x.line === p.line));
+    const ref = same.find((x) => x.book === p.book) || same.reduce((b, x) => (!b || x.odds > b.odds ? x : b), null);
+    p.close_contraria_v = CONTRARIA_V;
+    if (!ref) { p.close_contraria_motivo = 'la línea de la pick no estaba cotizada en el cierre'; continue; }
+    try {
+      const cc = CL.carasDelCierre(ref, cl.rows);
+      p.close_odds_contraria = cc.cuota_contraria || null;
+      p.close_margen_lado_pct = cc.margen_lado_pct ?? null;
+      p.close_contraria_motivo = cc.motivo || null;
+      if (cc.cuota_contraria) { p.close_para_ev = cc.cuota; p.close_para_ev_casa = cc.casa; n++; }
+    } catch (e) { p.close_contraria_motivo = 'error al emparejar: ' + e.message; }
+  }
+  if (mirados) wr('picks.json', st);
+  return { mirados, rellenadas: n };
+}
+
 async function settleShadow({ voidDays = 12 } = {}) {
   const st = rd('picks.json') || { picks: [] };
   // MIGRACIÓN DE UNA VEZ (15-sep, A03 de la auditoría). Aquí no hay casa —todas las familias están en
@@ -650,7 +686,12 @@ async function settleShadow({ voidDays = 12 } = {}) {
   wr('settle-diag.json', { at: new Date().toISOString(), diag, settled });
   return { settled, diag };
 }
-function track({ limit = 40 } = {}) {
+function track({
+ limit = 40 } = {}) {
+  // el relleno de la cara contraria corre aquí porque `track()` es lo que se lee siempre: así el histórico
+  // se recupera solo, sin depender de que haya una liquidación nueva. Es idempotente y barato (el sello de
+  // versión hace que cada pick se mire una vez por versión de la lógica).
+  try { rellenarContrarias(); } catch { /* nunca bloquea la lectura del track */ }
   const st = rd('picks.json') || { picks: [] };
   const settleDiag = rd('settle-diag.json') || null;
   const mine = st.picks;
@@ -939,4 +980,4 @@ function libroCrudo({ limit = 0 } = {}) {
   return { n: picks.length, picks: limit > 0 ? picks.slice(-limit) : picks };
 }
 
-module.exports = { DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, resetOrakel, slate, libroCrudo, seasonTournaments, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentBoard, tournamentsList, simMatch, agenda, liveProb, modelCard, modelSnapshot, skillOf, formatOf, parseFormat };
+module.exports = { rellenarContrarias, DISK_DIR, DOCTRINE, ATTRIB, FAMILIES, resetOrakel, slate, libroCrudo, seasonTournaments, refreshOdds, marketFor, eventModel, evaluateEdges, board, matchDetail, recordShadow, settleShadow, track, playersDirectory, rankingBoard, snapshotRanks, playerProfile, h2h, tournamentBoard, tournamentsList, simMatch, agenda, liveProb, modelCard, modelSnapshot, skillOf, formatOf, parseFormat };

@@ -68,9 +68,25 @@ const CT = require('../lib/contrato');
 // y con el número nuevo escrito al lado, que es lo que permite comparar sin destruir la ventana.
 const CONTRATO_UNDERDOG = {
   verificado: false,
-  consultado: '2026-09-15',
-  por_que_no: 'underdogsports.com y help.underdogsports.com devuelven 403 a este entorno; api.underdogfantasy.com/beta/v5 devuelve 426 upgrade_required',
+  consultado: '2026-09-16',
+  por_que_no: 'la tabla plana por número de piernas solo se ve desde dentro de una cuenta: el centro de ayuda '
+    + 'da 403 (Cloudflare) también por la API de Zendesk, la página de producto solo trae copia de marketing, '
+    + 'y v1/payout_structures · v1/pickem_payouts · v1/entry_slips/payouts · v1/pickem_settings dan 404',
   ficha: 'docs/CONTRATOS_CASA.md § Underdog',
+  // RETIRADA POR LA REGLA DEL PLAN (16-sep, A3): «si no se puede verificar en una tarde, C5 se retira».
+  // Con Base(2) sin verificar el EV del boleto va de −12,71 % (tabla A) a +1,83 % (tabla B) y esa horquilla
+  // contiene el cero. La familia sigue en sombra, sin dinero y sin trabajo de modelo.
+  retirada_como_candidata: '2026-09-16 (A3)',
+  // LO QUE SÍ SE APRENDIÓ DEL PAYLOAD (16-sep). Cada opción publica `payout_multiplier` además del precio, y
+  // no son independientes: de 15.445 opciones, la mediana de `decimal_price / payout_multiplier` es **1,910**,
+  // y las 5.922 con multiplicador exactamente 1,0 tienen precio mediano 1,90. O sea, el multiplicador por
+  // pierna ES el precio de esa pierna normalizado a una pierna estándar de −110. De ahí sale la FORMA del
+  // contrato aunque no su constante:  multiplicador del boleto = Base(N) × Π mᵢ.
+  // Lo que falta verificar ya no es todo el precio: es UNA constante por número de piernas.
+  forma_del_boleto: 'Base(N) × Π payout_multiplier de cada pierna',
+  multiplicador_por_pierna: 'decimal_price / 1.910 (mediana medida sobre 15.445 opciones el 16-sep)',
+  como_se_cierra: 'una cuenta, dos piernas a −110/−110 (payout_multiplier 1,0 las dos) y leer el pago '
+    + 'potencial: 3,61× = producto de precios · 3,00× o 3,50× = tabla plana, y cuál',
   minimo_piernas: 2,
   maximo_piernas: 8,
   // dos tablas de fuentes secundarias que NO coinciden en 2 piernas, que es justo donde cambia el signo

@@ -161,6 +161,73 @@ Hace falta comprobar si además cobra comisión de retirada, de cambio de divisa
 (330 de `props_cs2_v2`) son historia; no está naciendo ninguna props nueva y no se estaba diciendo en
 ningún sitio.
 
+---
+
+## ACTUALIZACIÓN DEL 16-SEP (A3) — la API sí responde, por otra puerta
+
+El 15-sep se probaron `beta/v3`, `v4`, `v5`, `v6` y `v6`, todas 426 o 404, y se dio la API por cerrada.
+**Faltaba probar `v1`, sin el prefijo `beta`.** Responde:
+
+| ruta | respuesta |
+|---|---|
+| `api.underdogfantasy.com/beta/v4/over_under_lines` | 426 `upgrade_required` |
+| `api.underdogfantasy.com/beta/v5/over_under_lines` | 426 `upgrade_required` |
+| `api.underdogfantasy.com/beta/v6/over_under_lines` | 426 `upgrade_required` |
+| **`api.underdogfantasy.com/v1/over_under_lines`** | **200 · 27,5 MB · 10.075 líneas** |
+
+No es que la versión se quedara atrás: la familia `beta/*` entera está cerrada al cliente viejo y la buena
+es `v1`. Y ahí siguen los tres juegos que nos importan — **CS 24 partidos, LOL 4, VAL 9**. La forma del
+JSON es la MISMA (`over_under.appearance_stat.appearance_id`, `players[].sport_id`, `options[].american_price`),
+así que `propLines()` la digiere sin tocar nada: corrido contra el payload real devuelve **656 filas**
+(cs2 448, lol 119, valorant 89). El arreglo es cambiar la URL, y ya está hecho.
+
+### Lo que el payload dice del contrato, que es más de lo que se creía
+
+Cada opción trae **`payout_multiplier`** además del precio. Su relación con el precio no es libre:
+
+- de 15.445 opciones con las dos cosas, la mediana de `decimal_price / payout_multiplier` es **1,910**
+  (p10 1,74 · p90 2,01);
+- las 5.922 opciones con `payout_multiplier` exactamente **1,0** tienen precio mediano **1,90** (la moda es
+  1,90 con 2.541 casos).
+
+Es decir: **el multiplicador por pierna ES el precio de esa pierna normalizado a una pierna estándar de
+−110 (1,909)**. De ahí se sigue la forma del contrato, aunque no su constante:
+
+> multiplicador del boleto = **Base(N) × Π mᵢ**
+
+donde `mᵢ` es el multiplicador publicado de cada pierna y `Base(N)` es la tabla plana por número de
+piernas. Lo que falta verificar **ya no es todo el precio: es UNA constante por número de piernas.**
+
+### Y esa constante sigue sin poderse verificar
+
+| intento | resultado |
+|---|---|
+| `help.underdogsports.com/hc/en-us` | **403** (Cloudflare) |
+| `help.underdogsports.com/api/v2/help_center/en-us/articles/search.json` (API de Zendesk) | **403** |
+| `underdogfantasy.com/help/articles/13780101` → `www.underdogsports.com/help/articles/13780101` | **404** |
+| `www.underdogsports.com/games/pickem` | 200, pero **solo copia de marketing** («win up to 500x your money»); ninguna tabla |
+| `www.underdogsports.com/sitemap.xml` | 200; no hay ninguna página de pagos ni de reglamento de pick'em |
+| `v1/payout_structures`, `v1/pickem_payouts`, `v1/entry_slips/payouts`, `v2/pickem/payout_structures`, `v1/pickem_settings` | **404** |
+| `v1/lobby` | 200, pero es de drafts: ni `payout` ni `multiplier` en todo el documento |
+
+La tabla plana solo se ve desde dentro de una cuenta. **Sin cuenta no hay fuente primaria.**
+
+### Veredicto A3
+
+Se aplica la regla escrita en el plan: *«si no se puede verificar en una tarde, C5 se retira»*.
+**C5 (props de Underdog) queda RETIRADA** como candidata a dinero — con `Base(2)` sin verificar, el EV del
+boleto va de **−12,71 %** (tabla A, 3×) a **+1,83 %** (tabla B, 3,5×), y esa horquilla contiene el cero.
+Meter dinero a ciegas ahí sería exactamente lo que la regla del 13-sep prohíbe.
+
+Lo que **sí** se hace, porque es corrección y no ingeniería de modelo: se arregla la URL para que la sombra
+vuelva a tener señal en vez de un `available: false` que nadie mira. La familia sigue en sombra, sin dinero
+y sin trabajo de modelo.
+
+**Qué cerraría A3 en diez minutos:** una cuenta de Underdog, entrar dos piernas al precio estándar
+(−110/−110, `payout_multiplier` 1,0 las dos) y leer el pago potencial. Si dice 3,61× el boleto es el
+producto de los precios; si dice 3,00× o 3,50×, es tabla plana y sabemos cuál. **Es lo único que falta y
+solo puede hacerlo Alexis.**
+
 ### Lo que dicen las fuentes secundarias
 
 **Tipo de entrada.** Pick'em de más/menos por jugador (no hay líneas de ganador, hándicap ni total de

@@ -16,7 +16,14 @@
 // blando es reescribir este adaptador, no el motor.
 'use strict';
 
-const URL_LINES = 'https://api.underdogfantasy.com/beta/v5/over_under_lines';
+// LA RUTA CAMBIÓ Y NOSOTROS NO (16-sep, A3). `beta/v5/over_under_lines` devuelve **426 upgrade_required**
+// —«A new version is required to continue»— y lo hace igual en `beta/v4` y `beta/v6`, así que no es una
+// versión que se quedó atrás: la familia `beta/*` entera está cerrada al cliente viejo. La que responde es
+// `v1/over_under_lines`: 200 y 27 MB con 10.075 líneas, y ahí siguen los tres juegos que nos importan
+// (CS 24 partidos, LOL 4, VAL 9). Como `fetchLines` devuelve `null` ante un no-200 y la capa de arriba lo
+// convierte en `{ available: false, rows: [] }`, la sombra de props llevaba tiempo sin señal **sin que
+// nada lo dijera**: la tercera fuente caída en silencio del mismo día.
+const URL_LINES = 'https://api.underdogfantasy.com/v1/over_under_lines';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36';
 
 // Solo los títulos que GP entiende. FIFA/NFL/etc. de este mismo payload se ignoran a propósito: cada

@@ -272,6 +272,15 @@ function teamIndex(C) {
   }
   return idx;
 }
+// EL PESO DE MEZCLA NO SE PRESTA ENTRE FAMILIAS (16-sep, A14 de la auditoría externa).
+// `C.validation.layers.blend.w` se ajusta con filas de GANADOR DE PARTIDO. Aquí se cotizan tres familias y
+// dos de ellas —totales y hándicaps— nunca han tenido peso ajustado: se publican con la probabilidad cruda
+// del simulador, que es peso 1, o sea "el modelo vale más que el mercado en esta familia" afirmado sin
+// medirlo nunca. Prestarles el peso del ganador sería el mismo error con otra cara.
+// No se cambia el número —eso exige ajustar pesos por familia con histórico de cierres de cada una— pero
+// SÍ se declara, para que nadie lea `model_ev_pct` de un total como si estuviera validado.
+const FAMILIA_VALIDADA = { match_winner: true, match_total: false, spread: false };
+
 function attachModel(rows, C, { simulate, markets, cache = new Map() } = {}) {
   if (!C || !C.fit || !simulate) return rows;
   const idx = teamIndex(C);
@@ -301,6 +310,13 @@ function attachModel(rows, C, { simulate, markets, cache = new Map() } = {}) {
     row.model_ev_pct = +((row.odds * p - 1) * 100).toFixed(2);
     row.model_vs_market_pp = +((p - row.fair) * 100).toFixed(1);
     row.model_conf = sim.conf;
+    // la etiqueta viaja con el número, no en un documento aparte
+    row.model_familia_validada = !!FAMILIA_VALIDADA[row.fam];
+    if (!row.model_familia_validada) {
+      row.model_ev_aviso = 'el modelo no tiene peso de mezcla ajustado fuera de muestra en esta familia: '
+        + 'este EV sale de la probabilidad CRUDA del simulador, no de una mezcla validada contra el cierre. '
+        + 'Es un diagnóstico, no una ventaja medida.';
+    }
   }
   return rows;
 }

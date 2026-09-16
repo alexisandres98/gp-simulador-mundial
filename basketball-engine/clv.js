@@ -156,7 +156,22 @@ function restFeatures(games, game, { defaultRest = 3 } = {}) {
 
 // Evaluación del preregistro de descanso sobre partidos COMPLETADOS: dónde habría disparado la regla y
 // cómo le fue al over contra la línea de cierre (si hay). `closeLineOf(g)` devuelve la línea de total o null.
-function restPrereg(games, { since = null, closeLineOf = null } = {}) {
+// EL LISTÓN DE UNA REGLA DE APUESTA NO ES LA MONEDA JUSTA (16-sep, A14 de la auditoría externa).
+// Esto comparaba el acierto del over contra el 50 % y calculaba su error estándar con √(0,25/n), que es la
+// varianza máxima, la de p = 0,5. Las dos cosas responden a la pregunta equivocada. "¿Sale over más de la
+// mitad de las veces?" no es lo que hay que saber: los totales de baloncesto se pagan a −110 en las dos
+// caras, y a −110 hay que acertar el **52,381 %** solo para no perder dinero. Un 54 % con esa vara parecía
+// una señal de +4 puntos cuando en realidad son +1,6 y caben enteros dentro del ruido.
+//
+//     −110 → cuota decimal 1,9091 → breakeven = 1 / 1,9091 = 0,523810
+//
+// Se informa contra el breakeven del precio REAL cuando se conoce, y contra −110 cuando no, diciendo cuál
+// se usó. Y el error estándar se calcula en el breakeven —√(p(1−p)/n)— no en 0,5.
+const PRECIO_ESTANDAR_TOTALES = -110;
+const decimalDeAmericano = (a) => (a == null ? null : a < 0 ? 1 + 100 / -a : 1 + a / 100);
+const breakevenDe = (americano) => { const d = decimalDeAmericano(americano); return d > 1 ? 1 / d : null; };
+
+function restPrereg(games, { since = null, closeLineOf = null, precioAmericano = PRECIO_ESTANDAR_TOTALES } = {}) {
   const done = (games || []).filter((g) => g && g.home && g.away && g.home.pts != null && g.away.pts != null && g.date);
   const rows = [];
   for (const g of done) {
@@ -171,15 +186,34 @@ function restPrereg(games, { since = null, closeLineOf = null } = {}) {
   const conLinea = rows.filter((r) => r.result);
   const over = conLinea.filter((r) => r.result === 'OVER').length, under = conLinea.filter((r) => r.result === 'UNDER').length;
   const decided = over + under;
+  const be = breakevenDe(precioAmericano);
+  const p = decided ? over / decided : null;
+  // error estándar BAJO LA HIPÓTESIS NULA que de verdad importa: que la regla pague justo el breakeven
+  const se = decided && be != null ? Math.sqrt(be * (1 - be) / decided) : null;
+  const t = (p != null && se > 0) ? (p - be) / se : null;
+  // el ROI a stake plano es la traducción a dinero de todo lo anterior, y es lo único que se lee sin pensar
+  const dec = decimalDeAmericano(precioAmericano);
+  const roi = decided ? (over * (dec - 1) - under) / decided : null;
   return {
     regla: `over si away_rest − home_rest > ${REST_OVER_THRESHOLD} días (descanso saturado a 7; sin partido previo = 3)`,
     n_disparos: rows.length, n_con_linea: conLinea.length, over, under, push: conLinea.length - decided,
-    over_pct: decided ? r2(100 * over / decided) : null,
-    // error estándar binomial del acierto: sin él 13/18 parece una señal y es una moneda cargada un poco
-    over_se_pp: decided ? r2(100 * Math.sqrt(0.25 / decided)) : null,
+    over_pct: p != null ? r2(100 * p) : null,
+    // ── LA VARA, EXPLÍCITA ────────────────────────────────────────────────────────────────────────────
+    precio_supuesto: precioAmericano, cuota_decimal: dec ? +dec.toFixed(4) : null,
+    breakeven_pct: be != null ? r2(100 * be) : null,
+    ventaja_pp: p != null && be != null ? r2(100 * (p - be)) : null,
+    se_pp: se != null ? r2(100 * se) : null,
+    t_contra_breakeven: t != null ? +t.toFixed(2) : null,
+    roi_stake_plano_pct: roi != null ? r2(100 * roi) : null,
+    veredicto: decided < 100 ? 'muestra_corta'
+      : t == null ? 'no_evaluable'
+        : t >= 2 ? 'le_gana_al_precio' : t <= -2 ? 'pierde_contra_el_precio' : 'indistinguible_del_precio',
+    nota: `el acierto se juzga contra el breakeven del precio (${be != null ? r2(100 * be) + ' %' : '—'}), no contra el 50 %: `
+      + 'a −110 hay que acertar el 52,381 % solo para no perder dinero, y medirlo contra la moneda justa '
+      + 'convierte una regla que pierde en una que parece ganar.',
     rows: rows.slice(-200),
   };
 }
 
-module.exports = { CLV_V, NOTAS, REST_OVER_THRESHOLD, clvFair, clvPrice, fairFromQuotes, applyV2, migrateV2,
+module.exports = { CLV_V, NOTAS, REST_OVER_THRESHOLD, PRECIO_ESTANDAR_TOTALES, breakevenDe, decimalDeAmericano, clvFair, clvPrice, fairFromQuotes, applyV2, migrateV2,
   thesisOf, findByThesis, addRequote, mainLine, lineMoved, restDays, restDiff, restFeatures, restPrereg };

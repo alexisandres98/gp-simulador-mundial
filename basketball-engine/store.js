@@ -389,7 +389,7 @@ function gameProps(C, game, sim) {
       if (a && a.minutes && a.minutes.map) return a.minutes.map;
       const prof = MN.rotationProfile(C.games, teamId, { lastN: 15 });
       const pj = prof ? MN.projectMinutes(prof, { L: L2 }) : null;
-      return pj ? pj.map : null;
+      return pj && !pj.error ? pj.map : null;      // sin liga no hay denominador: ver A13 en minutes.js
     };
     const hm = mins('home', game.home.id), am = mins('away', game.away.id);
     if (!hm || !am) return null;

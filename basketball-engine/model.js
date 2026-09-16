@@ -27,11 +27,14 @@ function availabilityDelta(C, teamId, { injuries = null, L = null, override = nu
   const prof = MN.rotationProfile(C.games, teamId, { lastN: 15 });
   if (!prof) return null;
   const baseline = MN.projectMinutes(prof, { L });                      // el equipo de siempre
-  if (!baseline) return null;
+  // `error: 'sin_liga'` (16-sep, A13): sin saber la liga no se pueden normalizar minutos —NBA son 240 y
+  // WNBA/NCAA 200—, y `projectMinutes` se niega en vez de inventar el denominador de la NBA. Aquí se
+  // propaga como "no hay ajuste por disponibilidad", que es lo honesto: el partido se simula sin esa capa.
+  if (!baseline || baseline.error) return null;
   const { out, doubtful } = override ? { out: (override.out || []).map(String), doubtful: override.doubtful || {} }
     : injuries ? MN.injuriesToRoster(injuries, teamId) : { out: [], doubtful: {} };
   const tonight = MN.projectMinutes(prof, { out, doubtful, L });
-  if (!tonight) return null;
+  if (!tonight || tonight.error) return null;
   const a = PLY.teamFromMinutes(C.rapm, baseline.map);
   const b = PLY.teamFromMinutes(C.rapm, tonight.map);
   if (!a || !b) return null;
@@ -140,6 +143,41 @@ function blend(pModel, pMarket, w) {
   return 1 / (1 + Math.exp(-z));
 }
 
+// ── EL PESO ES POR FAMILIA, Y NO SE PRESTA (16-sep, A14 de la auditoría externa) ─────────────────────────
+//
+// `fitBlend` estima UN peso a partir de filas de ganador de partido. Ese número dice cuánto vale el modelo
+// CONTRA EL CIERRE EN MONEYLINE, y nada más. Acertar quién gana y acertar cuántos puntos se anotan son dos
+// habilidades distintas: nuestro propio simulador ajusta el margen y el ritmo por separado, y el mercado de
+// totales se mueve por razones (ritmo esperado, bajas de interiores, arbitraje de faltas) que no tienen por
+// qué tocar el ganador. Transportar el peso de una familia a otra es afirmar que sí las tienen sin haberlo
+// medido nunca.
+//
+// EL ESTADO REAL HOY, y conviene que conste: el peso solo se aplica al ganador (`simulateGame`), y totales y
+// hándicaps se publican con la probabilidad CRUDA del simulador — o sea, con peso 1 implícito, que es el
+// caso extremo del error: "el modelo vale más que el mercado en esta familia", afirmado sin medirlo. Por eso
+// las picks de baloncesto están apagadas y lo que se publica sale de precios entre casas, no del modelo.
+//
+// Esto ajusta un peso POR FAMILIA y deja `null` donde no hay muestra. `null` no es 1: quien lo consuma tiene
+// que decir "esta familia no está validada", que es exactamente lo que `pesoDe()` obliga a hacer.
+function fitBlendPorFamilia(filasPorFamilia, opciones = {}) {
+  const out = {};
+  for (const [familia, filas] of Object.entries(filasPorFamilia || {})) {
+    const f = fitBlend(filas || [], opciones);
+    out[familia] = f.ok ? f : { w: null, n: (filas || []).length, ok: false, reason: f.reason || 'muestra insuficiente' };
+  }
+  return out;
+}
+
+// Devuelve el peso de UNA familia, o `null` con el motivo. Nunca cae al peso de otra: si hiciera falta un
+// valor por defecto, el defecto correcto es 0 (hazle caso solo al mercado), jamás 1.
+function pesoDe(pesos, familia) {
+  const f = pesos && pesos[familia];
+  if (f && f.ok && Number.isFinite(f.w)) return { w: f.w, validada: true, n: f.n };
+  return { w: null, validada: false,
+    why: `la familia "${familia}" no tiene peso de mezcla ajustado fuera de muestra. No se toma el de otra `
+      + 'familia: el peso del ganador no dice nada sobre totales ni sobre hándicaps.' };
+}
+
 // ---- SIMULACIÓN CON TODA LA PILA ------------------------------------------------------------------------
 function simulateGame(C, game, { injuries = null, L = null, sims = 20000, seed = 13, market = null, override = null } = {}) {
   if (!C || !C.fit) return null;
@@ -168,4 +206,4 @@ function simulateGame(C, game, { injuries = null, L = null, sims = 20000, seed =
   return out;
 }
 
-module.exports = { availabilityDelta, projectGame, fitBlend, blend, simulateGame };
+module.exports = { availabilityDelta, projectGame, fitBlend, fitBlendPorFamilia, pesoDe, blend, simulateGame };

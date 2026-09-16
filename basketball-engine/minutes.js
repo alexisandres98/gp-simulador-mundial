@@ -9,8 +9,15 @@
 // que evitan las salidas absurdas:
 //   1) TECHO por jugador: nadie pasa de su máximo histórico + 6 minutos. Un suplente no juega 44 minutos
 //      porque falten dos titulares; el entrenador estira la rotación, no a una persona.
-//   2) NORMALIZACIÓN al total de la liga (240 minutos-jugador en NBA/WNBA, 200 en NCAA): lo que sobra tras
-//      aplicar los techos baja a los siguientes de la rotación, y si aun así falta, entra nivel de reemplazo.
+//   2) NORMALIZACIÓN al total de la liga: lo que sobra tras aplicar los techos baja a los siguientes de la
+//      rotación, y si aun así falta, entra nivel de reemplazo.
+//      EL TOTAL POR LIGA, CORREGIDO (16-sep, A13 de la auditoría). Aquí ponía "240 minutos-jugador en
+//      NBA/WNBA, 200 en NCAA" y la WNBA juega **40 minutos**, no 48: su total son **200**, igual que NCAA.
+//      Sólo la NBA tiene 240. La tabla de ligas de `data-providers/basketball/espn.js` siempre lo tuvo
+//      bien (nba 48 · wnba 40 · ncaam 40 · ncaaw 40); lo que estaba mal era el comentario y —esto sí
+//      cuenta— el VALOR POR DEFECTO cuando no llega la liga, que caía a 48 y normalizaba un partido de la
+//      WNBA a 240 minutos-jugador. Con ese denominador todos los minutos salen inflados un 20 %, y como el
+//      RAPM se pondera por minutos, el rating del equipo también.
 // El reparto es proporcional al peso reciente de cada disponible, no a partes iguales: los minutos de una
 // estrella lesionada van sobre todo a quien ya jugaba a su lado, no al 12º hombre.
 //
@@ -18,7 +25,18 @@
 'use strict';
 
 // Minutos-jugador totales de un partido: 5 en cancha × minutos de partido.
-function teamMinutes(L) { return 5 * (L && L.minutes ? L.minutes : 48); }
+//   NBA 5 × 48 = 240 · WNBA 5 × 40 = 200 · NCAA (m y f) 5 × 40 = 200.
+//
+// SIN LIGA NO SE ADIVINA (16-sep). Devolvía 240 cuando no llegaba `L`, así que una llamada que olvidara
+// pasar la liga normalizaba cualquier partido a la NBA en silencio — y en la WNBA eso infla cada minuto
+// proyectado un 20 %. Ahora se devuelve `null` y quien llama decide: `projectMinutes` lo convierte en una
+// salida declarada (`sin_liga`) en vez de en un número que parece bueno.
+const MINUTOS_POR_LIGA = { nba: 48, wnba: 40, ncaam: 40, ncaaw: 40 };
+function teamMinutes(L) {
+  const m = L && Number.isFinite(L.minutes) ? L.minutes
+    : (L && typeof L === 'string' && MINUTOS_POR_LIGA[L]) ? MINUTOS_POR_LIGA[L] : null;
+  return m ? 5 * m : null;
+}
 
 // ---- PERFIL DE ROTACIÓN ---------------------------------------------------------------------------------
 // Para cada jugador de un equipo: minutos esperados (media exponencial), techo observado, y cuántos partidos
@@ -61,7 +79,10 @@ function rotationProfile(games, teamId, { lastN = 15, halfLife = 5, now = Date.n
 // `out` = ids que NO juegan. `doubtful` = ids con probabilidad de jugar (se les aplica un factor).
 function projectMinutes(profile, { out = [], doubtful = {}, L = null, replacementName = 'Reemplazo' } = {}) {
   if (!profile || !profile.rows.length) return null;
-  const TOTAL = teamMinutes(L || { minutes: 48 });
+  const TOTAL = teamMinutes(L);
+  // Una proyección normalizada a la liga equivocada no es "aproximada": es 20 % más de minutos para todos,
+  // y el rating de equipo se pondera con ellos. Mejor no devolver nada que devolver eso.
+  if (!TOTAL) return { error: 'sin_liga', why: 'no se puede normalizar minutos sin saber la liga: NBA son 240 minutos-jugador y WNBA/NCAA 200', rows: [], map: {}, total: null };
   const outSet = new Set((out || []).map(String));
   const avail = profile.rows.filter((r) => !outSet.has(String(r.id)));
   if (!avail.length) return null;

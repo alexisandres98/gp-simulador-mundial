@@ -161,10 +161,26 @@ cobra la casa, con muestra suficiente. Ni el ROI ni el CLV a secas valen — ver
 
 ## 📏 LA VARA — cómo se decide si una familia sirve (11-13-sep)
 Tres módulos, en este orden. **No juzgues una familia por su ROI ni por su CLV a secas: los dos mienten.**
-- **`lib/margen.js`** — el margen de la casa, medido emparejando las DOS caras del mismo mercado en el
-  archivo de cierres. Si solo hay una cara dice `null`: un margen supuesto haría pasar por invertible algo
-  que no lo es. Medidos: pinnacle RONDAS_HANDICAP 2,21 %/lado · cloudbet 3,13 % · bovada KILLS 2,35 % ·
-  total de goles de fútbol **0,69 %** (el más barato = el más eficiente = el peor sitio para buscar ventaja).
+- **`lib/margen.js`** — el margen de la casa, medido emparejando las DOS caras del mismo mercado **del mismo
+  partido** en el archivo de cierres. Si solo hay una cara dice `null`: un margen supuesto haría pasar por
+  invertible algo que no lo es.
+  **⚠️ LOS NÚMEROS DE ESTA LÍNEA ESTUVIERON MAL DEL 11 AL 16-SEP** y conviene saber por qué, porque el fallo
+  es del tipo que más caro sale. La clave del mercado no llevaba el partido, así que todas las filas con la
+  misma casa+familia+línea caían en el mismo cubo aunque fueran de partidos distintos, y de cada cara se
+  quedaba la de MEJOR cuota: se emparejaba el *over* de un partido con el *under* de otro. Eso no es un
+  margen, es un arbitraje imaginario. Se veía: `cs2·bovada·KILLS` informaba **0,00 %** —ninguna casa cobra
+  cero— y el 2,21 % de pinnacle salía de **cuatro** mercados. Corregido el 16-sep: **51 de 64 márgenes
+  subieron, la mediana del cambio fue +0,89 pp y la mediana de la muestra pasó de 4 a 128 mercados.**
+  El margen se RESTA del CLV, así que todo lo decidido con los números viejos miraba a las familias **más
+  favorablemente de lo que merecían**.
+  Medidos de nuevo (16-sep): pinnacle RONDAS_HANDICAP **3,10 %**/lado (era 2,21) · cloudbet RONDAS_HANDICAP
+  **3,92 %** (era 3,13) · bovada KILLS **3,26 %** (era 0,00) · lol bovada KILLS **3,39 %** (era 2,35) ·
+  lol cloudbet KILLS_HANDICAP **4,90 %** (era 0,38). **La banda real de casi todo el sistema es 3-5 %/lado.**
+  Y el total de goles de fútbol NO cobra 0,69 %: medido partido a partido sobre el libro en vivo de Cloudbet
+  cobra **3,09 %/lado** (`scripts/cloudbet-margen-futbol.js`, 48 partidos). Tabla completa de los 14 mercados
+  de fútbol en `docs/MARGEN_CLOUDBET_2026-09-16.md`: córners 3,95-4,50 % (**cierra C3**), HT/FT 21,93 %
+  entre nueve salidas (17,99 % de coste real), marcador exacto 28,91 % — y la excepción barata, el **total
+  de goles de 2ª parte a 2,71 %/lado**, el más barato de los catorce y por donde debe entrar C2.
 - **`lib/vara.js`** — CLV **recortado al 10 %** (la media cruda la destrozan cierres rotos: hay un +148 % en
   cloudbet), serie por semana, rodante de 100, neto de margen, veredicto y ¼ Kelly. **Y antes de todo eso
   pregunta si el CLV sirve**: `cierreAporta()` compara el error del precio de entrada con el del cierre. En

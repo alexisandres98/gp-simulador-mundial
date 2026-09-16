@@ -26515,6 +26515,16 @@ async function anotar(pid){
       const ordenFam = Object.entries(porFam).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || (b[1].n || 0) - (a[1].n || 0));
       const orden = Object.entries(fams).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || b[1].n - a[1].n);
       const aporta = orden.filter(([, v]) => v.veredicto === 'el_modelo_aporta');
+      // ── LA DOBLE CORRIDA (M1) ───────────────────────────────────────────────────────────────────────
+      // `&congelar=1` fija el `c` de hoy con su fecha y arranca los 14 días. Congelarlo es un acto
+      // EXPLÍCITO a propósito: si el `c` se reajustara cada pasada, cada pick se evaluaría con un número
+      // que ya vio datos posteriores a ella y la comparación volvería a ser dentro de muestra.
+      const SB = require('./lib/encogimiento-sombra');
+      let congelado = null;
+      if (url.searchParams.get('congelar') === '1') {
+        congelado = SB.congelar(Object.fromEntries(Object.entries(porFam)), { motivo: 'B1: inicio de la doble corrida de 14 días (M1)' });
+      }
+      const sombra = SB.track();
       return json(res, 200, {
         at: new Date().toISOString(), min_muestra: minN,
         formula: 'p* = σ( logit(p_cierre sin margen) + c · [logit(p_gp) − logit(p_cierre sin margen)] )',
@@ -26541,6 +26551,7 @@ async function anotar(pid){
           penaliza_modelo_crudo: v.fuera_de_muestra ? v.fuera_de_muestra.penalizacion_del_modelo_crudo : null,
           ic_de_c: v.ic_de_c ? v.ic_de_c.ic : null,
           hueco: v.hueco_del_precio ? { veredicto: v.hueco_del_precio.veredicto, tasa_pct: v.hueco_del_precio.tasa_hueco_pct } : null })),
+        doble_corrida: sombra, congelado_ahora: congelado,
         familias_agrupadas: Object.fromEntries(ordenFam),
         tabla: orden.map(([k, v]) => ({ familia: k, c: v.c, veredicto: v.veredicto,
           c_no_distinguible_de_cero: !!v.c_no_distinguible_de_cero, aviso_c: v.aviso_c || null,
@@ -29035,6 +29046,43 @@ server.listen(PORT, () => {
   };
   setTimeout(() => { barridoAf().catch(e => console.error('[clubs] barrido AF:', e.message)); }, 3 * 60 * 1000);
   setInterval(() => { barridoAf().catch(e => console.error('[clubs] barrido AF:', e.message)); }, 6 * 3600 * 1000);
+
+  // ── LA DOBLE CORRIDA DEL ENCOGIMIENTO (16-sep, M1 · B1) ─────────────────────────────────────────────
+  // Anota, para cada pick, qué habría publicado la versión encogida con el `c` CONGELADO, y la liquida
+  // cuando llega su resultado. **No toca la creación de picks**: el feed sigue naciendo igual. Cada media
+  // hora, que es de sobra — las picks no nacen más rápido que eso y la anotación es idempotente.
+  const dobleCorrida = () => {
+    const SB = require('./lib/encogimiento-sombra');
+    const st = SB.rd();
+    if (!st.congelado) return { saltado: 'sin congelar' };      // hasta que no se congela, no hay cohorte
+    let anotadas = 0, liquidadas = 0;
+    const gano = (x) => { const r = String(x.result_code || x.result || '').toUpperCase();
+      return r === 'WIN' || r === 'WON' ? 1 : (r === 'LOSS' || r === 'LOST' ? 0 : null); };
+    const pMod = (x) => { const v = [x.p_gp, x.p_model, x.model_prob, x.p_modelo].find((y) => Number.isFinite(y));
+      return Number.isFinite(v) ? v : null; };
+    const cierre = (x) => [x.close_odds, x.close_own, x.close_price].find((y) => Number.isFinite(y) && y > 1) || null;
+    const mete = (pre, filas) => {
+      for (const x of (filas || [])) {
+        const id = String(x.id || x.pick_id || x.key || '');
+        if (!id) continue;
+        const fam = `${pre} · ${x.family || x.familia || '?'}`;
+        if (SB.anota(st, { id, familia: fam, p_gp: pMod(x), odds: cierre(x) || x.odds,
+          odds_contraria: x.close_odds_contraria, nacida_at: x.created_at || x.born_at || x.at || null })) anotadas++;
+        const y = gano(x);
+        if (y != null && SB.liquida(st, id, y)) liquidadas++;
+      }
+    };
+    try { const ES = require('./esports-engine/store');
+      for (const g of ES.GAME_ORDER) { const tr = ES.track(g, { limit: 100000 }); mete(g, tr && tr.recent); }
+    } catch { /* un motor caído no rompe la corrida */ }
+    try { mete('tt', (require('./tt-engine/store').track({ limit: 100000 }) || {}).recent); } catch { /* */ }
+    try { mete('dardos', (require('./darts-engine/store').track({ limit: 100000 }) || {}).recent); } catch { /* */ }
+    try { mete('tenis', (require('./tennis-engine/store').track(null, { limit: 100000 }) || {}).recent); } catch { /* */ }
+    if (anotadas || liquidadas) SB.wr(st);
+    return { anotadas, liquidadas };
+  };
+  setTimeout(() => { try { dobleCorrida(); } catch (e) { console.error('[encogimiento] doble corrida:', e.message); } }, 4 * 60 * 1000);
+  setInterval(() => { try { dobleCorrida(); } catch (e) { console.error('[encogimiento] doble corrida:', e.message); } }, 30 * 60 * 1000);
   // red de seguridad TSA (25-jul): cubre las ligas que ESPN no sirve o transcribe distinto. DOS cadencias:
   // 'live' cada 90s pero SOLO ligas con partido en curso (2-6 requests) → marcador en vivo real en las 24
   // ligas; 'full' cada 12min barre todas para recoger finales que se hayan escapado. Throttles propios.

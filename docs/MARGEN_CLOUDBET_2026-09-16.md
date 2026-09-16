@@ -85,3 +85,61 @@ pero sí invalida los cuatro números de márgenes que estaban en `CLAUDE.md` y 
 Corregido en `lib/margen.js` (el partido entra en la clave, y una fila sin partido ya **no se empareja**:
 se cuenta aparte en `_filas.sin_evento`), en el aplanado de `server.js` que tiraba la clave del archivo de
 cierres, y fijado en `tests/margen.test.js` con el arbitraje imaginario reconstruido.
+
+---
+
+## Precisión del 16-sep (noche): el HT/FT no cobra «un 21,93 %», cobra **uno de tres precios**
+
+La tabla de arriba da la mediana de 48 partidos de seis ligas. Al preguntarse si esa cifra era creíble se
+midió otra vez sobre **92 partidos de trece competiciones**, y el número no es un continuo alrededor de una
+mediana: es una **escalera de tres peldaños**, y la liga decide en cuál cae el partido.
+
+| peldaño | sobre-redondeo HT/FT | coste EV de una apuesta | competiciones observadas |
+|---|---:|---:|---|
+| **barato** | ~**9,0 %** | −8,2 % | Premier League · Bundesliga |
+| **medio** | ~**22,0 %** | −18,0 % | LaLiga · Serie A · Ligue 1 · Championship · Eredivisie · Brasileirão · Liga Portugal |
+| **caro** | ~**36,0 %** | −26,5 % | Liga Profesional (ARG) · Süper Lig · Pro League (BEL) · MLS |
+
+Los peldaños son sorprendentemente exactos: dentro de cada uno la dispersión entre partidos es de
+centésimas (8,95-9,03 · 21,93-22,06 · 35,97-36,08), lo que dice que **no es un precio por partido, es un
+parámetro por competición**. La mediana global de 22,00 % es real, pero es la del peldaño donde caen más
+ligas, no «lo que cobra el mercado».
+
+El mismo corte en el 1X2 del partido no hace escalera: va de 5,03 % (Ligue 1) a 8,20 % (Süper Lig) de forma
+continua, mediana 7,21 % sobre los 114 partidos. Es decir, **Cloudbet afina el mercado principal partido a
+partido y tarifa los derivados por bloques.**
+
+### Dos comprobaciones que descartan que sea un fallo de lectura
+
+1. **No hay duplicación de salidas.** Los 92 partidos tienen exactamente 1 submercado y exactamente 9
+   selecciones activas en HT/FT. Sumar todas las salidas y quedarse con una por resultado dan el mismo
+   número.
+2. **La propia casa publica su probabilidad.** Cada selección de Cloudbet lleva un campo `probability`
+   además del `price`, y **esas probabilidades suman 1,0000** (rango observado 0,998-1,002 en los 92
+   partidos), mientras la suma de `1/cuota` suma 1,09, 1,22 o 1,36. La distancia entre las dos sumas **es**
+   el recargo, medido sin ninguna hipótesis nuestra de desmarginado. Coincide.
+
+### La palabra correcta es sobre-redondeo, no comisión
+
+Conviene fijarlo porque se ha dicho mal en conversación: **Cloudbet no cobra ninguna comisión.** No hay una
+tarifa que se reste del ingreso ni del depósito. Lo que hay es que las cuotas de un mercado implican
+probabilidades que suman más de 1, y ese exceso es el recargo. La diferencia práctica importa: una comisión
+se paga siempre, el sobre-redondeo solo lo paga quien cruza ese mercado — y se evita entero **no entrando**.
+
+Polymarket es el caso contrario y también se dijo mal: **sí cobra una comisión explícita**, pero es
+pequeña. Su fórmula documentada es `comisión = acciones × tasa × p × (1 − p)`, solo al taker, con tasa
+0,03-0,07 según categoría (los binarios de fútbol que usa la sombra devuelven 0,03 en su propio
+`feeSchedule`). Su **máximo** está en p = 0,50 y con la tasa por defecto de 0,05 vale **1,25 % de lo
+cruzado**; a p = 0,90 baja a 0,45 %. Es decir: la comisión de Polymarket es del orden de un punto, no de
+veinte. Lo caro de Polymarket es la horquilla, no la tarifa (`docs/CONTRATOS_CASA.md § Polymarket`).
+
+### Qué cambia de lo decidido: nada, y por qué
+
+- **C3 (córners) sigue cerrado.** Se cerró con 3,95-4,50 % por lado en córners, medido con el mismo método
+  y en mercados de dos caras, donde no hay escalera que valga.
+- **C2 (HT/FT) sigue cerrado**, pero el motivo bueno es el otro: el precio ya lleva dentro la
+  condicionalidad del descanso (`docs/HTFT_CIERRE_2026-09-16.md`). El recargo solo acaba de rematar.
+- **La puerta barata sigue siendo la misma**: total de goles de 2ª parte, 2,71 % por lado.
+
+Lo que sí hay que dejar de decir es «el HT/FT cobra 22 %» a secas. En Premier y Bundesliga cobra 9 %, y en
+Argentina, Turquía, Bélgica y MLS cobra 36 %.

@@ -205,9 +205,19 @@ Tres módulos, en este orden. **No juzgues una familia por su ROI ni por su CLV 
   lol cloudbet KILLS_HANDICAP **4,90 %** (era 0,38). **La banda real de casi todo el sistema es 3-5 %/lado.**
   Y el total de goles de fútbol NO cobra 0,69 %: medido partido a partido sobre el libro en vivo de Cloudbet
   cobra **3,09 %/lado** (`scripts/cloudbet-margen-futbol.js`, 48 partidos). Tabla completa de los 14 mercados
-  de fútbol en `docs/MARGEN_CLOUDBET_2026-09-16.md`: córners 3,95-4,50 % (**cierra C3**), HT/FT 21,93 %
-  entre nueve salidas (17,99 % de coste real), marcador exacto 28,91 % — y la excepción barata, el **total
-  de goles de 2ª parte a 2,71 %/lado**, el más barato de los catorce y por donde debe entrar C2.
+  de fútbol en `docs/MARGEN_CLOUDBET_2026-09-16.md`: córners 3,95-4,50 % (**cierra C3**), marcador exacto
+  28,91 % — y la excepción barata, el **total de goles de 2ª parte a 2,71 %/lado**, el más barato de los
+  catorce y por donde debe entrar C2.
+  **Y el recargo de los derivados no es un número, es una escalera por competición** (medido sobre 92
+  partidos de 13 ligas): el HT/FT cobra **~9 %** en Premier y Bundesliga, **~22 %** en LaLiga/Serie A/
+  Ligue 1/Championship/Eredivisie/Brasileirão/Liga Portugal y **~36 %** en Argentina, Turquía, Bélgica y
+  MLS, con centésimas de dispersión dentro de cada peldaño. El 1X2 del partido NO hace escalera (5,03 →
+  8,20 % continuo): Cloudbet afina el mercado principal partido a partido y **tarifa los derivados por
+  bloques**. Cotejado contra el campo `probability` que publica la propia casa, que suma 1,0000.
+  **Y la palabra:** esto es SOBRE-REDONDEO, no comisión. **Cloudbet no cobra comisión ninguna**; el recargo
+  solo lo paga quien cruza, y se evita entero no entrando. **Polymarket sí cobra comisión** y es pequeña:
+  `acciones × tasa × p × (1−p)`, solo taker, tasa 0,03-0,07 → máximo **1,25 % de lo cruzado** en p = 0,50.
+  Lo caro de Polymarket es la horquilla, no la tarifa.
 - **`lib/vara.js`** — CLV **recortado al 10 %** (la media cruda la destrozan cierres rotos: hay un +148 % en
   cloudbet), serie por semana, rodante de 100, neto de margen, veredicto y ¼ Kelly. **Y antes de todo eso
   pregunta si el CLV sirve**: `cierreAporta()` compara el error del precio de entrada con el del cierre. En

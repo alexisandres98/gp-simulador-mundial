@@ -26425,10 +26425,22 @@ async function anotar(pid){
             pMkt: (x) => EN.pMercado({ odds: cierre(x), odds_contraria: x.close_odds_contraria }) });
         } catch (e) { avisos.push(`${clave}: ${e.message}`); }
       };
+      // DOS AGRUPACIONES, Y LA BUENA ES LA PRIMERA. `c` es «cuánto peso merece el MODELO por encima del
+      // precio», y el modelo es el mismo apueste donde apueste: la agrupación natural es la FAMILIA. Partir
+      // además por casa fragmentó tenis en cincuenta libros de cuatro filas cada uno y dejó al deporte
+      // entero sin veredicto — no por falta de datos, sino por haberlos cortado en cincuenta.
+      // La partición por casa se conserva igual, pero como COMPROBACIÓN: si el `c` de una familia cambia
+      // mucho de casa a casa, el número agrupado está escondiendo esa diferencia y hay que mirarla.
+      const agrupado = {};
       const porFamilia = (rows, pre) => {
-        const g = {};
-        for (const x of (rows || [])) (g[`${pre} · ${x.family || x.familia || '?'} · ${x.book || '?'}`] ||= []).push(x);
+        const g = {}, gf = {};
+        for (const x of (rows || [])) {
+          const fam = x.family || x.familia || '?';
+          (g[`${pre} · ${fam} · ${x.book || '?'}`] ||= []).push(x);
+          (gf[`${pre} · ${fam}`] ||= []).push(x);
+        }
         for (const [k, v] of Object.entries(g)) mete(k, v);
+        for (const [k, v] of Object.entries(gf)) agrupado[k] = v;
       };
       const traidasEs = {};
       try { const ES = require('./esports-engine/store');
@@ -26462,6 +26474,17 @@ async function anotar(pid){
           porFamilia(filas, dep);
         } catch (e) { traidas[dep] = null; avisos.push(`${dep}: ${e.message}`); }
       }
+      // la pasada agrupada por familia, que es la que manda
+      const porFam = {};
+      for (const [k, v] of Object.entries(agrupado)) {
+        if (v.length < minN) { porFam[k] = { c: 0, n: v.length, suficiente: false, veredicto: 'muestra_corta',
+          razon: `${v.length} filas en el libro, hacen falta ${minN}.` }; continue; }
+        try {
+          porFam[k] = EN.paraFamilia(v, { nMin: minN, pGp: pMod, gano, fecha: cuando, evento: evDe,
+            pMkt: (x) => EN.pMercado({ odds: cierre(x), odds_contraria: x.close_odds_contraria }) });
+        } catch (e) { avisos.push(`${k} (agrupada): ${e.message}`); }
+      }
+      const ordenFam = Object.entries(porFam).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || (b[1].n || 0) - (a[1].n || 0));
       const orden = Object.entries(fams).sort((a, b) => (b[1].c || 0) - (a[1].c || 0) || b[1].n - a[1].n);
       const aporta = orden.filter(([, v]) => v.veredicto === 'el_modelo_aporta');
       return json(res, 200, {
@@ -26475,6 +26498,22 @@ async function anotar(pid){
           muestra_corta: orden.filter(([, v]) => !v.suficiente).length,
           c_mediano: orden.length ? orden.map(([, v]) => v.c).sort((x, y) => x - y)[orden.length >> 1] : null },
         c_no_distinguible_de_cero: orden.filter(([, v]) => v.c_no_distinguible_de_cero).map(([k]) => k),
+        // ── LA TABLA QUE MANDA: por familia, con las casas juntas ──────────────────────────────────────
+        agrupacion: 'El veredicto se toma sobre `por_familia` (todas las casas juntas), porque `c` mide al MODELO y el modelo es el mismo apueste donde apueste. `tabla` parte además por casa y sirve de comprobación: si el c cambia mucho de casa a casa, el agrupado esconde esa diferencia.',
+        resumen_por_familia: { familias: ordenFam.length,
+          el_modelo_aporta: ordenFam.filter(([, v]) => v.veredicto === 'el_modelo_aporta').length,
+          el_modelo_no_aporta: ordenFam.filter(([, v]) => v.veredicto === 'el_modelo_no_aporta').length,
+          muestra_corta: ordenFam.filter(([, v]) => !v.suficiente).length,
+          c_no_medido: ordenFam.filter(([, v]) => v.c_no_distinguible_de_cero).map(([k]) => k) },
+        por_familia: ordenFam.map(([k, v]) => ({ familia: k, c: v.c, veredicto: v.veredicto,
+          c_no_distinguible_de_cero: !!v.c_no_distinguible_de_cero,
+          n_utilizables: v.n_utilizables ?? null, n_entradas: v.n_entradas ?? v.n ?? null,
+          fuera_de_muestra_n: v.fuera_de_muestra ? v.fuera_de_muestra.n : null,
+          mejora_sobre_precio: v.fuera_de_muestra ? v.fuera_de_muestra.mejora_sobre_precio : null,
+          penaliza_modelo_crudo: v.fuera_de_muestra ? v.fuera_de_muestra.penalizacion_del_modelo_crudo : null,
+          ic_de_c: v.ic_de_c ? v.ic_de_c.ic : null,
+          hueco: v.hueco_del_precio ? { veredicto: v.hueco_del_precio.veredicto, tasa_pct: v.hueco_del_precio.tasa_hueco_pct } : null })),
+        familias_agrupadas: Object.fromEntries(ordenFam),
         tabla: orden.map(([k, v]) => ({ familia: k, c: v.c, veredicto: v.veredicto,
           c_no_distinguible_de_cero: !!v.c_no_distinguible_de_cero, aviso_c: v.aviso_c || null,
           n_utilizables: v.n_utilizables, n_entradas: v.n_entradas,

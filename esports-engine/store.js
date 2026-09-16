@@ -1555,8 +1555,32 @@ function retireCrossedPicks(game) {
 // Cada familia se liquida contra el dato que le corresponde y NUNCA contra uno parecido. Lo que la fuente no
 // trae devuelve `null` y la pick se queda sin liquidar con su motivo, que es infinitamente mejor que
 // inventarle un resultado: una pick mal liquidada envenena el histórico para siempre y no deja rastro.
+// ── UNA SERIE A MEDIAS NO SE LIQUIDA (16-sep, D-Dota de la auditoría externa) ────────────────────────────
+// OpenDota publica los partidos SEGÚN TERMINAN y la serie se reconstruye agrupando por `series_id`. Eso
+// significa que un BO3 con el mapa 1 jugado llega a este liquidador como una fila perfectamente formada que
+// dice `maps_a: 1, maps_b: 0` — indistinguible, mirándola sola, de un BO3 que acabó 1-0 por incomparecencia.
+// Y las familias de SERIE (ganador, hándicap de mapas, total de mapas) se liquidaban con ella: un "menos de
+// 2,5 mapas" se daba por ganado en cuanto acababa el primero.
+//
+// El dato que rompe el empate ya viajaba en la pick y nadie lo miraba: `bo`. Una serie está terminada cuando
+// alguien llega a los mapas que pide su formato. Mientras no, la pick ESPERA — y si nunca llega, la caducidad
+// de 21 días la cierra como DATA_UNRESOLVED, que es lo honesto: no sabemos cómo acabó.
+//
+// Vale para los cuatro juegos, no solo Dota: CS2 tenía la misma puerta pero solo dentro de la rama del mapa
+// que no se jugó, así que las familias de serie pasaban por delante de ella.
+// Las familias que se liquidan con el MARCADOR DE SERIE, tomadas de `PICK_FAMILIES` y no de memoria: las
+// de mapa (RONDAS*, KILLS*, PRORROGA) sí se pueden liquidar en cuanto ese mapa concreto está jugado.
+const SERIE_FAMILIAS = new Set(['TOTAL_MAPAS', 'HANDICAP', 'SERIE']);
+function serieTerminada(pk, res) {
+  if (!res || !Number.isFinite(res.maps_a) || !Number.isFinite(res.maps_b)) return null;
+  const paraGanar = Math.ceil((Number(pk.bo) || 3) / 2);
+  return Math.max(res.maps_a, res.maps_b) >= paraGanar;
+}
+
 function settleOne(pk, res) {
   const maps = res.maps || [];
+  // la puerta, antes de mirar ninguna familia: una serie a medias no decide nada de la serie
+  if (SERIE_FAMILIAS.has(pk.family) && serieTerminada(pk, res) === false) return null;
   const m = pk.map ? maps.find((x) => x.n === pk.map) : null;
   const need = (v) => (v == null || Number.isNaN(v) ? null : v);
   const cmp = (val, line, over) => {

@@ -208,14 +208,33 @@ function resolveTeam(name, { data = null } = {}) {
   if (d.byAlias && d.byAlias.has(k)) return d.byAlias.get(k);
   // mismo guard de identidad que LoL/Valorant: los marcadores de segundo equipo no resuelven al principal
   const SQUAD = /(^| )(academy|academia|youth|rookies?|prospects?|female|fe|2|ii|b|junior)( |$)/;
+
+  // ── ANTE DOS CANDIDATOS NO SE ELIGE (16-sep, A10 / D-Dota de la auditoría externa) ────────────────────
+  // Esto recorría `byName` y devolvía EL PRIMERO que casara por prefijo. `byName` es un Map construido
+  // recorriendo los partidos en orden cronológico, así que "el primero" quiere decir "el equipo que
+  // apareció antes en el archivo" — un criterio que no tiene nada que ver con cuál es el equipo correcto.
+  // Con "Aurora" en la agenda y "Aurora" y "Aurora Gaming" en la base, la resolución dependía del orden de
+  // cosecha; y una resolución mal hecha aquí no se queda en una ficha: liquida la pick con el partido de
+  // otro equipo.
+  //
+  // El criterio correcto ya está escrito en el liquidador de esports desde el 7-sep y es el mismo aquí:
+  // **con dos candidatos, mejor sin resolver que resuelto con el equipo ajeno**. Se recogen TODOS los que
+  // casan y solo se devuelve si queda exactamente uno. Los empates por escritura (el mismo id alcanzado por
+  // dos grafías) no cuentan como ambigüedad: lo que importa es cuántos EQUIPOS distintos casan.
+  const exactos = new Set(), prefijos = new Set();
   for (const [n2, id] of d.byName || []) {
-    if (n2 === k || n2.replace(/ /g, '') === k.replace(/ /g, '')) return id;
+    if (n2 === k || n2.replace(/ /g, '') === k.replace(/ /g, '')) { exactos.add(id); continue; }
     if ((k.length > 3 && n2.startsWith(k)) || (n2.length > 3 && k.startsWith(n2))) {
       const rest = (k.length > n2.length ? k.slice(n2.length) : n2.slice(k.length)).trim();
-      if (!SQUAD.test(' ' + rest + ' ')) return id;
+      if (!SQUAD.test(' ' + rest + ' ')) prefijos.add(id);
     }
   }
-  return null;
+  // una coincidencia exacta gana siempre a una por prefijo: "Aurora" contra "Aurora" no es ambiguo aunque
+  // exista además "Aurora Gaming"
+  if (exactos.size === 1) return [...exactos][0];
+  if (exactos.size > 1) return null;                    // dos equipos distintos con el mismo nombre normalizado
+  if (prefijos.size === 1) return [...prefijos][0];
+  return null;                                          // cero candidatos, o más de uno: no se elige
 }
 
 function teamCard(id, { data = null } = {}) {

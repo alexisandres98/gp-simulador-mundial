@@ -55,10 +55,15 @@ leído sin su intervalo se opera igual que un 0,45 medido.
 M1 dice: doble corrida de 14 días y después la versión encogida pasa a publicar. La Fase B del plan
 anticipa que **«el número de picks va a caer mucho. Eso es la fase funcionando.»**
 
-Con los `c` medidos hoy, no caería mucho: **caería a cero**. `c = 0` significa publicar la probabilidad del
-mercado sin margen, y una pick nace de la diferencia entre nuestra probabilidad y el precio. Si nuestra
-probabilidad *es* el precio, esa diferencia es cero por construcción y **no nace ninguna pick, en ninguna
-familia**.
+Con los `c` medidos hoy, no caería mucho: **caería a una sexta parte**. `c = 0` significa publicar la
+probabilidad del mercado sin margen, y una pick nace de la diferencia entre nuestra probabilidad y el
+precio. Si nuestra probabilidad *es* el precio, esa diferencia es cero por construcción y **en esas
+familias no nace ninguna pick**. Sobreviven solo las tres con `c` > 0.
+
+> **Corrección del 17-sep.** Aquí ponía «caería a cero, en ninguna familia». Era falso y el primer corte de
+> la doble corrida lo enseña: **871 de 5.271 picks anotadas habrían nacido igual** (16,5 %), las de
+> `cs2 · RONDAS`, `lol · KILLS` y `lol · KILLS_DNB`. Un apagado total y una reducción a la sexta parte no
+> son la misma decisión, y la de Alexis se toma sobre la segunda.
 
 Eso no es un fallo del encogimiento: es lo que los datos dicen. Pero es una consecuencia de otro tamaño que
 «bajan las picks», y la decisión de aceptarla no está tomada en el plan — el plan describe una reducción,
@@ -113,3 +118,49 @@ Es exactamente el fallo que hoy dejó muertos los dos surtidores de resultados d
 props, cometido aquí mismo mientras se documentaba. Corregido: cada llamada lleva su firma, cada motor
 declara cuántas filas trajo, y una familia por debajo del mínimo se publica con su recuento en vez de
 desaparecer.
+
+---
+
+## Primer corte de la doble corrida — 17-sep-2026, día 0,69 de 14
+
+**No es el veredicto.** El veredicto es el día 14 (≈ 30-sep) y esto son dieciséis horas. Se anota porque la
+dirección ya es limpia y porque conviene tenerla fechada antes de saber cómo acaba: si el día 14 dice lo
+mismo, esta anotación demuestra que no se eligió el corte que gustaba.
+
+| | log-loss (ponderado, n = 2.726 liquidadas) |
+|---|---:|
+| **crudo** — lo que el feed publica hoy | **0,724627** |
+| **encogido** — la versión alternativa | **0,673826** |
+| **precio** — la casa, sin margen | 0,675351 |
+
+**La encogida gana en 25 de 31 familias, y en 11 de 11 de las que tienen n ≥ 50.** Las seis donde gana la
+cruda tienen n de 38, 13, 11, 10, 4 y 1. Once de once en el mismo sentido, por signo puro, es p ≈ 0,0005.
+
+**Pero hay que leerlo con cuidado, porque dos cosas distintas se esconden en ese 25 de 31.** En las 26
+familias con `c = 0` la encogida **es** el precio, cifra por cifra (se ve en la tabla: `logloss_encogido` y
+`logloss_precio` son idénticos). Ahí «gana la encogida» no dice nada nuevo: dice otra vez que el precio le
+gana al modelo, que es lo que la autopsia del 2-sep ya sabía. Lo único que añade es que ahora está medido
+**prospectivamente**, sobre picks nacidas después del congelado, que es la forma fuerte de medirlo.
+
+**Lo nuevo de verdad son las tres familias con `c` > 0**, porque son las únicas donde la mezcla de modelo y
+precio le gana **al precio solo**:
+
+| familia | n | c congelado | la encogida bate al precio por |
+|---|---:|---:|---:|
+| lol · KILLS_DNB | 84 | 0,45 | **+0,031732** |
+| lol · KILLS | 212 | 0,40 | +0,004996 |
+| cs2 · RONDAS | 496 | 0,20 | +0,000873 |
+
+Las tres en el mismo sentido. Pero el tamaño manda: 0,00087 sobre 496 filas es indistinguible de nada, y
+`KILLS_DNB`, el único con una mejora respetable, tiene 84 filas. **Sigue sin haber aquí un número que
+autorice a mover dinero**, y la regla del 13-sep no se toca.
+
+### Qué mirar el día 14
+
+1. Si las tres familias con `c` > 0 **mantienen** el signo con el doble de muestra, hay por primera vez un
+   sitio donde el modelo aporta algo por encima del precio. Sería la primera vez este año.
+2. Si el resto sigue con la encogida pegada al precio, la opción 1 de arriba (dejar de publicar picks
+   propias en esas familias y quedarse con las desviaciones entre casas) pasa de ser una opción a ser la
+   lectura literal de los datos.
+3. **871 picks de 5.271** es lo que sobreviviría al cambio. No es cero. Ése es el tamaño real de la
+   decisión.

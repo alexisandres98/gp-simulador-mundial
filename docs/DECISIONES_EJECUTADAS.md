@@ -83,3 +83,51 @@ primera tiene `envios: 0` por definición. Queda anotado aquí porque el nombre 
 enteramente en sombra y **la creación de picks no se ha tocado**: el feed sigue publicando con la
 probabilidad cruda. A los 14 días la decisión de qué publicar es suya, con los tres caminos escritos en
 `docs/ENCOGIMIENTO_2026-09-16.md`.
+
+---
+
+## 17-sep-2026 — Alexis reabre el canal real de tarjetas («Abre, deposité»)
+
+Decisión de Alexis, tomada con el número delante y en contra de mi recomendación de ese momento. El
+registro tiene que decir las dos cosas.
+
+**Lo que se le enseñó antes de decidir** (sombra `cards_under_v1`, cohorte EXACTA del ejecutor: primera
+pick por partido, fuera de las 14 ligas que el motor tiene hoy en banda eficiente):
+
+| | n | ROI | t | cuota media |
+|---|---:|---:|---:|---:|
+| toda | 169 | +23,72 % | 3,09 | 1,957 |
+| agosto | 90 | +44,98 % | 4,09 | 2,065 |
+| **septiembre (desde 31-ago)** | **79** | **−0,49 %** | −0,05 | 1,835 |
+
+Por semana: +44 · +47 · +44 · +7 · −5 · −15. Mi lectura escrita: «en lo que vamos a ejecutar, la ventana
+ya está en cero desde hace tres semanas; no depositaría hoy». Alexis decidió abrir para comprar la
+información. Es su dinero y su decisión; queda anotada como tal.
+
+**Dos correcciones mías que precedieron a esto y que conviene que consten:**
+1. El 17-sep por la mañana presenté el real de tarjetas como «−2,21 %, perdió dinero» mezclando las
+   apiladas (−311,72) y las ligas eficientes (−453,43) —los dos errores ya corregidos— con la regla vigente.
+   Separado bien, la cohorte limpia real es **+492,75 sobre 2.415 (+20,40 %, 75 apuestas)**.
+2. Después dije «positiva las seis semanas de seis» usando una lista de ligas armada a mano (premier,
+   bundesliga, mls, rusia). Con el veto REAL del ejecutor (14 ligas, championship dentro, bundesliga fuera)
+   septiembre es −0,49 %. La tabla de arriba es la buena.
+
+**Configuración con la que abre** (verificada en `/api/internal/real` tras el despliegue):
+
+| regla | valor | cómo |
+|---|---|---|
+| canal | **encendido** | `GP_REAL_CARDS_ENABLED=true` (era `false` desde el 13-sep) |
+| saque máximo | **lunes 21-sep 08:00 UTC** | `GP_REAL_KICKOFF_MAX=2026-09-21T08:00:00Z` (orden de Alexis) |
+| ligas eficientes | vetadas | `bandas_vetadas=["eficiente"]` (14 ligas el 17-sep) |
+| una por partido | activo | `linea_ya_apostada` definitivo |
+| stake | **30 USDT plano** | `GP_REAL_STAKE_FLAT=30` |
+
+**Caja:** depósito de **399,99 USDT** (saldo 0,008 → 399,998 a las 15:06 UTC), anotado con
+`run=movimiento&tipo=deposito`. Queda sin explicar la diferencia previa de **−49,49** entre el saldo que
+esperaba el libro (49,50) y el real (0,01); no se ha cerrado y hay que preguntarle.
+
+**Primera pasada del ejecutor encendido:** Rostov–Dinamo (rusia), QPR–Preston y Lincoln–Swansea
+(championship) descartadas como `banda_eficiente`. El veto funciona.
+
+**Parada:** las cuatro líneas de `real-executor/parada.js` siguen corriendo cada hora. Compromiso escrito
+en el chat: si la línea del núcleo cruza, se apaga el canal sin preguntar y se avisa después.

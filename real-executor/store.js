@@ -873,6 +873,31 @@ async function reintentar({ cbIdx = {}, slate = null, max = 25, bandaDe = null }
   return { revisadas: cola.length, colocadas, caducadas, pendientes: L.bets.filter((b) => b.status === 'PENDIENTE').length };
 }
 
+// REABRIR UNA FILA CADUCADA (17-sep). Nació al reabrir el canal de tarjetas: Betis–Getafe había agotado 124
+// intentos mientras el interruptor estuvo apagado y quedó CADUCADA por `demasiados_intentos` con el saque
+// todavía a dos horas. `intentar` no la vuelve a crear (dedup por pick) y `reintentar` solo mira PENDIENTES,
+// así que sin esto una apuesta legítima muere por haber esperado. Condiciones, y ninguna es opcional:
+//   · solo CADUCADA o DESCARTADA — una PLACED/SETTLED no se toca nunca;
+//   · el motivo NO puede ser definitivo (banda eficiente, fuera de ventana, línea ya apostada…): eso es el
+//     perímetro, y el perímetro no se reabre a mano;
+//   · el saque tiene que estar en el futuro.
+// Deja rastro (`reaperturas[]`) y NO coloca: quien llama corre `reintentar` después, que es la única puerta
+// que coloca pendientes y aplica las mismas comprobaciones que a cualquier otra fila.
+function reabrir(refId, { motivo = null } = {}) {
+  const L = load();
+  const fila = L.bets.find((b) => b.ref_id === refId);
+  if (!fila) return { error: 'no hay fila con esa referencia' };
+  if (!/^(CADUCADA|DESCARTADA)$/.test(fila.status)) return { error: `solo se reabre CADUCADA o DESCARTADA; esta está ${fila.status}` };
+  if (DEFINITIVOS.has(fila.motivo)) return { error: `el motivo '${fila.motivo}' es definitivo: es perímetro, no se reabre` };
+  const ko = fila.kickoff_at ? Date.parse(fila.kickoff_at) : NaN;
+  if (!Number.isFinite(ko)) return { error: 'sin saque conocido: no se reabre a ciegas' };
+  if (ko <= Date.now()) return { error: `el partido ya empezó (${fila.kickoff_at})` };
+  (fila.reaperturas ||= []).push({ at: new Date().toISOString(), estaba: fila.status, motivo_previo: fila.motivo, intentos_previos: fila.intentos, motivo });
+  fila.status = 'PENDIENTE'; fila.motivo = null; fila.intentos = 0; fila.reabierta_at = new Date().toISOString();
+  save();
+  return { reabierta: { ref_id: fila.ref_id, match: fila.match, league: fila.league, kickoff_at: fila.kickoff_at, line: fila.line }, reaperturas: fila.reaperturas.length };
+}
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 // PRE-VUELO: LA MISMA RESOLUCIÓN, SIN ESCRIBIR NADA
 // ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -1535,7 +1560,7 @@ function migrarSinResolver({ aplicar = false } = {}) {
   return { candidatas: cand.length, aplicado: true, detalle: detalle.slice(0, 40) };
 }
 
-module.exports = { intentar, reintentar, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
+module.exports = { intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
   frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
   // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.

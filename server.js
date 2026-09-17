@@ -24569,6 +24569,26 @@ async function anotar(pid){
         if (run === 'migrar_sin_resolver') {
           return json(res, 200, RE.migrarSinResolver({ aplicar: url.searchParams.get('aplicar') === '1' }));
         }
+        // `run=reabrir&ref=<ref_id>[&motivo=]` (17-sep): revive una fila CADUCADA/DESCARTADA con motivo NO
+        // definitivo y saque futuro, y la coloca en el mismo barrido. Nació con Betis–Getafe, que caducó por
+        // intentos mientras el canal estuvo apagado. El perímetro (banda, ventana, línea repetida) no se reabre.
+        if (run === 'reabrir') {
+          const rr = RE.reabrir(String(url.searchParams.get('ref') || ''), { motivo: url.searchParams.get('motivo') || null });
+          if (rr.error) return json(res, 200, rr);
+          const rei = await RE.reintentar({ cbIdx: db.cbEventIdx || {}, slate: db.cbSlate || null, bandaDe: (lg) => leagueEfficiency(lg).band }).catch((e) => ({ error: e.message }));
+          const fila = (RE.board().ultimas || []).find((b) => b.ref_id === rr.reabierta.ref_id) || null;
+          return json(res, 200, { ...rr, reintento: rei, fila: fila && { status: fila.status, motivo: fila.motivo, detalle: fila.detalle || null, stake: fila.stake, precio_vivo: fila.precio_vivo || null, odds_real: fila.odds_real || null, error_casa: fila.error_casa || null } });
+        }
+        // `run=libro&tipo=decision|interruptor|ancla&quien=&texto=[&clave=&antes=&ahora=]` (17-sep): asiento en la
+        // cadena de hashes (lib/libro.js) para lo que no nace del ejecutor — una decisión humana, un interruptor
+        // cambiado, un ancla publicada. Los `fill` ya se anotan solos; esto es la parte que faltaba.
+        if (run === 'libro') {
+          const tipo = String(url.searchParams.get('tipo') || '');
+          if (!/^(decision|interruptor|ancla)$/.test(tipo)) return json(res, 200, { error: 'tipo debe ser decision, interruptor o ancla' });
+          const datos = { quien: url.searchParams.get('quien') || null, texto: url.searchParams.get('texto') || null };
+          for (const k of ['clave', 'antes', 'ahora', 'canal', 'ref']) { const v = url.searchParams.get(k); if (v != null) datos[k] = v; }
+          return json(res, 200, require('./lib/libro').anota(tipo, datos));
+        }
         if (run === 'movimiento') {
           return json(res, 200, RE.movimiento({ tipo: url.searchParams.get('tipo'), monto: url.searchParams.get('monto'),
             at: url.searchParams.get('at') || null, nota: url.searchParams.get('nota') || null }));

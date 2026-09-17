@@ -131,3 +131,18 @@ esperaba el libro (49,50) y el real (0,01); no se ha cerrado y hay que preguntar
 
 **Parada:** las cuatro líneas de `real-executor/parada.js` siguen corriendo cada hora. Compromiso escrito
 en el chat: si la línea del núcleo cruza, se apaga el canal sin preguntar y se avisa después.
+
+### 17-sep, 15:25 UTC — dos ajustes de Alexis tras abrir
+
+| # | qué | antes | ahora | revertir |
+|---|---|---|---|---|
+| — | Suelo de la línea de parada de **caja** | `GP_PARADA_SALDO` sin poner (=100) | **`5`** | poner `100` o borrar la var, y desplegar |
+| — | Los **49,49 USDT** de diferencia previa al depósito | sin explicar | **retiro de Alexis**, anotado (`tipo=retiro`) | — |
+
+Con el retiro anotado la conciliación cierra exacta: esperado 400, real 400, diferencia 0. Con el suelo en 5,
+la línea de caja ya no puede parar el canal salvo que la cuenta esté prácticamente vacía; las otras tres
+líneas (núcleo, mercado, calibración) siguen igual y empiezan a aplicar a las 60 apuestas.
+
+**Primera colocación intentada (Betis–Getafe, under 5,5):** nació a 1,60 en la sombra, Cloudbet la cotizaba
+a **1,49** al reabrirla; el ejecutor la rechazó por `precio_peor` (tolerancia 3 %, mínimo 1,552) y la
+reintenta cada barrido hasta el saque. No se forzó: a 1,49 la ventaja que había se la comió el movimiento.

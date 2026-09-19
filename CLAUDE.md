@@ -103,6 +103,20 @@ cobra la casa, con muestra suficiente. Ni el ROI ni el CLV a secas valen — ver
   # story 1080x1920 → --window-size=1080,2020 y recortar a 1920
   ```
 - **🔑 PENDIENTE:** rotar la API key de API-Football (quedó expuesta en chat) y actualizar `API_FOOTBALL_KEY` en Render.
+- **The Odds API — PLAN GRATIS desde el 19-sep (clave desactivada por impago; Alexis pagará cuando pueda).** La
+  clave `SPORTSBOOK_PROVIDER_API_KEY` que había está **DESACTIVADA** (`DEACTIVATED_KEY`: «a new subscription is
+  required»); el plan gratis (Starter, **500 créditos/mes**) exige una clave NUEVA que llega por correo al darse
+  de alta, y solo Alexis puede pedirla (y ponerla en Render, nunca por chat). Mientras no haya clave, TODO lo
+  que depende de The Odds API está a oscuras —sombras de NFL/college/CFL, baloncesto, tenis, combate, F1, props
+  y cuotas de clubes— y **el dinero real NO se entera**: tarjetas corre contra Cloudbet directo.
+  **`lib/odds-gate.js` es la puerta única (19-sep):** envuelve `fetch` y toda llamada a `api.the-odds-api.com`,
+  esté en el archivo que esté, pasa por el presupuesto — tope diario `SPORTSBOOK_DAILY_CREDITS` (**16** en
+  Render = 500/31), reserva `SPORTSBOOK_QUOTA_RESERVE` (**60**), clave muerta 6 h tras un 401
+  `DEACTIVATED_KEY`/`INVALID_KEY`. Lo bloqueado recibe un 429 sintético (`x-odds-gate: <motivo>`) sin salir a
+  la red; los endpoints gratis (`/sports`, `/events`) pasan siempre. `SPORTSBOOK_GATE=off` la apaga. Sonda:
+  `/api/internal/odds-gate?key=`. Ojo: con 16 créditos/día el barrido de baloncesto (15 créditos por deporte)
+  se come el día en una pasada — el plan gratis es supervivencia, no medición. **Cuando Alexis vuelva a pagar:**
+  subir `SPORTSBOOK_DAILY_CREDITS` (0 = sin tope), `SPORTSBOOK_QUOTA_RESERVE` a 2000 y `GP_CLUBS_SWEEP_MIN` a 12.
 - **LLM (tres proveedores):** `llm.js` es la única puerta, con **cadena de reserva**: chat = Anthropic →
   Gemini → Groq; redactores = Gemini → Groq → Anthropic; extractor = Groq → Gemini → Anthropic. Vars:
   `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`. El presupuesto **solo raciona lo de pago**: se

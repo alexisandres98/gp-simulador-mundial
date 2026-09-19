@@ -4738,6 +4738,10 @@ const ODDS_REGIONS_SCAN = 'us,us2,uk,eu,au';
 // Reservas: props (caro, 20 créd/evento) frena antes; scan (barato) puede seguir con menos. El plan grande deja
 // correr cadencias frescas casi todo el mes; la reserva solo muerde a fin de ciclo.
 global._oddsCredits = global._oddsCredits || { remaining: null, at: 0 };
+// 19-sep: LA PUERTA ÚNICA. Envuelve `fetch` para que TODA llamada a The Odds API —esté en el archivo que
+// esté— pase por el presupuesto: tope diario (`SPORTSBOOK_DAILY_CREDITS`), reserva y clave muerta. Ver
+// lib/odds-gate.js. Los guards de abajo siguen valiendo; esto cubre los veinte sitios que no tenían ninguno.
+try { require('./lib/odds-gate').instalar(); } catch (e) { console.error('[odds-gate] no instalada:', e.message); }
 function noteOddsCredits(r) {
   try { const v = Number(r && r.headers && r.headers.get('x-requests-remaining')); if (Number.isFinite(v)) { global._oddsCredits.remaining = v; global._oddsCredits.at = Date.now(); } } catch { /* header ausente */ }
 }
@@ -22382,6 +22386,12 @@ const server = http.createServer(async (req, res) => {
     // histórico son gratis en ese proveedor). Con `?gastar=N` mira además cuántos partidos con cuotas hay
     // en los deportes pedidos, a un crédito por deporte. El plan de prueba son 250 en total y no se
     // reponen: el valor por defecto tenía que ser cero.
+    // 19-sep: estado de la puerta única de The Odds API (créditos, tope diario, reserva, clave muerta).
+    if (p === '/api/internal/odds-gate') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      try { return json(res, 200, require('./lib/odds-gate').estado()); } catch (e) { return json(res, 500, { error: e.message }); }
+    }
     if (p === '/api/internal/oddspapi') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

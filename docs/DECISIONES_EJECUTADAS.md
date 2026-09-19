@@ -146,3 +146,34 @@ líneas (núcleo, mercado, calibración) siguen igual y empiezan a aplicar a las
 **Primera colocación intentada (Betis–Getafe, under 5,5):** nació a 1,60 en la sombra, Cloudbet la cotizaba
 a **1,49** al reabrirla; el ejecutor la rechazó por `precio_peor` (tolerancia 3 %, mínimo 1,552) y la
 reintenta cada barrido hasta el saque. No se forzó: a 1,49 la ventaja que había se la comió el movimiento.
+
+---
+
+## 19-sep-2026 — The Odds API cae al plan gratis; y 388 USDT que el libro no ve
+
+### The Odds API
+
+Orden de Alexis: «se acabó el plan, baja al gratis y activa el plan de reserva en lo que puedo pagar».
+Comprobado contra la propia API: la clave responde **401 `DEACTIVATED_KEY`** («a new subscription is
+required»). Bajar al gratis no es un ajuste nuestro: el plan Starter (500 créditos/mes) da una **clave nueva**
+al darse de alta por correo, y eso solo lo puede hacer Alexis. Mientras tanto, y para cuando esa clave exista:
+
+| # | qué | antes | ahora | revertir (al volver a pagar) |
+|---|---|---|---|---|
+| — | Puerta única de The Odds API | dos sitios con guard, veinte sin él | **`lib/odds-gate.js`** envuelve `fetch` | `SPORTSBOOK_GATE=off` |
+| — | Tope diario de créditos | ninguno | **`SPORTSBOOK_DAILY_CREDITS=16`** | `0` |
+| — | Reserva | 2000 (defecto) | **`SPORTSBOOK_QUOTA_RESERVE=60`** | `2000` |
+| — | Barrido de cuotas de clubes | cada 12 min | **`GP_CLUBS_SWEEP_MIN=180`** | `12` |
+
+Lo que se apaga de facto sin clave: sombras de NFL/college/CFL, baloncesto, tenis, combate, F1, props y cuotas
+de clubes por The Odds API. **El canal real de tarjetas no depende de The Odds API** (Cloudbet directo) y
+sigue igual. Test: `node tests/odds-gate.test.js`.
+
+### El dinero
+
+Al revisar el canal se vio que el saldo de Cloudbet estaba en **11,63 USDT** desde al menos el **18-sep
+23:20 UTC** (primera lectura anotada por el ejecutor), contra los 399,99 del depósito del jueves. **El
+ejecutor no colocó ninguna apuesta desde el jueves** (0 filas PLACED, exposición 0, 15 señales frenadas por
+`sin_fondos`), no hay retiros anotados, la cuenta solo tiene USDT y un polvo de ETH, y el historial de
+apuestas de la casa (GraphQL) volvió vacío. Los **388,37 USDT** salieron por un camino que el libro no ve.
+Pendiente de Alexis: decir si fue un retiro o apuestas a mano, para anotarlo y cerrar la conciliación.

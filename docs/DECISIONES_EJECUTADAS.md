@@ -185,3 +185,17 @@ Anotado como retiro (`run=movimiento`); la conciliación cierra: esperado 11,63 
 colocó ninguna apuesta con los 400; 49 señales quedaron en `sin_fondos` hasta el cierre de la ventana del
 lunes 21 08:00. El contrafactual (28 liquidadas de 37, a la cuota de nacimiento, stake 30) da **+119,10
 USDT, +14,18 %, t 0,62 — y −97,80 sin las seis de Liga MX**. Reporte completo: `docs/reportes/semana-39.md`.
+
+---
+
+## 21-sep-2026 (tarde) — tres órdenes de Alexis
+
+| # | qué | antes | ahora | revertir |
+|---|---|---|---|---|
+| 1 | **Pinnacle · CS2 hándicap de rondas vuelve al feed.** Estaba retirada desde el 15-sep por un veredicto `cerrar` que salía del EV contra el cierre en una familia donde el cierre no aporta (`cierreAporta` t 0,98). Medido con las 381 liquidadas: ROI +13,1 % (t 2,03), CLV +0,92 % (t 2,76), 4/4 semanas positivas. Pinnacle sigue publicando el mercado (comprobado en su API). | retirada → `control` | **pick** | volver a añadirla a `POR_VEREDICTO` |
+| 2 | **Correos de la prop firm**: Alexis no sigue con la prop firm y no quiere más órdenes manuales por correo. | `GP_PROPFIRM_ENABLED` sin poner (=on) | **`false`** — el barrido y el correo no arrancan | borrar la var y desplegar |
+| 3 | **Ventana de saque del canal de tarjetas**: «déjalo que fluya». | `GP_REAL_KICKOFF_MAX=2026-09-21T08:00Z` | **borrada** (sin ventana) | volver a ponerla |
+
+Sin cambios: stake plano 30, banda eficiente vetada, una por partido, suelo de caja 5, sin tope de
+exposición (`exposicion_max` 1.000.000). Alexis fondea Cloudbet y paga The Odds API; avisará. **Pinnacle
+con dinero: todavía no** — decisión suya pendiente; la prueba de ejecución manual queda propuesta.

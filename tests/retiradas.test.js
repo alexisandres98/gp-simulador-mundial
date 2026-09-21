@@ -12,7 +12,8 @@ const t = (nombre, ok) => { if (!ok) fallos++; console.log(`${ok ? 'ok  ' : 'FAL
 
 // ── 1. LA CASA FORMA PARTE DE LA IDENTIDAD ───────────────────────────────────────────────────────────────
 t('cs2 RONDAS_HANDICAP está retirada en bovada', !!R.retirada('cs2', 'RONDAS_HANDICAP', 'bovada'));
-t('cs2 RONDAS_HANDICAP está retirada en pinnacle', !!R.retirada('cs2', 'RONDAS_HANDICAP', 'pinnacle'));
+t('cs2 RONDAS_HANDICAP NO está retirada en pinnacle (revertida el 21-sep: el cierre no aporta en esa familia)', R.retirada('cs2', 'RONDAS_HANDICAP', 'pinnacle') === null);
+t('cs2 RONDAS_HANDICAP sigue retirada en bovada', !!R.retirada('cs2', 'RONDAS_HANDICAP', 'bovada'));
 t('cs2 RONDAS_HANDICAP NO está retirada en cloudbet', R.retirada('cs2', 'RONDAS_HANDICAP', 'cloudbet') === null);
 t('sin casa no se retira nada (una familia no es mala en abstracto)', R.retirada('cs2', 'RONDAS_HANDICAP') === null);
 t('una familia que no está en la lista no se retira', R.retirada('cs2', 'TOTAL_MAPAS', 'pinnacle') === null);

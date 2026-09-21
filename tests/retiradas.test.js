@@ -41,5 +41,24 @@ t('no_invertible no entra en la lista de retiradas',
 t('todas las retiradas por veredicto tienen EV negativo y t ≤ −2',
   R.POR_VEREDICTO.every((x) => x.ev < 0 && x.t <= -2 && x.n >= 100));
 
+// ── 5. EL FEED SIN VEREDICTO (21-sep, orden de Alexis) ───────────────────────────────────────────────────
+// Con el interruptor puesto la retirada NO desaparece —la lectura medida sigue viajando— pero trae
+// `publica: true` y la pick sale. Apagado, todo vuelve a la doctrina del 15-sep.
+const envAntes = process.env.GP_FEED_SIN_VEREDICTO;
+process.env.GP_FEED_SIN_VEREDICTO = '1';
+const rp = R.retirada('cs2', 'RONDAS', 'bovada');
+t('con el feed sin veredicto la retirada sigue existiendo', !!rp && rp.motivo === 'veredicto_cerrar');
+t('…y trae publica: true', rp && rp.publica === true);
+t('…con la lectura medida intacta', rp && /t -23.34/.test(rp.lectura));
+t('el ganador bruto de combate se publica con el interruptor', R.versionRetirada('ufc_ganador_bruto').publica === true);
+t('derivadas_v1 NO se publica ni con el interruptor (es un error de cálculo, no una familia sin veredicto)', !R.versionRetirada('derivadas_v1').publica);
+t('el EV agregado del Boleto GP tampoco', !R.versionRetirada('boleto_gp_ev_agregado').publica);
+process.env.GP_FEED_SIN_VEREDICTO = '0';
+t('apagado, la retirada no trae publica', !R.retirada('cs2', 'RONDAS', 'bovada').publica);
+t('apagado, el ganador bruto de combate no se publica', !R.versionRetirada('ufc_ganador_bruto').publica);
+delete process.env.GP_FEED_SIN_VEREDICTO;
+t('sin la env el feed publica (por defecto encendido, como lo ordenó Alexis)', R.retirada('cs2', 'RONDAS', 'bovada').publica === true);
+if (envAntes != null) process.env.GP_FEED_SIN_VEREDICTO = envAntes;
+
 console.log(fallos ? `\n${fallos} FALLOS` : '\nTodo correcto');
 process.exit(fallos ? 1 : 0);

@@ -206,3 +206,44 @@ Clave nueva en Render (la anterior seguía `DEACTIVATED_KEY` tras el pago: una s
 nueva). Verificado: `x-requests-remaining` 4.999.842, 0 bloqueadas, NFL con 31 casas, college 25, CFL 6.
 Presupuesto: `SPORTSBOOK_DAILY_CREDITS=0`, `SPORTSBOOK_QUOTA_RESERVE=2000`, `GP_CLUBS_SWEEP_MIN=12`. La
 puerta única sigue instalada solo como contador. **La clave pasó por el chat**: Alexis la rotará más adelante.
+
+---
+
+## 21-sep-2026 (noche) — el feed publica picks en todos los deportes, con o sin veredicto
+
+**La orden de Alexis, literal:** «quiero que todas esas familias publiquen picks; al final los clientes pagan
+por ver picks, entonces quiero que cuando entren a un deporte se les generen picks, independientemente de si
+son rentables o no. A nivel de feed quiero que sigan publicando tanto dardos como cualquier otro que esté
+similar.»
+
+**Lo que había:** tres capas dejaban un deporte sin picks aunque el motor las generara.
+
+| capa | qué escondía | dónde |
+|---|---|---|
+| retiradas por veredicto (15-sep) | CS2 rondas (Bovada, Pinnacle) y hándicap de rondas (Bovada); Valorant hándicap (Pinnacle); Dota 2 kills (Bovada); **LoL kills (Bovada) y hándicap de kills (Bovada, Cloudbet)** — en LoL eso era casi todo el feed, porque kills solo lo cotiza Cloudbet; ganador de combate | `lib/retiradas.js`, `esports-engine/store.js`, `server.js` (combate) |
+| ganador como familia de referencia | dardos y tenis de mesa registraban el ganador en sombra «jamás pick» | `darts-engine/store.js`, `tt-engine/store.js`, `public/premium.js` |
+| monitores privados | picks de baloncesto 404 para todo el que no fuera admin; ganador de combate oculto al público (`GP_COMBAT_FIGHT_MONITOR`) | `server.js`, `public/premium.js` |
+
+**Lo que hay:** un interruptor, `GP_FEED_SIN_VEREDICTO` (`lib/feed.js`), **encendido por defecto** y apagable
+con `0`. Con él puesto las tres capas publican. Cada pick que sale por esta vía lleva `sin_veredicto: true`
+y la card enseña el chip **SIN VEREDICTO** con la lectura al pasar el ratón; en esports la retirada medida
+(EV, t, muestra) sigue viajando en la fila. Las picks de baloncesto se abren en lectura a pro/sharp (free
+recibe candado; los POST y el rendimiento siguen siendo solo admin).
+
+**Lo que NO cambia:** la sombra sigue marcando `benchmark` y `control` igual que antes, la vara sigue dando
+su veredicto, las puertas de calidad (ventaja mínima, ruido, ortogonalidad, precio rancio, calibración,
+`ventaja_explicada_por_calibracion`) siguen cerrando lo que no es una tesis, y **el ejecutor real no lee
+este módulo** (test: `tests/feed.test.js`). Las retiradas por error de cálculo (`derivadas_v1`, el EV agregado
+del Boleto GP) no se publican ni con el interruptor: una cifra mal calculada no es una pick sin veredicto.
+El feed de fútbol de clubes no se toca: ya publica en cada visita (tarjetas under, córners, anclas de goles,
+combos); abrir tarjetas over / goles no-ancla (`regime: monitor`) es una decisión aparte y queda propuesta.
+
+**Efecto colateral que hay que saber:** al volver LoL hándicap de kills en Cloudbet, el segmento en sombra
+`lol_kills_hcp_v1` vuelve a tomar apuestas de papel (llevaba congelado de facto desde el 15-sep), y
+`cs2_rounds_v1` verá filas de Bovada como no ejecutables. Ninguna mueve dinero.
+
+**Lo que sigue en manos de Alexis:** props de jugador de fútbol (`GP_PROPS_PICKS_PUBLIC`, sin poner = solo
+admin) y los derechos de datos que ya estaban expuestos antes de hoy y hoy lo están un poco más: LoL
+(Leaguepedia CC BY-SA; la política de Riot prohíbe funcionalidad de apuestas), tenis (Sackmann NC), dardos y
+tenis de mesa (sin contrato con la fuente). Ninguno bloquea el feed por código; están escritos en los
+`RIGHTS.md` de cada motor.

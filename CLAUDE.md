@@ -266,6 +266,15 @@ las derivadas de córners y tarjetas — medido que los córners local/visita va
 las tarjetas **+0,201**, así que dos Poisson independientes no valen para ninguna de las dos.
 Interruptores: `GP_DERIV_NUEVAS` (on) · `GP_DERIV_NUEVAS_HORAS` (48).
 
+## 📣 EL FEED PUBLICA SIN VEREDICTO (21-sep-2026, orden de Alexis)
+«Los clientes pagan por ver picks»: cuando entren a un deporte tiene que haber picks, sean rentables o no.
+`lib/feed.js` · `GP_FEED_SIN_VEREDICTO` (**encendido por defecto**, `0` lo apaga). Con él puesto: las familias
+retiradas por veredicto salen como pick con su retirada escrita encima (`sin_veredicto: true`, chip SIN
+VEREDICTO en la card), el ganador de dardos y tenis de mesa sale como tesis (en la sombra sigue siendo
+`benchmark`), las picks de baloncesto se leen con plan pro/sharp y el ganador de combate ya no se esconde.
+**No toca** la sombra, la vara, las puertas de calidad, el fútbol de clubes ni el ejecutor real (test
+`tests/feed.test.js`). Registro: `docs/DECISIONES_EJECUTADAS.md` (21-sep, noche).
+
 ## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
 - **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son
   dos apuestas: si hay siete tarjetas pierden las dos. Las sueltas ganan (+3,85 % ROI), las apiladas pierden

@@ -2493,7 +2493,10 @@
       '<div class="gx-pick-top"><span class="gx-pick-fam">' + esc(p.fam_label || t(famKey)) + (p.competition_name ? ' <span class="gx-dim" style="font-weight:600;text-transform:none;letter-spacing:0">· ' + esc(p.competition_name) + '</span>' : '') +
       // Chip MONITOR (26-jul): solo lo ve el admin (los no-admin nunca reciben picks monitor). Distingue de
       // un vistazo el track privado del feed público real — evita confundir "el feed sigue lleno".
-      (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') + '</span>' +
+      (p.signals && p.signals.regime === 'monitor' ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle">MONITOR</span>' : '') +
+      // SIN VEREDICTO (21-sep, orden de Alexis): la pick sale al feed aunque la familia no tenga evidencia
+      // de rentabilidad; el chip lo dice en la propia card, con la lectura al pasar el ratón.
+      (p.sin_veredicto ? ' <span class="gx-clgate sh" style="font-size:9.5px;vertical-align:middle" title="' + esc(esT('Publicada sin veredicto de rentabilidad: el motor la generó, pero no hay evidencia medida de que gane.', 'Published without a profitability verdict: the engine produced it, but there is no measured evidence that it wins.')) + '">' + esT('SIN VEREDICTO', 'NO VERDICT') + '</span>' : '') + '</span>' +
       (opts.hideMatch ? '' : '<span class="gx-pick-time">' + ic('clock') + esc(fmtDateTime(p.kickoff)) + '</span>') +
       (opts.welcome ? '' : '<button type="button" class="gx-pick-hide" data-hidepick="' + esc(pickKeyOf(p)) + '" title="' + esc(t(pickHidden(p) ? 'hp_unhide' : 'hp_hide')) + '">' + ic(pickHidden(p) ? 'eye' : 'eye-off') + '</button>') + '</div>' +
       // ── UN SOLO SUJETO (19-ago) ────────────────────────────────────────────────────────────────────
@@ -8148,7 +8151,18 @@
     var chips = '<div class="gx-bb-oppfams">' + bbOppFams().map(function (x) {
       return '<span class="gx-prodchip' + (f === x[0] ? ' on' : '') + '" data-bboppf="' + x[0] + '">' + esc(typeof x[1] === 'function' ? x[1]() : x[1]) + '</span>';
     }).join('') + '</div>';
-    if (f === 'picks') { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + (perfOK() ? bbPicksPanel() : bbPicksWhyPanel())); return; }
+    // FEED SIN VEREDICTO (21-sep, orden de Alexis): las picks de baloncesto se piden SIEMPRE al servidor.
+    // Él decide por plan: pro/sharp las ven (con su chip), free recibe el candado, y si el servidor las
+    // tiene cerradas (404) se enseña el porqué medido como antes.
+    if (f === 'picks') {
+      var dP = bbGet('picks_' + bbOppLg(), '/api/hoops/picks?league=' + bbOppLg(), 120000);
+      var inP = !dP ? mvLoading()
+        : dP._locked ? '<div class="gx-panel">' + lockPanelTxt(esT('Las picks de baloncesto son para suscriptores', 'Basketball picks are for subscribers'), esT('Las tesis del modelo —ganador, hándicap, total— con su cuota y su card son parte de los planes Pro y Sharp.', 'The model\'s theses — winner, spread, total — with their price and card are part of the Pro and Sharp plans.')) + '</div>'
+        : (dP._err && !perfOK()) ? bbPicksWhyPanel()
+        : bbPicksPanel();
+      bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + inP);
+      return;
+    }
 
     var d = bbGet('opps_' + lgo, '/api/hoops/opps?league=' + lgo, 120000);
     if (!d) { bbShell(esT('Oportunidades · baloncesto', 'Opportunities · basketball'), tabs + chips + mvLoading()); return; }
@@ -14035,7 +14049,7 @@
   // referencia (benchmark) y nunca sale como card.
   function dtCardsOf(r) {
     var pks = r.picks || [];
-    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).map(function (c) {
+    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).map(function (c) {
       var pk = pks.filter(function (x) { return dtSameThesis(x, c); })[0];
       return pk ? dtCard(pk, r) : dtCandCard(r, c);
     });
@@ -14130,7 +14144,7 @@
     var filt = S.dt.oFilt || 'all';
     var vis = rows.filter(function (r) { var b = dtBucket(r); return filt === 'all' ? b !== 'fin' : filt === b; });
     var theses = [];
-    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && !c.benchmark) theses.push({ r: r, c: c }); }); });
+    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable)) theses.push({ r: r, c: c }); }); });
     theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
     var lockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f']];
@@ -14147,7 +14161,7 @@
     else if (d.note_tesis && !(d.con_cuotas > 0)) main += '<div class="gx-panel gx-dt-none">' + dtRing('lg', 56) + '<div><b>' + esT('Sin partidos cotizados todavía', 'No matches priced yet') + '</b><span class="gx-dim">' + esc(esT(d.note_tesis, 'No book is pricing darts matches yet (only tournament futures). Books open match markets the evening before or the same morning; the feed fills on its own.')) + '</span></div></div>';
     else main += '<div class="gx-panel gx-dt-none">' + dtRing('lg', 56) + '<div><b>' + esc(t('dt_no_thesis')) + '</b><span class="gx-dim">' + esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. ', 'The engine valued the open lines and none beats its own noise. ') + esc(t('dt_no_is_result')) + '</span></div></div>';
     // tesis por partido
-    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }); });
+    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }); });
     if (withT.length) {
       main += '<div class="gx-dt-sech"><span class="gx-label">' + esc(t('dt_by_match')) + '</span><span class="gx-dim">' + withT.length + ' ' + esc(t(withT.length === 1 ? 'dt_match_1' : 'dt_matches')) + '</span></div>';
       withT.sort(function (x, y) { return (Date.parse(x.start_at || 0) || 0) - (Date.parse(y.start_at || 0) || 0); });
@@ -14334,7 +14348,7 @@
   function dtMemo(d, A, B) {
     var cs = Array.isArray(d.candidates) ? d.candidates : [];
     var pk = dtCardsOf(d)[0] || null;
-    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
+    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
     var top = sh[0] || null;
     var K = d.kernels || {}, f = d.format || {};
     var conf = pk && pk.signals ? pk.signals.data_confidence : null;
@@ -14343,7 +14357,7 @@
     if (top) lead = '<div class="gx-dt-memo-lead on">' + ic('eye') + '<div><b>' + esc(t('dt_memo_shadow')) + '</b><span>' + esc(dtFamLabel(top, { a: A.name, b: B.name })) + ' · <span class="gx-mono">' + odd(top.odds) + '</span> ' + esc(prettyBook(top.book || '') || top.book || '') + ' · <b class="gx-up">+' + Number(top.edge_pp || 0).toFixed(1) + ' pp</b>' + (sh.length > 1 ? ' · +' + (sh.length - 1) + ' ' + esc(t('dt_theses')) : '') + '</span></div></div>';
     else if (d.picks_locked) lead = '<div class="gx-dt-memo-lead">' + ic('lock') + '<div><b>' + d.picks_locked + ' ' + esc(t('dt_theses')) + '</b><span>' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</span></div></div>';
     else {
-      var bestNo = cs.filter(function (c) { return c.verdict !== 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || -99) - (x.edge_pp || -99); })[0];
+      var bestNo = cs.filter(function (c) { return c.verdict !== 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).sort(function (x, y) { return (y.edge_pp || -99) - (x.edge_pp || -99); })[0];
       var fail = bestNo && (bestNo.gates || []).filter(function (g) { return g && g.pass === false && !g.informativo; })[0];
       lead = '<div class="gx-dt-memo-lead"><span class="gx-dt-memo-no">NO</span><div><b>' + esc(t('dt_memo_none')) + '</b><span>' + (bestNo ? esc(dtFamLabel(bestNo, { a: A.name, b: B.name })) + ' ' + esT('fue la más cercana', 'came closest') + (bestNo.edge_pp != null ? ' (' + (bestNo.edge_pp > 0 ? '+' : '') + Number(bestNo.edge_pp).toFixed(1) + ' pp)' : '') + (fail ? ' · ' + esc(fail.gate) + (fail.detail ? ': ' + esc(fail.detail) : '') : bestNo.no_pick_reason ? ' · ' + esc(bestNo.no_pick_reason) : '') : cs.length ? esT('ninguna línea supera su propio ruido', 'no line beats its own noise') : esT('sin líneas cotizadas que evaluar', 'no priced lines to evaluate')) + '</span></div></div>';
     }
@@ -15327,7 +15341,7 @@
   function ttSameThesis(pk, c) { return pk.family_raw === c.family && String(pk.side) === String(c.side) && String(pk.line) === String(c.line) && String(pk.game || '') === String(c.game || ''); }
   function ttCardsOf(r) {
     var pks = r.picks || [];
-    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).map(function (c) { var pk = pks.filter(function (x) { return ttSameThesis(x, c); })[0]; return pk ? ttCard(pk, r) : ttCandCard(r, c); });
+    return (r.candidates || []).filter(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).map(function (c) { var pk = pks.filter(function (x) { return ttSameThesis(x, c); })[0]; return pk ? ttCard(pk, r) : ttCandCard(r, c); });
   }
 
   // ── OPORTUNIDADES ───────────────────────────────────────────────────────────────────────────────────
@@ -15389,7 +15403,7 @@
     var filt = S.tt.oFilt || 'all';
     var vis = rows.filter(function (r) { var b = ttBucket(r); return filt === 'all' ? b !== 'fin' : filt === b; });
     var theses = [];
-    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && !c.benchmark) theses.push({ r: r, c: c }); }); });
+    vis.forEach(function (r) { (r.candidates || []).forEach(function (c) { if (c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable)) theses.push({ r: r, c: c }); }); });
     theses.sort(function (x, y) { return (y.c.edge_pp || 0) - (x.c.edge_pp || 0); });
     var lockedN = rows.reduce(function (a, r) { return a + (r.picks_locked || 0); }, 0);
     var tabs = [['all', 'all'], ['live', 'live_f'], ['up', 'upcoming_f']];
@@ -15402,7 +15416,7 @@
     if (topCard) main += '<div class="gx-dt-potd"><div class="gx-dt-sech">' + ttMark('sm', 22) + '<span class="gx-label">' + esT('Tesis del día', 'Thesis of the day') + '</span><span class="gx-dim">' + esc(ttFamLabel(top.c, top.r)) + ' · ' + esc(top.r.tournament_short || '') + '</span></div><div class="gx-picks-feed one">' + pickCard(topCard, {}) + '</div></div>';
     else if (lockedN) main += '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de tenis de mesa son para suscriptores', 'Table tennis theses are for subscribers'), esT('El registro por familia —games, puntos, primer game, deuce— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — games, points, first game, deuce — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
     else main += '<div class="gx-panel gx-dt-none">' + ttMark('lg', 70) + '<div><b>' + esT('Ninguna tesis hoy.', 'No thesis today.') + '</b><span class="gx-dim">' + esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. Decir NO también es un resultado.', 'The engine valued the open lines and none beats its own noise. Saying NO is also a result.') + '</span></div></div>';
-    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }); });
+    var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }); });
     if (withT.length) {
       main += '<div class="gx-dt-sech"><span class="gx-label">' + esT('Por partido', 'By match') + '</span><span class="gx-dim">' + withT.length + ' ' + esT('partidos', 'matches') + '</span></div>';
       withT.sort(function (x, y) { return (Date.parse(x.start_at || 0) || 0) - (Date.parse(y.start_at || 0) || 0); });
@@ -15550,7 +15564,7 @@
   function ttMemo(d, A, B) {
     var cs = Array.isArray(d.candidates) ? d.candidates : [];
     var pk = ttCardsOf(d)[0] || null;
-    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
+    var sh = cs.filter(function (c) { return c.verdict === 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).sort(function (x, y) { return (y.edge_pp || 0) - (x.edge_pp || 0); });
     var top = sh[0] || null, f = d.format || {}, R = d.resolution || {};
     var conf = pk && pk.signals ? pk.signals.data_confidence : null;
     var confH = conf ? '<span class="gx-conf ' + (conf === 'high' ? 'hi' : conf === 'med' ? 'mid' : 'lo') + '">' + ic('point') + esc(t('conf') + ': ' + t(conf === 'high' ? 'conf_hi' : conf === 'med' ? 'conf_mid' : 'conf_lo')) + '</span>' : '<span class="gx-conf lo">' + ic('point') + esT('todo en sombra', 'all in shadow') + '</span>';
@@ -15558,7 +15572,7 @@
     if (top) lead = '<div class="gx-dt-memo-lead on">' + ic('eye') + '<div><b>' + esT('Tesis en sombra', 'Shadow thesis') + '</b><span>' + esc(ttFamLabel(top, { a: A.name, b: B.name })) + ' · <span class="gx-mono">' + odd(top.odds) + '</span> ' + esc(prettyBook(top.book || '') || top.book || '') + ' · <b class="gx-up">+' + Number(top.edge_pp || 0).toFixed(1) + ' pp</b>' + (sh.length > 1 ? ' · +' + (sh.length - 1) + ' ' + esT('tesis', 'theses') : '') + '</span></div></div>';
     else if (d.picks_locked) lead = '<div class="gx-dt-memo-lead">' + ic('lock') + '<div><b>' + d.picks_locked + ' ' + esT('tesis', 'theses') + '</b><span>' + esT('en los planes Pro y Sharp', 'on the Pro and Sharp plans') + '</span></div></div>';
     else {
-      var bestNo = cs.filter(function (c) { return c.verdict !== 'SHADOW_PICK' && !c.benchmark; }).sort(function (x, y) { return (y.edge_pp || -99) - (x.edge_pp || -99); })[0];
+      var bestNo = cs.filter(function (c) { return c.verdict !== 'SHADOW_PICK' && (!c.benchmark || c.publicable); }).sort(function (x, y) { return (y.edge_pp || -99) - (x.edge_pp || -99); })[0];
       var fail = bestNo && (bestNo.gates || []).filter(function (g) { return g && g.pass === false && !g.informativo; })[0];
       lead = '<div class="gx-dt-memo-lead"><span class="gx-dt-memo-no">NO</span><div><b>' + esT('Sin tesis en este partido', 'No thesis on this match') + '</b><span>' + (bestNo ? esc(ttFamLabel(bestNo, { a: A.name, b: B.name })) + ' ' + esT('fue la más cercana', 'came closest') + (bestNo.edge_pp != null ? ' (' + (bestNo.edge_pp > 0 ? '+' : '') + Number(bestNo.edge_pp).toFixed(1) + ' pp)' : '') + (fail ? ' · ' + esc(fail.gate) + (fail.detail ? ': ' + esc(fail.detail) : '') : '') : cs.length ? esT('ninguna línea supera su propio ruido', 'no line beats its own noise') : esT('sin líneas cotizadas que evaluar', 'no priced lines to evaluate')) + '</span></div></div>';
     }

@@ -21,6 +21,10 @@ const WTT = require('../data-providers/tt/wtt');
 const BOOKS = require('../data-providers/tt/books');
 const FLASH = require('../data-providers/tt/flashscore');
 const JS = require('../lib/jsonstore');
+const FEED = require('../lib/feed');
+// una tesis se enseña si pasó las puertas y no es la familia de referencia — salvo que el feed publique
+// sin veredicto (21-sep, orden de Alexis), en cuyo caso el ganador sale también, marcado `sin_veredicto`
+const esTesis = (c) => c.verdict === 'SHADOW_PICK' && (!c.benchmark || !!c.publicable);
 
 const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'tt');
 const rd = (f) => JS.readJson(DISK_DIR, f, 'tt');
@@ -381,7 +385,10 @@ function evaluateEdges(model, mk, row) {
     const pModel = r.family === 'ML' ? (r.side === 'a' ? model.p_a : r.side === 'b' ? 1 - model.p_a : null) : C.probOf(mm, r.family, r.side, r.line, r.game || 1);
     if (pModel == null || !Number.isFinite(pModel)) continue;
     const imp = impliedOf(r, mk.rows, mk.devig);
-    const c = { family: r.family, side: r.side, line: r.line != null ? r.line : null, game: r.game || null, book: r.book, odds: r.odds, alt: !!r.alt, p_model: r4(pModel), p_implied: r4(imp.p), implied_devig: imp.devig, vig: imp.vig, edge_pp: r2(100 * (pModel - imp.p)), ev_pct: r2(100 * (pModel * r.odds - 1)), unc_pp: model.unc_pp, benchmark: !!fam.benchmark, live: !!r.live };
+    const c = { family: r.family, side: r.side, line: r.line != null ? r.line : null, game: r.game || null, book: r.book, odds: r.odds, alt: !!r.alt, p_model: r4(pModel), p_implied: r4(imp.p), implied_devig: imp.devig, vig: imp.vig, edge_pp: r2(100 * (pModel - imp.p)), ev_pct: r2(100 * (pModel * r.odds - 1)), unc_pp: model.unc_pp, benchmark: !!fam.benchmark, live: !!r.live,
+      // FEED SIN VEREDICTO (21-sep, orden de Alexis): el ganador sigue siendo referencia en la sombra
+      // (`benchmark` no se toca) pero sale como pick al feed, marcado.
+      ...(fam.benchmark && FEED.sinVeredicto() ? { publicable: true, sin_veredicto: true } : {}) };
     // incertidumbre PROPIA de esta selección: |∂P/∂p|·σ_p, recompilando en p ± h (T2.10). Se anota siempre.
     c.unc_fam_pp = D.uncFamiliaPp(model, r.family, r.side, r.line, r.game || 1);
     // clase de equivalencia de pago (T2.12): dos selecciones con la MISMA clave son la misma apuesta aunque
@@ -453,7 +460,9 @@ function whyOf(c, row, model) {
   else if (c.family === 'GAME_DEUCE') bits.push(`La probabilidad de deuce sale de la recursión exacta del game (${pct(g1.p_deuce)}): equivale a "más de 20,5 puntos" y a "más de 21,5", que son la misma apuesta.`);
   else bits.push(`${pct(c.p_model)} del modelo contra ${pct(c.p_implied)} del precio.`);
   bits.push('Modelo market-blind por construcción: el precio no entra nunca al cálculo. El reparto saque/recepción es un prior de población (nivel L1: la fuente da puntos por game, no por saque) y así se declara.');
-  bits.push('EN SOMBRA: todas las familias de tenis de mesa se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.');
+  bits.push(FEED.sinVeredicto()
+    ? 'EN SOMBRA: todas las familias de tenis de mesa se anotan y se liquidan para acumular muestra. Esta tesis se publica SIN veredicto de rentabilidad — contra el mercado todavía no hay prueba medida.'
+    : 'EN SOMBRA: todas las familias de tenis de mesa se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.');
   return bits.join(' ');
 }
 function pickCard(c, row, model) {
@@ -535,7 +544,7 @@ async function board({ daysAhead = 6, hoursBack = 10 } = {}) {
       const g1 = C.gameFor(model.match, 1);
       row.gp = { p_a: model.p_a, p_a_elo: model.p_a_elo, p_a_compiled: model.p_a_compiled, p_point: model.p_point, exp_games: r2(model.match.exp_games), exp_points: r2(model.match.exp_points), p_deuce_g1: r3(g1.p_deuce), p_sweep: r3(C.at(model.match.score, `${model.match.format.need}-0`) + C.at(model.match.score, `0-${model.match.format.need}`)), unc_pp: model.unc_pp, cold: !!(model.skills.a.cold || model.skills.b.cold), elo_a: model.skills.a.elo, elo_b: model.skills.b.elo, n_a: model.skills.a.n_matches, n_b: model.skills.b.n_matches, resolution: model.resolution };
       row.candidates = fx.status === 'scheduled' && t > now ? evaluateEdges(model, mk, row) : [];
-      const tesis = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark);
+      const tesis = row.candidates.filter(esTesis);
       row.shadow_n = tesis.length;
       row.picks = tesis.map((c) => pickCard(c, row, model));
     } else { row.why = model.why; row.unresolved = model.unresolved; }
@@ -592,7 +601,7 @@ async function matchDetail(fixtureId) {
     h2h: D.h2h(model.a.id, model.b.id),
     profiles: { a: playerProfile(model.a.id, { brief: true }), b: playerProfile(model.b.id, { brief: true }) },
     candidates: cands,
-    picks: cands.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark).map((c) => pickCard(c, row, model)),
+    picks: cands.filter(esTesis).map((c) => pickCard(c, row, model)),
     format_prism: [5, 7].map((bo) => { const x = C.compileMatch(m.a, m.b, { best_of: bo }); return { label: `BO${bo}`, best_of: bo, p_a: r4(x.p_a), exp_games: r3(x.exp_games), exp_points: r3(x.exp_points), p_sweep: r4(C.at(x.score, `${x.format.need}-0`) + C.at(x.score, `0-${x.format.need}`)), current: bo === m.format.best_of }; }),
     model_version: model.model_version,
   };

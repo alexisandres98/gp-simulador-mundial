@@ -874,11 +874,16 @@ function evaluateAll({ game, model, mk, ev, bo, sample }) {
     // Pinnacle y NO está cerrada en Cloudbet, y meterlas en el mismo saco fue lo que escondió esa
     // diferencia durante semanas.
     const ret = require('../lib/retiradas').retirada(game, r.family, r.book);
-    if (ret) {
+    if (ret && !ret.publica) {
       ev2.pick = false;
       ev2.control = true;
       ev2.retirada = ret;
       ev2.no_pick_reasons = (ev2.no_pick_reasons || []).concat([{ code: 'familia_retirada', text: ret.lectura }]);
+    } else if (ret) {
+      // FEED SIN VEREDICTO (21-sep, orden de Alexis): la retirada viaja con la fila —lectura medida
+      // incluida— pero la pick sale. La sombra la sigue viendo como control; el cliente la ve como pick.
+      ev2.retirada = ret;
+      ev2.sin_veredicto = true;
     }
     const row = { ...ev2, line: r.line, side: r.side, period: r.period, map: r.map, team: r.team,
       calibration_pp: calPp,

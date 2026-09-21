@@ -16738,7 +16738,10 @@ async function buildCombatPicksOrg(org, out, dryRun) {
     // fila SIGUE naciendo y liquidándose, marcada `control`: es lo que permitirá saber si retirarla fue
     // acertado, y apagarla haría imposible ese dato para siempre.
     const retC = (p.family || 'FIGHT') === 'FIGHT' ? require('./lib/retiradas').versionRetirada('ufc_ganador_bruto') : null;
-    if (retC) { p.control = true; p.retirada = retC; out.control = (out.control || 0) + 1; }
+    // FEED SIN VEREDICTO (21-sep, orden de Alexis): con `publica` la fila conserva la retirada escrita pero
+    // deja de ser `control` —sale como pick— y lleva la marca `sin_veredicto` para que la card lo diga.
+    if (retC && !retC.publica) { p.control = true; p.retirada = retC; out.control = (out.control || 0) + 1; }
+    else if (retC) { p.retirada = retC; p.sin_veredicto = true; }
     db.combatPicks.push(p); out.added++;
   }
   return out; // (save/active los maneja el wrapper multi-org)
@@ -20791,8 +20794,12 @@ const server = http.createServer(async (req, res) => {
       const nsH = nsPlanCtx(uH, url);
       if (p === '/api/hoops/opps' && !nsH.sharp) return json(res, 403, { error: 'upgrade', need: 'sharp' });
       if ((p === '/api/hoops/brief' || p === '/api/hoops/sim' || p === '/api/hoops/read') && !nsH.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
-      // monitor privado (GET y POSTs de build/settle) y la sala de máquinas: jamás producto de un plan
-      if ((p === '/api/hoops/picks' || p === '/api/hoops/perf') && !nsH.admin) return json(res, 404, { error: 'No encontrado' });
+      // monitor privado (GET y POSTs de build/settle) y la sala de máquinas: jamás producto de un plan…
+      // …hasta el 21-sep (orden de Alexis, FEED SIN VEREDICTO): la LECTURA de las picks se abre a pro/sharp
+      // con su marca; los POST (build/settle/close) y el rendimiento siguen siendo solo admin.
+      const hoopsPicksAbiertas = require('./lib/feed').sinVeredicto() && req.method === 'GET' && p === '/api/hoops/picks';
+      if (hoopsPicksAbiertas && !nsH.admin && !nsH.pro) return json(res, 403, { error: 'upgrade', need: 'pro' });
+      if ((p === '/api/hoops/picks' || p === '/api/hoops/perf') && !nsH.admin && !hoopsPicksAbiertas) return json(res, 404, { error: 'No encontrado' });
       const ST = require('./basketball-engine/store');
       const lg = String(url.searchParams.get('league') || 'wnba');
 
@@ -20807,8 +20814,10 @@ const server = http.createServer(async (req, res) => {
         const ceids = Object.keys(evs);
         const base = {
           league: lgO, leagues: ['all', ...Object.keys(MK.LEAGUE_KEYS)], events: ceids.length,
-          picks: [], picks_enabled: false,
-          picks_note: 'Picks apagadas: el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest). Value, arbitraje, caídas y middles NO dependen del modelo — salen de precios reales entre casas.',
+          picks: [], picks_enabled: require('./lib/feed').sinVeredicto(),
+          picks_note: require('./lib/feed').sinVeredicto()
+            ? 'Picks publicadas SIN veredicto (21-sep, orden de Alexis): el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest); salen marcadas. Value, arbitraje, caídas y middles NO dependen del modelo — salen de precios reales entre casas.'
+            : 'Picks apagadas: el modelo aún no bate al cierre del mercado (skill −0.012 en el backtest). Value, arbitraje, caídas y middles NO dependen del modelo — salen de precios reales entre casas.',
           refreshed_at: new Date().toISOString(),
         };
         if (!dbc.isConfigured()) return json(res, 200, { ...base, value: [], arbs: [], middles: [], dropping: [], note: 'sin base de cuotas' });
@@ -20887,10 +20896,16 @@ const server = http.createServer(async (req, res) => {
         const settled = all.filter((x) => x.status === 'SETTLED').sort((a, b) => Date.parse(b.settled_at || 0) - Date.parse(a.settled_at || 0));
         // `?limit=` (tope 2000; la ruta ya es solo admin): sin él la exportación del track devolvía 120 de 186
         const limS = Math.min(2000, Math.max(1, parseInt(url.searchParams.get('limit') || '120', 10) || 120));
+        // FEED SIN VEREDICTO (21-sep): al público las picks salen marcadas, sin tocar la fila guardada
+        const sinVer = require('./lib/feed').sinVeredicto();
+        const activeOut = sinVer ? active.map((x) => ({ ...x, sin_veredicto: true })) : active;
         return json(res, 200, {
-          monitor_only: true,
-          note: 'Monitor privado: estas picks NO se publican. El modelo todavía no bate al cierre, así que apuestan en papel para medir si mejora. La vara es el CLV, no el acierto.',
-          active, settled: settled.slice(0, limS), settled_total: settled.length, limit: limS, track: hoopsPicksTrack(),
+          monitor_only: !sinVer,
+          sin_veredicto: sinVer || undefined,
+          note: sinVer
+            ? 'Picks publicadas SIN veredicto de rentabilidad (21-sep, orden de Alexis): el modelo todavía no bate al cierre y siguen apostando en papel para medir si mejora. La vara es el CLV, no el acierto.'
+            : 'Monitor privado: estas picks NO se publican. El modelo todavía no bate al cierre, así que apuestan en papel para medir si mejora. La vara es el CLV, no el acierto.',
+          active: activeOut, settled: settled.slice(0, limS), settled_total: settled.length, limit: limS, track: hoopsPicksTrack(),
           config: { min_edge_pp: HOOPS_PICK_MIN_EDGE(), min_odds: HOOPS_PICK_MIN_ODDS(), max_odds: HOOPS_PICK_MAX_ODDS(), max_per_game: HOOPS_PICK_MAX_PER_GAME() },
           leagues: Object.keys(ST.LEAGUES),
         });
@@ -24953,7 +24968,11 @@ async function anotar(pid){
       // SIGUE generando y midiendo (el monitor existe para eso), pero el público deja de verlo. ROUNDS
       // (CLV +1,75 %, el único positivo de combate) y METHOD siguen públicos. Interruptor por env para poder
       // revertir sin desplegar si la revisión de un lunes futuro lo reabre.
-      const cbFightMonitor = String(process.env.GP_COMBAT_FIGHT_MONITOR || 'true') !== 'false';
+      // FEED SIN VEREDICTO (21-sep, orden de Alexis): el ganador de combate deja de esconderse al público.
+      // `GP_COMBAT_FIGHT_MONITOR=true` explícito lo vuelve a esconder aunque el interruptor del feed siga.
+      const cbFightMonitor = process.env.GP_COMBAT_FIGHT_MONITOR != null
+        ? String(process.env.GP_COMBAT_FIGHT_MONITOR) !== 'false'
+        : !require('./lib/feed').sinVeredicto();
       const cbFamVisible = (x) => !(cbFightMonitor && (x.family || 'FIGHT') === 'FIGHT') || cbAdmin;
       const cbPickVisible = (x) => (cbAdmin || Date.parse((x.event && x.event.kickoff_at) || x.created_at || 0) >= CB_PUBLIC_SINCE()) && cbFamVisible(x);
       const cbTrackOpts = cbAdmin ? {} : { since: CB_PUBLIC_SINCE(), excludeFamilies: cbFightMonitor ? ['FIGHT'] : null };

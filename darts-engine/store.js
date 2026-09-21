@@ -19,6 +19,7 @@ const PDC = require('../data-providers/darts/pdc');
 const BOOKS = require('../data-providers/darts/books');
 const FLASH = require('../data-providers/darts/flashscore');
 const JS = require('../lib/jsonstore');
+const FEED = require('../lib/feed');
 
 const DISK_DIR = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, '..', 'db.json')), 'darts');
 const rd = (f) => JS.readJson(DISK_DIR, f, 'darts');
@@ -278,8 +279,14 @@ function gate(c) {
     p_model: r3(c.p_model), p_implied: r3(c.p_implied), edge_pp: r2(edgePp), gates, unc_pp: r2(uncPp),
     verdict: pass ? 'SHADOW_PICK' : 'NO_PICK', no_pick_reason: pass ? null : (gates.find((x) => !x.pass && !x.informativo) || {}).gate,
     benchmark: c.family === 'ML' || undefined, unsettleable: !!c.unsettleable || undefined,
+    // FEED SIN VEREDICTO (21-sep, orden de Alexis): el ganador sigue siendo la familia de referencia en la
+    // sombra (`benchmark` no se toca) pero sale como pick al feed, marcado.
+    ...(c.family === 'ML' && FEED.sinVeredicto() ? { publicable: true, sin_veredicto: true } : {}),
   };
 }
+// una tesis se enseña si pasó las puertas y no es la familia de referencia — salvo que el feed publique
+// sin veredicto, en cuyo caso el ganador sale también (marcado `sin_veredicto`)
+const esTesis = (c) => c.verdict === 'SHADOW_PICK' && (!c.benchmark || !!c.publicable);
 function evaluateEdges(model, mk) {
   const out = [];
   if (!model.available) return out;
@@ -346,7 +353,9 @@ function whyOf(c, row, model) {
   else if (c.family === 'X180_PLAYER') bits.push(`Los 180s del jugador dependen de cuántas visitas de puntuación le deja el partido, no solo de su tasa: media ${(c.participant === 'a' ? m.x180.exp_a : m.x180.exp_b).toFixed(2)} en este formato y contra este rival.`);
   else bits.push(`${pct(c.p_model)} del modelo contra ${pct(c.p_implied)} del precio.`);
   bits.push('Modelo market-blind por construcción: el precio no entra nunca al cálculo, así que la diferencia con la casa es una discrepancia real y no un eco de su propia línea.');
-  bits.push('EN SOMBRA: todas las familias de dardos se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.');
+  bits.push(FEED.sinVeredicto()
+    ? 'EN SOMBRA: todas las familias de dardos se anotan y se liquidan para acumular muestra. Esta tesis se publica SIN veredicto de rentabilidad — contra el mercado todavía no hay prueba medida.'
+    : 'EN SOMBRA: todas las familias de dardos se anotan y se liquidan para acumular muestra, pero ninguna se publica como pick — contra el mercado todavía no hay prueba.');
   if (c.unsettleable) bits.push('Esta familia solo se puede liquidar con estadística de partido, que hoy existe para el Players Championship: en el resto queda anotada a la espera de fuente.');
   return bits.join(' ');
 }
@@ -396,7 +405,7 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
       row.candidates = fx.status === 'Result' || t < now ? [] : evaluateEdges(model, mk);
       // el GANADOR es familia de referencia (benchmark): se registra en la sombra para medirlo, pero JAMÁS
       // sale como card de tesis (7-sep: la primera pasada de MODUS lo publicaba como pick)
-      const tesis = row.candidates.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark);
+      const tesis = row.candidates.filter(esTesis);
       row.shadow_n = tesis.length;
       row.picks = tesis.map((c) => pickCard(c, row, model));
     } else row.why = model.why;
@@ -466,7 +475,7 @@ async function matchDetail(fixtureId) {
     profiles: { a: playerProfile(model.a.id), b: playerProfile(model.b.id) },
     candidates: cands,
     // las mismas cards que el tablero: el GANADOR es referencia (benchmark) y no sale como tesis (7-sep)
-    picks: cands.filter((c) => c.verdict === 'SHADOW_PICK' && !c.benchmark).map((c) => pickCard(c, row, model)),
+    picks: cands.filter(esTesis).map((c) => pickCard(c, row, model)),
     model_version: model.model_version,
   };
 }

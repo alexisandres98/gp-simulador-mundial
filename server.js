@@ -23535,7 +23535,7 @@ const server = http.createServer(async (req, res) => {
       if (trackQ) {
         const ES = require('./esports-engine/store');
         if (!ES.ENGINES[trackQ]) return json(res, 400, { error: 'juego desconocido' });
-        return json(res, 200, ES.track(trackQ, { limit: 100 }));
+        return json(res, 200, ES.track(trackQ, { limit: Math.min(10000, Math.max(1, +(url.searchParams.get('n') || 100))) })); // 21-sep: ?n= para leer el track entero
       }
       const probe = String(url.searchParams.get('probe') || '').toLowerCase();
       if (probe) {

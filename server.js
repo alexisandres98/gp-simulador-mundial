@@ -23495,7 +23495,7 @@ const server = http.createServer(async (req, res) => {
         const ES2 = require('./esports-engine/store');
         if (!ES2.ENGINES[sg]) return json(res, 400, { error: 'juego desconocido', games: ES2.GAME_ORDER });
         const set = await ES2.settlePicks(sg).catch((e) => ({ error: e.message }));
-        const t2 = ES2.track(sg);
+        const t2 = ES2.track(sg, { limit: Math.min(10000, Math.max(1, +(url.searchParams.get('n') || 60))) }); // 21-sep: ?n= para leer el track entero sin navegador
         return json(res, 200, { game: sg, settle: set, liquidadas: t2.settled, abiertas: t2.open_n, atascadas: t2.open_vencidas });
       }
       if (url.searchParams.get('props') === '1') {

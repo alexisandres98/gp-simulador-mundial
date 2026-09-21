@@ -199,3 +199,10 @@ USDT, +14,18 %, t 0,62 — y −97,80 sin las seis de Liga MX**. Reporte complet
 Sin cambios: stake plano 30, banda eficiente vetada, una por partido, suelo de caja 5, sin tope de
 exposición (`exposicion_max` 1.000.000). Alexis fondea Cloudbet y paga The Odds API; avisará. **Pinnacle
 con dinero: todavía no** — decisión suya pendiente; la prueba de ejecución manual queda propuesta.
+
+### 21-sep, 13:00 UTC — The Odds API reactivada (plan 5M)
+
+Clave nueva en Render (la anterior seguía `DEACTIVATED_KEY` tras el pago: una suscripción nueva trae clave
+nueva). Verificado: `x-requests-remaining` 4.999.842, 0 bloqueadas, NFL con 31 casas, college 25, CFL 6.
+Presupuesto: `SPORTSBOOK_DAILY_CREDITS=0`, `SPORTSBOOK_QUOTA_RESERVE=2000`, `GP_CLUBS_SWEEP_MIN=12`. La
+puerta única sigue instalada solo como contador. **La clave pasó por el chat**: Alexis la rotará más adelante.

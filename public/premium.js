@@ -12707,8 +12707,8 @@
         esT('El registro por familia —ganador, sets, juegos— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — winner, sets, games — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
     } else if (!theses.length) {
       body = '<div class="gx-panel"><div class="gx-empty">' + illo('radar') +
-        '<b>' + (rows.length ? esT('Ninguna línea pasa el listón ahora mismo.', 'No line clears the bar right now.') : esT('Sin torneos con cuotas activas en la ventana.', 'No tournaments with active odds in the window.')) + '</b>' +
-        '<span class="gx-dim">' + esc(rows.length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido.', 'The engine valued the open lines and none beats its own noise.') : (d.note || '')) + '</span></div></div>';
+        '<b>' + (rows.length ? esT('Ninguna línea pasa el listón ahora mismo.', 'No line clears the bar right now.') : esT('Esta semana no hay torneo cubierto en este cuadro.', 'No covered tournament in this draw this week.')) + '</b>' +
+        '<span class="gx-dim">' + esc(rows.length ? esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido.', 'The engine valued the open lines and none beats its own noise.') : (d.note || esT('The Odds API solo publica los torneos grandes del circuito, uno a uno cuando arrancan. El módulo está sano; se llena solo con el próximo.', 'The Odds API only carries the main tour events, one at a time as they start. The module is healthy; it fills on its own with the next one.'))) + '</span></div></div>';
     } else {
       // LA MISMA CARD QUE FÚTBOL, COMBATE, BALONCESTO Y ESPORTS: `pickCard()` tal cual. El motor ya emite
       // los campos con esa forma (`row.picks`), así que aquí no se traduce nada.
@@ -14144,6 +14144,7 @@
     var topCard = top ? (dtCardsOf(top.r).filter(function (pk) { return dtSameThesis(pk, top.c); })[0] || dtCandCard(top.r, top.c)) : null;
     if (topCard) main += '<div class="gx-dt-potd"><div class="gx-dt-sech">' + dtRing('sm', 16) + '<span class="gx-label">' + esc(t('dt_thesis_day')) + '</span><span class="gx-dim">' + esc(dtFamLabel(top.c, top.r)) + ' · ' + esc(top.r.tournament || '') + '</span></div><div class="gx-picks-feed one">' + pickCard(topCard, {}) + '</div></div>';
     else if (lockedN) main += '<div class="gx-panel">' + lockPanelTxt(esT('Las tesis de dardos son para suscriptores', 'Darts theses are for subscribers'), esT('El registro por familia —ganador, legs, 180, checkout— con su porqué y su cuota es parte de los planes Pro y Sharp.', 'The per-family record — winner, legs, 180s, checkout — with its reasoning and price is part of the Pro and Sharp plans.')) + '</div>';
+    else if (d.note_tesis && !(d.con_cuotas > 0)) main += '<div class="gx-panel gx-dt-none">' + dtRing('lg', 56) + '<div><b>' + esT('Sin partidos cotizados todavía', 'No matches priced yet') + '</b><span class="gx-dim">' + esc(esT(d.note_tesis, 'No book is pricing darts matches yet (only tournament futures). Books open match markets the evening before or the same morning; the feed fills on its own.')) + '</span></div></div>';
     else main += '<div class="gx-panel gx-dt-none">' + dtRing('lg', 56) + '<div><b>' + esc(t('dt_no_thesis')) + '</b><span class="gx-dim">' + esT('El motor valoró las líneas abiertas y ninguna supera su propio ruido. ', 'The engine valued the open lines and none beats its own noise. ') + esc(t('dt_no_is_result')) + '</span></div></div>';
     // tesis por partido
     var withT = vis.filter(function (r) { return (r.candidates || []).some(function (c) { return c.verdict === 'SHADOW_PICK' && !c.benchmark; }); });

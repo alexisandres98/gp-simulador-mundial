@@ -412,7 +412,16 @@ async function board({ daysAhead = 6, hoursBack = 8 } = {}) {
   } catch { }
   // el siguiente torneo de la PDC con fecha, para que el tablero vacío diga cuándo vuelve a haber cuadro
   const proximo = (sl.tournaments || []).filter((t) => Date.parse(t.start || 0) > now).sort((x, y) => Date.parse(x.start) - Date.parse(y.start))[0] || null;
-  return { rows, tournaments: toursAll(sl), refreshed_at: new Date(sl.at).toISOString(), odds_at: odds ? new Date(odds.at).toISOString() : null, books: odds ? odds.books : null, doctrine: DOCTRINE, attribution: ATTRIB,
+  // EL FEED VACÍO NO ES UN FALLO (21-sep, Alexis). Tres casos distintos y tres frases distintas: sin cuadro,
+  // cuadro sin cuotas de partido (las casas abren la víspera), o cuotas valoradas sin ninguna tesis.
+  const conCuotas = rows.filter((r) => r.market && (r.market.n_books || 0) > 0).length;
+  const tesisN = rows.reduce((s, r) => s + (r.shadow_n || 0), 0);
+  const fechaDe = (iso) => { try { return new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); } catch { return String(iso).slice(0, 10); } };
+  const noteTesis = tesisN > 0 ? null
+    : !rows.length ? (proximo ? `Sin partidos en la ventana. Próximo torneo de la PDC: ${proximo.name}, ${fechaDe(proximo.start)}.` : 'Sin partidos en la ventana; la agenda se abre sola con el siguiente torneo de la PDC.')
+      : !conCuotas ? `Hay ${rows.length} partido${rows.length === 1 ? '' : 's'} en agenda pero ninguna casa cotiza todavía los partidos (solo futuros de torneo). Las casas abren los mercados por partido la víspera o la misma mañana${proximo ? `; el próximo cuadro es ${proximo.name}, ${fechaDe(proximo.start)}` : ''}.`
+        : `El motor valoró ${conCuotas} partido${conCuotas === 1 ? '' : 's'} con cuotas y ninguna línea supera su propio ruido ahora mismo.`;
+  return { rows, tournaments: toursAll(sl), refreshed_at: new Date(sl.at).toISOString(), odds_at: odds ? new Date(odds.at).toISOString() : null, books: odds ? odds.books : null, doctrine: DOCTRINE, note_tesis: noteTesis, con_cuotas: conCuotas, tesis_n: tesisN, attribution: ATTRIB,
     proximo_pdc: proximo ? { id: proximo.id, name: proximo.name, start: proximo.start, end: proximo.end, tv: proximo.tv } : null,
     note: rows.length ? null : 'sin partidos con cuadro definido en la ventana (la agenda se abre sola con el siguiente torneo)' };
 }

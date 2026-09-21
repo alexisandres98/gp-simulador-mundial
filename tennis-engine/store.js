@@ -581,8 +581,20 @@ async function board(tour) {
     rows, refreshed_at: odds ? new Date(odds.at).toISOString() : null, doctrine: DOCTRINE,
     precio_tupla: { ...precio, eventos: rows.length,
       nota: 'cotizaciones descartadas por ser de OTRA línea que la valorada (lib/contrato.js). Antes del 15-sep nadie las contaba: el selector las filtraba en silencio y el número no existía.' },
-    note: rows.length ? null : 'sin torneos con cuotas activas en la ventana (The Odds API publica por torneo: se abren solos cuando arranca el siguiente)',
+    note: rows.length ? null : await notaSinTorneos(tour),
   };
+}
+
+// EL ESTADO VACÍO NO ES UN FALLO (21-sep, Alexis: «que no suene como que algo falló»). The Odds API solo
+// cubre los torneos grandes del circuito y los publica uno a uno cuando arrancan; un ATP 250 de una semana
+// cualquiera no existe ahí. La nota dice eso, y dice qué SÍ está activo en el otro cuadro, con nombre.
+async function notaSinTorneos(tour) {
+  const nombre = tour === 1 ? 'WTA' : (tour === 0 ? 'ATP' : 'ATP/WTA');
+  let activos = [];
+  try { activos = (await activeTennisKeys()).filter((k) => tour == null || tourOfKey(k.key) !== tour).map((k) => k.title); } catch { activos = []; }
+  const base = `Esta semana The Odds API no cubre ningún torneo ${nombre} (solo publica los grandes del circuito, y cada uno se abre solo cuando arranca).`;
+  if (tour != null && activos.length) return `${base} Activo ahora en el otro cuadro: ${activos.join(', ')} — está en la pestaña ${tour === 0 ? 'WTA' : 'ATP'}.`;
+  return `${base} Nada que corregir: el módulo está sano y volverá a llenarse con el próximo torneo cubierto.`;
 }
 
 // ── LA TESIS CON LA FORMA DE LA CARD DE LA CASA (19-ago) ────────────────────────────────────────────────

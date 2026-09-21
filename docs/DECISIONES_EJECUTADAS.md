@@ -177,3 +177,11 @@ ejecutor no colocó ninguna apuesta desde el jueves** (0 filas PLACED, exposici�
 `sin_fondos`), no hay retiros anotados, la cuenta solo tiene USDT y un polvo de ETH, y el historial de
 apuestas de la casa (GraphQL) volvió vacío. Los **388,37 USDT** salieron por un camino que el libro no ve.
 Pendiente de Alexis: decir si fue un retiro o apuestas a mano, para anotarlo y cerrar la conciliación.
+
+### 21-sep — los 388,37 eran un retiro; reporte de la semana 39
+
+Alexis confirmó el 21-sep que sacó el dinero de Cloudbet entre el 17-sep 15:06 y el 18-sep 23:20 UTC.
+Anotado como retiro (`run=movimiento`); la conciliación cierra: esperado 11,63 = real 11,63. El ejecutor no
+colocó ninguna apuesta con los 400; 49 señales quedaron en `sin_fondos` hasta el cierre de la ventana del
+lunes 21 08:00. El contrafactual (28 liquidadas de 37, a la cuota de nacimiento, stake 30) da **+119,10
+USDT, +14,18 %, t 0,62 — y −97,80 sin las seis de Liga MX**. Reporte completo: `docs/reportes/semana-39.md`.

@@ -247,3 +247,9 @@ admin) y los derechos de datos que ya estaban expuestos antes de hoy y hoy lo es
 (Leaguepedia CC BY-SA; la política de Riot prohíbe funcionalidad de apuestas), tenis (Sackmann NC), dardos y
 tenis de mesa (sin contrato con la fuente). Ninguno bloquea el feed por código; están escritos en los
 `RIGHTS.md` de cada motor.
+
+### 23-sep, 09:23 UTC — API-Football renovada
+
+Alexis pagó la suscripción. Verificado contra `/status` de la propia API: plan **Ultra**, activa, vence el
+**23-oct-2026 09:21 UTC**, misma clave (no hay que tocar Render), 401 llamadas ya hechas hoy con la clave en
+producción. Sigue pendiente rotar esa clave por haber pasado por chat en su día.

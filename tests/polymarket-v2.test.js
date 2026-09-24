@@ -73,6 +73,25 @@ t('el estado v2 declara su regla y sus parámetros', ev2.regla === 'pm_v2' && ev
 t('el export de posiciones sabe de qué libro es', PS.posiciones('v2').libro === 'v2' && PS.posiciones('v1').libro === 'v1');
 
 
+// ── 6b. COLLEGE EN POLYMARKET: el parser de "Spread: X (-n)" y "O/U n" (24-sep) ───────────────────────────
+{
+  const mk = (question, outcomes, prices) => ({ question, outcomes: JSON.stringify(outcomes), outcomePrices: JSON.stringify(prices), clobTokenIds: JSON.stringify(['tA', 'tB']), id: '9', liquidityNum: 12000, feeSchedule: { rate: 0.03, exponent: 1, takerOnly: true } });
+  const home = 'Ohio State', away = 'Illinois';
+  const sp = PF.mapMercadoCollege(mk('Spread: Ohio State (-27.5)', ['Ohio State', 'Illinois'], ['0.485', '0.515']), home, away);
+  t('Spread: Ohio State (-27.5) con OSU local → línea 27,5 (puntos que da el local)', sp && sp.familia === 'SPREAD' && sp.linea === 27.5);
+  t('…lado away = Illinois a 0,515 con su token', sp && sp.lados.away.precio === 0.515 && sp.lados.away.token === 'tB' && sp.lados.home.precio === 0.485);
+  const sp2 = PF.mapMercadoCollege(mk('Spread: Wake Forest (-4.5)', ['Louisville', 'Wake Forest'], ['0.5', '0.5']), 'Louisville', 'Wake Forest');
+  t('Spread: Wake Forest (-4.5) con Wake Forest visitante → línea −4,5', sp2 && sp2.linea === -4.5 && sp2.lados.away.nombre === 'Wake Forest');
+  const ou = PF.mapMercadoCollege(mk('Wake Forest vs. Louisville: O/U 58.5', ['Over', 'Under'], ['0.475', '0.525']), 'Louisville', 'Wake Forest');
+  t('O/U 58.5 → TOTAL 58,5 con over/under bien orientados', ou && ou.familia === 'TOTAL' && ou.linea === 58.5 && ou.lados.under.precio === 0.525 && ou.lados.over.idx === 0);
+  t('1H O/U no entra (otra apuesta)', PF.mapMercadoCollege(mk('Temple vs. Army: 1H O/U 23.5', ['Over', 'Under'], ['0.5', '0.5']), 'Temple', 'Army') === null);
+  t('el ganador no es de este parser', PF.mapMercadoCollege(mk('Ohio State vs. Illinois', ['Ohio State', 'Illinois'], ['0.9', '0.1']), home, away) === null);
+  t('"Kent State" NO casa con "Ohio State vs. Illinois" (state es genérico)', !PF.nombraEstricto('Ohio State vs. Illinois', 'Kent State'));
+  t('"Kent State" sí casa con "Ball State vs. Kent State"', PF.nombraEstricto('Ball State vs. Kent State', 'Kent State'));
+  t('"Texas Tech" NO casa con "Texas vs. Tennessee"', !PF.nombraEstricto('Texas vs. Tennessee', 'Texas Tech'));
+  t('la v2 admite TOTAL y SPREAD de ncaaf', V2.familiaOk({ deporte: 'ncaaf', familia: 'TOTAL' }) && V2.familiaOk({ deporte: 'ncaaf', familia: 'SPREAD' }) && !V2.familiaOk({ deporte: 'nfl', familia: 'TOTAL' }));
+}
+
 // ── 7. SINCRONIZAR LOS DOS LIBROS SIN RED (el bug del 24-sep: el parámetro `libro` tapaba a la función del CLOB) ──
 (async () => {
   const senFile = path.join(process.env.GP_PROPFIRM_DIR, 'senales.json');

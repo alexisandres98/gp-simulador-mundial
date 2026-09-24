@@ -602,6 +602,125 @@ async function escanearTenis() {
   return out;
 }
 
+// ---- COLLEGE: TOTALES Y HÁNDICAPS DE LA SOMBRA DE NCAAF CONTRA POLYMARKET (24-sep, orden de Alexis) --------
+// "Mételos a la sombra de Polymarket y déjalo correr ahí". La señal es la MISMA tesis que el ejecutor real
+// juega en Cloudbet (`amfoot-engine/store.js`, picks OPEN de TOTAL/SPREAD), así que las dos sombras miden la
+// misma familia en dos venues: Cloudbet aguanta 270-450 por selección, Polymarket 5.000-20.000 en la misma
+// línea (medido el 24-sep sobre los 15 partidos con dinero). Aquí el "consenso" es la probabilidad del
+// MODELO de la tesis (`p_model`), no el consenso de casas: es una señal de modelo contra precio, y por eso
+// viaja con `tipo: 'modelo_college'` y se lee aparte en el desglose por deporte y familia de la v2.
+//
+// Forma REAL de gamma (verificada el 24-sep): evento "Away vs. Home"; mercados "Spread: <equipo> (-n)" con
+// salidas [equipo A, equipo B] y "<evento>: O/U n" con salidas [Over, Under]; solo medios puntos. Nuestra
+// línea de hándicap son los puntos que DA el local: "Spread: X (-n)" con X local ⇒ línea n; X visitante ⇒
+// línea −n. Las mitades y cuartos ("1H", "2H", "Q1") no entran. Entra SOLO por la regla v2.
+const GENERICOS = new Set(['state', 'st', 'university', 'college', 'the', 'of']);
+const toksEstricto = (n) => nrm(n).split(' ').filter((x) => x.length >= 2 && !GENERICOS.has(x) && !['team', 'esports', 'gaming', 'club'].includes(x));
+// TODOS los tokens distintivos del nombre tienen que estar: "Kent State" no puede casar con "Ohio State"
+const nombraEstricto = (texto, nombre) => {
+  const t = ' ' + nrm(texto) + ' ';
+  const tk = toksEstricto(nombre);
+  return tk.length > 0 && tk.every((x) => t.includes(' ' + x + ' '));
+};
+function mapMercadoCollege(m, home, away) {
+  if (m.closed || m.active === false) return null;
+  const q = String(m.question || '');
+  if (/\b(1H|2H|1st|2nd|Q[1-4]|quarter|half)\b/i.test(q)) return null;
+  const outs = jarr(m.outcomes), precios = jarr(m.outcomePrices).map(num);
+  if (outs.length !== 2 || precios.some((p) => p == null)) return null;
+  const tks = jarr(m.clobTokenIds);
+  const mt = q.match(/O\/U\s*(-?[\d.]+)\s*$/i);
+  if (mt) {
+    const i0 = /^over/i.test(outs[0]) ? 0 : /^over/i.test(outs[1]) ? 1 : -1;
+    if (i0 < 0) return null;
+    const i1 = 1 - i0;
+    return { familia: 'TOTAL', linea: num(mt[1]), pregunta: q, pm_mid: m.id != null ? String(m.id) : null,
+      lados: { over: { precio: precios[i0], token: tks[i0] || null, idx: i0, nombre: outs[i0] }, under: { precio: precios[i1], token: tks[i1] || null, idx: i1, nombre: outs[i1] } },
+      liquidez: num(m.liquidityNum != null ? m.liquidityNum : m.liquidity), ...tarifaDe(m) };
+  }
+  const ms = q.match(/^Spread:\s*(.+?)\s*\((-?[\d.]+)\)\s*$/i);
+  if (ms) {
+    const fav = ms[1], pt = num(ms[2]);
+    if (pt == null) return null;
+    const favHome = nombraEstricto(fav, home) && !nombraEstricto(fav, away);
+    const favAway = nombraEstricto(fav, away) && !nombraEstricto(fav, home);
+    if (!favHome && !favAway) return null;
+    const linea = favHome ? -pt : pt;                       // puntos que da el local
+    const iH = outs.findIndex((o) => nombraEstricto(o, home) && !nombraEstricto(o, away));
+    const iA = outs.findIndex((o) => nombraEstricto(o, away) && !nombraEstricto(o, home));
+    if (iH < 0 || iA < 0 || iH === iA) return null;
+    return { familia: 'SPREAD', linea, pregunta: q, pm_mid: m.id != null ? String(m.id) : null,
+      lados: { home: { precio: precios[iH], token: tks[iH] || null, idx: iH, nombre: outs[iH] }, away: { precio: precios[iA], token: tks[iA] || null, idx: iA, nombre: outs[iA] } },
+      liquidez: num(m.liquidityNum != null ? m.liquidityNum : m.liquidity), ...tarifaDe(m) };
+  }
+  return null;
+}
+async function escanearCollegePM({ lg = 'ncaaf' } = {}) {
+  const out = { deporte: lg, tipo: 'modelo_college', eventos: 0, pm_encontrados: 0, mercados: 0, tesis: 0, senales_nuevas: 0, senales: [], cerca: [], sin_linea: 0 };
+  let AF = null;
+  try { AF = require('../amfoot-engine/store'); } catch (e) { return { ...out, error: e.message }; }
+  const st = rd();
+  const ahora = Date.now();
+  const picks = (AF.picksAll(lg) || []).filter((p) => p.status === 'OPEN' && (p.family === 'TOTAL' || p.family === 'SPREAD')
+    && p.kickoff && Date.parse(p.kickoff) > ahora + 10 * 60e3 && Date.parse(p.kickoff) < ahora + 4 * 864e5);
+  const porPartido = {};
+  for (const p of picks) (porPartido[p.game_id] = porPartido[p.game_id] || []).push(p);
+  for (const grupo of Object.values(porPartido)) {
+    const p0 = grupo[0];
+    const home = p0.home_full || p0.home, away = p0.away_full || p0.away;
+    out.eventos++;
+    const evs = await gammaBusca(`${home} ${away}`);
+    const cand = evs.filter((e) => { const tt = `${e.title || ''} ${e.slug || ''}`; return nombraEstricto(tt, home) && nombraEstricto(tt, away); });
+    if (!cand.length) continue;
+    // gamma tiene a veces dos eventos del mismo partido (uno con liquidez, otro vacío): se miran todos
+    const mercados = [];
+    for (const e of cand.slice(0, 3)) {
+      const pmEv = await gammaEvento(e.slug);
+      for (const m of (pmEv && pmEv.markets) || []) { const mm = mapMercadoCollege(m, home, away); if (mm) mercados.push({ ...mm, slug: pmEv.slug || pmEv.title }); }
+    }
+    if (!mercados.length) continue;
+    out.pm_encontrados++; out.mercados += mercados.length;
+    for (const p of grupo) {
+      out.tesis++;
+      const fam = String(p.family).toUpperCase();
+      const lado = String(p.side || '').toLowerCase();
+      const mm = mercados.filter((x) => x.familia === fam && x.linea != null && Math.abs(x.linea - Number(p.line)) < 1e-9 && x.lados[lado] && x.lados[lado].precio > 0)
+        .sort((a, b) => (b.liquidez || 0) - (a.liquidez || 0))[0];
+      if (!mm) { out.sin_linea++; continue; }
+      if (mm.liquidez != null && mm.liquidez < LIQ_MIN()) continue;
+      const price = mm.lados[lado].precio;
+      const cons = Number(p.p_model);
+      if (!(cons > 0 && cons < 1)) continue;
+      const edge = 100 * (cons - price);
+      out.cerca.push({ m: mm.pregunta.slice(0, 60), lado, pm: price, cons: +cons.toFixed(3), edge: +edge.toFixed(1) });
+      const ev2 = V2.evaluar({ deporte: lg, familia: fam, lado, consenso: cons, ko: p.kickoff, precio_pm: price, fee_rate: mm.fee_rate, fee_exp: mm.fee_exp }, { precio: price, exigirHora: false });
+      if (!ev2.ok) continue;
+      const id = `${mm.pm_mid || mm.pregunta}|${lado}`;
+      const prev = st.senales[id];
+      if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
+      if (prev && prev.estado !== 'ABIERTA') continue;
+      const limite = Math.min(PRECIO_MAX, +(cons - 0.01).toFixed(2));
+      const shares = Math.min(MAX_SHARES_EVENTO, Math.floor(RIESGO_USD() / price));
+      const s = {
+        id, at: new Date().toISOString(), deporte: lg, game: lg, tipo: 'modelo_college', pick_key: p.key,
+        evento: `${home} vs ${away}`, liga: lg, pm_evento: mm.slug, mercado: mm.pregunta,
+        familia: fam, linea: mm.linea, lado, equipo: mm.lados[lado].nombre,
+        precio_pm: price, consenso: cons, books: 0, edge_pp: +edge.toFixed(1), edge_sombra_pp: p.edge_pp,
+        liquidez: mm.liquidez != null ? Math.round(mm.liquidez) : null,
+        limite, shares, ko: p.kickoff, home, away,
+        token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
+        fee_rate: mm.fee_rate, fee_exp: mm.fee_exp,
+        v2: { consenso: ev2.consenso, edge_neto_pp: ev2.edge_neto_pp, elegible: true, motivo: null }, solo_v2: true,
+        estado: 'ABIERTA', correo_at: 'nunca',
+      };
+      st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
+    }
+  }
+  st.at = new Date().toISOString(); wr(st);
+  out.cerca = out.cerca.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 12);
+  return out;
+}
+
 // ---- LIQUIDACIÓN (sombra propia, desde nuestra fuente de resultados) ------------------------------------
 async function liquidar({ game = 'cs2' } = {}) {
   const st = rd();
@@ -701,4 +820,4 @@ function marcaCorreo(ids) {
   wr(st);
 }
 
-module.exports = { escanear, escanearFutbol, escanearAmfoot, escanearTenis, liquidar, estado, pendientesDeCorreo, marcaCorreo, anotar, decidir, DIR };
+module.exports = { escanear, escanearFutbol, escanearAmfoot, escanearTenis, escanearCollegePM, mapMercadoCollege, nombraEstricto, liquidar, estado, pendientesDeCorreo, marcaCorreo, anotar, decidir, DIR };

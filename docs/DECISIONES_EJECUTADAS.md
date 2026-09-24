@@ -331,3 +331,14 @@ familia. Mismos frenos, libro, confirmación y liquidación por referencia que t
 Job cada 10 min (`amfootRealJob`), sonda `/api/internal/real-amfoot?key=` (`&run=1` fuerza el barrido). La
 parada vigila el canal `amfoot` con su stake. **Caja:** con 191 USDT y 10 por apuesta, el suelo de 5 frena
 a la 18.ª colocada; la sombra tiene 140 abiertas para la jornada 4 y Cloudbet cubre ~40 %.
+
+### 24-sep (noche) — college en la sombra de Polymarket (v2)
+
+Orden de Alexis: «mételos a la sombra de Polymarket y déjalo correr ahí». Medido antes: los 15 partidos con
+dinero del ejecutor están en Polymarket con hándicaps y totales a medio punto, 9.000-44.000 de liquidez por
+línea y 5.000-20.000 disponibles a 5 ¢ del mejor precio (Cloudbet: 270-450 por selección); 17 de nuestras 31
+líneas existen exactas (las enteras no). `escanearCollegePM` (`propfirm/scan.js`) toma las MISMAS tesis
+OPEN de la sombra de NCAAF (TOTAL/SPREAD), casa el partido en gamma con nombres estrictos, mapea
+"Spread: X (−n)" (línea = puntos que da el local) y "O/U n", y crea señales `tipo: 'modelo_college'` con el
+`p_model` de la tesis como consenso (modelo contra precio, no consenso de casas; se lee aparte en el desglose
+de la v2 por deporte y familia). Solo v2, listón neto ≥ 3 pp, precio 0,40-0,70, entra a ≤ 2 h del saque.

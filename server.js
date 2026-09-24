@@ -17368,6 +17368,8 @@ async function propfirmSweep() {
     try { out[lgPf] = await PF.escanearAmfoot({ lg: lgPf }); } catch (e) { out[lgPf] = { error: e.message }; }
   }
   try { out.tenis = await PF.escanearTenis(); } catch (e) { out.tenis = { error: e.message }; }
+  // (24-sep, orden de Alexis) totales y hándicaps de la sombra de college contra Polymarket, solo v2
+  try { out.college = await PF.escanearCollegePM({ lg: 'ncaaf' }); } catch (e) { out.college = { error: e.message }; }
   for (const gPf of ['cs2', 'lol', 'valorant', 'dota2']) {
     try { out['settle_' + gPf] = await PF.liquidar({ game: gPf }); } catch (e) { out['settle_' + gPf] = { error: e.message }; }
   }
@@ -24434,6 +24436,7 @@ async function anotar(pid){
           if (depPf === 'futbol') return json(res, 200, await PF.escanearFutbol({ dbc: require('./database/client'), eventos: db.clubsQuoteEvents || {} }).catch((e) => ({ error: e.message })));
           if (depPf === 'nfl' || depPf === 'ncaaf') return json(res, 200, await PF.escanearAmfoot({ lg: depPf }).catch((e) => ({ error: e.message })));
           if (depPf === 'tenis') return json(res, 200, await PF.escanearTenis().catch((e) => ({ error: e.message })));
+          if (depPf === 'college') return json(res, 200, await PF.escanearCollegePM({ lg: 'ncaaf' }).catch((e) => ({ error: e.message })));
           return json(res, 200, await PF.escanear({ game: depPf }).catch((e) => ({ error: e.message })));
         }
         // sincronizar/liquidar un libro concreto a demanda (24-sep): ?run=poly_sync&libro=v2

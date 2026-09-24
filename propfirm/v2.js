@@ -58,7 +58,10 @@ function familiaOk(s) {
   if (d === 'futbol') return f === 'FUT1X2' && lado === 'no' && s.resultado !== 'draw';
   if (d === 'cs2') return (f === 'MAPA' || f === 'SERIE') && s.nivel === 'tier1-2';
   if (d === 'valorant' || d === 'dota2') return f === 'MAPA' || f === 'SERIE';
-  if (d === 'tenis' || d === 'nfl' || d === 'ncaaf') return f === 'ML';
+  if (d === 'tenis' || d === 'nfl') return f === 'ML';
+  // college (24-sep, orden de Alexis): el ganador por consenso y, además, los TOTALES y HÁNDICAPS de la
+  // sombra de NCAAF —la misma familia que el ejecutor real juega en Cloudbet— medidos en el venue hondo
+  if (d === 'ncaaf') return f === 'ML' || f === 'TOTAL' || f === 'SPREAD';
   return false;
 }
 

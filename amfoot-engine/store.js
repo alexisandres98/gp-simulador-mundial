@@ -1118,6 +1118,9 @@ function simMatch(lg, homeRef, awayRef, { neutral = false } = {}) {
     at: new Date().toISOString() };
 }
 
-module.exports = { playersDirectory, playerProfile, LEAGUES, load, modelSnapshot, gameModel, refreshOdds, refreshResults, marketFor,
+// el libro ENTERO de la sombra de una liga (24-sep, solo lectura): el análisis semana a semana y a precio de
+// Cloudbet necesita todas las filas, y `track` capa a 40.
+function picksAll(lg) { return ((rdD(`${lg}-picks.json`) || { picks: [] }).picks || []); }
+module.exports = { picksAll, playersDirectory, playerProfile, LEAGUES, load, modelSnapshot, gameModel, refreshOdds, refreshResults, marketFor,
   slate, gameIntel, teamsDirectory, teamProfile, modelCard, recordShadow, settleShadow, track, DISK_DIR, simMatch,
   mejorPorLado };   // (15-sep) expuesto para poder comprobar el selector de precio con la tupla

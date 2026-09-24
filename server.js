@@ -20636,6 +20636,8 @@ const server = http.createServer(async (req, res) => {
         const AFx = require('./amfoot-engine/store');
         const lgX = String(url.searchParams.get('amfoot')).toLowerCase();
         if (!AFx.LEAGUES[lgX]) return json(res, 400, { error: 'liga desconocida', leagues: Object.keys(AFx.LEAGUES) });
+        // `&todo=1` (24-sep): el libro entero, no solo el track (que capa a 40 filas)
+        if (url.searchParams.get('todo') === '1') { const all = AFx.picksAll(lgX); return json(res, 200, { league: lgX, count: all.length, picks: all, exported_at: new Date().toISOString() }); }
         return json(res, 200, { league: lgX, track: AFx.track(lgX), exported_at: new Date().toISOString() });
       }
       // ?shadow=1 / ?real=1 (2-sep): el libro COMPLETO de la sombra y del ejecutor real. Las rutas de estado

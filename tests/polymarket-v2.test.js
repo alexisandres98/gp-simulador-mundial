@@ -72,5 +72,19 @@ const ev2 = PS.estadoV2();
 t('el estado v2 declara su regla y sus parámetros', ev2.regla === 'pm_v2' && ev2.reglas && ev2.reglas.horas_max_al_saque === 2 && ev2.reglas.edge_neto_min_pp === 3);
 t('el export de posiciones sabe de qué libro es', PS.posiciones('v2').libro === 'v2' && PS.posiciones('v1').libro === 'v1');
 
-console.log(fallos ? `\n${fallos} FALLOS` : '\nTodo correcto');
-process.exit(fallos ? 1 : 0);
+
+// ── 7. SINCRONIZAR LOS DOS LIBROS SIN RED (el bug del 24-sep: el parámetro `libro` tapaba a la función del CLOB) ──
+(async () => {
+  const senFile = path.join(process.env.GP_PROPFIRM_DIR, 'senales.json');
+  const s1 = { id: 'm1|No', at: new Date(ahora).toISOString(), deporte: 'futbol', familia: 'FUT1X2', resultado: 'home', lado: 'No', evento: 'A vs B', mercado: 'Will A win?', precio_pm: 0.48, consenso: 0.55, consenso_shin: 0.56, edge_pp: 7, limite: 0.54, ko: new Date(Date.now() + 5 * H).toISOString(), estado: 'ABIERTA', fee_rate: 0.03, fee_exp: 1, token: null, pm_mid: 'x' };
+  const s2 = { ...s1, id: 'm2|No', solo_v2: true, ko: new Date(Date.now() + 5 * H).toISOString() };
+  fs.writeFileSync(senFile, JSON.stringify({ senales: { [s1.id]: s1, [s2.id]: s2 } }));
+  const r1 = await PS.sincronizar('v1');
+  const r2 = await PS.sincronizar('v2');
+  t('la v1 sincroniza sin reventar', r1 && r1.libro === 'v1' && !r1.error);
+  t('la v2 sincroniza sin reventar', r2 && r2.libro === 'v2' && !r2.error);
+  t('la v2 deja en ESPERA lo que está a 5 h del saque (las dos señales)', r2.esperando === 2 && PS.estadoV2().esperando === 2);
+  t('la v1 no ve la señal solo_v2', !(PS.posiciones('v1').posiciones || []).some((p) => p.senal_id === 'm2|No'));
+  console.log(fallos ? `\n${fallos} FALLOS` : '\nTodo correcto');
+  process.exit(fallos ? 1 : 0);
+})();

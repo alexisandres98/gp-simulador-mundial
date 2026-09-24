@@ -91,7 +91,7 @@ async function jfetch(url, timeoutMs = 12000) {
 }
 
 // el libro del token: asks ordenados de barato a caro. El CLOB devuelve {bids, asks} con {price, size}.
-async function libro(token) {
+async function libroClob(token) {
   const j = await jfetch(`${CLOB}/book?token_id=${encodeURIComponent(token)}`);
   if (!j || !Array.isArray(j.asks)) return null;
   return j.asks.map((a) => ({ price: +a.price, size: +a.size }))
@@ -193,7 +193,7 @@ async function sincronizar(libro = 'v1') {
       }
     }
     toques++;
-    const asks = await libro(token);
+    const asks = await libroClob(token);
     // límite: el de la señal; el experimento modelo_sombra no llega aquí, y una señal sin límite (no
     // debería existir en operables) usa su propio precio de aviso como tope
     // la v2 compra contra SU consenso (Shin en fútbol) y nunca por encima de su banda de precio

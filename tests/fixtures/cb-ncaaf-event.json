@@ -1,0 +1,288 @@
+{
+ "id": 36420354,
+ "name": "Coastal Carolina v Liberty",
+ "status": "TRADING",
+ "cutoffTime": "2026-09-24T23:30:00Z",
+ "home": {
+  "name": "Coastal Carolina",
+  "key": "cdac-coastal-carolina-chanticleers",
+  "abbreviation": "CCAR",
+  "nationality": "USA",
+  "researchId": ""
+ },
+ "away": {
+  "name": "Liberty",
+  "key": "c42fe9-liberty-flames",
+  "abbreviation": "LIB",
+  "nationality": "USA",
+  "researchId": ""
+ },
+ "markets": {
+  "american_football.handicap": {
+   "submarkets": {
+    "period=ot&period=ft": {
+     "selections": [
+      {
+       "outcome": "home",
+       "params": "handicap=2.5",
+       "price": 1.9,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1600.66634,
+       "marketUrl": "american_football.handicap/home?handicap=2.5"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=2.5",
+       "price": 1.88,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1637.04492,
+       "marketUrl": "american_football.handicap/away?handicap=2.5"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=-1.5",
+       "price": 2.15,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1252.6948,
+       "marketUrl": "american_football.handicap/home?handicap=-1.5"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-1.5",
+       "price": 1.68,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 2118.52872,
+       "marketUrl": "american_football.handicap/away?handicap=-1.5"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=-1",
+       "price": 2.12,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1286.25,
+       "marketUrl": "american_football.handicap/home?handicap=-1"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-1",
+       "price": 1.7,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 2058,
+       "marketUrl": "american_football.handicap/away?handicap=-1"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=1",
+       "price": 2.02,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1412.35248,
+       "marketUrl": "american_football.handicap/home?handicap=1"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=1",
+       "price": 1.77,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1870.9082,
+       "marketUrl": "american_football.handicap/away?handicap=1"
+      }
+     ]
+    }
+   }
+  },
+  "american_football.handicap_period_first_half": {
+   "submarkets": {
+    "period=1h&period=q1&period=q2": {
+     "selections": [
+      {
+       "outcome": "home",
+       "params": "handicap=-0.5",
+       "price": 1.97,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1262.38112,
+       "marketUrl": "american_football.handicap_period_first_half/home?handicap=-0.5"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-0.5",
+       "price": 1.79,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1550.0121,
+       "marketUrl": "american_football.handicap_period_first_half/away?handicap=-0.5"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=-3.5",
+       "price": 2.45,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 844.48952,
+       "marketUrl": "american_football.handicap_period_first_half/home?handicap=-3.5"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-3.5",
+       "price": 1.48,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 2551.0625,
+       "marketUrl": "american_football.handicap_period_first_half/away?handicap=-3.5"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=-3",
+       "price": 2.3,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 941.92994,
+       "marketUrl": "american_football.handicap_period_first_half/home?handicap=-3"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-3",
+       "price": 1.55,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 2226.38164,
+       "marketUrl": "american_football.handicap_period_first_half/away?handicap=-3"
+      },
+      {
+       "outcome": "home",
+       "params": "handicap=-2.5",
+       "price": 2.08,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1133.80512,
+       "marketUrl": "american_football.handicap_period_first_half/home?handicap=-2.5"
+      },
+      {
+       "outcome": "away",
+       "params": "handicap=-2.5",
+       "price": 1.68,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1800.75,
+       "marketUrl": "american_football.handicap_period_first_half/away?handicap=-2.5"
+      }
+     ]
+    }
+   }
+  },
+  "american_football.totals": {
+   "submarkets": {
+    "period=ot&period=ft": {
+     "selections": [
+      {
+       "outcome": "over",
+       "params": "total=50",
+       "price": 1.88,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1227.7832,
+       "marketUrl": "american_football.totals/over?total=50"
+      },
+      {
+       "outcome": "under",
+       "params": "total=50",
+       "price": 1.9,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1200.5,
+       "marketUrl": "american_football.totals/under?total=50"
+      },
+      {
+       "outcome": "over",
+       "params": "total=48",
+       "price": 1.65,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1662.22994,
+       "marketUrl": "american_football.totals/over?total=48"
+      },
+      {
+       "outcome": "under",
+       "params": "total=48",
+       "price": 2.17,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 923.46086,
+       "marketUrl": "american_football.totals/under?total=48"
+      },
+      {
+       "outcome": "over",
+       "params": "total=48.5",
+       "price": 1.69,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1565.86948,
+       "marketUrl": "american_football.totals/over?total=48.5"
+      },
+      {
+       "outcome": "under",
+       "params": "total=48.5",
+       "price": 2.09,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 991.23766,
+       "marketUrl": "american_football.totals/under?total=48.5"
+      },
+      {
+       "outcome": "over",
+       "params": "total=49",
+       "price": 1.75,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1440.6,
+       "marketUrl": "american_football.totals/over?total=49"
+      },
+      {
+       "outcome": "under",
+       "params": "total=49",
+       "price": 2.02,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1059.26436,
+       "marketUrl": "american_football.totals/under?total=49"
+      }
+     ]
+    }
+   }
+  },
+  "american_football.totals_period_first_half": {
+   "submarkets": {
+    "period=1h": {
+     "selections": [
+      {
+       "outcome": "over",
+       "params": "total=26",
+       "price": 1.95,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 909.85258,
+       "marketUrl": "american_football.totals_period_first_half/over?total=26"
+      },
+      {
+       "outcome": "under",
+       "params": "total=26",
+       "price": 1.81,
+       "status": "SELECTION_ENABLED",
+       "minStake": 0.1,
+       "maxStake": 1067.11024,
+       "marketUrl": "american_football.totals_period_first_half/under?total=26"
+      }
+     ]
+    }
+   }
+  }
+ }
+}

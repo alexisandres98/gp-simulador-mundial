@@ -212,6 +212,7 @@ function canalOn(familia) {
   if (f === 'CARDS') return encendido('GP_REAL_CARDS_ENABLED');
   if (f === 'TT_POINTS') return encendido('GP_REAL_TT_ENABLED');
   if (f === 'CS2') return cs2RealOn();
+  if (f === 'AMFOOT') return encendido('GP_REAL_AMFOOT_ENABLED');   // college totales/hándicap (24-sep)
   return true;   // una familia sin interruptor propio no se bloquea por esto
 }
 function frenos(stake, kickoff, familia = null) {

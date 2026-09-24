@@ -296,3 +296,38 @@ barrido entero: la sombra de Polymarket estuvo muerta del 21 al 24-sep. Desde ho
 
 **Puerta para dinero:** la de siempre. 100 resueltas en v2 y t ≥ 2 con el veredicto de la vara, por deporte.
 Tests: `node tests/polymarket-v2.test.js`.
+
+---
+
+## 24-sep-2026 (tarde) — College al dinero real: totales y hándicaps en Cloudbet, $10 planos
+
+**La orden de Alexis, literal:** «Abre college totales y spread en Cloudbet, con stake de 10 dólares en el
+ejecutor real en Cloudbet, quiero ver cómo nos va este fin de semana.» Es decisión suya sobre la regla del
+dinero del 13-sep, y queda registrada como tal.
+
+**Lo medido antes de abrir** (libro entero de la sombra, 748 filas, a precio de Cloudbet en la MISMA línea):
+TOTAL 86 · 62,8 % · +16,7 % · t 1,72 (dos sábados, +23,1 % y +12,4 %; la ganancia vive en ventaja ≥ 10 pp:
++28 % en 42, tramo 6-10 pp plano) · SPREAD 99 · 62,9 % · +19,0 % · t 2,07 (un solo sábado bueno: −2,0 % y
++27,7 %). Cloudbet cotiza el 40 % de lo que genera la sombra y paga 0,08-0,09 menos de cuota que la mejor
+casa. CLV contra el propio cierre de Cloudbet plano (−1,5 % / +0,6 %). Ganador: −72 %, sigue cerrado.
+
+**Lo que hay:** `real-executor/amfoot.js`, tercer canal del ejecutor sobre el molde de tenis de mesa. Señal =
+tesis OPEN de la sombra de NCAAF (TOTAL/SPREAD), evento de Cloudbet casado por el resolutor de la liga,
+selección EXACTA en `american_football.totals` (`total=<línea>`) / `american_football.handicap`
+(`handicap = −línea`, hándicap del local en las dos selecciones; comprobado contra el evento 36420354 y
+fijado en `tests/real-amfoot.test.js` con ese evento como fixture), solo partido entero. Referencia de precio
+para el deslizamiento: la cuota de Cloudbet al nacer la pick si cotizaba la misma línea; si no, la mejor del
+mercado (con la tolerancia del 3 % filtrando lo que Cloudbet paga muy por debajo). Una posición por partido y
+familia. Mismos frenos, libro, confirmación y liquidación por referencia que tarjetas.
+
+| var | valor | qué hace |
+|---|---|---|
+| `GP_REAL_AMFOOT_ENABLED` | on (defecto) | interruptor del canal; `false` lo pausa sin tocar lo colocado |
+| `GP_REAL_AMFOOT_STAKE` | 10 | stake plano; el máximo de la casa si es menor |
+| `GP_REAL_AMFOOT_EDGE_MIN` | 0 | 0 = todas las tesis de la sombra; `10` = solo el tramo donde vivió la ganancia |
+| `GP_REAL_AMFOOT_FAMILIAS` | TOTAL,SPREAD | familias que entran |
+| `GP_REAL_AMFOOT_LIGAS` | ncaaf | ligas (NFL/CFL quedan fuera) |
+
+Job cada 10 min (`amfootRealJob`), sonda `/api/internal/real-amfoot?key=` (`&run=1` fuerza el barrido). La
+parada vigila el canal `amfoot` con su stake. **Caja:** con 191 USDT y 10 por apuesta, el suelo de 5 frena
+a la 18.ª colocada; la sombra tiene 140 abiertas para la jornada 4 y Cloudbet cubre ~40 %.

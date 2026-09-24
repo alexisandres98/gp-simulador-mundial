@@ -13730,6 +13730,20 @@ if (String(process.env.GP_NFL_JOBS_ENABLED || 'true') !== 'false') {
   };
   setTimeout(amfootChain, 420 * 1000);
   setInterval(amfootChain, 30 * 60 * 1000);
+  // COLLEGE AL DINERO REAL (24-sep, orden de Alexis): totales y hándicaps de la sombra de NCAAF en Cloudbet,
+  // $10 planos. Canal aparte (`real-executor/amfoot.js`), mismos frenos y mismo libro; confirmar/liquidar los
+  // hace el barrido general del ejecutor. Cada 10 min, como tenis de mesa.
+  const amfootRealJob = async () => {
+    try {
+      const REx = require('./real-executor/store');
+      if (!REx.CFG().enabled) return;
+      const AF = require('./amfoot-engine/store');
+      const r = await require('./real-executor/amfoot').sweep({ picksDe: (lg) => AF.picksAll(lg), resolver: (lg) => (n) => AF.resolveOddsName(lg, n) });
+      if (r && (r.nuevas || r.colocadas || r.revisadas || r.sin_evento_cloudbet)) opsLog('amfoot_real', r);
+    } catch (e) { opsLog('amfoot_real', { error: e.message }); }
+  };
+  setTimeout(amfootRealJob, 6 * 60e3);
+  setInterval(amfootRealJob, 10 * 60e3);
 }
 
 // ── B5: pasada de LECTURAS de la jornada de baloncesto ────────────────────────────────────────────
@@ -23050,6 +23064,19 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { pasada: run, track: D.track() });
     }
     // 9-sep: tenis de mesa al dinero real (total de puntos, Cloudbet, $5). `?run=1` fuerza el barrido ahora.
+    // 24-sep: el canal real de college (totales y hándicap en Cloudbet). `?run=1` fuerza el barrido.
+    if (p === '/api/internal/real-amfoot') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const RA = require('./real-executor/amfoot'), AF = require('./amfoot-engine/store'), REx = require('./real-executor/store');
+      const out = { at: new Date().toISOString(), cfg: { enabled: REx.CFG().enabled, dry: REx.CFG().dry, canal: RA.amfootOn(), stake: RA.STAKE(), edge_min: RA.EDGE_MIN() } };
+      if (url.searchParams.get('run') === '1') out.barrido = await RA.sweep({ picksDe: (lg) => AF.picksAll(lg), resolver: (lg) => (n) => AF.resolveOddsName(lg, n) }).catch((e) => ({ error: e.message }));
+      const ahora = Date.now();
+      out.senales_abiertas = AF.picksAll('ncaaf').filter((q) => q.status === 'OPEN' && (q.family === 'TOTAL' || q.family === 'SPREAD') && Date.parse(q.kickoff || 0) > ahora)
+        .map((q) => ({ key: q.key, match: `${q.home_full} vs ${q.away_full}`, family: q.family, side: q.side, line: q.line, odds: q.odds, book: q.book, edge_pp: q.edge_pp, kickoff: q.kickoff, cb: q.cb || null }));
+      out.resumen = RA.resumen();
+      return json(res, 200, out);
+    }
     if (p === '/api/internal/real-tt') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

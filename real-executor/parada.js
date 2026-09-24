@@ -83,6 +83,7 @@ function canales() {
     { id: 'cards', nombre: 'tarjetas under', esMia: (b) => !b.familia, stake: num('GP_REAL_STAKE_FLAT', 30) },
     { id: 'tt', nombre: 'tenis de mesa, total de puntos', esMia: (b) => b.familia === 'TT_POINTS', stake: num('GP_REAL_TT_STAKE', 5) },
     { id: 'cs2', nombre: 'CS2 rondas', esMia: (b) => b.familia === 'CS2', stake: num('GP_REAL_CS2_STAKE', 5) },
+    { id: 'amfoot', nombre: 'college, totales y hándicap', esMia: (b) => b.familia === 'AMFOOT', stake: num('GP_REAL_AMFOOT_STAKE', 10) },
   ];
 }
 const liquidadas = (bets, c) => (bets || []).filter((b) => c.esMia(b) && b.status === 'SETTLED'
@@ -151,7 +152,7 @@ function linea4(saldo) {
 // El llamador persiste el resultado de `evaluar` en el libro (`L.parada`). `frenos()` pregunta aquí antes de
 // dejar salir una orden nueva. Se bloquea el canal que saltó, y la caja bloquea todos.
 function bloqueaOn() { return !/^(0|false|no|off)$/i.test(String(process.env.GP_PARADA_BLOQUEA == null ? 'on' : process.env.GP_PARADA_BLOQUEA).trim()); }
-const CANAL_DE_FAMILIA = { CARDS: 'cards', TT_POINTS: 'tt', CS2: 'cs2' };
+const CANAL_DE_FAMILIA = { CARDS: 'cards', TT_POINTS: 'tt', CS2: 'cs2', AMFOOT: 'amfoot' };
 function bloqueo(estadoGuardado, familia) {
   if (!bloqueaOn() || !estadoGuardado || !Array.isArray(estadoGuardado.lineas)) return null;
   const canal = CANAL_DE_FAMILIA[String(familia || '').toUpperCase()] || null;

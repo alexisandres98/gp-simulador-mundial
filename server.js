@@ -17343,26 +17343,36 @@ async function propfirmSweep() {
   // 1-sep (orden de Alexis): cinco frentes — CS2 y LoL (consenso esports), fútbol (devig 3-vías de las
   // ~30 casas), y NFL/NCAAF (consenso The Odds API del motor amfoot; gamma aún no lista college y la NFL
   // llega el 9-sep — el barrido los atrapa solo cuando aparezcan).
-  try { out.cs2 = await PF.escanear({ game: 'cs2' }); } catch (e) { out.cs2 = { error: e.message }; }
-  try { out.lol = await PF.escanear({ game: 'lol' }); } catch (e) { out.lol = { error: e.message }; }
+  // (24-sep, orden de Alexis: "seguir probando más deportes y mercados") Valorant y Dota 2 entran por el
+  // mismo escáner de esports; tenis por el suyo. Los tres nacen `solo_v2`: la v1 no los ve.
+  for (const gPf of ['cs2', 'lol', 'valorant', 'dota2']) {
+    try { out[gPf] = await PF.escanear({ game: gPf }); } catch (e) { out[gPf] = { error: e.message }; }
+  }
   try { out.futbol = await PF.escanearFutbol({ dbc: require('./database/client'), eventos: db.clubsQuoteEvents || {} }); }
   catch (e) { out.futbol = { error: e.message }; }
   for (const lgPf of ['nfl', 'ncaaf']) {
     try { out[lgPf] = await PF.escanearAmfoot({ lg: lgPf }); } catch (e) { out[lgPf] = { error: e.message }; }
   }
-  try { out.settle_cs2 = await PF.liquidar({ game: 'cs2' }); } catch (e) { out.settle_cs2 = { error: e.message }; }
-  try { out.settle_lol = await PF.liquidar({ game: 'lol' }); } catch (e) { out.settle_lol = { error: e.message }; }
+  try { out.tenis = await PF.escanearTenis(); } catch (e) { out.tenis = { error: e.message }; }
+  for (const gPf of ['cs2', 'lol', 'valorant', 'dota2']) {
+    try { out['settle_' + gPf] = await PF.liquidar({ game: gPf }); } catch (e) { out['settle_' + gPf] = { error: e.message }; }
+  }
   // LA SOMBRA DE POLYMARKET (1-sep, orden de Alexis): cada señal operable se "coloca" contra el libro
   // real del CLOB (banco simulado $2.000) y se liquida con la resolución del propio venue. Si en las
   // revisiones de los lunes da positivo, se cablea la API real de ejecución y se le mete dinero.
+  // DOS LIBROS desde el 24-sep: v1 (control, congelada) y v2 (`propfirm/v2.js`), cada uno con su banco.
   try {
     const PS = require('./propfirm/polyshadow');
-    out.poly = await PS.sincronizar();
-    out.poly_settle = await PS.liquidarPoly();
+    out.poly = await PS.sincronizar('v1');
+    out.poly_settle = await PS.liquidarPoly('v1');
+    out.poly_v2 = await PS.sincronizar('v2');
+    out.poly_v2_settle = await PS.liquidarPoly('v2');
   } catch (e) { out.poly_error = e.message; }
   try {
     const pend = PF.pendientesDeCorreo();
-    if (pend.length && mailer.isConfigured()) {
+    // el correo de órdenes manuales solo si la prop firm sigue en uso (Alexis la dejó el 21-sep:
+    // `GP_PROPFIRM_ENABLED=false`); el barrido y las sombras corren igual con `GP_PROPFIRM_SCAN`
+    if (pend.length && mailer.isConfigured() && String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false') {
       pend.sort((a, b) => b.edge_pp - a.edge_pp);
       // RIESGO CORRELACIONADO (1-sep, primera pasada real): tres señales del mismo cruce ganan y pierden
       // juntas — para la pérdida diaria son UNA decisión, no tres. La de mayor edge va como orden; las
@@ -17401,7 +17411,11 @@ async function propfirmSweep() {
   global._propfirmLast = out;
   return out;
 }
-if (String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false') {
+// (24-sep) HALLAZGO: `GP_PROPFIRM_ENABLED=false` (puesto el 21-sep para cortar los correos) apagaba el
+// barrido ENTERO y con él la sombra de Polymarket, que estuvo muerta del 21 al 24-sep sin que nadie lo
+// pidiera. Desde hoy la llave del barrido es `GP_PROPFIRM_SCAN` (por defecto encendida) y la del correo
+// sigue siendo `GP_PROPFIRM_ENABLED`.
+if (String(process.env.GP_PROPFIRM_SCAN || 'true') !== 'false') {
   setTimeout(() => { propfirmSweep().catch(() => { }); }, 200 * 1000);
   setInterval(() => { propfirmSweep().catch(() => { }); }, 10 * 60 * 1000);
 }
@@ -20633,7 +20647,8 @@ const server = http.createServer(async (req, res) => {
       }
       // ?poly=1 (3-sep): todas las posiciones de la sombra de Polymarket (estado() capa a 15)
       if (url.searchParams.get('poly')) {
-        const Px = require('./propfirm/polyshadow').posiciones();
+        // ?poly=2 (24-sep): el libro de la regla v2
+        const Px = require('./propfirm/polyshadow').posiciones(url.searchParams.get('poly') === '2' ? 'v2' : 'v1');
         return json(res, 200, { count: Px.posiciones.length, ...Px, exported_at: new Date().toISOString() });
       }
       if (url.searchParams.get('real')) {
@@ -24389,14 +24404,17 @@ async function anotar(pid){
         if (runPf === 'scan') {
           if (depPf === 'futbol') return json(res, 200, await PF.escanearFutbol({ dbc: require('./database/client'), eventos: db.clubsQuoteEvents || {} }).catch((e) => ({ error: e.message })));
           if (depPf === 'nfl' || depPf === 'ncaaf') return json(res, 200, await PF.escanearAmfoot({ lg: depPf }).catch((e) => ({ error: e.message })));
+          if (depPf === 'tenis') return json(res, 200, await PF.escanearTenis().catch((e) => ({ error: e.message })));
           return json(res, 200, await PF.escanear({ game: depPf }).catch((e) => ({ error: e.message })));
         }
+        // sincronizar/liquidar un libro concreto a demanda (24-sep): ?run=poly_sync&libro=v2
+        if (runPf === 'poly_sync') { const lb = url.searchParams.get('libro') === 'v2' ? 'v2' : 'v1'; const PSx = require('./propfirm/polyshadow'); return json(res, 200, { sync: await PSx.sincronizar(lb).catch((e) => ({ error: e.message })), settle: await PSx.liquidarPoly(lb).catch((e) => ({ error: e.message })) }); }
         if (runPf === 'settle') return json(res, 200, await PF.liquidar({ game: depPf }).catch((e) => ({ error: e.message })));
         // anotar la colocación real de Alexis: ?run=anotar&id=<id de la tesis>&precio=0.51&costo=99.03
         if (runPf === 'anotar') return json(res, 200, PF.anotar(String(url.searchParams.get('id') || ''), {
           precio: url.searchParams.get('precio'), costo: url.searchParams.get('costo') }));
         // borrón de la sombra de Polymarket (1-sep): solo a mano, para renacer con reglas nuevas
-        if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset());
+        if (runPf === 'poly_reset') return json(res, 200, require('./propfirm/polyshadow').reset(url.searchParams.get('libro') === 'v2' ? 'v2' : 'v1'));
         // ¿puede este servidor colocar una orden en Polymarket? La lectura funciona desde el 1-sep y eso no
         // dice nada: el bloqueo por región es SOLO de trading. Se comprueba antes de construir el ejecutor.
         if (runPf === 'poly_geo') return json(res, 200, await require('./propfirm/polyshadow').sondaGeo().catch((e) => ({ error: e.message })));
@@ -24408,6 +24426,7 @@ async function anotar(pid){
       // `?todas=1`: el libro entero (para la revisión del lunes); sin él, las 20 últimas
       return json(res, 200, { ...PF.estado({ completo: url.searchParams.get('todas') === '1' }), last_sweep: global._propfirmLast || null,
         enabled: String(process.env.GP_PROPFIRM_ENABLED || 'true') !== 'false',
+        scan_enabled: String(process.env.GP_PROPFIRM_SCAN || 'true') !== 'false',
         aviso_cloudbet: String(process.env.GP_REAL_AVISO_MANUAL || 'true') !== 'false',
         // la sombra de ejecución de Polymarket (1-sep): banco simulado, fills contra el CLOB
         poly_sombra: (() => { try { return require('./propfirm/polyshadow').estado(); } catch (e) { return { error: e.message }; } })() });

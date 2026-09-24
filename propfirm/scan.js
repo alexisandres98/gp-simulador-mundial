@@ -38,6 +38,19 @@ function tarifaDe(m) {
 
 const EDGE_MIN_PP = () => +(process.env.GP_PROPFIRM_EDGE_PP || 4);
 const PRECIO_MIN = 0.15, PRECIO_MAX = 0.84;      // banda: la firm prohíbe >0,85 y bajo 15¢ el edge es ruido de longshot
+
+// LA REGLA v2 (24-sep, orden de Alexis) viaja pegada a cada señal desde el escaneo. `decidir` responde dos
+// cosas a la vez: si la señal nace por la regla v1 de siempre (edge bruto en [EDGE_MIN, 12]) y si la v2 la
+// quiere (familia, precio 0,40-0,70 y ventaja NETA ≥ 3 pp con el consenso Shin donde lo hay). Una señal que
+// solo quiere la v2 nace marcada `solo_v2`: la sombra v1 y el correo la ignoran, así la v1 sigue siendo el
+// control congelado que era. Aquí NO se exige la hora: la ventana de 2 h la aplica la sombra al entrar.
+const V2 = require('./v2');
+function decidir(sBase, { edgeV1, precio, consensoV2 = null } = {}) {
+  const v1 = edgeV1 >= EDGE_MIN_PP() && edgeV1 <= 12;
+  const ev2 = V2.evaluar({ ...sBase, precio_pm: precio, consenso_shin: consensoV2 }, { precio, exigirHora: false });
+  const v2 = { consenso: ev2.consenso, edge_neto_pp: ev2.edge_neto_pp, elegible: ev2.ok, motivo: ev2.motivo };
+  return { crear: v1 || ev2.ok, solo_v2: !v1 && ev2.ok, v2 };
+}
 const LIQ_MIN = () => +(process.env.GP_PROPFIRM_MIN_LIQ || 500);
 const RIESGO_USD = () => +(process.env.GP_PROPFIRM_RIESGO_USD || 100);
 const MAX_SHARES_EVENTO = 568;                    // regla del Elite 10K, leída del dashboard
@@ -263,7 +276,10 @@ async function escanear({ game = 'cs2' } = {}) {
         const edge = 100 * (cons[lado] - p);
         // techo de cordura: un "edge" de 12+ pp contra un libro con volumen casi nunca es ventaja — es un
         // partido que ya va en vivo, un mercado mal mapeado o un consenso rancio. Se descarta y punto.
-        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
+        // (24-sep) la v2 puede querer una señal que la v1 no: nace `solo_v2`.
+        const dec = decidir({ deporte: game, game, familia: mm.familia, lado, consenso: cons[lado], ko: ev.start_at,
+          nivel: V2.nivelEsports(ev.competition), fee_rate: mm.fee_rate, fee_exp: mm.fee_exp }, { edgeV1: edge, precio: p });
+        if (!dec.crear) continue;
         const id = `${mm.pm_id}|${lado}`;
         const prev = st.senales[id];
         // dedup: una tesis por mercado+lado; se reaviva solo si el edge creció ≥2 pp desde el aviso
@@ -272,16 +288,19 @@ async function escanear({ game = 'cs2' } = {}) {
         const limite = Math.min(PRECIO_MAX, +(cons[lado] - 0.01).toFixed(2));  // nunca pagar el consenso: sin colchón no hay orden
         const shares = Math.min(MAX_SHARES_EVENTO, Math.floor(RIESGO_USD() / p));
         const s = {
-          id, at: new Date().toISOString(), game, evento: `${home} vs ${away}`,
+          id, at: new Date().toISOString(), game, deporte: game, evento: `${home} vs ${away}`,
           pm_evento: pmEv.slug || pmEv.title, mercado: mm.pregunta,
           familia: mm.familia, mapa: mm.mapa, linea: mm.linea, linea_home: mm.linea_home,
           lado, equipo: mm.lados[lado].nombre,
           precio_pm: p, consenso: cons[lado], books: cons.books, edge_pp: +edge.toFixed(1),
           liquidez: mm.liquidez != null ? Math.round(mm.liquidez) : null,
           limite, shares, ko: ev.start_at, home, away,
+          // (24-sep) el torneo y su nivel viajan en la señal: CS2 tier 3 perdió −26 % en la v1
+          competicion: ev.competition || null, nivel: V2.nivelEsports(ev.competition),
           token: mm.lados[lado].token, outcome_idx: mm.lados[lado].idx, pm_mid: mm.pm_mid,
           fee_rate: mm.fee_rate, fee_exp: mm.fee_exp,
-          estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
+          v2: dec.v2, solo_v2: dec.solo_v2 || undefined,
+          estado: 'ABIERTA', correo_at: dec.solo_v2 ? 'nunca' : (prev ? prev.correo_at : null),
         };
         st.senales[id] = s;
         out.senales_nuevas++;
@@ -324,11 +343,16 @@ async function escanearFutbol({ dbc, eventos } = {}) {
          AND observed_at > now() - interval '75 minutes'`, [lista.map((e) => e.ceid)])).rows;
   } catch (e) { return { ...out, error: e.message }; }
   const porEv = {};
+  const porEvCasa = {};   // (24-sep) las TRES caras de la MISMA casa, para el Shin por casa de la v2
   for (const r of rows) {
     const k = porEv[r.ceid] = porEv[r.ceid] || { home: [], draw: [], away: [] };
     if (k[r.side]) k[r.side].push(1 / r.o);
+    const c = porEvCasa[r.ceid] = porEvCasa[r.ceid] || {};
+    const cb = c[r.book] = c[r.book] || {};
+    if (r.side === 'home' || r.side === 'draw' || r.side === 'away') cb[r.side] = r.o;
   }
   const med = (a) => { const v = a.slice().sort((x, y) => x - y); const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
+  const DEVIG = require('../lib/devig');
   for (const ev of lista) {
     const q = porEv[ev.ceid];
     if (!q || !['home', 'draw', 'away'].every((s) => q[s].length >= 3)) continue;   // sin 3 casas por lado no hay ancla
@@ -336,6 +360,14 @@ async function escanearFutbol({ dbc, eventos } = {}) {
     const im = { home: med(q.home), draw: med(q.draw), away: med(q.away) };
     const sum = im.home + im.draw + im.away;
     const cons = { home: im.home / sum, draw: im.draw / sum, away: im.away / sum, books: Math.min(q.home.length, q.draw.length, q.away.length) };
+    // EL CONSENSO SHIN (24-sep, regla 1 de la v2). El proporcional de arriba se conserva tal cual porque es
+    // el de la v1 y su histórico; el Shin —por casa, mediana entre casas— va al lado, solo para la v2. Es
+    // el que corrige el sesgo medido: banda 0,30-0,40 del proporcional decía 35 % y ocurrió 22 %.
+    let consShin = null;
+    try {
+      const sh = DEVIG.shinConsensus1x2(Object.values(porEvCasa[ev.ceid] || {}));
+      if (sh && sh.fair && sh.books >= 3) consShin = sh.fair;
+    } catch { consShin = null; }
     const evs = await gammaBusca(`${ev.home} ${ev.away}`);
     const pmHit = evs.find((e) => {
       const tt = `${e.title || ''} ${e.slug || ''}`;
@@ -367,10 +399,14 @@ async function escanearFutbol({ dbc, eventos } = {}) {
         const esYes = /^yes$/i.test(String(outs[i]));
         const p = precios[i];
         const consLado = esYes ? cons[resultado] : 1 - cons[resultado];
+        const consShinLado = consShin ? (esYes ? consShin[resultado] : 1 - consShin[resultado]) : null;
         if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
         const edge = 100 * (consLado - p);
         out.cerca.push({ m: qq.slice(0, 60), lado: outs[i], pm: p, cons: +consLado.toFixed(3), edge: +edge.toFixed(1) });
-        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
+        const tar = tarifaDe(m);
+        const dec = decidir({ deporte: 'futbol', familia: 'FUT1X2', resultado, lado: outs[i], consenso: consLado,
+          ko: new Date(ev.ko).toISOString(), ...tar }, { edgeV1: edge, precio: p, consensoV2: consShinLado });
+        if (!dec.crear) continue;
         const id = `${m.id || m.slug || qq}|${outs[i]}`;
         const prev = st.senales[id];
         if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
@@ -383,10 +419,12 @@ async function escanearFutbol({ dbc, eventos } = {}) {
           pm_evento: pmEv.slug || pmEv.title, mercado: qq,
           familia: 'FUT1X2', resultado, lado: outs[i], equipo: `${outs[i]} — ${qq}`,
           precio_pm: p, consenso: consLado, books: cons.books, edge_pp: +edge.toFixed(1),
+          consenso_shin: consShinLado != null ? +consShinLado.toFixed(4) : null,
           limite, shares, ko: new Date(ev.ko).toISOString(), home: ev.home, away: ev.away,
           token: jarr(m.clobTokenIds)[i] || null, outcome_idx: i, pm_mid: m.id != null ? String(m.id) : null,
-          ...tarifaDe(m),
-          estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
+          ...tar,
+          v2: dec.v2, solo_v2: dec.solo_v2 || undefined,
+          estado: 'ABIERTA', correo_at: dec.solo_v2 ? 'nunca' : (prev ? prev.correo_at : null),
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
       }
@@ -451,7 +489,9 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
         if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
         const edge = 100 * (cons[ldo] - p);
         out.cerca.push({ m: qq.slice(0, 60), lado: ldo, pm: p, cons: +cons[ldo].toFixed(3), edge: +edge.toFixed(1) });
-        if (!(edge >= EDGE_MIN_PP()) || edge > 12) continue;
+        const tar = tarifaDe(m);
+        const dec = decidir({ deporte: lg, familia: 'ML', lado: ldo, consenso: cons[ldo], ko: new Date(ko).toISOString(), ...tar }, { edgeV1: edge, precio: p });
+        if (!dec.crear) continue;
         const id = `${m.id || m.slug || qq}|${ldo}`;
         const prev = st.senales[id];
         if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
@@ -465,8 +505,9 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
           precio_pm: p, consenso: cons[ldo], books: cons.books, edge_pp: +edge.toFixed(1),
           limite, shares, ko: new Date(ko).toISOString(), home, away,
           token: tksAf[idxDe[ldo]] || null, outcome_idx: idxDe[ldo], pm_mid: m.id != null ? String(m.id) : null,
-          ...tarifaDe(m),
-          estado: 'ABIERTA', correo_at: prev ? prev.correo_at : null,
+          ...tar,
+          v2: dec.v2, solo_v2: dec.solo_v2 || undefined,
+          estado: 'ABIERTA', correo_at: dec.solo_v2 ? 'nunca' : (prev ? prev.correo_at : null),
         };
         st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
       }
@@ -474,6 +515,90 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
   }
   st.at = new Date().toISOString(); wr(st);
   out.cerca = out.cerca.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 10);
+  return out;
+}
+
+// ---- TENIS (24-sep, orden de Alexis: "seguir probando más deportes y mercados") --------------------------
+// Polymarket lista el ganador de cada partido de los torneos grandes como un mercado de dos salidas con
+// los apellidos ("Siegemund" / "Samsonova"), más totales de juegos y sets que aquí NO se tocan hasta
+// verificar su forma. El ancla es el consenso del motor de tenis: mediana de la probabilidad desvigada
+// CASA A CASA con las dos caras de la misma foto (`ml_p_a_par`, la lección A01), con ≥ 3 pares. Entra SOLO
+// por la regla v2 —la v1 está congelada— y se lee por deporte. Derechos: el consenso viene de The Odds API;
+// la base Sackmann no interviene aquí (esto no es el modelo, es precio contra precio).
+async function escanearTenis() {
+  const out = { deporte: 'tenis', eventos: 0, pm_encontrados: 0, mercados: 0, con_consenso: 0, senales_nuevas: 0, senales: [], cerca: [] };
+  let TEN = null;
+  try { TEN = require('../tennis-engine/store'); } catch (e) { return { ...out, error: e.message }; }
+  const st = rd();
+  const ahora = Date.now();
+  let b = null;
+  try { b = await TEN.board(null); } catch (e) { return { ...out, error: e.message }; }
+  for (const r of (b && b.rows) || []) {
+    const ko = Date.parse(r.commence || 0);
+    if (!(ko > ahora + 10 * 60e3) || ko > ahora + 36 * 3600e3) continue;
+    const mk = r.market || {};
+    const pA = mk.ml_p_a_par != null ? mk.ml_p_a_par : mk.ml_p_a;
+    if (!(pA > 0 && pA < 1) || (mk.ml_pares_libros || 0) < 3) continue;
+    out.eventos++; out.con_consenso++;
+    const cons = { a: pA, b: 1 - pA, books: mk.ml_pares_libros || mk.books || 0 };
+    const evs = await gammaBusca(`${r.a} ${r.b}`);
+    const pmHit = evs.find((e) => {
+      const tt = `${e.title || ''} ${e.slug || ''}`;
+      if (!(nombra(tt, r.a) && nombra(tt, r.b))) return false;
+      const d = Date.parse(e.startDate || e.endDate || 0);
+      return !d || Math.abs(d - ko) < 20 * 864e5;
+    });
+    if (!pmHit || !pmHit.slug) continue;
+    const pmEv = await gammaEvento(pmHit.slug);
+    if (!pmEv) continue;
+    out.pm_encontrados++;
+    for (const m of pmEv.markets || []) {
+      if (m.closed || m.active === false) continue;
+      const qq = String(m.question || '');
+      if (/o\/u|over|under|total|set \d|games|completed|handicap|spread/i.test(qq)) continue;   // solo el ganador
+      const outs = jarr(m.outcomes), precios = jarr(m.outcomePrices).map(num);
+      if (outs.length !== 2 || precios.some((p) => p == null)) continue;
+      const lado = (i) => nombra(outs[i], r.a) && !nombra(outs[i], r.b) ? 'a' : nombra(outs[i], r.b) && !nombra(outs[i], r.a) ? 'b' : null;
+      const l0 = lado(0), l1 = lado(1);
+      if (!l0 || !l1 || l0 === l1) continue;
+      out.mercados++;
+      const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
+      if (liq != null && liq < LIQ_MIN()) continue;
+      const precioDe = { [l0]: precios[0], [l1]: precios[1] }, idxDe = { [l0]: 0, [l1]: 1 };
+      const tks = jarr(m.clobTokenIds);
+      const tar = tarifaDe(m);
+      for (const ldo of ['a', 'b']) {
+        const p = precioDe[ldo];
+        if (!(p >= PRECIO_MIN && p <= PRECIO_MAX)) continue;
+        const edge = 100 * (cons[ldo] - p);
+        out.cerca.push({ m: qq.slice(0, 60), lado: ldo, pm: p, cons: +cons[ldo].toFixed(3), edge: +edge.toFixed(1) });
+        // tenis entra SOLO por la v2: la v1 no lo conoce y no debe empezar a conocerlo ahora
+        const ev2 = V2.evaluar({ deporte: 'tenis', familia: 'ML', lado: ldo, consenso: cons[ldo], ko: r.commence, precio_pm: p, ...tar }, { precio: p, exigirHora: false });
+        if (!ev2.ok) continue;
+        const id = `${m.id || m.slug || qq}|${ldo}`;
+        const prev = st.senales[id];
+        if (prev && prev.estado === 'ABIERTA' && !(edge >= (prev.edge_pp || 0) + 2)) continue;
+        if (prev && prev.estado !== 'ABIERTA') continue;
+        const limite = Math.min(PRECIO_MAX, +(cons[ldo] - 0.01).toFixed(2));
+        const shares = Math.min(MAX_SHARES_EVENTO, Math.floor(RIESGO_USD() / p));
+        const s = {
+          id, at: new Date().toISOString(), deporte: 'tenis', game: 'tenis',
+          evento: `${r.a} vs ${r.b}`, torneo: r.tourney || null, tour: r.tour === 1 ? 'wta' : 'atp',
+          pm_evento: pmEv.slug || pmEv.title, mercado: qq,
+          familia: 'ML', lado: ldo, equipo: ldo === 'a' ? r.a : r.b,
+          precio_pm: p, consenso: cons[ldo], books: cons.books, edge_pp: +edge.toFixed(1),
+          limite, shares, ko: r.commence, home: r.a, away: r.b,
+          token: tks[idxDe[ldo]] || null, outcome_idx: idxDe[ldo], pm_mid: m.id != null ? String(m.id) : null,
+          ...tar,
+          v2: { consenso: ev2.consenso, edge_neto_pp: ev2.edge_neto_pp, elegible: true, motivo: null }, solo_v2: true,
+          estado: 'ABIERTA', correo_at: 'nunca',
+        };
+        st.senales[id] = s; out.senales_nuevas++; out.senales.push(s);
+      }
+    }
+  }
+  st.at = new Date().toISOString(); wr(st);
+  out.cerca = out.cerca.sort((a, b2) => Math.abs(b2.edge) - Math.abs(a.edge)).slice(0, 10);
   return out;
 }
 
@@ -556,7 +681,8 @@ function estado({ completo = false } = {}) {
 // las señales abiertas que aún no salieron por correo (el server las manda y marca correo_at)
 function pendientesDeCorreo() {
   const st = rd();
-  return Object.values(st.senales).filter((s) => s.estado === 'ABIERTA' && !s.correo_at && Date.parse(s.ko || 0) > Date.now() + 10 * 60e3);
+  // las señales que solo quiere la v2 jamás van por correo: no son órdenes de la firm
+  return Object.values(st.senales).filter((s) => s.estado === 'ABIERTA' && !s.correo_at && !s.solo_v2 && Date.parse(s.ko || 0) > Date.now() + 10 * 60e3);
 }
 // anota la colocación REAL de Alexis sobre una tesis (precio y costo de su fill en la firm) — la sombra
 // guarda las dos verdades: la tesis al precio del aviso y lo que de verdad se pudo comprar.
@@ -575,4 +701,4 @@ function marcaCorreo(ids) {
   wr(st);
 }
 
-module.exports = { escanear, escanearFutbol, escanearAmfoot, liquidar, estado, pendientesDeCorreo, marcaCorreo, anotar, DIR };
+module.exports = { escanear, escanearFutbol, escanearAmfoot, escanearTenis, liquidar, estado, pendientesDeCorreo, marcaCorreo, anotar, decidir, DIR };

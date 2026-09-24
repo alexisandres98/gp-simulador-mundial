@@ -253,3 +253,46 @@ tenis de mesa (sin contrato con la fuente). Ninguno bloquea el feed por código;
 Alexis pagó la suscripción. Verificado contra `/status` de la propia API: plan **Ultra**, activa, vence el
 **23-oct-2026 09:21 UTC**, misma clave (no hay que tocar Render), 401 llamadas ya hechas hoy con la clave en
 producción. Sigue pendiente rotar esa clave por haber pasado por chat en su día.
+
+---
+
+## 24-sep-2026 — Polymarket: la regla `pm_v2` en sombra y tres deportes nuevos
+
+**La orden de Alexis:** «aplica las tres reglas que sí funcionan, ajústalo, y analiza si pudiésemos agregar
+otro deporte; hay que seguir probando más deportes y mercados hasta dar con el que realmente es rentable».
+
+**De dónde sale (autopsia de la sombra v1, 450 resueltas, 1-21 sep, −5,5 % neto):** cruzar el libro cuesta
+≈ 4 pp por operación (deslizamiento 1,8 pp + comisión ≈ 2,3 % del nocional) contra ventajas declaradas de
+4-6 pp; el consenso proporcional infla los longshots (banda 0,30-0,40: decía 35 %, ocurrió 22 %; lo comprado
+bajo 0,40 perdió 925 USD en 201); entrar a más de 2 h del saque pierde (−12 % en 175) y a menos de 2 h gana;
+fútbol *Yes*, empates, LoL, hándicap de mapas y CS2 tier 3 pierden. Dentro de la misma muestra: precio ≥ 0,40
+y < 2 h → 103, +17,1 %, t 1,87; fútbol *No* con eso → 60, +24,1 %, t 2,02. **Aviso:** filtros encontrados
+mirando la muestra; el rendimiento real será peor. Y el precio de Polymarket predijo mejor que nuestro
+consenso (Brier 0,215 contra 0,219): compramos "desviaciones" del retail que muchas veces son el retail
+teniendo razón.
+
+**Lo que hay (`propfirm/v2.js`, `propfirm/scan.js`, `propfirm/polyshadow.js`):**
+
+| # | regla | detalle |
+|---|---|---|
+| 1 | Shin en fútbol | por casa y mediana entre casas (`lib/devig.js`, existía y no se usaba aquí); viaja en la señal como `consenso_shin`; el proporcional de la v1 no se toca |
+| 2 | listón neto | consenso − precio − comisión − deslizamiento esperado (1 pp) ≥ 3 pp al escanear; contra el precio del fill al entrar |
+| 3 | perímetro | precio 0,40-0,70 · entrar a ≤ 2 h del saque (antes espera, estado `ESPERA`) · familias: fútbol *No* (no empate), CS2 mapa/serie tier 1-2, Valorant y Dota 2 mapa/serie, tenis ML, NFL/NCAAF ML |
+
+Dos libros: **v1 sigue congelada como control** (no ve las señales `solo_v2`) y **v2 tiene su archivo y su
+banco** (`poly-sombra-v2.json`, 2.000 simulados). Sonda: `/api/internal/propfirm` → `poly_sombra.v2`;
+export `picks-export?poly=2`; a demanda `run=poly_sync&libro=v2`, `run=scan&dep=tenis`.
+
+**Deportes nuevos (solo v2):** tenis (consenso par a par de The Odds API, ≥ 3 pares; ganador del partido en
+gamma, dos salidas con apellidos), Valorant y Dota 2 (mismo escáner de esports, crossBook). Inventario
+medido en gamma el 24-sep: tenis 1.614 mercados / 7,4 M de liquidez, NFL 2.523 / 11,2 M, MLB 2.727 / 8,8 M,
+NHL 709 / 4,5 M, UFC 1.069 / 1,5 M, Valorant 997 / 1,6 M, fútbol 2.125 / 48,6 M. **Siguientes candidatos**
+con consenso propio ya en casa: UFC (motor de combate) y baloncesto (NBA arranca en octubre); sin consenso
+propio hoy: MLB y NHL.
+
+**Hallazgo colateral:** `GP_PROPFIRM_ENABLED=false` (puesto el 21-sep para cortar los correos) apagaba el
+barrido entero: la sombra de Polymarket estuvo muerta del 21 al 24-sep. Desde hoy el barrido va con
+`GP_PROPFIRM_SCAN` (encendido por defecto) y el correo con `GP_PROPFIRM_ENABLED`.
+
+**Puerta para dinero:** la de siempre. 100 resueltas en v2 y t ≥ 2 con el veredicto de la vara, por deporte.
+Tests: `node tests/polymarket-v2.test.js`.

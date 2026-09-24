@@ -275,6 +275,15 @@ VEREDICTO en la card), el ganador de dardos y tenis de mesa sale como tesis (en 
 **No toca** la sombra, la vara, las puertas de calidad, el fútbol de clubes ni el ejecutor real (test
 `tests/feed.test.js`). Registro: `docs/DECISIONES_EJECUTADAS.md` (21-sep, noche).
 
+## 🟣 POLYMARKET EN SOMBRA: DOS LIBROS (24-sep-2026)
+`propfirm/scan.js` genera señales (consenso sharp vs precio de Polymarket) y `propfirm/polyshadow.js` las
+"coloca" contra el libro real del CLOB en DOS bancos simulados: **v1** (`poly-sombra.json`, congelada como
+control; −5,5 % neto en 450) y **v2** (`poly-sombra-v2.json`, regla en `propfirm/v2.js`: Shin en fútbol,
+listón NETO ≥ 3 pp, precio 0,40-0,70, entrar a ≤ 2 h del saque, familias que se sostuvieron + tenis, Valorant
+y Dota 2 solo en v2). `GP_PROPFIRM_SCAN` enciende el barrido (defecto on); `GP_PROPFIRM_ENABLED=false` solo
+apaga el correo de la prop firm. Sonda `/api/internal/propfirm?key=` (`poly_sombra.v2`), export
+`picks-export?poly=2`. Ningún dinero real: la puerta es 100 resueltas y t ≥ 2 por deporte.
+
 ## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
 - **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son
   dos apuestas: si hay siete tarjetas pierden las dos. Las sueltas ganan (+3,85 % ROI), las apiladas pierden

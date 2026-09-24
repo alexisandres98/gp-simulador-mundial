@@ -52,7 +52,7 @@ function bancoVivo(st) {
   const comAbiertas = pos.filter((p) => p.estado === 'ABIERTA').reduce((a, p) => a + (p.comision || 0), 0);
   return +((st.banco_inicial || BANCO()) + pnl - comAbiertas).toFixed(2);
 }
-function stakeDe(st, s) {
+function stakeDe(st, s, consenso = null) {
   const banco = bancoVivo(st);
   // La cuota que importa para Kelly es la que se cobra DESPUÉS de la casa: comprar a p con comisión c por
   // acción cuesta p+c y sigue pagando 1. Con la cuota bruta, Kelly apuesta más de lo que la ventaja real
@@ -60,7 +60,7 @@ function stakeDe(st, s) {
   const cShare = COM.comisionPorShare(s.precio_pm, s.fee_rate, s.fee_exp);
   const coste = s.precio_pm > 0 ? s.precio_pm + cShare : 0;
   const odds = coste > 0 ? 1 / coste : 0;
-  const f = kellyDe(s.consenso, odds);
+  const f = kellyDe(consenso != null ? consenso : s.consenso, odds);
   // `f || STAKE_PCT()` es la fórmula EXACTA del sombra de Cloudbet, conservada a propósito
   const stk = Math.min(STAKE_PCT(), f || STAKE_PCT()) * banco;
   return Math.min(STAKE_MAX(), Math.max(STAKE_MIN(), Math.round(stk * 100) / 100));
@@ -71,9 +71,15 @@ const GAMMA = 'https://gamma-api.polymarket.com';
 // Lectura/escritura a prueba de pérdida (4-sep-2026): una lectura FALLIDA no puede guardarse como
 // almacén vacío encima del bueno, que es como desapareció el track de esports. Ver lib/jsonstore.js.
 const JS = require('../lib/jsonstore');
-const FNAME = 'poly-sombra.json';
-function rd() { return JS.readJson(DIR, FNAME, 'polyshadow') || { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: null }; }
-function wr(st) { return JS.writeJson(DIR, FNAME, st, 'polyshadow'); }
+// DOS LIBROS (24-sep, orden de Alexis): `v1` es la sombra de siempre, congelada como control; `v2` es la
+// regla nueva (`propfirm/v2.js`: Shin, listón neto, perímetro de precio/hora/familia y deportes nuevos).
+// Cada libro tiene su archivo y su banco; comparten las señales y el código de fill y liquidación.
+const V2 = require('./v2');
+const LIBROS = { v1: { fname: 'poly-sombra.json', regla: 'pm_v1' }, v2: { fname: 'poly-sombra-v2.json', regla: 'pm_v2' } };
+const libroDe = (l) => LIBROS[l] || LIBROS.v1;
+const FNAME = LIBROS.v1.fname;
+function rd(libro = 'v1') { return JS.readJson(DIR, libroDe(libro).fname, 'polyshadow') || { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: null, regla: libroDe(libro).regla }; }
+function wr(st, libro = 'v1') { return JS.writeJson(DIR, libroDe(libro).fname, st, 'polyshadow'); }
 function senales() { try { return JSON.parse(fs.readFileSync(SENALES, 'utf8')).senales || {}; } catch { return {}; } }
 const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -136,23 +142,42 @@ async function rescate(s) {
 }
 
 // ── ABRIR: colocar en la sombra lo que la firm está avisando ─────────────────────────────────────────────
-async function sincronizar() {
-  const st = rd();
+async function sincronizar(libro = 'v1') {
+  const esV2 = libro === 'v2';
+  const st = rd(libro);
+  if (esV2 && !st.desde) { st.desde = new Date().toISOString(); st.regla = libroDe(libro).regla; }
   const sen = senales();
   const ahora = Date.now();
-  const out = { abiertas: 0, sin_fill: 0, sin_token: 0, revisadas: 0, ev_tras_comision: 0, comision_usd: 0 };
+  const out = { libro, abiertas: 0, sin_fill: 0, sin_token: 0, revisadas: 0, ev_tras_comision: 0, comision_usd: 0, esperando: 0, fuera_de_banda: 0 };
   let toques = 0;                                            // máx llamadas al CLOB por pasada: educados
   for (const s of Object.values(sen)) {
     if (s.estado !== 'ABIERTA' || s.tipo === 'modelo_sombra') continue;   // solo lo operable de la firm
+    // el reparto entre libros (24-sep): la v1 no ve lo que nació solo para la v2; la v2 no ve lo que está
+    // fuera de su perímetro de familias. Lo demás lo ven las dos y cada una decide con su regla.
+    if (!esV2 && s.solo_v2) continue;
+    if (esV2 && !V2.familiaOk(s)) continue;
     const ko = Date.parse(s.ko || 0);
     const pos = st.posiciones[s.id];
     // una tesis frenada por la comisión se vuelve a mirar en la siguiente pasada: el libro se mueve y la
-    // misma señal puede volverse rentable a un precio mejor. Solo 'SIN_FILL' y ella reintentan.
-    if (pos && pos.estado !== 'SIN_FILL' && pos.estado !== 'EV_TRAS_COMISION') continue;
+    // misma señal puede volverse rentable a un precio mejor. Solo 'SIN_FILL' y ella reintentan (y en la
+    // v2, también las que esperan la ventana de 2 h o quedaron fuera de la banda de precio).
+    const reintenta = new Set(['SIN_FILL', 'EV_TRAS_COMISION', ...(esV2 ? ['ESPERA', 'FUERA_DE_BANDA'] : [])]);
+    if (pos && !reintenta.has(pos.estado)) continue;
     if (!(ko > ahora)) {
       // sin fill y el partido empezó: la ventana se cerró — eso también es una medición
-      if (pos && pos.estado === 'SIN_FILL') { pos.estado = 'NO_ENTRO'; pos.cerrado_at = new Date().toISOString(); }
+      if (pos && (pos.estado === 'SIN_FILL' || pos.estado === 'ESPERA' || pos.estado === 'FUERA_DE_BANDA')) { pos.estado = 'NO_ENTRO'; pos.cerrado_at = new Date().toISOString(); }
       continue;
+    }
+    // LA VENTANA DE 2 H (v2, regla 3): a más de 2 h del saque la señal espera sin tocar el libro. Lo medido
+    // en la v1: entrar a más de 2 h perdió −12 % en 175; a menos de 1 h ganó. Esperar es la regla, no un
+    // fallo, y se anota como estado propio para que el "no entró" de después tenga su porqué.
+    if (esV2) {
+      const pre = V2.evaluar(s, { ahora, precio: s.precio_pm });
+      if (pre.motivo === 'temprano') {
+        if (!pos || pos.estado !== 'ESPERA') st.posiciones[s.id] = { ...(pos || {}), senal_id: s.id, deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko, familia: s.familia, nivel: s.nivel || null, estado: 'ESPERA', horas_al_saque: pre.horas, at: (pos && pos.at) || new Date().toISOString(), libro, regla: libroDe(libro).regla };
+        out.esperando++;
+        continue;
+      }
     }
     if (toques >= 12) continue;
     out.revisadas++;
@@ -171,32 +196,43 @@ async function sincronizar() {
     const asks = await libro(token);
     // límite: el de la señal; el experimento modelo_sombra no llega aquí, y una señal sin límite (no
     // debería existir en operables) usa su propio precio de aviso como tope
-    const lim = s.limite != null ? s.limite : s.precio_pm;
-    const stakeObj = stakeDe(st, s);
+    // la v2 compra contra SU consenso (Shin en fútbol) y nunca por encima de su banda de precio
+    const consLibro = esV2 ? V2.consensoV2(s) : s.consenso;
+    const lim = esV2 ? Math.min(V2.PRECIO_MAX(), +(consLibro - 0.01).toFixed(2)) : (s.limite != null ? s.limite : s.precio_pm);
+    const stakeObj = stakeDe(st, s, consLibro);
     const presupuesto = Math.min(stakeObj, st.efectivo);
     const fill = asks ? simulaFill(asks, lim, presupuesto, s.fee_rate, s.fee_exp) : null;
     // LA PUERTA NUEVA (15-sep, A09): la ventaja se mide DESPUÉS de la casa, y contra el precio del fill —no
     // contra el del aviso—, porque caminar el libro ya se comió parte de ella. Una tesis que cruza el listón
     // en bruto y no lo cruza neto no es una oportunidad pequeña: es una pérdida esperada, y hasta hoy abría
     // posición igual. Se anota como medición, no se descarta en silencio.
-    const evNeto = fill && fill.shares >= 1 && s.consenso != null
-      ? COM.evNetoPorShare({ prob: s.consenso, precio: fill.precio_medio, tasa: s.fee_rate, exponente: s.fee_exp })
+    const evNeto = fill && fill.shares >= 1 && consLibro != null
+      ? COM.evNetoPorShare({ prob: consLibro, precio: fill.precio_medio, tasa: s.fee_rate, exponente: s.fee_exp })
       : null;
-    if (fill && fill.shares >= 1 && evNeto != null && !(evNeto > 0)) {
+    // EN LA v2 EL LISTÓN ES NETO Y CON SUELO (regla 2): consenso − fill − comisión ≥ 3 pp, y el fill dentro de
+    // la banda 0,40-0,70. Lo que no cruza se anota con su motivo y se vuelve a mirar en la pasada siguiente.
+    const ev2 = esV2 && fill && fill.shares >= 1 ? V2.evaluar(s, { ahora, precio: fill.precio_medio, esFill: true }) : null;
+    const frenaV1 = !esV2 && fill && fill.shares >= 1 && evNeto != null && !(evNeto > 0);
+    const frenaV2 = esV2 && ev2 && !ev2.ok;
+    if (frenaV1 || frenaV2) {
+      const estado = frenaV2 && ev2.motivo === 'precio' ? 'FUERA_DE_BANDA' : 'EV_TRAS_COMISION';
       st.posiciones[s.id] = { ...(pos || {}), senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
-        deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko,
-        precio_senal: s.precio_pm, limite: lim, consenso: s.consenso, edge_pp: s.edge_pp,
-        precio_fill_simulado: fill.precio_medio, ev_neto_por_share: +evNeto.toFixed(4),
-        estado: 'EV_TRAS_COMISION', at: (pos && pos.at) || new Date().toISOString(),
-        cerrado_at: new Date().toISOString() };
-      out.ev_tras_comision++;
+        deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko, familia: s.familia, nivel: s.nivel || null,
+        precio_senal: s.precio_pm, limite: lim, consenso: consLibro, edge_pp: s.edge_pp,
+        precio_fill_simulado: fill.precio_medio, ev_neto_por_share: evNeto != null ? +evNeto.toFixed(4) : null,
+        ...(ev2 ? { edge_neto_pp: ev2.edge_neto_pp, motivo_v2: ev2.motivo, horas_al_saque: ev2.horas } : {}),
+        estado, at: (pos && pos.at) || new Date().toISOString(),
+        cerrado_at: new Date().toISOString(), libro, regla: libroDe(libro).regla };
+      if (estado === 'FUERA_DE_BANDA') out.fuera_de_banda++; else out.ev_tras_comision++;
       continue;
     }
     if (fill && fill.shares >= 1 && fill.costo > 0) {
       st.posiciones[s.id] = {
-        senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
+        senal_id: s.id, token, outcome_idx: idx, pm_mid: mid, libro, regla: libroDe(libro).regla,
         deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, equipo: s.equipo,
-        ko: s.ko, precio_senal: s.precio_pm, limite: lim, consenso: s.consenso, edge_pp: s.edge_pp,
+        familia: s.familia || null, nivel: s.nivel || null, competicion: s.competicion || s.torneo || s.liga || null,
+        ko: s.ko, precio_senal: s.precio_pm, limite: lim, consenso: consLibro, edge_pp: s.edge_pp,
+        ...(esV2 ? { consenso_v1: s.consenso, edge_neto_pp: ev2 ? ev2.edge_neto_pp : null, horas_al_saque: ev2 ? ev2.horas : null } : {}),
         stake_objetivo: stakeObj, shares: fill.shares, costo: fill.costo, precio_fill: fill.precio_medio,
         // la comisión se guarda POR POSICIÓN con la tasa que se le aplicó: sin eso, un cambio de tarifa
         // reescribe el pasado la próxima vez que alguien recalcule el track
@@ -211,15 +247,15 @@ async function sincronizar() {
       out.abiertas++;
     } else {
       st.posiciones[s.id] = { ...(pos || {}), senal_id: s.id, token, outcome_idx: idx, pm_mid: mid,
-        deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko,
+        deporte: s.deporte || s.game, evento: s.evento, mercado: s.mercado, lado: s.lado, ko: s.ko, familia: s.familia, nivel: s.nivel || null,
         precio_senal: s.precio_pm, limite: lim, estado: 'SIN_FILL',
         mejor_ask: fill ? fill.mejor_ask : null, intentos: ((pos && pos.intentos) || 0) + 1,
-        at: (pos && pos.at) || new Date().toISOString(), ultimo_intento: new Date().toISOString() };
+        at: (pos && pos.at) || new Date().toISOString(), ultimo_intento: new Date().toISOString(), libro, regla: libroDe(libro).regla };
       out.sin_fill++;
     }
   }
   st.at = new Date().toISOString();
-  wr(st);
+  wr(st, libro);
   return out;
 }
 
@@ -239,8 +275,8 @@ async function mercadoDe(mid) {
   return Array.isArray(l2) ? (l2[0] || null) : null;
 }
 const midDe = (p) => p.pm_mid || (/^\d+$/.test(String(p.senal_id || '').split('|')[0]) ? String(p.senal_id).split('|')[0] : null);
-async function liquidarPoly() {
-  const st = rd();
+async function liquidarPoly(libro = 'v1') {
+  const st = rd(libro);
   const ahora = Date.now();
   const pend = Object.values(st.posiciones).filter((p) => p.estado === 'ABIERTA'
     && midDe(p) && Date.parse(p.ko || 0) < ahora - 30 * 60e3);
@@ -267,7 +303,7 @@ async function liquidarPoly() {
     if (gana) st.efectivo = +(st.efectivo + p.shares).toFixed(2);
     out.settled++;
   }
-  if (out.settled) { st.at = new Date().toISOString(); wr(st); }
+  if (out.settled) { st.at = new Date().toISOString(); wr(st, libro); }
   return out;
 }
 
@@ -358,6 +394,35 @@ function estado() {
     ultimas: pos.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 15)
       .map((p) => ({ evento: p.evento, mercado: (p.mercado || '').slice(0, 60), lado: p.lado, estado: p.estado,
         senal: p.precio_senal, fill: p.precio_fill || null, shares: p.shares || null, pnl: p.pnl != null ? p.pnl : null })),
+    // EL LIBRO v2 AL LADO, NUNCA MEZCLADO (24-sep): se lee por deporte y por familia porque es una regla
+    // distinta y, en tenis/Valorant/Dota 2, un deporte que la v1 nunca vio.
+    v2: estadoV2(),
+  };
+}
+
+function estadoV2() {
+  const st = rd('v2');
+  const pos = Object.values(st.posiciones || {});
+  const abiertas = pos.filter((p) => p.estado === 'ABIERTA');
+  const cerradas = pos.filter((p) => p.estado === 'WIN' || p.estado === 'LOSS');
+  const pnl = +cerradas.reduce((a, p) => a + (p.pnl || 0), 0).toFixed(2);
+  const costo = cerradas.reduce((a, p) => a + (p.costo || 0), 0);
+  const cnt = (e) => pos.filter((p) => p.estado === e).length;
+  return {
+    regla: 'pm_v2', desde: st.desde || null, at: st.at,
+    reglas: { consenso: 'Shin por casa en fútbol; el de la señal en el resto', precio: `${V2.PRECIO_MIN()}-${V2.PRECIO_MAX()}`, horas_max_al_saque: V2.HORAS_MAX(), edge_neto_min_pp: V2.EDGE_NETO_MIN_PP(), slippage_esperado_pp: V2.SLIP_ESPERADO_PP(),
+      familias: 'fútbol No (no empate) · CS2 mapa/serie tier 1-2 · Valorant y Dota 2 mapa/serie · tenis ML · NFL/NCAAF ML' },
+    banco_inicial: st.banco_inicial, banco_vivo: bancoVivo(st), efectivo: st.efectivo,
+    expuesto: +abiertas.reduce((a, p) => a + (p.costo || 0), 0).toFixed(2),
+    abiertas: abiertas.length, w: cerradas.filter((p) => p.estado === 'WIN').length, l: cerradas.filter((p) => p.estado === 'LOSS').length,
+    pnl_usd: pnl, roi_pct: costo > 0 ? +(100 * pnl / costo).toFixed(2) : null,
+    esperando: cnt('ESPERA'), sin_fill: cnt('SIN_FILL'), no_entro: cnt('NO_ENTRO'), ev_tras_comision: cnt('EV_TRAS_COMISION'), fuera_de_banda: cnt('FUERA_DE_BANDA'), sin_token: cnt('SIN_TOKEN'),
+    por_deporte: agrupa(cerradas, (p) => p.deporte || '?'),
+    por_deporte_y_familia: agrupa(cerradas, (p) => `${p.deporte || '?'} · ${p.familia || '?'}${p.nivel ? ' · ' + p.nivel : ''}`),
+    por_precio: agrupa(cerradas, (p) => { const x = p.precio_fill; return x == null ? null : x < 0.5 ? '0,40-0,50' : x < 0.6 ? '0,50-0,60' : '0,60-0,70'; }),
+    ultimas: pos.sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 15)
+      .map((p) => ({ deporte: p.deporte, evento: p.evento, mercado: (p.mercado || '').slice(0, 60), lado: p.lado, estado: p.estado, motivo: p.motivo_v2 || null,
+        senal: p.precio_senal, fill: p.precio_fill || null, edge_neto_pp: p.edge_neto_pp != null ? p.edge_neto_pp : null, horas: p.horas_al_saque != null ? p.horas_al_saque : null, pnl: p.pnl != null ? p.pnl : null })),
   };
 }
 
@@ -395,12 +460,12 @@ async function sondaGeo() {
 }
 
 // borrón y cuenta nueva (solo por orden humana): el experimento nace de cero con las reglas vigentes
-function reset() {
-  const st = { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: new Date().toISOString(), reset_at: new Date().toISOString() };
-  wr(st);
-  return { ok: true, banco: st.banco_inicial };
+function reset(libro = 'v1') {
+  const st = { banco_inicial: BANCO(), efectivo: BANCO(), posiciones: {}, at: new Date().toISOString(), reset_at: new Date().toISOString(), regla: libroDe(libro).regla, desde: new Date().toISOString() };
+  wr(st, libro);
+  return { ok: true, libro, banco: st.banco_inicial };
 }
 
 // exportación completa de posiciones (3-sep, solo lectura): para el desglose por familia/mercado
-function posiciones() { const st = rd(); return { banco_inicial: st.banco_inicial, efectivo: st.efectivo, at: st.at, posiciones: Object.values(st.posiciones || {}) }; }
-module.exports = { sincronizar, liquidarPoly, estado, reset, posiciones, sondaGeo, DIR };
+function posiciones(libro = 'v1') { const st = rd(libro); return { libro, regla: st.regla || libroDe(libro).regla, banco_inicial: st.banco_inicial, efectivo: st.efectivo, at: st.at, posiciones: Object.values(st.posiciones || {}) }; }
+module.exports = { sincronizar, liquidarPoly, estado, estadoV2, reset, posiciones, sondaGeo, DIR, LIBROS };

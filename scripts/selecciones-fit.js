@@ -123,6 +123,34 @@ for (const [lg, key] of Object.entries(COMP_KEY)) {
   };
 }
 
+// ── LAS PUERTAS DE LA CASA (clubs-gate-1 y clubs-goals-gate-1), con el MISMO backtest walk-forward que
+// cualquier liga de clubes. Sin `backtest.status = 'approved'` el motor no crea picks 1X2, y sin
+// `goals_backtest.status = 'approved'` no crea picks de goles: la disciplina es la misma para selecciones.
+// Se mide sobre el pool entero y por competición; cada liga virtual usa la suya si llega a 120 partidos y,
+// si no, la del pool (comparten Elo, así que el pool es su backtest natural).
+const { backtest, goalsBacktest } = require('../clubs-engine/ratings');
+const { matchProbs } = require('../engine');
+const fila = (m) => ({ utc: m.date, home: { id: `tm_af${m.home_id}`, goals: m.ft_hg ?? m.hg }, away: { id: `tm_af${m.away_id}`, goals: m.ft_ag ?? m.ag } });
+const puertas = (ms) => {
+  let bt = null, gbt = null;
+  try { bt = backtest(ms.map(fila), { probs: matchProbs }); } catch (e) { bt = { status: 'shadow', error: e.message }; }
+  try { gbt = goalsBacktest(ms.map(fila)); } catch (e) { gbt = { status: 'shadow', error: e.message }; }
+  return { backtest: bt, goals_backtest: gbt };
+};
+const puertasPool = puertas(partidos);
+const porCompeticion = {};
+for (const [lg, key] of Object.entries(COMP_KEY)) {
+  const ms = partidos.filter((m) => m.league === +lg);
+  // la puerta propia solo si el walk-forward de la competición llega a los 120 partidos calentados que exige
+  // la política; si no, la del pool, que es donde de verdad se calientan los Elo de estas selecciones
+  let propia = ms.length >= 120 ? puertas(ms) : null;
+  if (propia && !(propia.backtest && propia.backtest.n >= 120)) propia = null;
+  porCompeticion[key] = { n: ms.length, hfa: salidas[key].hfa.hfa, fuente: propia ? 'competicion' : 'pool',
+    backtest: propia ? propia.backtest : puertasPool.backtest, goals_backtest: propia ? propia.goals_backtest : puertasPool.goals_backtest };
+}
+const resumenPuerta = (p) => ({ status: p.backtest.status, n: p.backtest.n, brier: p.backtest.brier, cal_err: p.backtest.cal_err, goals: p.goals_backtest.status, goals_n: p.goals_backtest.n, goals_skill: p.goals_backtest.over25 && p.goals_backtest.over25.skill, goals_cal: p.goals_backtest.over25 && p.goals_backtest.over25.cal_err });
+console.log(JSON.stringify({ puertas_pool: resumenPuerta(puertasPool), por_competicion: Object.fromEntries(Object.entries(porCompeticion).map(([k, v]) => [k, { fuente: v.fuente, n: v.n, ...resumenPuerta(v) }])) }, null, 1));
+
 const top = Object.entries(ratings).sort((a, b) => b[1].elo - a[1].elo).slice(0, 15).map(([id, r]) => `${r.name} ${r.elo} (${r.games})`);
 console.log(JSON.stringify({ partidos_total: all.length, partidos_selecciones: partidos.length, selecciones: Object.keys(ratings).length, hfa_pool: HFA,
   home_score_avg: +fit.home_score_avg.toFixed(3), expected_home_avg: +fit.expected_home_avg.toFixed(3), top15: top,
@@ -136,7 +164,7 @@ if (WRITE) {
     key: 'selecciones', name: 'Selecciones (pool)', country: 'Internacional', comp: null, season: null,
     ratings_from: [...new Set(partidos.map((m) => `af_${m.league}_${m.season}`))], fit_src: 'api-football', af_league: null, odds_key: null,
     pool: true, hidden: true, hfa: HFA, n_matches: partidos.length, home_score_avg: +fit.home_score_avg.toFixed(3), expected_home_avg: +fit.expected_home_avg.toFixed(3),
-    backtest: { status: 'shadow', policy: 'selecciones-pool', n: partidos.length }, goals_backtest: { status: 'shadow' },
+    backtest: puertasPool.backtest, goals_backtest: puertasPool.goals_backtest, por_competicion: porCompeticion,
     fitted_at: new Date().toISOString(), engine: 'selecciones-elo-1.0.0', standings: prev.standings || [],
     ratings,
   };

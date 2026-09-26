@@ -22,7 +22,7 @@ for (const key of ['uefanl', 'concacafnl', 'amistososel']) {
   t(`${key} está en CLUB_CUPS y copia solo el pool`, !!cfg && cfg.from.length === 1 && cfg.from[0][0] === 'selecciones' && cfg.selecciones === true);
   const L = buildCupLeague(RT, key, cfg, 150);
   t(`${key}: ratings copiados sin offset (Spain 1849, Czechia 1500)`, L.ratings.tm_af9.elo === 1849 && L.ratings.tm_af9.tier_offset === 0 && L.ratings.tm_af770.elo === 1500);
-  t(`${key}: marca de selecciones, país Internacional, sombra`, L.selecciones === true && L.country === 'Internacional' && L.backtest.status === 'shadow');
+  t(`${key}: marca de selecciones, país Internacional, puerta en sombra si el pool no trae backtest`, L.selecciones === true && L.country === 'Internacional' && L.backtest.status === 'shadow' && L.goals_backtest.status === 'shadow');
   t(`${key}: clave válida para club_eid`, /^[a-z0-9]+$/.test(key));
 }
 t('uefanl tiene clave en The Odds API y las otras dos no (entran por Cloudbet)', CLUB_CUPS.uefanl.odds_key === 'soccer_uefa_nations_league' && CLUB_CUPS.concacafnl.odds_key === null && CLUB_CUPS.amistososel.odds_key === null);

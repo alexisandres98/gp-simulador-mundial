@@ -72,7 +72,15 @@ function buildCupLeague(RT, key, cfg, gap) {
       merged[tid] = { ...tr, elo: (Number(tr.elo) || 1500) - off, tier: k, tier_offset: off ? -off : 0, from_league: src };
     }
   }
-  return { key, name: cfg.name, odds_key: cfg.odds_key, hfa: cfg.hfa, ratings: merged, cup: true, tier_gap: G, backtest: { status: 'shadow' },
+  // Selecciones: las puertas (1X2 y goles) vienen del backtest walk-forward del pool o de la propia
+  // competición (scripts/selecciones-fit.js, `por_competicion`), con la MISMA política que las ligas de clubes.
+  // Una copa doméstica sigue naciendo en sombra: sus equipos cruzan divisiones y ese backtest no existe.
+  const pool = cfg.selecciones && RT.leagues.selecciones;
+  const pc = pool && pool.por_competicion && pool.por_competicion[key];
+  const puertas = cfg.selecciones
+    ? { backtest: (pc && pc.backtest) || (pool && pool.backtest) || { status: 'shadow' }, goals_backtest: (pc && pc.goals_backtest) || (pool && pool.goals_backtest) || { status: 'shadow' } }
+    : { backtest: { status: 'shadow' } };
+  return { key, name: cfg.name, odds_key: cfg.odds_key, hfa: cfg.hfa, ratings: merged, cup: true, tier_gap: G, ...puertas,
     ...(cfg.selecciones ? { selecciones: true, country: 'Internacional', fit_src: 'api-football' } : {}) };
 }
 

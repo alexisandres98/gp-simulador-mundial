@@ -381,3 +381,13 @@ porque el motor no tiene sede neutral y aplicaría el hfa de la competición a t
 
 Test `tests/selecciones.test.js`. Export nuevo `picks-export?mundial=1` (picks diarias del Mundial con su
 liquidación) para medir familia a familia cómo fue con selecciones.
+
+**Las puertas de la casa, medidas sobre selecciones (26-sep, más tarde).** Las ligas virtuales nacían en sombra
+y el motor no crea 1X2 ni goles sin `approved`; se corrió el MISMO backtest walk-forward de clubes sobre el
+pool: **1X2 approved** (1.573 partidos calentados, Brier 0,5856, error de calibración 0,054; distribución
+observada 46/25/29 contra predicha 44/28/28) y **goles approved** (1.508, skill +0,0066 sobre el base-rate,
+calibración 0,0165). Los amistosos tienen puerta propia de 1X2 (181 calentados, Brier 0,5869, cal 0,0447,
+approved) y **goles en sombra** (skill −0,0001: en amistosos el modelo no distingue el over del under). Nations
+League y CONCACAF NL heredan las del pool (`por_competicion` en `ratings.json`, `buildCupLeague`). Primer
+ciclo en producción: 19 picks de Nations League (16 córners under públicas, 3 tarjetas over en monitor);
+1X2 y goles entran con este segundo despliegue.

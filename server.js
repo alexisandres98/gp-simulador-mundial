@@ -8852,6 +8852,20 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   out.eligible = { solid: res.eligible.solid.length, goals: res.eligible.goals.length, combo: res.eligible.combo.length };
   // dry-run: devolver candidatos + bloqueos sin persistir (verificación del mecanismo con cuotas reales)
   if (dryRun) {
+    // 26-sep: el ancla 1X2 se decide más abajo, DESPUÉS de este return; el diagnóstico por liga se calcula aquí
+    // con las mismas condiciones (mercado ≥ 0,55, ≥ 5 casas, cuota, blend ≥ −2 pp) para poder leerlo en seco.
+    out.solid_diag = {};
+    for (const ev of events) {
+      if (leagueEfficiency(ev.league).band !== 'eficiente') continue;
+      const S = ev.selections || {};
+      let fav = null; for (const o of ['home', 'away']) if (S[o] && S[o].market && (!fav || S[o].market > S[fav].market)) fav = o;
+      if (!fav) continue;
+      const f = S[fav]; const m = Number(f.model || 0), k = Number(f.market || 0);
+      const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100;
+      const dl = out.solid_diag[ev.league] = out.solid_diag[ev.league] || { k_lt_55: 0, books_lt_5: 0, sin_cuota: 0, blend_lt_m2: 0, ok: 0, ej: [] };
+      const razon = !(m > 0 && k > 0 && k < 1) ? 'sin_cuota' : k < 0.55 ? 'k_lt_55' : (f.books || 0) < 5 ? 'books_lt_5' : !(f.bestOdds > 1) ? 'sin_cuota' : blendEdge < -2 ? 'blend_lt_m2' : 'ok';
+      dl[razon]++; if (dl.ej.length < 14) dl.ej.push({ h: ev.home, a: ev.away, fav, k: +k.toFixed(3), m: +m.toFixed(3), books: f.books || 0, blend: +blendEdge.toFixed(1), razon });
+    }
     out.candidates = {
       solid: res.all.solid.map(s => { const e2 = events.find(e => e.eventId === s.eventId) || {}; return { league: e2.league, home: s.home, away: s.away, selection: s.selection, odds: s.bestOdds, conf: s.confidence != null ? +s.confidence.toFixed(3) : null, rest: e2.restCtx || null, eligible: s.eligible, blockers: s.blockers }; }),
       goals: res.all.goals.map(g => ({ league: (goalMarkets.find(x => x.eventId === g.eventId && x.marketId === g.marketId) || {}).league, home: g.home, away: g.away, market: g.marketId, edge_pp: g.edgePp, odds: g.bestOdds, regime: g.regime, efficiency: g.efficiency, eligible: g.eligible, blockers: g.blockers })),

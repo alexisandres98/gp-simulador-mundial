@@ -6666,6 +6666,19 @@ function clubEloReconcileFit() {
   const RT = global._clubsRatings || {};
   const fa = (RT._meta && RT._meta.fitted_at) || 'none';
   if (db.clubElosFitAt !== fa) { db.clubElos = {}; db.clubElosOdds = {}; db.clubElosFitAt = fa; } // el paralelo también nace del fit nuevo (su log se conserva)
+  // 26-sep (selecciones): el pool trae su PROPIO `fitted_at` (scripts/selecciones-fit.js) y no toca `_meta`,
+  // porque bumpear `_meta` borra los overlays de TODAS las ligas. Cuando el pool se reajusta (p.ej. la escala
+  // 1,6 del 26-sep), solo se descartan los overlays de SUS selecciones: si no, el Elo dinámico viejo (en la
+  // escala anterior) seguiría mandando sobre el fichero nuevo en cada partido ya puntuado.
+  db.clubElosPoolFitAt = db.clubElosPoolFitAt || {};
+  for (const [key, L] of Object.entries(RT.leagues || {})) {
+    if (!L || !L.pool || !L.fitted_at || !L.ratings) continue;
+    if (db.clubElosPoolFitAt[key] === L.fitted_at) continue;
+    let n = 0;
+    for (const tid of Object.keys(L.ratings)) { if (db.clubElos && db.clubElos[tid] != null) { delete db.clubElos[tid]; n++; } if (db.clubElosOdds && db.clubElosOdds[tid] != null) delete db.clubElosOdds[tid]; }
+    db.clubElosPoolFitAt[key] = L.fitted_at;
+    console.log('[clubs-elo] pool', key, 'reajustado', L.fitted_at, '→ overlays descartados:', n);
+  }
 }
 // FORMA reciente de ambos equipos + H2H directo del cruce, desde results-<liga>.json (memo). Reusa el mismo
 // archivo que /api/clubs/team-form. Devuelve { home:[W/D/L de local], away:[...], h2h:[últimos directos] }.

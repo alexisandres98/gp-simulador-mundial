@@ -95,7 +95,7 @@ function statsDe(arr) {
         const prev = db.matches[id];
         const row = prev || { id, league: +lg, league_name: cfg.nombre, season, round: f.league.round, date: f.fixture.date, venue_country: f.fixture.venue && f.fixture.venue.city || null,
           home: f.teams.home.name, away: f.teams.away.name, home_id: f.teams.home.id, away_id: f.teams.away.id, neutral: false };
-        row.status = st; row.hg = f.goals.home; row.ag = f.goals.away; row.ht_hg = f.score.halftime && f.score.halftime.home; row.ht_ag = f.score.halftime && f.score.halftime.away;
+        row.status = st; row.hg = f.goals.home; row.ag = f.goals.away; row.referee = f.fixture.referee || row.referee || null; row.ht_hg = f.score.halftime && f.score.halftime.home; row.ht_ag = f.score.halftime && f.score.halftime.away;
         row.ft_hg = f.score.fulltime && f.score.fulltime.home; row.ft_ag = f.score.fulltime && f.score.fulltime.away;
         if (!prev) nuevos++;
         db.matches[id] = row;

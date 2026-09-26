@@ -30,6 +30,18 @@ const CLUB_CUPS = {
   uclq:         { name: 'Champions League · clasificación', odds_key: 'soccer_uefa_champs_league_qualification', from: [['premier', 'laliga', 'bundesliga', 'seriea', 'ligue1', 'eredivisie', 'portugal', 'belgica', 'turquia', 'grecia', 'escocia', 'austria', 'suiza', 'dinamarca', 'noruega', 'suecia', 'polonia', 'irlanda', 'finlandia']], hfa: 55 },
   saudi:        { name: 'Saudi Pro League', odds_key: 'soccer_saudi_arabia_pro_league', from: [], hfa: 60 },
   aleague:      { name: 'A-League', odds_key: 'soccer_australia_aleague', from: [], hfa: 60 },
+  // ── SELECCIONES (26-sep-2026, orden de Alexis: "necesito que cubramos todo y generemos pick") ─────────
+  // Entre Mundial y Mundial no cubríamos ni un partido de selecciones: la lista de descubrimiento los salta a
+  // propósito y el motor del Mundial solo conoce su cuadro. Ahora hay un POOL `selecciones` en ratings.json
+  // (scripts/selecciones-fit.js: un Elo por selección absoluta, ids tm_af<id>, ajustado sobre 2023→hoy) y cada
+  // competición es una liga virtual que COPIA ese pool en un solo nivel (offset 0): todas comparten el mismo
+  // Elo dinámico por selección. El hfa es el medido por competición en el ajuste (amistosos y Nations League
+  // se juegan en casa de uno; los torneos a cancha neutral NO se abren aquí). Calendario por API-Football
+  // (CLUB_AF_LEAGUE), marcadores por ESPN (CLUB_ESPN), cuotas por The Odds API donde hay clave y Cloudbet.
+  // Solo la Nations League de la UEFA tiene clave en The Odds API; amistosos y CONCACAF entran por Cloudbet.
+  uefanl:       { name: 'UEFA Nations League', odds_key: 'soccer_uefa_nations_league', from: [['selecciones']], hfa: 40, selecciones: true },
+  concacafnl:   { name: 'CONCACAF Nations League', odds_key: null, from: [['selecciones']], hfa: 10, selecciones: true },
+  amistososel:  { name: 'Amistosos de selecciones', odds_key: null, from: [['selecciones']], hfa: 60, selecciones: true },
 };
 // Placeholders que YA existían en ratings.json sin odds_key → se les cablea la clave del proveedor.
 const CLUB_CUP_KEY_FIX = { champions: 'soccer_uefa_champs_league', europa: 'soccer_uefa_europa_league', uefa: 'soccer_uefa_europa_conference_league' };
@@ -60,7 +72,8 @@ function buildCupLeague(RT, key, cfg, gap) {
       merged[tid] = { ...tr, elo: (Number(tr.elo) || 1500) - off, tier: k, tier_offset: off ? -off : 0, from_league: src };
     }
   }
-  return { key, name: cfg.name, odds_key: cfg.odds_key, hfa: cfg.hfa, ratings: merged, cup: true, tier_gap: G, backtest: { status: 'shadow' } };
+  return { key, name: cfg.name, odds_key: cfg.odds_key, hfa: cfg.hfa, ratings: merged, cup: true, tier_gap: G, backtest: { status: 'shadow' },
+    ...(cfg.selecciones ? { selecciones: true, country: 'Internacional', fit_src: 'api-football' } : {}) };
 }
 
 module.exports = { CLUB_CUPS, CLUB_CUP_KEY_FIX, tierGap, tiersOf, buildCupLeague };

@@ -5201,9 +5201,25 @@ async function clubsSeedEventsAF({ force = false, hours = 96 } = {}) {
       if (!afLg || L.starts) continue;
       let resp = [];
       try {
-        const r = await fetch(`https://${host}/fixtures?league=${afLg}&next=25`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(12000) });
-        const j = r.ok ? await r.json().catch(() => null) : null;
-        resp = (j && j.response) || [];
+        // 26-sep (selecciones): en ventana FIFA "los próximos 25" amistosos son 25 de los 50 de un día, y la
+        // Nations League juega 30 partidos en tres días. Para las competiciones de selecciones se pide por
+        // FECHAS (hoy → horizonte), que en API-Football exige `season`; la temporada de la CONCACAF va con
+        // el año anterior (2025-26 = 2025), así que si el año en curso viene vacío se prueba el anterior.
+        if (L.selecciones) {
+          const d0 = new Date(now - 3 * 3600e3).toISOString().slice(0, 10), d1 = new Date(until).toISOString().slice(0, 10);
+          const yr = new Date().getUTCFullYear();
+          for (const sn of [yr, yr - 1]) {
+            const r = await fetch(`https://${host}/fixtures?league=${afLg}&season=${sn}&from=${d0}&to=${d1}`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(12000) });
+            const j = r.ok ? await r.json().catch(() => null) : null;
+            resp = (j && j.response) || [];
+            if (resp.length) break;
+            await new Promise(r2 => setTimeout(r2, 150));
+          }
+        } else {
+          const r = await fetch(`https://${host}/fixtures?league=${afLg}&next=25`, { headers: { 'x-apisports-key': afk }, signal: AbortSignal.timeout(12000) });
+          const j = r.ok ? await r.json().catch(() => null) : null;
+          resp = (j && j.response) || [];
+        }
       } catch { continue; }
       out.leagues++;
       for (const fx of resp) {
@@ -5816,6 +5832,8 @@ const CLUB_ESPN = { ligamx: 'mex.1', brasileirao: 'bra.1', mls: 'usa.1', argenti
   // renglón. Medido a mano sobre los 35 días anteriores al 16-sep, eventos publicados por ESPN:
   // ned.1 45 · fra.2 45 · ger.2 36 · sco.1 24 · aut.1 24.
   eredivisie: 'ned.1', ligue2: 'fra.2', bundesliga2: 'ger.2', escocia: 'sco.1', austria: 'aut.1',
+  // 26-sep (selecciones): los tres slugs comprobados en vivo el mismo día (8, 5 y 9 eventos el 27-sep).
+  uefanl: 'uefa.nations', concacafnl: 'concacaf.nations.league', amistososel: 'fifa.friendly',
   // 5-ago: las 9 nuevas (ESPN cubre las 9 con slug propio; el fallback TSA sigue de red de seguridad)
   championship: 'eng.2', league1: 'eng.3', league2: 'eng.4', serieb: 'ita.2', laliga2: 'esp.2', portugal: 'por.1', belgica: 'bel.1', turquia: 'tur.1', grecia: 'gre.1',
   // 12-ago (reporte Alexis: "el partido del PSG y el del Madrid son HOY y el sistema no los ve"): ligas
@@ -5877,7 +5895,17 @@ const CLUB_ALIAS = { 'athletico pr': 'athletico paranaense', 'atletico mg': 'atl
   'shanghai sipg': 'shanghai port', 'jeju united': 'jeju sk', 'ulsan hyundai': 'ulsan hd', 'sangju sangmu': 'gimcheon sangmu',
   'bragantino sp': 'red bull bragantino', 'atletico paranaense': 'athletico',
   'estudiantes': 'estudiantes de la plata', 'independiente': 'ca independiente',
-  'clube de regatas brasil': 'crb' };
+  'clube de regatas brasil': 'crb',
+  // 26-sep (selecciones): el pool de ratings usa los nombres de API-Football; The Odds API, Cloudbet y ESPN
+  // escriben distinto varias selecciones. Alias del nombre normalizado del feed → nombre normalizado de AF.
+  'czech republic': 'czechia', 'north macedonia': 'fyr macedonia', 'macedonia': 'fyr macedonia',
+  'turkey': 'turkiye', 'republic of korea': 'south korea', 'korea republic': 'south korea', 'korea dpr': 'north korea',
+  'united states': 'usa', 'united states of america': 'usa', 'ireland': 'rep of ireland', 'republic of ireland': 'rep of ireland',
+  'cape verde': 'cape verde islands', 'cabo verde': 'cape verde islands', 'dr congo': 'congo dr', 'democratic republic of congo': 'congo dr',
+  'cote d ivoire': 'ivory coast', 'saint kitts and nevis': 'st kitts and nevis', 'st kitts nevis': 'st kitts and nevis',
+  'saint vincent and the grenadines': 'st vincent grenadines', 'st vincent and the grenadines': 'st vincent grenadines',
+  'st martin': 'saint martin', 'kyrgyz republic': 'kyrgyzstan', 'the gambia': 'gambia', 'iran islamic republic': 'iran',
+  'u s virgin islands': 'us virgin islands', 'bosnia and herzegovina': 'bosnia herzegovina' };
 function clubNorm(s) {
   let n = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   // 12-ago (auditoría de resolución: Brøndby/Tromsø/Kasımpaşa se caían MUDOS del sweep): ø/æ/ı/ß/ð/þ/ł NO
@@ -7428,6 +7456,12 @@ const LEAGUE_OBS_LANGS = {
 };
 const LEAGUE_EFF_PRIOR = {
   mundial: 'eficiente', premier: 'eficiente', laliga: 'eficiente', bundesliga: 'eficiente', seriea: 'eficiente', ligue1: 'eficiente',
+  // 26-sep (selecciones): SIN prior una liga nueva cae en `blanda` y sus tarjetas under entrarían al dinero
+  // real el primer día. Nations League UEFA = mercado hondo y bien puesto (en el Mundial el mercado le ganó
+  // al modelo en Brier, 0,430 contra 0,455) → eficiente: publica 1X2 y goles anclados al consenso, las
+  // tarjetas se miden en la sombra. CONCACAF y amistosos → intermedia: publica tarjetas under y córners.
+  // El dinero real queda vetado POR LIGA en el ejecutor (GP_REAL_LIGAS_VETADAS) hasta que la sombra mida.
+  uefanl: 'eficiente', concacafnl: 'intermedia', amistososel: 'intermedia',
   suecia: 'eficiente', // medida 26-jul: brier .217 con 20 casas
   mls: 'intermedia', brasileirao: 'intermedia', argentina: 'intermedia', colombia: 'intermedia', brasilb: 'intermedia', ligamx: 'intermedia',
   // ligamx midió BLANDA (brier .253 pese a 27 casas) pero con n=23 → prior intermedia hasta que la medición confirme
@@ -17920,6 +17954,10 @@ const CLUB_AF_LEAGUE = { brasileirao: 71, ligamx: 262, mls: 253, argentina: 128,
   championship: 40, league1: 41, league2: 42, serieb: 136, laliga2: 141, portugal: 94, belgica: 144, turquia: 203, grecia: 197,
   liga3: 80, ligue2: 62, bundesliga2: 79, eredivisie: 88, superettan: 114, austria: 218, escocia: 179,
   uefa: 531, amistosos: 667,
+  // 26-sep (selecciones): Nations League UEFA=5, CONCACAF Nations League=536, amistosos de selecciones=10.
+  // Con esto la siembra de eventos, el árbitro, la liquidación de tarjetas por estadísticas y la agenda de
+  // /api/clubs/state salen de API-Football como en cualquier liga AF-fit. Ver clubs-engine/cups.js.
+  uefanl: 5, concacafnl: 536, amistososel: 10,
   // 13-ago (cobertura total): copas/torneos nuevos → ids de API-Football para la capa de contexto.
   // libertadores=13, sudamericana=11, champions=2 (incluye clasificación), europa=3, saudi=307,
   // eflcup=48 (League Cup), facup=45, dfbpokal=81, copadelrey=143, coppaitalia=137, coupefrance=66,
@@ -27944,6 +27982,7 @@ async function anotar(pid){
         const leagues = [];
         for (const key of Object.keys(RT.leagues || {})) {
           const L = RT.leagues[key];
+          if (L.pool || L.hidden) continue; // 26-sep: el pool de selecciones no es una liga que se juegue
           // PRÓXIMOS de la liga: TSA status=scheduled, memo 6h. Las ligas de PRETEMPORADA (starts: 'agosto')
           // no se consultan: su season backfilleada ya terminó y la nueva aún no existe en el proveedor.
           let up = global._clubsUpcoming[key];

@@ -342,3 +342,42 @@ OPEN de la sombra de NCAAF (TOTAL/SPREAD), casa el partido en gamma con nombres 
 "Spread: X (−n)" (línea = puntos que da el local) y "O/U n", y crea señales `tipo: 'modelo_college'` con el
 `p_model` de la tesis como consenso (modelo contra precio, no consenso de casas; se lee aparte en el desglose
 de la v2 por deporte y familia). Solo v2, listón neto ≥ 3 pp, precio 0,40-0,70, entra a ≤ 2 h del saque.
+
+### 26-sep (noche) — selecciones entre Mundial y Mundial
+
+Orden de Alexis, tras enterarse de que Inglaterra–España de Nations League se jugaba sin que generáramos
+nada: «Empieza. Necesito que cubramos todo y generemos pick.» El hueco era de diseño: la lista de
+descubrimiento de ligas salta a propósito todo lo de selecciones (`LEAGUE_DISCOVERY_SKIP`) y el motor del
+Mundial solo conoce su cuadro. Entre Mundial y Mundial no cubríamos ni un partido de selecciones.
+
+**Lo medido antes de abrir.** Track del Mundial: 104 partidos, 69 ganadores acertados (66 %), 10 marcadores
+exactos, Brier 0,494 contra 0,667 del azar; eliminatorias 81 % de 32, grupos 60 % de 72. **Contra el mercado
+perdió:** en los 82 con cuota, Brier del modelo 0,455 contra 0,430 del mercado, y el modelo ganó 33 de 82.
+Acertó mucho, no le sacó ventaja al precio: la misma lección de los clubes, y por eso la Nations League entra
+en banda eficiente (1X2 y goles anclados al consenso) y no con la probabilidad cruda. Base propia de
+selecciones (`scripts/selecciones-harvest.js`, API-Football): 3.481 partidos 2023→hoy, 1.631 con estadísticas
+por partido, 1.933 con árbitro. Tarjetas por partido: Nations League UEFA 4,90 · CONCACAF NL 4,34 ·
+**amistosos 2,85** (córners 8,9 · 8,9 · 8,6). Ese 2,85 es el dato que importa para tarjetas under: en
+amistosos se muestra la mitad de tarjetas que en una liga; si la casa pone la línea por encima de eso,
+el under lo cobra la casa, no nosotros. Hay que medirlo en la sombra, no suponerlo.
+
+**Lo que hay.** Pool `selecciones` en `ratings.json`: 222 selecciones absolutas, 2.319 partidos, Elo desde 1500
+con K=30 (doble en los seis primeros), factor de margen y cancha neutral en torneos; hfa medido 55 en el pool,
+**40 en Nations League, 10 en CONCACAF NL, 60 en amistosos** (`scripts/selecciones-fit.js`; España 1884,
+Argentina 1823, Francia 1787, Marruecos 1785). Tres ligas virtuales por el patrón de las copas
+(`clubs-engine/cups.js`): `uefanl` (clave The Odds API), `concacafnl`, `amistososel` (solo Cloudbet).
+Calendario API-Football por FECHAS en ventana FIFA (no «los próximos 25»), marcadores ESPN, alias de nombres
+(Czechia / Czech Republic, FYR Macedonia / North Macedonia, Türkiye / Turkey, South Korea / Republic of Korea,
+USA / United States, Rep. Of Ireland / Ireland…), Cloudbet con prioridad para las tres competiciones.
+Datos por competición en el disco de clubes: `props-history-<key>.json` (214 · 126 · 383 partidos con
+tarjetas) y `results-<key>.json`.
+
+**Bandas y dinero.** `uefanl` eficiente, `concacafnl` y `amistososel` intermedia (`LEAGUE_EFF_PRIOR`), fijadas a
+mano: sin prior una liga nueva cae en `blanda` y sus tarjetas under habrían entrado al dinero real el primer
+día. **El dinero real queda vetado por liga** (`GP_REAL_LIGAS_VETADAS`, defecto las tres, motivo
+`liga_vetada` en el libro): la sombra `cards_under_v1` las toma como a cualquier liga y la decisión de abrirlas
+es de Alexis con 60 liquidadas. Lo que NO se abre: torneos a cancha neutral (Mundial, Euro, Copa América),
+porque el motor no tiene sede neutral y aplicaría el hfa de la competición a todo.
+
+Test `tests/selecciones.test.js`. Export nuevo `picks-export?mundial=1` (picks diarias del Mundial con su
+liquidación) para medir familia a familia cómo fue con selecciones.

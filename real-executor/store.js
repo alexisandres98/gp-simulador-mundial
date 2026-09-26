@@ -394,6 +394,16 @@ function bandasVetadas() {
   return new Set(txt.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 }
 const bandaVetada = (banda) => !!banda && bandasVetadas().has(String(banda).toLowerCase());
+// 26-sep (selecciones): las tres competiciones de selecciones nacen en la sombra de tarjetas como cualquier
+// liga, pero el dinero real NO entra por LIGA hasta que la sombra mida (60 liquidadas y revisión con Alexis):
+// en selecciones no sabemos si el mercado de tarjetas es eficiente o no, y la banda es un prior, no una
+// medición. `GP_REAL_LIGAS_VETADAS` (coma-separado; vacío = sin veto) ajusta sin tocar código.
+function ligasVetadas() {
+  const v = process.env.GP_REAL_LIGAS_VETADAS;
+  const txt = v == null ? 'uefanl,concacafnl,amistososel' : String(v);
+  return new Set(txt.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+const ligaVetada = (league) => !!league && ligasVetadas().has(String(league).toLowerCase());
 
 function filaNueva(sb, pick, banda = null) {
   return {
@@ -510,6 +520,9 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   //    Es un corte de PERÍMETRO, no de calidad de la señal — da igual la cuota o la ventaja que traiga.
   if (bandaVetada(fila.banda)) {
     return parar('banda_eficiente', { detalle: `${fila.league || 'liga desconocida'} está en banda ${fila.banda}: el dinero real no entra ahí (orden 5-sep)` });
+  }
+  if (ligaVetada(fila.league)) {
+    return parar('liga_vetada', { detalle: `${fila.league} es una competición de selecciones: se mide en la sombra, el dinero real no entra hasta la revisión (26-sep)` });
   }
 
   // 1) LA VENTAJA: SE MIDE, PERO NO SE FILTRA (25-ago, decisión de Alexis).
@@ -1561,7 +1574,7 @@ function migrarSinResolver({ aplicar = false } = {}) {
   return { candidatas: cand.length, aplicado: true, detalle: detalle.slice(0, 40) };
 }
 
-module.exports = { intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
+module.exports = { ligasVetadas, ligaVetada, intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
   frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
   // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.

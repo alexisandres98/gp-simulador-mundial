@@ -275,6 +275,26 @@ VEREDICTO en la card), el ganador de dardos y tenis de mesa sale como tesis (en 
 **No toca** la sombra, la vara, las puertas de calidad, el fútbol de clubes ni el ejecutor real (test
 `tests/feed.test.js`). Registro: `docs/DECISIONES_EJECUTADAS.md` (21-sep, noche).
 
+## 🌍 SELECCIONES ENTRE MUNDIAL Y MUNDIAL (26-sep-2026, orden de Alexis)
+Hasta el 26-sep no cubríamos ni un partido de selecciones fuera del Mundial: `LEAGUE_DISCOVERY_SKIP` los salta a
+propósito y el motor del Mundial solo conoce su cuadro. Ahora son ligas del motor de clubes:
+- **Pool** `selecciones` en `data/clubs/ratings.json` (`pool: true, hidden: true`): un Elo por selección absoluta,
+  ids `tm_af<id>`, ajustado con `scripts/selecciones-fit.js` sobre la base `data/selecciones/matches.json`
+  (`scripts/selecciones-harvest.js`: partidos jugados 2023→hoy con amarillas, rojas, córners, faltas y árbitro
+  desde API-Football). **Nunca subir `_meta.fitted_at`**: borra los overlays dinámicos de todas las ligas.
+- **Tres ligas virtuales** en `clubs-engine/cups.js` que copian el pool en un solo nivel: `uefanl` (Nations
+  League UEFA, clave The Odds API), `concacafnl` y `amistososel` (solo Cloudbet). Calendario `CLUB_AF_LEAGUE`
+  (5, 536, 10), marcadores `CLUB_ESPN` (`uefa.nations`, `concacaf.nations.league`, `fifa.friendly`), alias de
+  nombres en `CLUB_ALIAS` (Czechia, FYR Macedonia, Turkey, South Korea, USA, Rep. Of Ireland…).
+- **Bandas fijadas a mano** (`LEAGUE_EFF_PRIOR`): `uefanl` eficiente (1X2 y goles anclados al consenso), las
+  otras dos intermedia (tarjetas under y córners públicas). **El dinero real está vetado POR LIGA** en
+  `real-executor/store.js` (`GP_REAL_LIGAS_VETADAS`, defecto las tres): la sombra `cards_under_v1` las mide y
+  la decisión de abrirlas es de Alexis con 60 liquidadas. Los torneos a cancha neutral (Mundial, Euro, Copa
+  América) NO se abren aquí: el motor no tiene sede neutral.
+- Tarjetas y córners necesitan `props-history-<key>.json` con ≥ 20 partidos en el disco de clubes (los escribe
+  el fit; se suben con `/api/internal/clubs-data`). Sin ese fichero no nace ni una pick de tarjetas.
+- Test: `node tests/selecciones.test.js`. Registro: `docs/DECISIONES_EJECUTADAS.md` (26-sep).
+
 ## 🟣 POLYMARKET EN SOMBRA: DOS LIBROS (24-sep-2026)
 `propfirm/scan.js` genera señales (consenso sharp vs precio de Polymarket) y `propfirm/polyshadow.js` las
 "coloca" contra el libro real del CLOB en DOS bancos simulados: **v1** (`poly-sombra.json`, congelada como

@@ -27,6 +27,10 @@ const KEY_INCLUDE = [
   /^soccer-argentina-primera-nacional$/, /^soccer-denmark-superliga$/,
   /^soccer-international-clubs-copa-(libertadores|sudamericana)$/,
   /^soccer-portugal-primeira-liga$/, /^soccer-netherlands-eredivisie$/,
+  // 26-sep (selecciones): en ventana FIFA el catálogo de Cloudbet se llena de amistosos y ligas menores; las
+  // competiciones de selecciones que ahora cubrimos van al frente del cupo.
+  /^soccer-international-uefa-nations-league$/, /^soccer-international-concacaf-nations-league$/,
+  /^soccer-international-international-friendlies$/,
 ];
 const LEAGUE_EXCLUDE = /u1[6789]|u2[0-3]|women|-srl|simulated|reserve|next-pro|regional|youth|amateur|esoccer|cyber/i;
 // 14-ago (cobertura total + independencia de The Odds API): la lista blanca de 15 ligas era el cuello de

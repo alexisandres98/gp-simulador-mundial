@@ -8941,6 +8941,11 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
     const blendEdge = ((0.5 * m + 0.5 * k) - k) * 100; // = (Elo crudo−mercado)/2 en pp — gate del ancla, sin cambios
     const base = { league: ev.league, home: ev.home, away: ev.away, homeId: ev.homeId, awayId: ev.awayId, kickoff: ev.kickoff, rest_ctx: ev.restCtx || null, devig: ev.devig || 'shin', solid_c: SOLID_C };
     if (bandE === 'eficiente') {
+      // 26-sep: diagnóstico del ancla por liga en el pase en seco (`solid_diag`): en qué condición se cae cada
+      // favorito. Hizo falta para ver por qué la Nations League no daba 1X2 el primer día. Solo mide.
+      const dg = out.solid_diag = out.solid_diag || {}; const dl = dg[ev.league] = dg[ev.league] || { k_lt_55: 0, books_lt_5: 0, sin_cuota: 0, blend_lt_m2: 0, ok: 0, ej: [] };
+      const razon = k < 0.55 ? 'k_lt_55' : (f.books || 0) < 5 ? 'books_lt_5' : !(f.bestOdds > 1) ? 'sin_cuota' : blendEdge < -2 ? 'blend_lt_m2' : 'ok';
+      dl[razon]++; if (dl.ej.length < 14) dl.ej.push({ h: ev.home, a: ev.away, fav, k: +k.toFixed(3), m: +m.toFixed(3), books: f.books || 0, blend: +blendEdge.toFixed(1), razon });
       if (k < 0.55 || (f.books || 0) < 5 || !(f.bestOdds > 1)) continue;
       if (blendEdge < -2) continue; // el modelo contradice al ancla → no se ancla
       const why = compose([{ code: 'MARKET_ANCHOR', w: 3, books: f.books }, ...(m > k ? [{ code: 'MODEL_AGREES_UP', w: 2 }] : [])]);

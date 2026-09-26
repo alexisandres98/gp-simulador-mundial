@@ -391,3 +391,13 @@ approved) y **goles en sombra** (skill −0,0001: en amistosos el modelo no dist
 League y CONCACAF NL heredan las del pool (`por_competicion` en `ratings.json`, `buildCupLeague`). Primer
 ciclo en producción: 19 picks de Nations League (16 córners under públicas, 3 tarjetas over en monitor);
 1X2 y goles entran con este segundo despliegue.
+
+**La escala del pool (26-sep, noche).** Con el diagnóstico del ancla (`solid_diag` en el pase en seco) se vio
+por qué no salía ni un 1X2 en Nations League: el Elo daba Alemania 0,62 contra Grecia con el mercado en 0,70,
+Dinamarca 0,59 contra 0,67, Austria 0,50 contra 0,62, y el ancla exige que el modelo no contradiga al consenso
+en más de 2 pp de blend. El backtest lo confirmaba: en el tramo 60-70 % predecía 0,634 y ocurría 0,770. Un Elo
+desde 1500 con K=30 sobre 30-40 partidos por selección ordena bien y comprime la magnitud. Se eligió por
+validación temporal (últimos 40 % de partidos, log-loss del 1X2 con el mismo `matchProbs` del motor) un factor
+de dispersión **1,6** sobre el pool (log-loss 0,9384 → 0,9296 en 928 partidos): España 2114, Alemania 1891,
+Países Bajos 1856, Colombia 1872, México 1862. Con eso Alemania–Grecia da 0,67, Dinamarca–Gales 0,65 y
+Países Bajos en Serbia 0,67: dentro del ancla. El motor no se tocó; solo la escala del fichero.

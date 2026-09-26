@@ -82,7 +82,44 @@ for (let hfa = 0; hfa <= 200; hfa += 5) {
   if (!mejor || err < mejor.err) mejor = { hfa, err, r };
 }
 const HFA = mejor.hfa;
-const fit = mejor.r;
+let fit = mejor.r;
+
+// ── LA ESCALA (26-sep, tarde). El primer día en producción el ancla 1X2 no salió en ninguna favorita de
+// Nations League: el Elo del pool daba a Alemania 0,62 contra Grecia donde el mercado daba 0,70, a Dinamarca
+// 0,59 contra 0,67, a Austria 0,50 contra 0,62. Un Elo desde 1500 con K=30 sobre 30-40 partidos por selección
+// queda COMPRIMIDO: separa bien el orden y no la magnitud. Se elige por validación temporal (últimos 40 % de
+// partidos, log-loss del 1X2 con el MISMO matchProbs del motor) el factor de dispersión `s` que se aplica al
+// pool: elo' = 1500 + s·(elo − 1500). El motor no se toca; solo la escala del fichero.
+const { matchProbs: mp } = require('../engine');
+function logloss(s, hfa) {
+  const elo = {}, games = {};
+  let ll = 0, n = 0;
+  const desde = Math.floor(partidos.length * 0.6);
+  partidos.forEach((m, i) => {
+    const neutral = TORNEO_NEUTRAL.has(m.league);
+    const h = m.home_id, a = m.away_id;
+    const eh = elo[h] ?? BASE, ea = elo[a] ?? BASE;
+    if (i >= desde) {
+      const pr = mp(BASE + s * (eh - BASE) + (neutral ? 0 : hfa), BASE + s * (ea - BASE));
+      const hg = m.ft_hg ?? m.hg, ag = m.ft_ag ?? m.ag;
+      const p = hg > ag ? pr.home : hg < ag ? pr.away : pr.draw;
+      ll += -Math.log(Math.max(1e-6, p)); n++;
+    }
+    const exp = winExp(eh + (neutral ? 0 : hfa) - ea);
+    const hg = m.ft_hg ?? m.hg, ag = m.ft_ag ?? m.ag;
+    const sc = hg > ag ? 1 : hg < ag ? 0 : 0.5;
+    const kh = (games[h] || 0) < 6 ? 2 * K : K, ka = (games[a] || 0) < 6 ? 2 * K : K;
+    const g = margen(Math.abs(hg - ag));
+    elo[h] = eh + kh * g * (sc - exp); elo[a] = ea + ka * g * ((1 - sc) - (1 - exp));
+    games[h] = (games[h] || 0) + 1; games[a] = (games[a] || 0) + 1;
+  });
+  return { s, ll: ll / n, n };
+}
+const escala = [];
+for (let s = 1; s <= 2.01; s += 0.1) escala.push(logloss(+s.toFixed(2), HFA));
+const ESCALA = escala.reduce((b, x) => (x.ll < b.ll ? x : b), escala[0]).s;
+if (ESCALA !== 1) { const elo = {}; for (const [id, e] of Object.entries(fit.elo)) elo[id] = BASE + ESCALA * (e - BASE); fit = { ...fit, elo }; }
+console.log(JSON.stringify({ escala_por_logloss: escala.map((x) => `${x.s}:${x.ll.toFixed(4)}`).join(' '), ESCALA, validacion_n: escala[0].n }));
 
 // hfa por competición (para CLUB_CUPS): mismo criterio, con los Elo finales fijos
 function hfaDe(league) {

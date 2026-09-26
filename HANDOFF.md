@@ -19,7 +19,10 @@ hay que mirar en los próximos días, en orden:
    el escáner de fútbol de la v2 solo ve eventos con ≥ 3 casas, o sea que los amistosos (solo Cloudbet) no
    entran. Si se quiere, hay que darle a `escanearFutbol` el consenso de Cloudbet+Pinnacle sin el mínimo de
    tres casas para `amistososel`.
-5. **Ventanas siguientes:** 9-17 nov y marzo. Los torneos a cancha neutral (Copa América, Euro) NO están
+5. **La escala del pool es 1,6** (elegida por validación temporal) y el pool lleva `fitted_at` propio: al
+   reajustarlo, `clubEloReconcileFit` descarta solo los overlays de sus selecciones (no bumpear `_meta`).
+   El diagnóstico del ancla 1X2 por liga está en `clubs-picks?dry=1` → `solid_diag`.
+6. **Ventanas siguientes:** 9-17 nov y marzo. Los torneos a cancha neutral (Copa América, Euro) NO están
    abiertos: el motor no tiene sede neutral.
 
 ## 🎯 PUNTO DE RETOMA (16-sep, noche): EJECUTAR `docs/PLAN_RENTABILIDAD_2026-09-16.md`

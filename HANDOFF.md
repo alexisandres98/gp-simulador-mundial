@@ -1,5 +1,27 @@
 # HANDOFF — estado al 16 de septiembre de 2026
 
+## 🌍 RETOMA 26-sep (noche): SELECCIONES RECIÉN ABIERTAS, HAY QUE VIGILAR LA PRIMERA VENTANA
+Alexis ordenó cubrir selecciones («necesito que cubramos todo y generemos pick») al ver Inglaterra–España sin
+pick. Está desplegado (`0e25f44`): pool `selecciones` en `ratings.json` + ligas virtuales `uefanl`,
+`concacafnl`, `amistososel` (ver CLAUDE.md § SELECCIONES y `docs/DECISIONES_EJECUTADAS.md` 26-sep). Lo que
+hay que mirar en los próximos días, en orden:
+1. **Que nazcan picks y se liquiden.** Ventana FIFA hasta el 6-oct (Nations League 27-29 sep y 1-2 oct,
+   amistosos México–Colombia 27-sep 01:00 UTC, Japón–Venezuela, Corea–Uruguay, Australia–Brasil). ESPN ya
+   puntúa (`[clubs-score] uefanl …` en el log). Sonda: `picks-export?clubs=1` filtrando `league`.
+2. **Duplicados de evento en `uefanl`.** El 26-sep la siembra de API-Football corrió ANTES que el barrido de
+   The Odds API, y los dos escriben el evento con su propio nombre: donde difieren (Czechia / Czech Republic,
+   FYR Macedonia / North Macedonia, Türkiye / Turkey, Rep. Of Ireland / Republic of Ireland) puede haber dos
+   eventos del mismo partido. Si se ven dos picks del mismo cruce, es esto; se cura solo al caducar.
+3. **Tarjetas de selecciones: medir, no suponer.** Amistosos muestran 2,85 tarjetas por partido (Nations League
+   4,90). Las tres ligas entran en `cards_under_v1` en sombra y el dinero real las veta por liga
+   (`GP_REAL_LIGAS_VETADAS`). Decisión de abrirlas: Alexis, con 60 liquidadas.
+4. **Polymarket** lista los amistosos grandes (Colombia–México con 600 k de liquidez) pero no la Nations League;
+   el escáner de fútbol de la v2 solo ve eventos con ≥ 3 casas, o sea que los amistosos (solo Cloudbet) no
+   entran. Si se quiere, hay que darle a `escanearFutbol` el consenso de Cloudbet+Pinnacle sin el mínimo de
+   tres casas para `amistososel`.
+5. **Ventanas siguientes:** 9-17 nov y marzo. Los torneos a cancha neutral (Copa América, Euro) NO están
+   abiertos: el motor no tiene sede neutral.
+
 ## 🎯 PUNTO DE RETOMA (16-sep, noche): EJECUTAR `docs/PLAN_RENTABILIDAD_2026-09-16.md`
 
 **Todo el backlog de la auditoría (§7, quince tareas) está hecho y desplegado** (11 commits del 16-sep,

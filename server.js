@@ -20641,6 +20641,13 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, { count: rows.length, picks: rows, exported_at: new Date().toISOString() });
       }
+      // ?mundial=1 (26-sep): las picks diarias del MUNDIAL (db.dailyPicks) con su liquidación, para medir
+      // familia a familia cómo le fue al modelo con SELECCIONES antes de abrir Nations League y amistosos.
+      // Hasta hoy solo se veían con sesión de admin en /api/beta/picks-record.
+      if (url.searchParams.get('mundial')) {
+        const rows = db.dailyPicks || [];
+        return json(res, 200, { count: rows.length, picks: rows, track_record: dailyPicksTrackRecord(rows), exported_at: new Date().toISOString() });
+      }
       // ?combat=1 (28-ago): las picks de combate, para análisis y contenido sin sesión de admin — mismo
       // criterio que ?clubs=1. Son la fuente del número del correo masivo (familias públicas, sin FIGHT).
       if (url.searchParams.get('combat')) {

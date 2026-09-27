@@ -24715,6 +24715,40 @@ async function anotar(pid){
             error_casa: rc.error_casa || null, http: rc.http || null,
             respuesta: rc.respuesta || null });
         }
+        // `run=sondear_tope&event=<id Cloudbet>&market=<marketUrl>[&stake=]` (27-sep): ¿cuánto deja apostar
+        // ESTA cuenta en una selección concreta? La casa no lo publica: `maxStake` es el tope del MERCADO y el
+        // de la cuenta solo aparece al rechazar (`STAKE_ABOVE_MAX` con `stake: <tope>`), y la web enseña un
+        // "Max per bet" nominal que tampoco es ese número. La sonda manda una petición que la casa NO puede
+        // aceptar —stake por encima del saldo disponible, nunca menos— y devuelve tal cual lo que contesta.
+        // No toca el libro; la referencia lleva prefijo `sonda`. Sirve para comparar, en la MISMA selección y
+        // al mismo tiempo, lo que dice la API con lo que Alexis ve a mano en la web.
+        if (run === 'sondear_tope') {
+          const evId = String(url.searchParams.get('event') || '');
+          const mUrl = String(url.searchParams.get('market') || '');
+          if (!evId || !mUrl) return json(res, 200, { error: 'faltan event y market' });
+          const CBs = require('./market-scanner/venues/cloudbet');
+          const cbk = process.env.CLOUDBET_API_KEY || '';
+          const saldo = await RE.refrescarSaldo();
+          if (!(saldo > 0)) return json(res, 200, { error: 'sin saldo legible', saldo });
+          const ev = await CBs.eventRaw(cbk, evId);
+          if (!ev) return json(res, 200, { error: 'evento ilegible', event: evId });
+          let sel = null;
+          for (const m of Object.values(ev.markets || {})) for (const sm of Object.values(m.submarkets || {})) for (const s of (sm.selections || [])) if (s.marketUrl === mUrl) sel = s;
+          if (!sel) return json(res, 200, { error: 'selección no encontrada', market: mUrl, mercados: Object.keys(ev.markets || {}) });
+          // por encima del saldo SIEMPRE: una sonda que la casa pudiera aceptar sería una apuesta
+          const pedido = Math.max(+(url.searchParams.get('stake') || 0), Math.ceil(saldo) + 25);
+          const peticion = { currency: 'USDT', eventId: evId, marketUrl: mUrl, price: Number(sel.price), stake: pedido,
+            referenceId: 'sonda-' + Date.now().toString(36), acceptPriceChange: 'BETTER' };
+          const r = await CBs.placeBet(cbk, peticion);
+          const cuerpo = r.body || {};
+          const cod = String(r.betError || cuerpo.betErrorCode || cuerpo.error || '').toUpperCase();
+          const tope = cod === 'STAKE_ABOVE_MAX' && Number.isFinite(Number(cuerpo.stake)) ? Number(cuerpo.stake) : null;
+          const maxM = Number(sel.maxStake) || null;
+          return json(res, 200, { partido: ev.name, seleccion: `${sel.outcome} ${sel.params || ''} @ ${sel.price}`,
+            max_mercado: maxM, saldo, stake_enviado: pedido, estado: r.betStatus || cuerpo.status || null,
+            codigo: cod || null, tope_cuenta: tope, pct_del_max: tope && maxM ? +(100 * tope / maxM).toFixed(2) : null,
+            via: r.via || null, http: r.status || null, respuesta: cuerpo });
+        }
         // `run=movimiento&tipo=deposito|retiro&monto=&at=&nota=` (7-sep): anotar caja para que la conciliación
         // saldo-libro sea una resta y no una estimación (Alexis recordó tres retiros de memoria).
         // `run=migrar_sin_resolver[&aplicar=1]` (15-sep): reetiqueta los VOID que escribimos nosotros al no

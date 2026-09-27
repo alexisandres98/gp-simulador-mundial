@@ -426,3 +426,31 @@ una petición por encima del saldo y devuelve la respuesta de la casa. Medido: l
 que el tope (`INSUFFICIENT_FUNDS`), así que por API no hay forma gratis de leer el tope de la cuenta; solo
 aparece con un stake que quepa en el saldo, y si no hay tope la apuesta entra. La prueba decisiva es manual en
 la web, o el propio ejecutor de tarjetas anotando `tope_cuenta` en el siguiente rechazo.
+
+## 27-sep-2026 (mediodía) — el enfoque: tarjetas under, y solo tarjetas under
+
+Alexis, tras leer el balance de todo el sistema (31 familias medidas, una sola con signo positivo y significativo):
+«enfocar los esfuerzos en card under y dejar lo demás simplemente acumulando muestra». Tres cosas quedan hechas:
+
+**1. Censo de cobertura del mercado de tarjetas** (`lib/censo-tarjetas.js`, job horario, sonda
+`/api/internal/censo-tarjetas`). Mide, por competición y por casa, en cuántos partidos con saque a 35-95 min hay
+mercado de tarjetas, en Cloudbet (todo el catálogo, femenino y juvenil incluidos) y en Pinnacle (guest API). Nace
+de una premisa que se comprobó falsa antes de escribir código: «Cloudbet tiene muchos partidos con card under que
+no cubrimos, como fútbol femenino». Medido el 27-sep sobre 694 partidos de 200 competiciones: **ninguna de las 23
+competiciones femeninas tiene el mercado, ninguna de 75 divisiones menores con saque a <3 h lo tiene**. Solo lo
+publican primeras divisiones y algunas segundas. Las 43 ligas con datos de tarjetas tienen la puerta de calidad
+aprobada (Brier 0,11-0,24, calibración ≤ 0,056): el cuello de botella no es el modelo, es la casa.
+
+**2. Segunda casa a mano: tarjetas under en Pinnacle** (`RE.crearManualCards`, hook `realManualPinnacle` en el
+barrido de la sombra, correo "PARA COLOCAR A MANO" con la casa por fila). Alexis descartó el CS2 manual en Pinnacle
+(«500 apuestas a mano para un 2-10 % no tiene sentido») y pidió en su lugar llevar ahí las tarjetas under que
+Cloudbet no cotiza. Mismo perímetro que el automático, mismo libro, misma liquidación. Guardas: `colocar()` nunca
+envía una fila manual; el auto se aparta de una posición ya avisada (`posicion_en_canal_manual`). Test:
+`tests/manual-cards.test.js`. Interruptor `GP_REAL_CARDS_PINNACLE`.
+
+**3. Tarjetas over: NO.** Alexis: «lo hemos medido muchas veces y ahí perdemos dinero; el edge está en que todo el
+mundo apuesta al over y las casas descuidan el under». Las picks over siguen naciendo como monitor (dato), sin
+sombra nueva ni dinero.
+
+Todo lo demás —CS2, LoL, Dota 2, Valorant, tenis, tenis de mesa, dardos, baloncesto, NFL, college, combate, F1,
+Polymarket— se queda como está, acumulando muestra, sin ingeniería de modelo.

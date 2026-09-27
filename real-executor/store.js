@@ -498,6 +498,9 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   // cinturón además del filtro de reintentar: una fila de otra familia (CS2 manual) apostaría al mercado
   // de tarjetas del partido equivocado. Jamás pasa de aquí.
   if (fila.familia && fila.familia !== FAMILIA) return fila;
+  // las filas del canal MANUAL (tarjetas en Pinnacle, 27-sep) no se envían nunca por la API: las coloca
+  // Alexis y las anota con anotarManual. Sin esta puerta, `reintentar` las mandaría a Cloudbet.
+  if (fila.canal === 'manual') return fila;
   fila.intentos = (fila.intentos || 0) + 1;
   fila.ultimo_intento_at = new Date().toISOString();
   fila.dry = C.dry;
@@ -869,6 +872,17 @@ async function intentar(sb, pick, { cbIdx = {}, slate = null, banda = null } = {
   if (L.bets.some((b) => b.pick_id === sb.pick_id)) return null;   // ya está en el libro; de reintentarla
                                                                    // se encarga `reintentar`, no esta puerta
   const fila = filaNueva(sb, pick, banda);
+  // LA POSICIÓN YA SALIÓ POR CORREO PARA COLOCARLA A MANO (27-sep, segunda casa). Si Cloudbet cuelga la
+  // línea después de que el aviso de Pinnacle haya salido, el automático NO entra: dos casas sobre la misma
+  // posición es exactamente el apilado que la doctrina de una-por-partido prohíbe. La fila queda en el libro,
+  // descartada y con su motivo, para que el registro diga por qué el auto se apartó.
+  const manual = L.bets.find((b) => b.canal === 'manual' && b.aviso_manual
+    && (b.status === 'PENDIENTE' || CON_DINERO.has(b.status)) && mismaPosicion(b, fila));
+  if (manual) {
+    fila.status = 'DESCARTADA'; fila.motivo = 'posicion_en_canal_manual';
+    fila.detalle = `la misma posición ya salió por correo para colocarla a mano en ${manual.casa || 'otra casa'}`;
+    L.bets.push(fila); save(); return fila;
+  }
   L.bets.push(fila);
   return colocar(fila, { cbIdx, slate, banda });
 }
@@ -1183,6 +1197,48 @@ async function liquidar(resultados = {}, { sombra = [] } = {}) {
 // resuelve con nuestro resultado (las picks de esports ya viajan en el mapa de resultados del barrido).
 // El dato que motivó todo esto queda medido en cada fila: la casa capó a Alexis a ~20 USDT por apuesta en
 // estos mercados — ese techo de capacidad ES la explicación de por qué la ineficiencia sobrevive.
+// ── TARJETAS UNDER EN LA SEGUNDA CASA, A MANO (27-sep-2026, orden de Alexis) ────────────────────────────
+// «En vez de CS2 en Pinnacle, expandir tarjetas under a Pinnacle manual para aumentar el volumen con las
+// líneas que en Cloudbet no tenemos.» La fila nace desde el barrido de la sombra cuando una pick de tarjetas
+// under NO tiene cuota ejecutable en Cloudbet pero Pinnacle sí la cotiza (precio del archivo de cuotas,
+// frescura ≤ 60 min, misma línea y mismo lado: un precio es una tupla). Pasa por el MISMO perímetro que el
+// dinero automático —banda, veto de liga, ventana de saque, una posición por partido+lado— y por el mismo
+// correo de "a mano" que ya existe; Alexis la coloca y la anota (anotarManual), y se liquida por la pick.
+// Lo que la distingue: `canal: 'manual'` (colocar() nunca la envía por la API) y `casa: 'pinnacle'`.
+// Interruptor: GP_REAL_CARDS_PINNACLE (encendido; `0` lo apaga). Stake: GP_REAL_CARDS_PINNACLE_STAKE o el
+// plano de tarjetas.
+function cardsPinnacleOn() { return !/^(0|false|off|no)$/i.test(String(process.env.GP_REAL_CARDS_PINNACLE || '').trim()); }
+function crearManualCards(p, { odds, book = 'pinnacle', banda = null, stake = null } = {}) {
+  if (!cardsPinnacleOn()) return null;
+  if (!p || String(p.family || '').toUpperCase() !== FAMILIA || String(p.side || '').toLowerCase() !== LADO) return null;
+  if (!(odds > 1) || !(Number(p.line) > 0)) return null;
+  const ko = (p.event && p.event.kickoff_at) || null;
+  if (!ko || Date.parse(ko) <= Date.now()) return null;
+  if (fueraDeVentana(ko)) return null;
+  if (bandaVetada(banda) || ligaVetada(p.league)) return null;
+  const L = load();
+  if (L.bets.some((b) => b.pick_id === p.pick_id)) return null;
+  const C = CFG();
+  const envSt = Number(process.env.GP_REAL_CARDS_PINNACLE_STAKE);
+  const st = stake != null ? Number(stake) : (envSt > 0 ? envSt : (C.stakeFlat > 0 ? Math.min(C.stakeMax, Math.max(C.stakeMin, C.stakeFlat)) : C.stakeMin));
+  const fila = {
+    pick_id: p.pick_id, shadow_id: null,
+    canal: 'manual', casa: book,
+    match: p.event ? `${p.event.home} vs ${p.event.away}` : (p.match || null), league: p.league || null, banda: banda || null,
+    line: Number(p.line), side: LADO, kickoff_at: ko,
+    ceid: (p.event && p.event.canonical_event_id) || null,
+    odds_sombra: Number(odds), model_prob: p.model_prob != null ? p.model_prob : null,
+    stake: st, status: 'PENDIENTE', motivo: 'solo_manual',
+    at: new Date().toISOString(), envios: 0, intentos: 0,
+  };
+  // una posición por partido+lado, contando también las manuales que ya esperan a Alexis
+  if (posicionOcupada(L, fila)) return null;
+  if (L.bets.some((b) => b.canal === 'manual' && b.status === 'PENDIENTE' && mismaPosicion(b, fila))) return null;
+  L.bets.push(fila);
+  save();
+  return fila;
+}
+
 function crearManualCs2(sb, { stake = null } = {}) {
   if (stake == null) stake = CS2_STAKE_TOPE(); // la regla plana de $5 también al nacer la fila
   if (!sb || sb.segment !== 'cs2_rounds_v1' || sb.book !== CASA) return null;
@@ -1597,7 +1653,7 @@ function migrarSinResolver({ aplicar = false } = {}) {
   return { candidatas: cand.length, aplicado: true, detalle: detalle.slice(0, 40) };
 }
 
-module.exports = { ligasVetadas, ligaVetada, intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
+module.exports = { ligasVetadas, ligaVetada, intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, crearManualCards, cardsPinnacleOn, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
   frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
   // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.

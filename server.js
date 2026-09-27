@@ -996,6 +996,18 @@ async function dartsJob() {
   setTimeout(dartsJob, 10 * 60e3);
 }
 setTimeout(dartsJob, 7 * 60e3);
+// EL CENSO DE COBERTURA DE TARJETAS (27-sep, orden de Alexis): cada hora, qué competiciones tienen mercado
+// de tarjetas en Cloudbet y en Pinnacle a 35-95 min del saque. Solo mide (lib/censo-tarjetas.js); sonda
+// /api/internal/censo-tarjetas. GP_CENSO_TARJETAS=0 lo apaga.
+async function censoTarjetasJob() {
+  if (/^(0|false|off|no)$/i.test(String(process.env.GP_CENSO_TARJETAS || '').trim())) return null;
+  try {
+    const r = await require('./lib/censo-tarjetas').correr({ dir: CLUB_DATA_DISK, apiKey: process.env.CLOUDBET_API_KEY || '' });
+    console.log('[censo-tarjetas]', JSON.stringify(r));
+    return r;
+  } catch (e) { console.error('[censo-tarjetas]', e.message); return { error: e.message }; }
+}
+setTimeout(() => { censoTarjetasJob(); setInterval(censoTarjetasJob, 60 * 60e3); }, 4 * 60e3);
 // la cola diaria de la base (resultados de la temporada + ventanas de Orakel + partidos PC) en un proceso aparte
 let _dtTailRunning = false;
 async function dartsTailJob(once) {
@@ -14272,12 +14284,14 @@ function shadowStake(S, p, odds) {
 // aparte, no un cambio de código.
 const SHADOW_EXEC_BOOKS = () => String(process.env.GP_SHADOW_EXEC_BOOKS || 'cloudbet,polymarket,myriad,kalshi').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const SHADOW_FAM_MAP = { CARDS: 'cards_total', CORNERS: 'corners_total', GOALS: 'match_total', SOLID: 'match_winner' };
-async function shadowExecQuote(p) {
+async function shadowExecQuote(p, booksOverride = null) {
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return null;
   const ceid = p.event && p.event.canonical_event_id; if (!ceid) return null;
   const fam = SHADOW_FAM_MAP[p.family]; if (!fam) return null;
-  const books = SHADOW_EXEC_BOOKS(); if (!books.length) return null;
+  // `booksOverride` (27-sep): la misma lectura del archivo de cuotas, pero en OTRA casa — la segunda casa a
+  // mano de tarjetas lee aquí el precio de Pinnacle. No cambia la sombra: sin override es la de siempre.
+  const books = booksOverride || SHADOW_EXEC_BOOKS(); if (!books.length) return null;
   try {
     const side = String(p.side || p.selection_code || '').toLowerCase();
     const q = fam === 'match_winner'
@@ -14297,6 +14311,24 @@ async function shadowExecQuote(p) {
 //                               60 min: hueco de FRESCURA del sweep, no de cobertura.
 //   mercado_no_cotizado       — nadie cotiza esa familia/línea para ese partido: la pick nació de un precio
 //                               que ya no existe en ninguna parte.
+// LA SEGUNDA CASA A MANO PARA TARJETAS UNDER (27-sep, orden de Alexis). Cuando una pick de tarjetas under
+// no tiene cuota ejecutable en Cloudbet y faltan ≤ GP_REAL_CARDS_PINNACLE_HORAS (3) horas para el saque,
+// se mira si Pinnacle la cotiza (misma línea, mismo lado, ≤60 min de frescura). Si sí, nace una fila MANUAL
+// en el libro real y el correo de "a mano" se la manda a Alexis. Pinnacle sigue sin ser casa ejecutable
+// para la sombra (no hay API): esto es un canal de volumen humano, medido en el mismo libro.
+const CARDS_PINNACLE_HORAS = () => { const h = Number(process.env.GP_REAL_CARDS_PINNACLE_HORAS); return h > 0 ? h : 3; };
+async function realManualPinnacle(p, seg, ko, now) {
+  if (seg.key !== 'cards_under_v1') return null;
+  const RE = require('./real-executor/store');
+  if (!RE.cardsPinnacleOn() || !RE.CFG().enabled || !RE.canalOn('CARDS')) return null;
+  if (ko - now > CARDS_PINNACLE_HORAS() * 3600e3 || ko - now < 10 * 60e3) return null;
+  if (RE.load().bets.some((b) => b.pick_id === p.pick_id)) return null;   // ya nació (o ya se descartó)
+  const q = await shadowExecQuote(p, ['pinnacle']);
+  if (!q) return null;
+  const fila = RE.crearManualCards(p, { odds: q.odds, book: 'pinnacle', banda: leagueEfficiency(p.league).band });
+  if (fila) console.log('[real] tarjetas a mano en Pinnacle:', fila.match, 'under', fila.line, '@', fila.odds_sombra);
+  return fila;
+}
 async function shadowUnexecDiag(p) {
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return { reason: 'db_off' };
@@ -14622,6 +14654,9 @@ async function shadowSweep() {
       // y si sigue ACTIVE con ko vencido cae en el guard de arriba — el sello lo pone el resumen).
       const ex = await shadowExecQuote(p);
       if (!ex) {
+        // segunda casa a mano (27-sep): sin Cloudbet y con Pinnacle cotizando, la fila manual nace aquí.
+        // Nunca lanza y no cambia la sombra: la señal sigue esperando a Cloudbet hasta los 30 min.
+        try { await realManualPinnacle(p, seg, ko, now); } catch (e) { console.error('[real] manual pinnacle:', e.message); }
         // sin cuota ejecutable AÚN: si queda >30 min al kickoff, reintenta el próximo sweep (el ejecutor
         // real pollearía igual); con la ventana agotada se sella como NO EJECUTABLE — dato de capacidad.
         if (ko - now > 30 * 60e3) continue;
@@ -15058,21 +15093,25 @@ async function realAvisoApuestaManual() {
   });
   if (!filas.length) return;
   const C = RE.CFG();
-  const cuerpo = ['APUESTAS PARA COLOCAR A MANO EN CLOUDBET', '',
+  const cuerpo = ['APUESTAS PARA COLOCAR A MANO (cada fila dice en qué casa)', '',
     'Estas señales no pueden salir por la API (cada una dice por qué), así que van a mano. Mismas reglas',
     'que el ejecutor: si la cuota que ves es MENOR que la mínima, déjala pasar — la ventaja ya no está.',
-    'Si la casa te deja meter MENOS del monto, mete el máximo que deje y dime el monto real al anotarla.', ''];
+    'Si la casa te deja meter MENOS del monto, mete el máximo que deje y dime el monto real al anotarla.',
+    'Anótala EN CUANTO la coloques: mientras no esté anotada, el automático se aparta de esa posición pero',
+    'el libro no sabe que hay dinero en juego.', ''];
   for (const b of filas) {
     const minimo = +(b.odds_sombra * (1 - C.minOddsSlipPct)).toFixed(2);
     const esCs2 = b.familia === 'CS2_RONDAS';
+    const casa = String(b.casa || 'cloudbet').toUpperCase();
     const porQue = esCs2 ? 'familia CS2 — solo va a mano mientras la API siga cerrada'
+      : b.casa === 'pinnacle' ? 'Cloudbet no publica esta línea y Pinnacle sí: segunda casa a mano (orden 27-sep)'
       : (b.motivo === 'exposicion_maxima' || b.motivo === 'demasiados_intentos')
         ? 'tope de exposición del ejecutor — el auto no la colocará; decide tú si va a mano'
         : MOTIVOS_CUENTA.test(String(b.motivo || ''))
           ? 'cuenta restringida en la API'
           : `la API no llega a este partido (${String(b.motivo || '').replace(/_/g, ' ')})`;
     cuerpo.push(
-      `▸ ${b.match}  (${b.league || '?'})`,
+      `▸ ${b.match}  (${b.league || '?'}) · CASA: ${casa}`,
       esCs2
         ? `  Mercado: CS2 — Hándicap de rondas (incl. prórroga) · mapa ${b.mapa != null ? b.mapa : '?'}`
         : `  Mercado: Total de tarjetas (Bookings) — UNDER ${b.line}`,
@@ -24066,6 +24105,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, name, bytes: buf.length, dir: CLUB_DATA_DISK });
     }
     // LISTAR los datos de clubes en el disco (verificación). ?name= descarga el archivo (para merges remotos).
+    // el censo de cobertura de tarjetas (27-sep): GET resume; POST &run=1 fuerza una pasada ahora
+    if (p === '/api/internal/censo-tarjetas') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const CT = require('./lib/censo-tarjetas');
+      if (req.method === 'POST' && url.searchParams.get('run') === '1') {
+        const r = await censoTarjetasJob();
+        return json(res, 200, { corrida: r, ...CT.resumen({ dir: CLUB_DATA_DISK }) });
+      }
+      return json(res, 200, CT.resumen({ dir: CLUB_DATA_DISK }));
+    }
     if (p === '/api/internal/clubs-data' && req.method === 'GET') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

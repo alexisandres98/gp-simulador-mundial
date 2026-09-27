@@ -354,6 +354,22 @@ Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthro
 - **College (totales y hándicaps, `real-executor/amfoot.js`): APAGADO el 27-sep por orden de Alexis**
   (`GP_REAL_AMFOOT_ENABLED=false` en Render). Cerró con 57 liquidadas, 21-34-2, −156,60 (−27,5 %). No volver a
   encenderlo sin su orden. Sonda: `/api/internal/real-amfoot?key=` (`cfg.canal`).
+- **Tarjetas under en Pinnacle, A MANO (27-sep, orden de Alexis: «expandir card under a Pinnacle manual para
+  aumentar el volumen con las líneas que en Cloudbet no tenemos»).** En el barrido de la sombra, una pick de
+  tarjetas under sin cuota ejecutable en Cloudbet y con Pinnacle cotizándola (archivo de cuotas, ≤60 min, misma
+  línea y lado) a ≤3 h del saque (`GP_REAL_CARDS_PINNACLE_HORAS`) nace como fila MANUAL del libro real
+  (`RE.crearManualCards`: `canal: 'manual'`, `casa: 'pinnacle'`, `motivo: 'solo_manual'`; mismo perímetro que
+  el auto: banda, veto de liga, ventana, una posición por partido+lado). Sale en el correo "PARA COLOCAR A
+  MANO" con la casa en cada fila; Alexis la anota en `/anotar`; se liquida por la pick. `colocar()` jamás envía
+  una fila `canal: 'manual'`; y si Cloudbet cuelga la línea después del aviso, el auto se aparta
+  (`posicion_en_canal_manual`). Interruptor `GP_REAL_CARDS_PINNACLE` (on; `0` apaga), stake
+  `GP_REAL_CARDS_PINNACLE_STAKE` (defecto el plano). Test: `node tests/manual-cards.test.js`.
+- **Censo de cobertura de tarjetas (27-sep):** `lib/censo-tarjetas.js`, job horario, mira los partidos con saque a
+  35-95 min en Cloudbet (todas las competiciones, femenino incluido) y Pinnacle (guest API, hijos
+  `units: 'Bookings'`) y anota por competición vistos / con mercado / máximo. Sonda
+  `/api/internal/censo-tarjetas?key=` (POST `&run=1` fuerza). Fichero `<disco clubes>/censo-tarjetas.json`.
+  `GP_CENSO_TARJETAS=0` apaga. Medido el 27-sep: **ni una competición femenina ni una división menor publica
+  tarjetas en ninguna de las dos casas**; el mercado existe en primeras y algunas segundas.
 - **Tope de cuenta en Cloudbet (27-sep):** la casa recorta a ESTA cuenta a ≈6 % del `maxStake` del mercado en
   tarjetas (3,8 % en TT) y solo lo dice al rechazar (`STAKE_ABOVE_MAX` con `stake: <tope>`); el ejecutor
   reenvía una vez a ese importe (`tope_cuenta`, `recorte_por_cuenta_pct`). `run=sondear_tope` no puede leerlo

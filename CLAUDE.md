@@ -294,6 +294,14 @@ propósito y el motor del Mundial solo conoce su cuadro. Ahora son ligas del mot
 - Tarjetas y córners necesitan `props-history-<key>.json` con ≥ 20 partidos en el disco de clubes (los escribe
   el fit; se suben con `/api/internal/clubs-data`). Sin ese fichero no nace ni una pick de tarjetas.
 - Test: `node tests/selecciones.test.js`. Registro: `docs/DECISIONES_EJECUTADAS.md` (26-sep).
+- **Panel completo y escudos (27-sep, orden de Alexis):** las tres competiciones tienen en el disco de clubes
+  `results-<key>.json` y `player-history-<key>.json` (pase AF, `scripts/clubs-af-datapass.js` con `pool:
+  'selecciones'`, resolución SOLO por id `tm_af<id>`), fotos de jugadores (`clubs-af-photos.js`), event data
+  FotMob (`fotmob-uefanl.json`, `fotmob-amistososel.json`; CONCACAF NL no tiene shotmap en FotMob → sin perfil
+  táctico) y escudos self-hosteados `public/logos/tm_af<id>.png` + `league-{uefanl,concacafnl,amistososel}.png`
+  (`scripts/gen-selecciones-logos.js`, fuente API-Football por id). Con eso `/api/clubs/match` da forma, H2H,
+  goals-fit, match intel, xG observado y estilo igual que una liga. `/api/clubs/match?key=$GP_EXPORT_KEY` abre
+  el cockpit sin sesión (solo lectura) para verificar.
 
 ## 🟣 POLYMARKET EN SOMBRA: DOS LIBROS (24-sep-2026)
 `propfirm/scan.js` genera señales (consenso sharp vs precio de Polymarket) y `propfirm/polyshadow.js` las

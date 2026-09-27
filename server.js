@@ -28461,7 +28461,11 @@ async function anotar(pid){
     // Cross-liga: cada liga se fitea alrededor de 1500 → comparación aproximada (flag cross_league, la UI avisa).
     if (p === '/api/clubs/match') {
       const sessEmail = sessionEmailFromReq(req);
-      if (!clubsAccessOk(sessEmail)) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
+      // 27-sep: la llave de exportación también abre el cockpit (solo lectura), para verificar desde fuera
+      // que un partido nuevo —selecciones— trae el panel completo sin tener que iniciar sesión de admin.
+      const xkMatch = process.env.GP_EXPORT_KEY || '';
+      const porLlave = !!xkMatch && url.searchParams.get('key') === xkMatch;
+      if (!clubsAccessOk(sessEmail) && !porLlave) { json(res, 404, { error: 'No encontrado' }); return; } // admin, o todos con la FUSIÓN abierta
       try {
         if (!global._clubsRatings) { try { global._clubsRatings = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'clubs', 'ratings.json'), 'utf8')); } catch { global._clubsRatings = { _meta: {}, leagues: {} }; } }
         const RT = global._clubsRatings || {};

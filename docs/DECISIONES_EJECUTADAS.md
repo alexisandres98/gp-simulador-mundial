@@ -454,3 +454,23 @@ sombra nueva ni dinero.
 
 Todo lo demás —CS2, LoL, Dota 2, Valorant, tenis, tenis de mesa, dardos, baloncesto, NFL, college, combate, F1,
 Polymarket— se queda como está, acumulando muestra, sin ingeniería de modelo.
+
+## 27-sep-2026 (tarde) — selecciones con escudo y panel completo; tenis, tenis de mesa y esports revisados
+
+**Selecciones (orden de Alexis: «ponle los logos de la selección» y «créales el panel de inteligencia completo»).**
+- Escudos: 222 selecciones del pool bajadas de API-Football por id (`public/logos/tm_af<id>.png`) y logos de las tres
+  competiciones desde FotMob (`league-uefanl/concacafnl/amistososel.png`). Script `gen-selecciones-logos.js`.
+- Datos: pase AF (`clubs-af-datapass.js`, resolución solo por id contra el pool): Nations League 214 partidos y
+  2,4 MB de jugador-partido; CONCACAF NL 130; amistosos 539 partidos y 7.266 filas. Fotos +4.728 jugadores.
+  Event data FotMob: NL 26 partidos con shotmap; amistosos en curso; CONCACAF NL sin shotmap en FotMob.
+- Con eso el cockpit de un partido de selecciones trae lo mismo que uno de liga: forma, H2H, goals-fit, match
+  intel (goleadores probables, radar del observer), xG observado, estilo (donde FotMob lo da) y alineaciones AF.
+
+**Tenis: no hay partidos porque The Odds API tiene las 46 claves de tenis inactivas hoy** (China Open incluido).
+El motor no tiene segunda fuente de cuotas; vuelve solo cuando la API active el siguiente torneo.
+**Tenis de mesa:** WTT Feeder Linz terminó el 27-sep y ni Cloudbet ni Pinnacle le pusieron líneas; China Smash
+empieza el 1-oct. Entre medias solo hay Youth Contenders (excluidos) y ligas privadas (RESTRICTED).
+**Esports y la auditoría:** medido, no. `cs2.js` no se tocó (el hallazgo A16 se dejó en módulo aparte); la
+sombra de CS2 fue +8,3 % entre el 16 y el 21-sep y cae desde el 21-sep (−19 %) con un calendario de tercer
+nivel (Challenger Leagues, iBP, NODWIN, FERJEE In House: 0-5, 0-6, 2-12) frente a BLAST, Major e IEM antes.
+LoL sí cambió el 16-sep (M7) y ya perdía antes (−7 %). Nada que revertir.

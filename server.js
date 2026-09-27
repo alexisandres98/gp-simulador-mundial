@@ -24774,6 +24774,37 @@ async function anotar(pid){
             { odds: +(url.searchParams.get('odds') || 0), stake: +(url.searchParams.get('stake') || 0) });
           return json(res, 200, out5);
         }
+        // `run=anotar_extra&pick=&odds=&stake=[&casa=&nota=]` (27-sep): Alexis colocó A MANO una segunda apuesta
+        // sobre una posición que el ejecutor YA tenía colocada (la prueba del tope de cuenta en Pumas–San Luis:
+        // 10,31 por API + 10,32 a mano). El libro no puede ignorar dinero que está en juego: nace una fila
+        // hermana con la MISMA pick (se liquida por el resultado de la pick, vía manual), marcada como extra
+        // para que el análisis por posición pueda excluirla. No pasa por colocar() ni por el perímetro: es un
+        // asiento de algo que ya ocurrió, no una decisión del ejecutor.
+        if (run === 'anotar_extra') {
+          const pid = String(url.searchParams.get('pick') || '');
+          const o = +(url.searchParams.get('odds') || 0), st = +(url.searchParams.get('stake') || 0);
+          if (!(o > 1) || !(st > 0)) return json(res, 200, { error: 'hacen falta odds > 1 y stake > 0' });
+          const LX = RE.load();
+          const base = LX.bets.find((b) => b.pick_id === pid);
+          if (!base) return json(res, 200, { error: 'sin fila con esa pick', pick: pid });
+          const ya = LX.bets.filter((b) => b.pick_id === pid && b.extra_manual).length;
+          const fila = {
+            pick_id: base.pick_id, shadow_id: base.shadow_id || null, familia: base.familia, canal: 'manual',
+            casa: String(url.searchParams.get('casa') || 'cloudbet'), extra_manual: true, extra_n: ya + 1,
+            match: base.match, league: base.league, banda: base.banda || null, line: base.line, side: base.side,
+            kickoff_at: base.kickoff_at, ceid: base.ceid || null, odds_sombra: base.odds_sombra, model_prob: base.model_prob,
+            stake: st, odds_real: o, status: 'PLACED', via: 'manual', motivo: null,
+            slippage_pct: base.odds_sombra > 0 ? +(100 * (o / base.odds_sombra - 1)).toFixed(2) : null,
+            at: new Date().toISOString(), placed_at: new Date().toISOString(), envios: 0, intentos: 0,
+            nota: url.searchParams.get('nota') || 'apuesta adicional colocada a mano por Alexis',
+          };
+          LX.bets.push(fila);
+          const dX = LX.dias[new Date().toISOString().slice(0, 10)] || (LX.dias[new Date().toISOString().slice(0, 10)] = { pnl: 0, apostado: 0, n: 0 });
+          dX.apostado += st; dX.n += 1;
+          if (LX.saldo && typeof LX.saldo.amount === 'number') { LX.saldo.amount = +(LX.saldo.amount - st).toFixed(2); LX.saldo.estimado = true; }
+          RE.save();
+          return json(res, 200, { anotada: fila.match, linea: fila.line, odds: o, stake: st, extra_n: fila.extra_n, junto_a: { stake: base.stake, odds: base.odds_real, status: base.status } });
+        }
         // `run=filas[&estado=PENDIENTE]`: el libro fila a fila — lo que el GET resume en conteos. Para
         // elegir a mano qué colocar hace falta VER las filas, no contarlas.
         if (run === 'filas') {

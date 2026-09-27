@@ -14829,6 +14829,7 @@ async function shadowSweep() {
         }
       } catch { /* el ensayo jamás rompe el barrido */ }
       await realAvisoApuestaManual().catch(() => {});
+      await realAvisoTope().catch(() => {});
       await realAvisoPrimera().catch(() => {});
       await realAvisoDivergencia().catch(() => {});
       await realAvisoSaldo().catch(() => {});
@@ -15263,6 +15264,64 @@ async function realAvisoPrimera() {
 // de $2.000: es una decisión tomada a sabiendas, y su consecuencia es que la cartera se agota antes que las
 // señales. Este aviso existe para que Alexis se entere por un correo y no por una lista de apuestas selladas
 // como `sin_fondos` el lunes siguiente. Una vez por umbral y por día, para no convertirlo en ruido.
+// EL TOPE DE LA CUENTA, POR CORREO (27-sep, orden de Alexis): «para los partidos que no te deje colocar los
+// 30, envíame un correo para yo intentar hacerlo manual y ver si me permite, y así confirmamos si es la API o
+// la cuenta». Cada vez que la casa contesta STAKE_ABOVE_MAX con un tope por debajo de lo pedido, sale UN
+// correo por fila con la selección exacta, el máximo que publicaba el mercado, el tope que devolvió la cuenta
+// y lo que el ejecutor llegó a colocar a ese tope. El correo pide probar A MANO el resto (lo pedido menos lo
+// colocado), para que la posición total siga siendo la de la regla y la prueba sea limpia. Marca por fila
+// (`aviso_tope`), así el barrido de diez minutos no lo repite. `GP_REAL_AVISO_TOPE=0` lo apaga.
+async function realAvisoTope({ prueba = null } = {}) {
+  if (/^(0|false|no|off)$/i.test(String(process.env.GP_REAL_AVISO_TOPE || '').trim())) return 0;
+  const RE = require('./real-executor/store');
+  const C = RE.CFG();
+  if (!C.enabled && !prueba) return 0;
+  const L = RE.load();
+  const ahora = Date.now();
+  const filas = prueba ? [prueba] : L.bets.filter((b) => b.tope_at && !b.aviso_tope && b.tope_pedido > 0
+    && Number.isFinite(b.tope_cuenta_raw) && b.tope_cuenta_raw < b.tope_pedido
+    && b.kickoff_at && Date.parse(b.kickoff_at) > ahora
+    && ahora - Date.parse(b.tope_at) < 6 * 3600e3);
+  if (!filas.length) return 0;
+  const adminTo = (process.env.ADMIN_EMAILS || 'alexisgomezico@gmail.com').split(',')[0].trim();
+  let enviados = 0;
+  for (const b of filas) {
+    b.aviso_tope = new Date().toISOString();
+    if (!mailer.isConfigured()) continue;
+    const colocado = (b.status === 'PLACED' || b.status === 'EN_ACEPTACION' || b.status === 'SETTLED') ? Number(b.stake) || 0 : 0;
+    const resto = Math.max(0, +(b.tope_pedido - colocado).toFixed(2));
+    const lado = b.side === 'under' ? 'Under' : b.side === 'over' ? 'Over' : (b.side || '');
+    const mercado = b.familia === 'CARDS' || !b.familia ? 'Total de tarjetas (Total Bookings / booking points 1-2)' : (b.market_key || b.familia);
+    const precio = b.odds_real || b.precio_vivo || b.odds_sombra;
+    const saque = new Date(b.kickoff_at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+    const pct = b.max_mercado ? (100 * b.tope_cuenta_raw / b.max_mercado).toFixed(1) + ' %' : '?';
+    const asunto = `Tope de cuenta ${b.tope_cuenta_raw} en ${b.match} · prueba a mano ${resto || b.tope_pedido}`;
+    const cuerpo = [
+      `LA CASA NO DEJÓ COLOCAR ${b.tope_pedido} — ${b.match}${b.league ? ' (' + b.league + ')' : ''}`,
+      '',
+      `Selección: ${mercado} · ${lado} ${b.line} @ ${precio}`,
+      `Saque: ${saque}`,
+      `Máximo que publicaba el mercado (API, maxStake): ${b.max_mercado != null ? b.max_mercado : '?'}`,
+      `Tope que contestó la cuenta (STAKE_ABOVE_MAX): ${b.tope_cuenta_raw}  (${pct} del máximo del mercado)`,
+      colocado ? `El ejecutor reenvió a ese tope y quedó colocado: ${colocado} @ ${precio} (estado ${b.status}).`
+        : `El ejecutor NO colocó nada (tope por debajo del mínimo ${C.stakeMin} o reenvío fallido; estado ${b.status}, motivo ${b.motivo || '-'}).`,
+      '',
+      `PRUEBA A MANO: entra en la web de Cloudbet, busca ${b.match}, mercado "${mercado}", ${lado} ${b.line},`,
+      `y teclea ${resto || b.tope_pedido}. Si te la acepta, el tope es de la API y no de la cuenta. Si te contesta un máximo,`,
+      `apunta el número: si es ${b.tope_cuenta_raw}, es la cuenta.`,
+      colocado ? `(Con ${resto} a mano la posición total queda en ${b.tope_pedido}, que es lo que pedía la regla.)` : '',
+      '',
+      'Dime en el chat qué te contestó y a cuánto entró, para anotarlo en el libro.',
+    ].filter((x) => x !== '').join('\n');
+    try {
+      await mailer.sendMail({ to: adminTo, noListUnsub: true, subject: '[GP Real] ' + (prueba ? '(PRUEBA) ' : '') + asunto, text: cuerpo,
+        html: `<pre style="font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.5">${cuerpo.replace(/</g, '&lt;')}</pre>` });
+      enviados++;
+    } catch (e) { console.error('[real] aviso tope:', e.message); }
+  }
+  if (!prueba) RE.save();
+  return enviados;
+}
 async function realAvisoSaldo() {
   const RE = require('./real-executor/store');
   const C = RE.CFG();
@@ -24714,6 +24773,17 @@ async function anotar(pid){
             cuota_viva: rc.precio_vivo || null, cuota_real: rc.odds_real || null,
             error_casa: rc.error_casa || null, http: rc.http || null,
             respuesta: rc.respuesta || null });
+        }
+        // `run=aviso_tope[&test=1]` (27-sep): fuerza el correo del tope de cuenta; con `test=1` manda uno de
+        // muestra con una fila inventada (no toca el libro) para comprobar que el correo llega y se lee bien.
+        if (run === 'aviso_tope') {
+          const prueba = url.searchParams.get('test') === '1' ? {
+            match: 'Pumas UNAM vs Atlético San Luis (PRUEBA)', league: 'ligamx', familia: 'CARDS', side: 'under', line: 4.5,
+            precio_vivo: 1.95, status: 'PLACED', stake: 9.33, kickoff_at: new Date(Date.now() + 3 * 3600e3).toISOString(),
+            tope_pedido: 30, max_mercado: 157, tope_cuenta_raw: 9.33, tope_at: new Date().toISOString(),
+          } : null;
+          const n = await realAvisoTope({ prueba }).catch((e) => ({ error: e.message }));
+          return json(res, 200, { enviados: n, prueba: !!prueba });
         }
         // `run=sondear_tope&event=<id Cloudbet>&market=<marketUrl>[&stake=]` (27-sep): ¿cuánto deja apostar
         // ESTA cuenta en una selección concreta? La casa no lo publica: `maxStake` es el tope del MERCADO y el

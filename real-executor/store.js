@@ -704,6 +704,12 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
     // mínimo nuestro, se reenvía UNA vez, ya mismo, a ese importe, con referencia nueva (la casa consumió la
     // anterior) y anotando el recorte para que el registro diga cuánto deja apostar la cuenta.
     const topeCuenta = Number(cuerpo.stake);
+    if (cod === 'STAKE_ABOVE_MAX' && Number.isFinite(topeCuenta) && !fila._reenviado_al_tope) {
+      // lo que hace falta para el aviso a Alexis (27-sep: «si no te deja colocar los 30, mándame un correo y
+      // lo intento a mano»): cuánto pedimos, cuánto publicaba el mercado y cuánto contestó la cuenta.
+      fila.tope_pedido = stakeFinal; fila.max_mercado = sel.maxStake != null ? +Number(sel.maxStake).toFixed(2) : null;
+      fila.tope_cuenta_raw = topeCuenta; fila.tope_at = new Date().toISOString();
+    }
     if (cod === 'STAKE_ABOVE_MAX' && Number.isFinite(topeCuenta) && topeCuenta >= C.stakeMin && !fila._reenviado_al_tope) {
       const st2 = Math.floor(topeCuenta * 100) / 100;
       fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios);

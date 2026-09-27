@@ -19,7 +19,17 @@ const FOTMOB = { brasileirao: 268, mls: 130, ligamx: 230, argentina: 112, colomb
   // GOTCHA: superettan NO es 8815 (esa es la Super League 2 GRIEGA) — es 168.
   paraguay: 199, j1: 223, premier: 47, laliga: 87, bundesliga: 54, seriea: 55, ligue1: 53,
   liga3: 208, ligue2: 110, bundesliga2: 146, eredivisie: 57, superettan: 168, austria: 38, escocia: 64,
-  championship: 48, league1: 108, league2: 109, serieb: 86, laliga2: 140, portugal: 61, belgica: 40, turquia: 71, grecia: 135, frauen: 9676 };
+  championship: 48, league1: 108, league2: 109, serieb: 86, laliga2: 140, portugal: 61, belgica: 40, turquia: 71, grecia: 135, frauen: 9676,
+  // SELECCIONES (27-sep): ids verificados contra /allLeagues. La Nations League son cuatro ligas en FotMob
+  // (A-D) y aquí una sola competición, así que el valor puede ser un array de primaryIds. Los tres keys
+  // resuelven equipos contra el pool `selecciones` (POOL), no contra una liga propia.
+  uefanl: [9806, 9807, 9808, 9809], concacafnl: 9821, amistososel: 114 };
+const POOL = { uefanl: 'selecciones', concacafnl: 'selecciones', amistososel: 'selecciones' };
+// nombres de FotMob → nombres de API-Football (los del pool) para las selecciones que difieren
+const ALIAS_SEL = { 'czech republic': 'czechia', 'turkey': 'turkiye', 'united states': 'usa', 'korea republic': 'south korea', 'korea dpr': 'north korea',
+  'north macedonia': 'fyr macedonia', 'macedonia': 'fyr macedonia', 'republic of ireland': 'rep of ireland', 'ireland': 'rep of ireland',
+  'cape verde': 'cape verde islands', 'dr congo': 'congo dr', 'congo dr': 'congo dr', 'cote d ivoire': 'ivory coast', 'uae': 'united arab emirates',
+  'st vincent and the grenadines': 'st vincent grenadines', 'saint vincent and the grenadines': 'st vincent grenadines', 'saint kitts and nevis': 'st kitts and nevis' };
 
 const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\b(fc|cf|sc|ec|ac|afc|cd|club|de|do|da)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -36,7 +46,7 @@ const ALIAS = {
   'argentinos jrs': 'argentinos juniors',
 };
 function resolverFor(league) {
-  const L = RT.leagues[league] || {};
+  const L = RT.leagues[POOL[league] || league] || {};
   const full = {}, last = {}, dup = {};
   for (const [id, t] of Object.entries(L.ratings || {})) {
     const n = normName(t.name); if (!n) continue;
@@ -47,7 +57,7 @@ function resolverFor(league) {
   const names = Object.entries(L.ratings || {}).map(([id, t]) => ({ id, n: normName(t.name) }));
   return function (raw) {
     let n = normName(raw); if (!n) return null;
-    n = ALIAS[n] || n;
+    n = ALIAS[n] || ALIAS_SEL[n] || n;
     if (full[n]) return full[n];
     // contains en ambos sentidos (nombre de FotMob vs ratings)
     const hit = names.find(x => x.n && (x.n === n || x.n.indexOf(n) >= 0 || n.indexOf(x.n) >= 0));
@@ -66,8 +76,10 @@ function resolverFor(league) {
     const resolve = resolverFor(lg);
     const outFile = path.join(OUTDIR, `fotmob-${lg}.json`);
     const store = fs.existsSync(outFile) ? JSON.parse(fs.readFileSync(outFile, 'utf8')) : { league: lg, primaryId: FOTMOB[lg], done: {}, matches: [] };
-    console.log(`\n== ${lg} (primaryId ${FOTMOB[lg]}) — ${store.matches.length} ya guardados ==`);
-    const fx = await fotmob.leagueFixtures(FOTMOB[lg]).catch(() => []);
+    console.log(`\n== ${lg} (primaryId ${JSON.stringify(FOTMOB[lg])}) — ${store.matches.length} ya guardados ==`);
+    // varios primaryIds por competición (Nations League A-D): se concatenan sus calendarios
+    const fx = [];
+    for (const pid of [].concat(FOTMOB[lg])) fx.push(...(await fotmob.leagueFixtures(pid).catch(() => [])));
     const finished = fx.filter(m => m.finished && !store.done[m.matchId]);
     console.log(`   fixtures ${fx.length}, finished pendientes ${finished.length}${LIMIT ? ` (cap ${LIMIT})` : ''}`);
     let added = 0, unmatched = 0, noshots = 0;

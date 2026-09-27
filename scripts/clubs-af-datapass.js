@@ -23,6 +23,13 @@ const PASS = [
   { key: 'libertadores', af: 13, seasons: [2026] },
   { key: 'sudamericana', af: 11, seasons: [2026] },
   { key: 'leaguescup', af: 772, seasons: [2026] },
+  // SELECCIONES (27-sep, orden de Alexis: «el mismo nivel de inteligencia que un partido de liga»). Las tres
+  // competiciones virtuales comparten el pool `selecciones` de ratings.json (ids tm_af<id>), así que la
+  // resolución es SOLO directa por id: los amistosos (liga 10 de AF) mezclan sub-21, sub-20 y clubes, y un
+  // "Spain U21" resuelto por nombre a España sería veneno para el player-intel. Sin id en el pool, se omite.
+  { key: 'uefanl', af: 5, seasons: [2024, 2026], pool: 'selecciones' },
+  { key: 'concacafnl', af: 536, seasons: [2024, 2025], pool: 'selecciones' },
+  { key: 'amistososel', af: 10, seasons: [2025, 2026], pool: 'selecciones' },
 ];
 const only = process.argv.slice(2);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -48,10 +55,11 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 
   for (const P of PASS) {
     if (only.length && !only.includes(P.key)) continue;
-    const L = (RT.leagues || {})[P.key] || { ratings: {} };
+    const L = (RT.leagues || {})[P.pool || P.key] || { ratings: {} };
     const nameIdx = {}; for (const [tid, t] of Object.entries(L.ratings || {})) nameIdx[norm(t.name)] = tid;
     const resolveTm = (afId, name) => {
       if (L.ratings[`tm_af${afId}`]) return `tm_af${afId}`;
+      if (P.pool) return null;   // pool de selecciones: solo por id (ver PASS)
       if (inv[afId]) return inv[afId];
       const n = norm(name); if (nameIdx[n]) return nameIdx[n];
       for (const k of Object.keys(nameIdx)) if (k && n && (k.includes(n) || n.includes(k))) return nameIdx[k];

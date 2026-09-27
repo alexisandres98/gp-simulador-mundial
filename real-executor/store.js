@@ -124,6 +124,9 @@ function refIdDe(pickId, envio = 0) {
   return [h.slice(0, 8), h.slice(8, 12), '4' + h.slice(13, 16),
     ((parseInt(h[16], 16) & 3) | 8).toString(16) + h.slice(17, 20), h.slice(20, 32)].join('-');
 }
+// la referencia de UNA FILA: los boletos hermanos (27-sep) comparten pick_id pero cada uno tiene su propia
+// semilla (`ref_seed`), así que sus referencias nunca chocan con las de la fila madre ni entre ellos.
+const refDe = (fila) => refIdDe(fila.ref_seed || fila.pick_id, fila.envios || 0);
 
 // Kelly/4 con tope, sobre el banco nocional VIVO. Es la misma fórmula del sombra a propósito: si aquí se
 // calculara distinto, la comparación entre papel y dinero dejaría de medir la ejecución y pasaría a medir
@@ -493,6 +496,51 @@ function resolverDiag(fila, slate) {
 }
 
 // EL INTENTO, sobre una fila que ya existe en el libro. Devuelve la fila.
+// ── EL RESTO EN BOLETOS HERMANOS (27-sep-2026, orden de Alexis) ──────────────────────────────────────────
+// Cuando la casa capa el stake por boleto (STAKE_ABOVE_MAX con tope), lo pedido se completa en boletos
+// sucesivos al tope: la misma pick, la misma selección, el mismo precio vivo, un boleto detrás de otro. Cada
+// boleto es una fila propia del libro (pick_id compartido, `boleto_de` + `boleto_n`, referencia con semilla
+// propia), así que confirma, liquida y concilia por su referencia como cualquier apuesta. NO es apilar líneas:
+// la doctrina de una posición por partido+lado sigue intacta (posicionOcupada ignora las filas de la misma
+// pick a propósito). Se para en cuanto la casa deja de aceptar, o al tope de boletos.
+// Interruptores: GP_REAL_BOLETOS (on; `0` apaga) · GP_REAL_BOLETOS_MAX (10).
+function boletosOn() { return !/^(0|false|off|no)$/i.test(String(process.env.GP_REAL_BOLETOS || '').trim()); }
+function boletosMax() { const n = Number(process.env.GP_REAL_BOLETOS_MAX); return n > 0 ? Math.floor(n) : 10; }
+async function completarEnBoletos(fila, { cbIdx = {}, slate = null, banda = null } = {}) {
+  const out = { pedido: Number(fila.tope_pedido) || 0, madre: Number(fila.stake) || 0, boletos: [], total: Number(fila.stake) || 0 };
+  if (!boletosOn()) { fila.boletos_nota = 'GP_REAL_BOLETOS apagado'; save(); return out; }
+  const C = CFG();
+  const tope = Number(fila.tope_cuenta) || 0;
+  if (!(tope >= C.stakeMin) || !(out.pedido > 0)) return out;
+  let resto = +(out.pedido - out.madre).toFixed(2);
+  let n = 0;
+  while (resto >= C.stakeMin && n < boletosMax()) {
+    n++;
+    const importe = Math.floor(Math.min(tope, resto) * 100) / 100;
+    const L = load();
+    const h = {
+      ref_seed: `${fila.pick_id}#boleto${n}`, envios: 0, pick_id: fila.pick_id, shadow_id: fila.shadow_id || null,
+      familia: fila.familia, boleto_de: fila.pick_id, boleto_n: n,
+      match: fila.match, league: fila.league, banda: fila.banda || banda || null, line: fila.line, side: fila.side,
+      kickoff_at: fila.kickoff_at || null, ceid: fila.ceid || null, cb_event_id: fila.cb_event_id || null,
+      odds_sombra: fila.odds_sombra, model_prob: fila.model_prob,
+      stake_objetivo: importe, at: new Date().toISOString(), status: 'PENDIENTE', intentos: 0,
+    };
+    h.ref_id = refDe(h);
+    L.bets.push(h);
+    save();
+    const r = await colocar(h, { cbIdx, slate, stakeFijo: importe, banda: h.banda });
+    const puesto = r && r.status === 'PLACED' ? Number(r.stake) || 0 : 0;
+    out.boletos.push({ n, pedido: importe, status: r ? r.status : 'ERROR', stake: puesto, motivo: (r && r.motivo) || null, error_casa: (r && r.error_casa) || null });
+    if (!puesto) break;
+    out.total = +(out.total + puesto).toFixed(2);
+    resto = +(resto - puesto).toFixed(2);
+  }
+  fila.boletos = out.boletos; fila.boletos_total = out.total; fila.boletos_resto = +(out.pedido - out.total).toFixed(2);
+  save();
+  return out;
+}
+
 async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } = {}) {
   const C = CFG(), L = load();
   // cinturón además del filtro de reintentar: una fila de otra familia (CS2 manual) apostaría al mercado
@@ -553,7 +601,10 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
   }
   // stake FIJO (1-sep): una orden humana explícita ("coloca esta con $29") manda sobre la fórmula.
   // Se respetan igual el tope duro y todos los frenos; solo se salta el cálculo de Kelly.
-  const stake = stakeFijo > 0 ? Math.min(CFG().stakeMax, +stakeFijo) : stakeDe(fila.model_prob, fila.odds_sombra);
+  // un boleto hermano (27-sep) lleva su importe objetivo en la fila: si `reintentar` lo recoge sin stakeFijo,
+  // pide ese resto y no el stake plano entero
+  const stake = stakeFijo > 0 ? Math.min(CFG().stakeMax, +stakeFijo)
+    : (Number(fila.stake_objetivo) > 0 ? Math.min(CFG().stakeMax, Number(fila.stake_objetivo)) : stakeDe(fila.model_prob, fila.odds_sombra));
   fila.stake = stake;
   if (stakeFijo > 0) fila.stake_fijado = +stakeFijo;
 
@@ -715,12 +766,26 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
     }
     if (cod === 'STAKE_ABOVE_MAX' && Number.isFinite(topeCuenta) && topeCuenta >= C.stakeMin && !fila._reenviado_al_tope) {
       const st2 = Math.floor(topeCuenta * 100) / 100;
-      fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+      fila.envios = (fila.envios || 0) + 1; fila.ref_id = refDe(fila);
       fila.tope_cuenta = st2; fila.recorte_por_cuenta_pct = +(100 * (st2 / stakeFinal - 1)).toFixed(1);
       fila._reenviado_al_tope = true;
       fila.detalle = `la casa aceptaba como máximo ${st2} (pedimos ${stakeFinal}): se reenvía a ese importe`;
       save();
-      return colocar(fila, { cbIdx, slate, stakeFijo: st2, banda });
+      const r2 = await colocar(fila, { cbIdx, slate, stakeFijo: st2, banda });
+      // EL RESTO EN BOLETOS (27-sep, orden de Alexis: «impleméntalo en boletos hasta que completemos el monto»).
+      // Medido en Pumas–San Luis: el tope de la cuenta es POR BOLETO, no por selección — la web aceptó un
+      // segundo boleto de 10,32 encima del de 10,31. Así que el resto hasta lo pedido se coloca en boletos
+      // hermanos al tope, uno detrás de otro, hasta completar o hasta que la casa diga que no.
+      if (r2 && r2.status === 'PLACED' && !fila.boleto_de) {
+        try { await completarEnBoletos(fila, { cbIdx, slate, banda }); } catch (e) { fila.boletos_error = String(e.message || e).slice(0, 120); save(); }
+      }
+      return r2;
+    }
+    // el tope de la cuenta no llega ni al mínimo nuestro: insistir cada diez minutos no cambia nada
+    if (cod === 'STAKE_ABOVE_MAX' && Number.isFinite(topeCuenta) && topeCuenta < C.stakeMin) {
+      fila.status = 'DESCARTADA'; fila.motivo = 'tope_de_cuenta_bajo';
+      fila.detalle = `la casa acepta como máximo ${topeCuenta.toFixed(2)} en esta selección y el mínimo del ejecutor es ${C.stakeMin}`;
+      save(); return fila;
     }
 
     // LA REFERENCIA SOLO SE QUEMA SI LA CASA LLEGÓ A HABLAR (25-ago). La casa consume la referencia cuando
@@ -730,7 +795,7 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
     // única protección real contra colocar dos veces lo mismo si resultara que sí llegó.
     // Se distingue por si hubo respuesta HTTP de la casa: sin código de estado, nadie nos contestó.
     const hablo = Number(r.status) >= 200;
-    if (hablo) { fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios); }
+    if (hablo) { fila.envios = (fila.envios || 0) + 1; fila.ref_id = refDe(fila); }
     return parar(hablo ? 'rechazada_por_la_casa' : 'no_llego_a_la_casa',
       { http: r.status, error_casa: cod || null, via: r.via || null });
   }
@@ -810,7 +875,7 @@ async function confirmar() {
           aceptadas++; continue;
         }
         if (estX === 'REJECTED') {
-          fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+          fila.envios = (fila.envios || 0) + 1; fila.ref_id = refDe(fila);
           fila.status = 'PENDIENTE'; fila.motivo = 'rechazada_por_la_casa'; fila.error_casa = rawX.betErrorCode || rawX.error || null;
           rechazadas++; continue;
         }
@@ -844,7 +909,7 @@ async function confirmar() {
       aceptadas++;
     } else if (est === 'REJECTED') {
       fila.envios = (fila.envios || 0) + 1;
-      fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+      fila.ref_id = refDe(fila);
       fila.status = 'PENDIENTE'; fila.motivo = 'rechazada_por_la_casa';
       fila.error_casa = raw.error || null;
       rechazadas++;
@@ -1653,7 +1718,7 @@ function migrarSinResolver({ aplicar = false } = {}) {
   return { candidatas: cand.length, aplicado: true, detalle: detalle.slice(0, 40) };
 }
 
-module.exports = { ligasVetadas, ligaVetada, intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, crearManualCards, cardsPinnacleOn, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
+module.exports = { ligasVetadas, ligaVetada, intentar, reintentar, reabrir, confirmar, colocar, anotarManual, crearManualCs2, crearManualCards, cardsPinnacleOn, completarEnBoletos, boletosOn, boletosMax, ensayoCs2, selectionForCs2, resolverPorNombre, resolverDiag, preflight, liquidar, reliquidar, pnlPorEstado, board, refrescarSaldo, stakeDe, kellyDe, refIdDe, load, save, CFG, migrarSinResolver,
   SEGMENTO, FAMILIA, LADO, CASA, LEDGER, cs2RealOn, movimiento, movimientosResumen, conciliacion,
   frenos /* 9-sep: el canal de tenis de mesa (tt.js) pasa por los MISMOS frenos de cartera */,
   // 15-sep (Fase 0 de la auditoría): la doctrina de UNA POSICIÓN POR PARTIDO + LADO vive aquí y solo aquí.

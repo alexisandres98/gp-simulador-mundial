@@ -381,7 +381,17 @@ Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthro
 - **Tope de cuenta en Cloudbet (27-sep):** la casa recorta a ESTA cuenta a ≈6 % del `maxStake` del mercado en
   tarjetas (3,8 % en TT) y solo lo dice al rechazar (`STAKE_ABOVE_MAX` con `stake: <tope>`); el ejecutor
   reenvía una vez a ese importe (`tope_cuenta`, `recorte_por_cuenta_pct`). `run=sondear_tope` no puede leerlo
-  sin apostar: la casa comprueba el saldo antes que el tope.
+  sin apostar: la casa comprueba el saldo antes que el tope. **Confirmado en la web el 27-sep** (Pumas–San
+  Luis: "Max bet $10" a mano, 10,31 por API): es la cuenta, no el ejecutor. **Y el tope es POR BOLETO, no por
+  selección** (la web aceptó un segundo boleto de 10,32 encima del de 10,31).
+- **El resto en BOLETOS hermanos (27-sep, orden de Alexis: «impleméntalo en boletos hasta que completemos el
+  monto»):** tras el reenvío al tope, `completarEnBoletos()` coloca el resto hasta lo pedido en boletos
+  sucesivos al tope (misma pick, misma selección, precio vivo), cada uno como fila propia del libro
+  (`boleto_de`, `boleto_n`, `ref_seed` propio → referencia propia; confirma, liquida y concilia como cualquier
+  apuesta). Para al primer rechazo o al tope `GP_REAL_BOLETOS_MAX` (10). `GP_REAL_BOLETOS=0` lo apaga. La madre
+  lleva `boletos[]`, `boletos_total`, `boletos_resto`. No apila líneas: `posicionOcupada` ignora las filas de
+  la misma pick a propósito. Tope < mínimo → `DESCARTADA tope_de_cuenta_bajo`. Test: `node tests/boletos.test.js`.
+  `run=anotar_extra&pick=&odds=&stake=` anota un boleto adicional colocado a mano sobre una posición ya colocada.
 
 ## Ejecutor en la sombra (paper-trading del edge)
 Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (regla congelada), sweep 10min,

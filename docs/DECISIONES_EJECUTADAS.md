@@ -474,3 +474,20 @@ empieza el 1-oct. Entre medias solo hay Youth Contenders (excluidos) y ligas pri
 sombra de CS2 fue +8,3 % entre el 16 y el 21-sep y cae desde el 21-sep (−19 %) con un calendario de tercer
 nivel (Challenger Leagues, iBP, NODWIN, FERJEE In House: 0-5, 0-6, 2-12) frente a BLAST, Major e IEM antes.
 LoL sí cambió el 16-sep (M7) y ya perdía antes (−7 %). Nada que revertir.
+
+## 27-sep-2026 (noche) — el tope es de la cuenta y por boleto; el resto se completa en boletos
+
+**Medido con la prueba manual de Alexis en Pumas–San Luis (under 3,5 @2,52):** la API recibió `STAKE_ABOVE_MAX`
+con tope 10,31 (5,9 % del máximo del mercado, 173,76) y la web le enseñó "Max bet $10" y le aceptó 10,32. Mismo
+tope por los dos caminos: **es la cuenta, no el ejecutor**. Y la web aceptó ese segundo boleto encima del primero:
+**el tope es por boleto, no por selección**. Posición final 20,63 @2,52, anotada en el libro (`anotar_extra`).
+
+**Orden de Alexis: «impleméntalo en boletos hasta que completemos el monto».** Hecho: `completarEnBoletos()` en
+`real-executor/store.js`. Tras el reenvío al tope, el resto hasta lo pedido sale en boletos hermanos al tope
+(misma pick y selección, precio vivo), cada uno fila propia con referencia propia. Se para al primer rechazo o a
+los 10 boletos. Interruptor `GP_REAL_BOLETOS`. No apila líneas (una posición por partido+lado sigue en pie; el
+test lo comprueba). Riesgo asumido y escrito: que el desk de Cloudbet lo lea como esquivar el límite y recorte
+más la cuenta; el libro medirá cuántos boletos acepta.
+
+Nota: `auditoria-banda.js` y `auditoria-duplicados.js` fallan igual antes y después de este cambio (sus partidos
+de mentira tienen el saque en el pasado y caducan). No es regresión; son audits sin fecha relativa.

@@ -697,6 +697,23 @@ async function colocar(fila, { cbIdx = {}, slate = null, stakeFijo = 0, banda } 
     // cualquier respuesta que NO sea de cuenta restringida limpia el contador: el problema era otro
     if (L.rechazos_cuenta && L.rechazos_cuenta.seguidos) L.rechazos_cuenta = { seguidos: 0, limpiado: new Date().toISOString() };
 
+    // EL TOPE DE LA CUENTA VIENE EN EL RECHAZO (27-sep, madrugada). Santos Laguna–Pachuca y Tigres–Puebla:
+    // la selección decía max 157 y 261, y la casa contestó `STAKE_ABOVE_MAX` con `stake: 9.33` — el máximo
+    // que ESTA cuenta puede apostar ahí (la casa recorta a la cuenta, no al mercado, y eso no se ve antes de
+    // enviar). Reintentar a 30 cada diez minutos era perder la apuesta. Si el tope que devuelve llega al
+    // mínimo nuestro, se reenvía UNA vez, ya mismo, a ese importe, con referencia nueva (la casa consumió la
+    // anterior) y anotando el recorte para que el registro diga cuánto deja apostar la cuenta.
+    const topeCuenta = Number(cuerpo.stake);
+    if (cod === 'STAKE_ABOVE_MAX' && Number.isFinite(topeCuenta) && topeCuenta >= C.stakeMin && !fila._reenviado_al_tope) {
+      const st2 = Math.floor(topeCuenta * 100) / 100;
+      fila.envios = (fila.envios || 0) + 1; fila.ref_id = refIdDe(fila.pick_id, fila.envios);
+      fila.tope_cuenta = st2; fila.recorte_por_cuenta_pct = +(100 * (st2 / stakeFinal - 1)).toFixed(1);
+      fila._reenviado_al_tope = true;
+      fila.detalle = `la casa aceptaba como máximo ${st2} (pedimos ${stakeFinal}): se reenvía a ese importe`;
+      save();
+      return colocar(fila, { cbIdx, slate, stakeFijo: st2, banda });
+    }
+
     // LA REFERENCIA SOLO SE QUEMA SI LA CASA LLEGÓ A HABLAR (25-ago). La casa consume la referencia cuando
     // recibe el envío, así que tras un rechazo suyo hay que estrenar otra. Pero si la petición NO llegó
     // —el reenviador caído, la red cortada, el tiempo agotado— la referencia sigue virgen, y estrenar una

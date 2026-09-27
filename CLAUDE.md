@@ -351,6 +351,13 @@ Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthro
   **tenis de mesa total de puntos en Cloudbet a $5 planos** (`real-executor/tt.js`, desde el 9-sep por orden de Alexis;
   `GP_REAL_TT_ENABLED`, `GP_REAL_TT_STAKE`; sonda `/api/internal/real-tt?key=`). Todos comparten libro, frenos,
   confirmación y liquidación por referencia.
+- **College (totales y hándicaps, `real-executor/amfoot.js`): APAGADO el 27-sep por orden de Alexis**
+  (`GP_REAL_AMFOOT_ENABLED=false` en Render). Cerró con 57 liquidadas, 21-34-2, −156,60 (−27,5 %). No volver a
+  encenderlo sin su orden. Sonda: `/api/internal/real-amfoot?key=` (`cfg.canal`).
+- **Tope de cuenta en Cloudbet (27-sep):** la casa recorta a ESTA cuenta a ≈6 % del `maxStake` del mercado en
+  tarjetas (3,8 % en TT) y solo lo dice al rechazar (`STAKE_ABOVE_MAX` con `stake: <tope>`); el ejecutor
+  reenvía una vez a ese importe (`tope_cuenta`, `recorte_por_cuenta_pct`). `run=sondear_tope` no puede leerlo
+  sin apostar: la casa comprueba el saldo antes que el tope.
 
 ## Ejecutor en la sombra (paper-trading del edge)
 Corriendo desde el 12-ago: bankroll simulado $2,000, segmento `cards_under_v1` (regla congelada), sweep 10min,

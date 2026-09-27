@@ -401,3 +401,28 @@ validación temporal (últimos 40 % de partidos, log-loss del 1X2 con el mismo `
 de dispersión **1,6** sobre el pool (log-loss 0,9384 → 0,9296 en 928 partidos): España 2114, Alemania 1891,
 Países Bajos 1856, Colombia 1872, México 1862. Con eso Alemania–Grecia da 0,67, Dinamarca–Gales 0,65 y
 Países Bajos en Serbia 0,67: dentro del ancla. El motor no se tocó; solo la escala del fichero.
+
+## 27-sep-2026 (mañana) — College apagado en dinero real, por orden de Alexis
+
+Alexis, 27-sep 10:30 UTC: «Detén el ejecutor de college football, no quiero que coloque más apuestas». Lo
+disparó ver una apuesta colocada para el viernes siguiente (Tulsa–North Texas +1,5 @1,92, 10 USDT, saque
+2-oct 01:00 UTC, colocada a las 10:27 UTC).
+
+| qué | antes | ahora | revertir |
+|---|---|---|---|
+| Canal REAL de college (totales y hándicaps) | `GP_REAL_AMFOOT_ENABLED` sin poner (= encendido) | **`false`** | poner `true` y desplegar |
+
+Verificado tras el despliegue: `/api/internal/real-amfoot` devuelve `cfg.canal: false`. Las señales abiertas
+(Virginia Tech–Pittsburgh y demás, 2-oct) quedan sin colocar; la fila PENDIENTE de Tulsa +3,5 se para con
+`canal_apagado` en el siguiente barrido. La apuesta ya colocada NO se cancela (Cloudbet no lo permite) y se
+liquida sola por referencia.
+
+**El número del canal al cerrarlo (24-sep 14:20 → 27-sep 10:27):** 57 liquidadas, 21-34-2, 570 USDT apostados,
+**P&L −156,60 (−27,5 %)**. Por familia: hándicap 26 filas −101,90; totales 31 filas −54,70. Una abierta (Tulsa
++1,5). La sombra de Polymarket (`pm_v2`) sigue midiendo college en papel; ahí no cambia nada.
+
+**Y la sonda del tope de cuenta (mismo día).** `run=sondear_tope&event=&market=` en `/api/internal/real` manda
+una petición por encima del saldo y devuelve la respuesta de la casa. Medido: la casa comprueba el saldo ANTES
+que el tope (`INSUFFICIENT_FUNDS`), así que por API no hay forma gratis de leer el tope de la cuenta; solo
+aparece con un stake que quepa en el saldo, y si no hay tope la apuesta entra. La prueba decisiva es manual en
+la web, o el propio ejecutor de tarjetas anotando `tope_cuenta` en el siguiente rechazo.

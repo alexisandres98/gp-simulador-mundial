@@ -24720,7 +24720,7 @@ async function anotar(pid){
         // de la cuenta solo aparece al rechazar (`STAKE_ABOVE_MAX` con `stake: <tope>`), y la web enseña un
         // "Max per bet" nominal que tampoco es ese número. La sonda manda una petición que la casa NO puede
         // aceptar —stake por encima del saldo disponible, nunca menos— y devuelve tal cual lo que contesta.
-        // No toca el libro; la referencia lleva prefijo `sonda`. Sirve para comparar, en la MISMA selección y
+        // No toca el libro; la referencia es un UUID suelto. Sirve para comparar, en la MISMA selección y
         // al mismo tiempo, lo que dice la API con lo que Alexis ve a mano en la web.
         if (run === 'sondear_tope') {
           const evId = String(url.searchParams.get('event') || '');
@@ -24738,7 +24738,7 @@ async function anotar(pid){
           // por encima del saldo SIEMPRE: una sonda que la casa pudiera aceptar sería una apuesta
           const pedido = Math.max(+(url.searchParams.get('stake') || 0), Math.ceil(saldo) + 25);
           const peticion = { currency: 'USDT', eventId: evId, marketUrl: mUrl, price: Number(sel.price), stake: pedido,
-            referenceId: 'sonda-' + Date.now().toString(36), acceptPriceChange: 'BETTER' };
+            referenceId: require('crypto').randomUUID(), acceptPriceChange: 'BETTER' };   // la casa exige UUID
           const r = await CBs.placeBet(cbk, peticion);
           const cuerpo = r.body || {};
           const cod = String(r.betError || cuerpo.betErrorCode || cuerpo.error || '').toUpperCase();

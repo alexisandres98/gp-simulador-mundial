@@ -32,6 +32,11 @@ const DIR = process.env.GP_PROPFIRM_DIR || (fs.existsSync('/data') ? '/data/prop
 const F = path.join(DIR, 'poly-sombra.json');
 const SENALES = path.join(DIR, 'senales.json');
 const BANCO = () => +(process.env.GP_POLYSOMBRA_BANCO || 2000);
+// DEPORTES FUERA DE LOS DOS LIBROS (28-sep, orden de Alexis: «quita CS2 de Polymarket»). CS2 acumulaba
+// −310,65 (local, 106) y −107,56 (visitante, 117) en la v1 y la vara pide cerrar sus cuatro familias en la
+// casa; seguir midiéndolo solo ensuciaba la lectura de `fútbol · No`. Las posiciones YA abiertas se liquidan
+// como siempre; lo que no entra es ninguna nueva. `GP_POLYSOMBRA_SIN_DEPORTES=` (vacío) lo reabre.
+const DEPORTES_FUERA = () => new Set(String(process.env.GP_POLYSOMBRA_SIN_DEPORTES == null ? 'cs2' : process.env.GP_POLYSOMBRA_SIN_DEPORTES).split(',').map((x) => x.trim().toLowerCase()).filter(Boolean));
 // EL TAMAÑO NO ES EL DE LA FIRM (1-sep, corrección de Alexis): la firm tiene $10.000 y REGLAS (pérdida
 // diaria, tope de posiciones, $100 planos); este banco es de $2.000 y Polymarket no tiene reglas. Se usa
 // la MISMA estructura del ejecutor de Cloudbet: Kelly/4 con tope del 1,5% del banco VIVO (compone con el
@@ -156,6 +161,7 @@ async function sincronizar(libro = 'v1') {
     // fuera de su perímetro de familias. Lo demás lo ven las dos y cada una decide con su regla.
     if (!esV2 && s.solo_v2) continue;
     if (esV2 && !V2.familiaOk(s)) continue;
+    if (DEPORTES_FUERA().has(String(s.deporte || s.game || '').toLowerCase())) { out.fuera_deporte = (out.fuera_deporte || 0) + 1; continue; }
     const ko = Date.parse(s.ko || 0);
     const pos = st.posiciones[s.id];
     // una tesis frenada por la comisión se vuelve a mirar en la siguiente pasada: el libro se mueve y la

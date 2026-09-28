@@ -491,3 +491,11 @@ más la cuenta; el libro medirá cuántos boletos acepta.
 
 Nota: `auditoria-banda.js` y `auditoria-duplicados.js` fallan igual antes y después de este cambio (sus partidos
 de mentira tienen el saque en el pasado y caducan). No es regresión; son audits sin fecha relativa.
+
+## 28-sep-2026 — CS2 fuera de la sombra de Polymarket (los dos libros)
+
+Alexis, 28-sep: «Quita CS2 de Polymarket». `GP_POLYSOMBRA_SIN_DEPORTES` (defecto `cs2`) en
+`propfirm/polyshadow.js`: ninguna señal de CS2 abre posición nueva ni en v1 ni en v2; las abiertas se liquidan
+como siempre. Motivo medido: v1 CS2 local −310,65 (106) y visitante −107,56 (117); la vara pide cerrar las
+cuatro familias de CS2 en la casa; −1.106 en la sombra de Cloudbet/Pinnacle la semana 21-27. La v1 deja de ser
+"control congelado" para CS2 desde esta fecha: su cohorte se lee hasta el 28-sep. Vacío = reabrir.

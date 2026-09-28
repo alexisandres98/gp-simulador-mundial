@@ -308,7 +308,7 @@ propósito y el motor del Mundial solo conoce su cuadro. Ahora son ligas del mot
 "coloca" contra el libro real del CLOB en DOS bancos simulados: **v1** (`poly-sombra.json`, congelada como
 control; −5,5 % neto en 450) y **v2** (`poly-sombra-v2.json`, regla en `propfirm/v2.js`: Shin en fútbol,
 listón NETO ≥ 3 pp, precio 0,40-0,70, entrar a ≤ 2 h del saque, familias que se sostuvieron + tenis, Valorant
-y Dota 2 solo en v2). `GP_PROPFIRM_SCAN` enciende el barrido (defecto on); `GP_PROPFIRM_ENABLED=false` solo
+y Dota 2 solo en v2). **CS2 fuera de los dos libros desde el 28-sep** (`GP_POLYSOMBRA_SIN_DEPORTES`, defecto `cs2`; vacío reabre). `GP_PROPFIRM_SCAN` enciende el barrido (defecto on); `GP_PROPFIRM_ENABLED=false` solo
 apaga el correo de la prop firm. Sonda `/api/internal/propfirm?key=` (`poly_sombra.v2`), export
 `picks-export?poly=2`. Ningún dinero real: la puerta es 100 resueltas y t ≥ 2 por deporte.
 

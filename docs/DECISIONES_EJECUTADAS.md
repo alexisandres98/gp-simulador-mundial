@@ -499,3 +499,14 @@ Alexis, 28-sep: «Quita CS2 de Polymarket». `GP_POLYSOMBRA_SIN_DEPORTES` (defec
 como siempre. Motivo medido: v1 CS2 local −310,65 (106) y visitante −107,56 (117); la vara pide cerrar las
 cuatro familias de CS2 en la casa; −1.106 en la sombra de Cloudbet/Pinnacle la semana 21-27. La v1 deja de ser
 "control congelado" para CS2 desde esta fecha: su cohorte se lee hasta el 28-sep. Vacío = reabrir.
+
+## 2-oct-2026 — Pinnacle cerró la cuenta de Alexis; canal manual de Pinnacle apagado
+
+Pinnacle (Balder Media Ltd) cerró la cuenta el 1-oct «permanentemente y sin opción de reapertura», citando la
+cláusula 2.1.9 de apertura de cuenta y sin dar motivo. **La plataforma nunca usó esa cuenta**: todo lo que leemos
+de Pinnacle (esports, dardos, tenis de mesa, censo de tarjetas) va por la clave pública de invitado
+(`guest.api.arcadia.pinnacle.com`), sin sesión. La cuenta tenía días y apenas apuestas: no es un recorte por
+ganar (Pinnacle no limita ganadores), es rechazo de alta: jurisdicción, KYC o cuenta vinculada.
+Consecuencias: (1) CS2 manual en Pinnacle descartado; (2) `GP_REAL_CARDS_PINNACLE=0` en Render (desplegado
+12:22 UTC): las picks de tarjetas sin cuota en Cloudbet ya no nacen como fila manual ni salen en el correo.
+El censo y las lecturas de precio de Pinnacle siguen igual. Reabrir = quitar la var.

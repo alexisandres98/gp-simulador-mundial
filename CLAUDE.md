@@ -370,7 +370,7 @@ Terminar mensajes de commit con: `Co-Authored-By: Claude Fable 5 <noreply@anthro
   el auto: banda, veto de liga, ventana, una posición por partido+lado). Sale en el correo "PARA COLOCAR A
   MANO" con la casa en cada fila; Alexis la anota en `/anotar`; se liquida por la pick. `colocar()` jamás envía
   una fila `canal: 'manual'`; y si Cloudbet cuelga la línea después del aviso, el auto se aparta
-  (`posicion_en_canal_manual`). Interruptor `GP_REAL_CARDS_PINNACLE` (on; `0` apaga), stake
+  (`posicion_en_canal_manual`). Interruptor `GP_REAL_CARDS_PINNACLE` (**`0` en Render desde el 2-oct: Pinnacle cerró la cuenta de Alexis el 1-oct, ver `docs/DECISIONES_EJECUTADAS.md`**; sin la var, on), stake
   `GP_REAL_CARDS_PINNACLE_STAKE` (defecto el plano). Test: `node tests/manual-cards.test.js`.
 - **Censo de cobertura de tarjetas (27-sep):** `lib/censo-tarjetas.js`, job horario, mira los partidos con saque a
   35-95 min en Cloudbet (todas las competiciones, femenino incluido) y Pinnacle (guest API, hijos

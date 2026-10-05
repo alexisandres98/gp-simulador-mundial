@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cierre Semana 41</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F7F4; --panel:#FFFFFF; --panel2:#EDF1EE; --ink:#16211C; --ink2:#4A5A53; --mute:#7C8A84; --line:#D5DDD8;
+  --acc:#0E6B61; --acc-soft:#D8ECE8;
+  --pos:#1E7A4B; --pos-soft:#DDF0E4; --neg:#B33A3A; --neg-soft:#F4DEDE; --warn:#A9741A; --warn-soft:#F5EAD3; --nil:#6E7B76; --nil-soft:#E6EAE7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+    --acc:#5FC4B6; --acc-soft:#173430;
+    --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+  --acc:#5FC4B6; --acc-soft:#173430;
+  --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0}
+main{max-width:980px;margin:0 auto;padding-block:28px 80px;padding-inline:20px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:40px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:600;margin-top:56px;padding-top:18px;border-top:2px solid var(--ink)}
+h3{font-size:18px;font-weight:600;margin-top:28px;color:var(--ink)}
+p{max-width:68ch;margin:12px 0;color:var(--ink)}
+p.lead{font-size:17px;color:var(--ink2)}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:10px}
+.meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);margin-top:14px;max-width:76ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:26px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:24px;font-weight:500;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .warn{color:var(--warn)} .mute{color:var(--mute)}
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);font-weight:600;background:var(--panel2)}
+td.n,th.n{text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.sum td{font-weight:600;background:var(--panel2)}
+.chip{display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.04em;padding:2px 7px;border-radius:3px;white-space:nowrap;border:1px solid transparent}
+.c-ok{background:var(--pos-soft);color:var(--pos)} .c-no{background:var(--neg-soft);color:var(--neg)} .c-w{background:var(--warn-soft);color:var(--warn)} .c-0{background:var(--nil-soft);color:var(--nil)}
+.note{background:var(--panel2);border-left:3px solid var(--acc);padding:12px 16px;margin:18px 0;max-width:76ch}
+.note.alert{border-left-color:var(--neg)}
+.note p{margin:6px 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:14px 0}
+.box{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.box h4{margin:0 0 6px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:16px;font-weight:600}
+.box p{font-size:14px;margin:6px 0;color:var(--ink2)}
+ol.rec{padding-left:22px;max-width:76ch} ol.rec li{margin:10px 0}
+ol.rec b{color:var(--ink)}
+ul.tight{max-width:76ch;padding-left:20px} ul.tight li{margin:6px 0}
+.toc{display:flex;flex-wrap:wrap;gap:8px 14px;margin:18px 0 0;font-size:13.5px}
+.toc a{color:var(--acc);text-decoration:none;border-bottom:1px solid var(--line)}
+.toc a:focus,.toc a:hover{border-bottom-color:var(--acc)}
+.tl{list-style:none;padding:0;margin:14px 0;max-width:76ch;border-left:2px solid var(--line)}
+.tl li{padding:6px 0 6px 16px;display:grid;grid-template-columns:120px 1fr;gap:10px}
+.tl time{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);white-space:nowrap}
+small{color:var(--mute)}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em}
+@media (max-width:480px){.tl li{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">GP Simulador · reporte semanal · semana 41 (28 sep – 4 oct 2026)</div>
+<h1>Cierre Semana 41</h1>
+<p class="lead">Fue una semana sin dinero: la caja de Cloudbet estuvo en cero seis de los siete días, el ejecutor colocó una sola posición (Necaxa–América, tres boletos, −24,47) y nueve señales de tarjetas en ligas buenas murieron por falta de fondos. Pinnacle cerró la cuenta de Alexis el 1-oct y el canal manual quedó apagado. En papel, el banco simulado perdió otros 561 y está en 815: CS2 y LoL se comieron la semana con torneos de tercer nivel. La "señal" de córners under de selecciones que el jueves iba 25-5 cerró la ventana 38-11, en +5,8 %: ruido, como se avisó. Y la conciliación abre un hueco nuevo: 74,00 sin anotar.</p>
+<div class="meta">Cifras leídas de las sondas internas de producción el lunes 5 de octubre entre las 08:36 y las 08:45 UTC. Semana ISO 40 cerrada: del lunes 28 a las 00:00 al domingo 4 a las 23:59 UTC; lo colocado o liquidado fuera de ese tramo se dice aparte. Vara de decisión: la de <code>lib/vara.js</code> — EV contra el cierre sin margen cuando el cierre aporta; prueba directa modelo-contra-precio cuando no. Una familia se confirma con t ≥ 2 sobre muestra propia y se descarta con t ≤ −2 y ≥ 100 liquidadas. Los ROI de sombra son en unidades de 1; los del ejecutor real, del banco simulado y de Polymarket son USDT. Regla nueva de este reporte: nada con menos de 100 liquidadas se llama prometedor.</div>
+<nav class="toc">
+  <a href="#resumen">Resumen</a><a href="#real">Dinero real Cloudbet</a><a href="#sombra">Banco simulado $2.000</a><a href="#tablero">Tablero de ventaja</a><a href="#futbol">Fútbol</a><a href="#esports">Esports</a><a href="#tenis">Tenis</a><a href="#hoops">Baloncesto</a><a href="#amfoot">Fútbol americano</a><a href="#combate">Combate</a><a href="#f1">F1 · Dardos · TT</a><a href="#poly">Polymarket y prop firm</a><a href="#costes">Físicas · afiliados · costes</a><a href="#feedback">Feedback y sugerencias</a>
+</nav>
+
+<h2 id="resumen">Resumen ejecutivo</h2>
+<div class="kpis">
+  <div class="kpi"><div class="l">Dinero real · semana</div><div class="v neg">−15,27</div><div class="s">4 liquidadas · Necaxa 3 boletos −24,47 · Tulsa +9,20</div></div>
+  <div class="kpi"><div class="l">Dinero real · desde el 24-ago</div><div class="v neg">−306,75</div><div class="s">sobre 6.761 · 173G/164P · ROI −4,5 %</div></div>
+  <div class="kpi"><div class="l">Tarjetas, regla vigente</div><div class="v pos">+229,02</div><div class="s">67 filas sueltas fuera de eficientes · 43-24 · +12,3 % · desde el 13-sep: 25, +160,28</div></div>
+  <div class="kpi"><div class="l">Banco simulado · semana ISO</div><div class="v neg">−542,11</div><div class="s">317 liquidadas (146-171) · CS2 −298 · LoL −268</div></div>
+  <div class="kpi"><div class="l">Banco simulado · desde el 12-ago</div><div class="v neg">−1.185,07</div><div class="s">de 2.000 a 814,93 · ROI −1,45 %</div></div>
+  <div class="kpi"><div class="l">Polymarket v2 · semana</div><div class="v neg">−83,40</div><div class="s">107 resueltas · −3,0 % · acumulado −353,61 (189)</div></div>
+  <div class="kpi"><div class="l">Saldo Cloudbet</div><div class="v neg">0,01</div><div class="s">0 abiertas · conciliación −74,00 sin anotar · parada "caja" saltada</div></div>
+</div>
+
+<h3>Las tres cosas que decidí mirar esta semana</h3>
+<p><b>1. Qué pasó con la caja.</b> La semana empezó con 0,00 en Cloudbet tras Necaxa (lunes 02:24). El jueves 2 a las 05:23 se liquidó Tulsa–North Texas +1,5 (college, la última abierta del canal apagado): +9,20, y la cuenta volvió a 19,20. El sábado 4 a las 12:56 la sonda leyó 0,01. Entre medias el ejecutor no colocó nada: esos 19,19 salieron a mano, igual que los 54,81 de la semana anterior. <b>Hueco total sin anotar: 74,00.</b> Mientras tanto nacieron once filas de tarjetas under en Argentina, Brasil B y Brasileirão (nueve posiciones distintas, todas en bandas no eficientes) y las once caducaron <code>sin_fondos</code>. En papel esas nueve quedaron 5-3 con +0,7 unidades: no se perdió dinero, se perdió muestra. Y ya hay seis más para el miércoles 7 (Brasileirão entre semana) muriendo por lo mismo.</p>
+<p><b>2. Qué hizo la única familia que gana cuando no hay con qué apostar.</b> La sombra de tarjetas (<code>cards_under_v1</code>) liquidó 27 en la semana: 15-12, +2,7 %. En el feed de clubes, tarjetas under por banda: intermedia 8-3 (+21,9 %), eficiente 6-5 (+1,8 %), blanda 0-2. El acumulado del feed sigue diciendo lo mismo que hace un mes: under en no eficientes +15,0 % en 263 (intermedia) y +34,5 % en 50 (blanda); en eficientes −1,0 % en 231. La cohorte del dinero real con la regla vigente añade los tres boletos de Necaxa y queda en 67 filas, 43-24, +229,02; desde el 13-sep, la línea de parada "núcleo" cuenta 25 apuestas y +160,28. Es la familia, no es la semana: la semana fue plana porque hubo dos días de ligas buenas y cero fondos.</p>
+<p><b>3. Qué hizo la señal que el jueves parecía algo.</b> El 2-oct córners under en Nations League iba 25-5 (+13,8 %) y lo presenté como "lo más interesante en semanas". La ventana del 3-4 de octubre fue 7-5 y 6-6 el lunes; al cierre de la semana la familia va <b>38-11, +5,8 %</b>, a cuota media 1,39 y con margen de 3,95-4,50 % por lado en córners. Treinta partidos oscilan entre +15 % y −15 % sin que haya nada debajo. Queda escrita la regla: por debajo de 100 liquidadas este reporte no usa la palabra prometedor.</p>
+
+<div class="note alert">
+  <p><b>Lo que hay que anotar hoy:</b> conciliación al cierre: depósitos 2.866,91 − retiros 2.486,15 − 306,75 realizado − 0 expuesto = <b>74,01 esperado</b>; real 0,01; diferencia <b>−74,00</b>. Son dos movimientos a mano sin anotar: 54,81 (las cinco apuestas discrecionales del 30-sep: Noruega, Alemania, República Dominicana y dos de Inter Miami) y 19,19 (entre el 2 y el 4 de octubre). Con stake y cuota de cada una se cierran los dos en cinco minutos. La línea de parada por caja está saltada (0,01 contra un suelo de 5) y el canal de tarjetas no coloca nada hasta que haya depósito.</p>
+</div>
+
+<h2 id="real">Dinero real en Cloudbet</h2>
+<h3>Desde el inicio (24-ago), que es lo que decide</h3>
+<div class="tw"><table>
+<tr><th>canal</th><th class="n">liquidadas</th><th class="n">G-P</th><th class="n">apostado</th><th class="n">P&amp;L</th><th class="n">ROI</th><th>estado</th></tr>
+<tr><td>Tarjetas under</td><td class="n">167</td><td class="n">98-69</td><td class="n">5.412,52</td><td class="n neg">−92,42</td><td class="n neg">−1,71 %</td><td><span class="chip c-w">encendido · caja 0,01</span></td></tr>
+<tr><td>College totales y hándicaps</td><td class="n">56</td><td class="n">22-34</td><td class="n">560,00</td><td class="n neg">−147,40</td><td class="n neg">−26,32 %</td><td><span class="chip c-0">apagado 27-sep · cerrado con Tulsa</span></td></tr>
+<tr><td>CS2 rondas</td><td class="n">54</td><td class="n">20-34</td><td class="n">489,00</td><td class="n neg">−66,93</td><td class="n neg">−13,69 %</td><td><span class="chip c-0">retirado (R2)</span></td></tr>
+<tr><td>Tenis de mesa totales</td><td class="n">60</td><td class="n">33-27</td><td class="n">300,00</td><td class="n">0,00</td><td class="n">0,00 %</td><td><span class="chip c-0">cerrado 16-sep (R1)</span></td></tr>
+<tr class="sum"><td>Total</td><td class="n">337</td><td class="n">173-164</td><td class="n">6.761,52</td><td class="n neg">−306,75</td><td class="n neg">−4,54 %</td><td></td></tr>
+</table></div>
+<p>Tarjetas, separado por lo que hoy sabemos que estaba mal y ya no se hace. Las dos primeras cohortes son errores corregidos (una posición por partido desde el 13-sep, veto de banda eficiente desde el 5-sep); la tercera es la regla vigente. La lista de eficientes es la <i>de hoy</i> (17 ligas) y volvió a cambiar ocho veces esta semana. Liga MX pasó a blanda, así que los tres boletos de Necaxa entran en la cohorte vigente.</p>
+<div class="tw"><table>
+<tr><th>cohorte</th><th class="n">n</th><th class="n">G-P</th><th class="n">apostado</th><th class="n">P&amp;L</th><th class="n">ROI</th><th class="n">t</th></tr>
+<tr><td>Apiladas (2+ líneas, mismo partido y lado)</td><td class="n">61</td><td class="n">30-31</td><td class="n">2.112,73</td><td class="n neg">−341,59</td><td class="n neg">−16,17 %</td><td class="n">−1,30</td></tr>
+<tr><td>Ligas eficientes (lista de hoy)</td><td class="n">42</td><td class="n">25-17</td><td class="n">1.466,01</td><td class="n neg">−4,32</td><td class="n neg">−0,29 %</td><td class="n">0,09</td></tr>
+<tr class="sum"><td>Sueltas, fuera de eficientes — la regla vigente (+ Necaxa)</td><td class="n">67</td><td class="n">43-24</td><td class="n">1.858,25</td><td class="n pos">+229,02</td><td class="n pos">+12,32 %</td><td class="n">1,2</td></tr>
+</table></div>
+<p>Vista desde la línea de parada del ejecutor, que es la que se juzga el 20-oct: <b>25 apuestas desde el 13-sep, +160,28</b> a stake 30 (+21 %). La línea empieza a aplicar en 60; a cinco apuestas por semana con caja, llega en noviembre; a cero por semana sin caja, no llega. Por EV declarado, sin cambios: las 149 colocadas con ventaja van −6,0 % y las 17 sin ventaja (control) +24,1 %.</p>
+
+<h3>Esta semana, hora a hora</h3>
+<ul class="tl">
+  <li><time>lun 28 · 02:24</time><span>Necaxa–América u3,5 @2,63: la casa capa a 9,60; el ejecutor reenvía al tope y completa en boletos: 9,60 + 9,60 + 5,27 aceptados, el cuarto rechazado con tope 0,00 (<code>tope_de_cuenta_bajo</code>). <span class="neg">−24,47</span>. <b>Corrección del reporte anterior</b>, que decía −14,87: son tres boletos, no dos. Saldo 0,00 a las 08:34.</span></li>
+  <li><time>lun 28 · 01:00</time><span>León–Juárez u3,5 caduca <code>sin_fondos</code>.</span></li>
+  <li><time>lun 28 · 08:27</time><span>Desplegado 9b43ec4: CS2 fuera de los dos libros de Polymarket (orden de Alexis).</span></li>
+  <li><time>mar 29</time><span>Botafogo-SP–Ponte Preta u6,5 descartada <code>sin_ventaja</code> (ganó en papel).</span></li>
+  <li><time>jue 1 · tarde</time><span><b>Pinnacle cierra la cuenta de Alexis</b> "permanentemente y sin opción de reapertura", citando la cláusula de apertura. La plataforma nunca usó esa cuenta: todo lo de Pinnacle va por la clave pública de invitado.</span></li>
+  <li><time>jue 2 · 00:00</time><span>Novorizontino–Goiás u5,5 caduca <code>sin_fondos</code> (ganó en papel).</span></li>
+  <li><time>jue 2 · 05:23</time><span>Tulsa–North Texas +1,5 (college, 10): <span class="pos">+9,20</span>. Saldo 19,20. Es la última fila del canal de college.</span></li>
+  <li><time>jue 2 · 12:22</time><span>Canal manual de Pinnacle apagado (<code>GP_REAL_CARDS_PINNACLE=0</code>), desplegado y registrado.</span></li>
+  <li><time>jue 2 – sáb 4</time><span>Independiente–Instituto (2 líneas), Boca–Unión, Avaí–Ceará, Defensa–San Lorenzo, Tucumán–Barracas, Mineiro–Bragantino (2 líneas) y Botafogo-SP–Vila Nova caducan <code>sin_fondos</code> con 23,01 y luego 0,01 en caja. En papel: 5-3, +0,7 u.</span></li>
+  <li><time>sáb 4 · 12:56</time><span>Saldo 0,01. Los 19,19 de Tulsa salieron a mano.</span></li>
+  <li><time>vie 3 – dom 4</time><span>Catorce señales de Nations League y LaLiga 2 descartadas por banda eficiente (correcto: <code>uefanl</code> y <code>laliga2</code> están vetadas).</span></li>
+</ul>
+
+<h3>Pinnacle: la segunda casa se cerró antes de empezar</h3>
+<div class="grid2">
+  <div class="box"><h4>Qué pasó</h4><p>Correo del 1-oct: cuenta cerrada; soporte el 2-oct: "permanently closed and not eligible for reopening", cláusula 2.1.9 (la de apertura de cuenta). Sin motivo.</p><p>La cuenta tenía días y apenas apuestas. Pinnacle no limita ganadores: esto es rechazo de alta (jurisdicción, KYC o cuenta vinculada), no un recorte por rendimiento.</p></div>
+  <div class="box"><h4>Qué cambia</h4><p>CS2 manual en Pinnacle queda descartado del todo (ya lo estaba por decisión del 27-sep). Tarjetas manuales en Pinnacle, apagadas el 2-oct sin haber nacido una sola fila. El censo y las lecturas de precio de Pinnacle siguen igual: van por la API de invitado, sin sesión.</p><p>La única segunda casa realista son los brókers asiáticos (Sportmarket, BetInAsia): KYC serio, mínimos altos, y no tiene sentido mientras el único canal que gana no tenga caja.</p></div>
+</div>
+
+<h2 id="sombra">Banco simulado de $2.000 (cuatro reglas congeladas)</h2>
+<div class="tw"><table>
+<tr><th></th><th class="n">desde el 12-ago</th><th class="n">semana ISO 28-4</th><th class="n">últimos 7 días (rodante)</th></tr>
+<tr><td>Liquidadas</td><td class="n">2.137 (979-956, 197 nulas)</td><td class="n">317 (146-171, 23 nulas)</td><td class="n">349 (149-179, 21 nulas)</td></tr>
+<tr><td>Apostado</td><td class="n">97.822,14</td><td class="n">4.681,36</td><td class="n">5.776,31</td></tr>
+<tr><td>P&amp;L</td><td class="n neg">−1.185,07</td><td class="n neg">−542,11</td><td class="n neg">−660,15</td></tr>
+<tr><td>ROI</td><td class="n neg">−1,45 %</td><td class="n neg">−11,6 %</td><td class="n neg">−13,4 %</td></tr>
+<tr><td>Banco</td><td class="n">814,93</td><td class="n">el lunes 28 estaba en 1.375,81</td><td class="n"></td></tr>
+</table></div>
+<p>Segunda semana seguida por debajo de donde empezó, y el stake medio ya es de 14 porque el Kelly del banco se encoge con él. Por segmento, semana 28-4 (stake plano, unidades):</p>
+<div class="tw"><table>
+<tr><th>segmento</th><th class="n">n</th><th class="n">G-P</th><th class="n">ROI semana</th><th class="n">t</th><th class="n">cuota</th><th class="n">ROI acumulado</th><th class="n">n acum.</th></tr>
+<tr><td><code>cards_under_v1</code></td><td class="n">27</td><td class="n">15-12</td><td class="n pos">+2,69 %</td><td class="n">−0,09</td><td class="n">1,857</td><td class="n pos">+6,17 %</td><td class="n">508</td></tr>
+<tr><td><code>corners_over_v1</code></td><td class="n">4</td><td class="n">3-1</td><td class="n pos">+26,34 %</td><td class="n">0,28</td><td class="n">1,455</td><td class="n neg">−7,71 %</td><td class="n">240</td></tr>
+<tr><td><code>cs2_rounds_v1</code></td><td class="n">165</td><td class="n">66-99</td><td class="n neg">−12,63 %</td><td class="n">−0,85</td><td class="n">2,567</td><td class="n neg">−0,67 %</td><td class="n">783</td></tr>
+<tr><td><code>lol_kills_hcp_v1</code></td><td class="n">121</td><td class="n">62-59</td><td class="n neg">−13,76 %</td><td class="n">−1,43</td><td class="n">1,766</td><td class="n neg">−9,25 %</td><td class="n neg">404</td></tr>
+</table></div>
+<p><b>CS2 y LoL se llevaron la semana entre los dos (−565 USDT).</b> CS2 por torneo: STK Ranked Qualifier 3-22 (−198,57), CCT Europe 15-21 (−82,70), Challenger League Sudamérica 1-6 (−111,15), y en el otro lado ESL Pro League 15-15 (+99,38) y ROG Journey 15-9 (+76,54). Es la misma lectura de hace una semana: en el primer nivel el modelo empata, en el tercero pierde, y la regla congelada no filtra por competición. Por casa, Cloudbet 29-45 (−15,9 %) y Pinnacle 37-54 (−9,6 %); Pinnacle acumula +8,65 % (398) y Cloudbet −10,7 % (385). LoL fue un solo torneo: EMEA Masters 47-46 y −234,19, con Pinnacle 46-43 (−165) y Cloudbet 16-16 (−103). Tarjetas y córners, con 31 liquidadas entre las dos, no mueven nada.</p>
+
+<h3>La cohorte que importa: tarjetas con las reglas exactas del ejecutor</h3>
+<p>Una por partido (la primera nacida) y fuera de las 17 ligas que hoy están en banda eficiente.</p>
+<div class="tw"><table>
+<tr><th>periodo</th><th class="n">n</th><th class="n">G-P</th><th class="n">ROI</th><th class="n">t</th><th class="n">cuota media</th></tr>
+<tr class="sum"><td>Acumulado desde el 12-ago</td><td class="n">228</td><td class="n">145-83</td><td class="n pos">+15,46 %</td><td class="n">2,88</td><td class="n">1,974</td></tr>
+<tr><td>Semana 28 sep – 4 oct</td><td class="n">13</td><td class="n">8-5</td><td class="n neg">−10,65 %</td><td class="n">−0,15</td><td class="n">1,792</td></tr>
+<tr><td>Semana 21-27 sep (ventana FIFA)</td><td class="n">17</td><td class="n">9-8</td><td class="n neg">−7,66 %</td><td class="n">−0,26</td><td class="n">2,080</td></tr>
+<tr><td>Septiembre (desde 31-ago)</td><td class="n">141</td><td class="n">83-58</td><td class="n">+2,72 %</td><td class="n">0,61</td><td class="n">1,920</td></tr>
+<tr><td>Agosto</td><td class="n">86</td><td class="n">61-25</td><td class="n pos">+43,86 %</td><td class="n">3,78</td><td class="n">2,069</td></tr>
+</table></div>
+<p>Tercera semana corta seguida (ventana FIFA, caja a cero, Liga MX con tope). Agosto sigue sosteniendo el acumulado y septiembre va en +2,7 % con 141. Por liga en la sombra esta semana (todas las líneas): Argentina 4-3, Brasil B 3-1, Brasileirão 2-0, Nations League 3-3, LaLiga 2 3-3, Liga MX 0-2. Dos de esas seis (Nations League y LaLiga 2) están vetadas al dinero real por banda.</p>
+
+<h2 id="tablero">Tablero de ventaja: todas las familias, todos los deportes</h2>
+<p>34 familias en la vara. <b>Invertibles: 1, y es un artefacto</b> (abajo). En observación: 1 · cerrar: 20 · muestra corta: 9 · sin cierre valorable: 2 · no invertible: 1. Puertas: 10 familias, las 10 en G0. Tablero de ventaja de precio (100 filas): 0 invertibles, 0 candidatas, 62 sin EV medible, 22 sin cierre valorable, 17 con muestra corta, 1 cerrar.</p>
+<h3>Confirmadas: baten al cierre con t ≥ 2</h3>
+<p>Ninguna. La fila <code>cs2 · HANDICAP · cloudbet</code> aparece como "invertible" con EV +34,6 % al cierre y t 6,33, y al mismo tiempo pierde −29,95 % de ROI real en 116 con t −2,52. Un contrato que paga −30 % no tiene +35 % de ventaja al cierre: el cierre de hándicap de mapas en Cloudbet se está guardando roto (CLV +34,5 % medio, desviación 54). Es un error de archivo de cierres, no una oportunidad, y hay que arreglarlo antes del 20-oct para que el tablero no diga "1 invertible". La única familia con ROI positivo y t ≥ 2 sobre muestra propia sigue siendo <code>cards_under_v1</code> (+11,08 %, t 2,20 sobre 362), y sigue sin cierre valorable para medir el EV.</p>
+<h3>Con 100 o más liquidadas, de mayor a menor muestra</h3>
+<div class="tw"><table>
+<tr><th>familia</th><th class="n">n</th><th>veredicto</th><th class="n">ROI</th><th class="n">t ROI</th><th class="n">CLV rec.</th><th class="n">EV al cierre</th></tr>
+<tr><td>sombra · cs2_rounds_v1</td><td class="n">788</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−2,5 %</td><td class="n">−0,58</td><td class="n">+1,15</td><td class="n">—</td></tr>
+<tr><td>cs2 · RONDAS_HANDICAP · cloudbet</td><td class="n">694</td><td><span class="chip c-w">no invertible</span></td><td class="n neg">−9,1 %</td><td class="n">−1,84</td><td class="n">+2,69</td><td class="n neg">−0,51 %</td></tr>
+<tr><td>cs2 · RONDAS_HANDICAP · pinnacle</td><td class="n">652</td><td><span class="chip c-no">cerrar</span></td><td class="n pos">+3,3 %</td><td class="n">0,62</td><td class="n">+0,97</td><td class="n neg">−4,98 %</td></tr>
+<tr><td>cs2 · RONDAS · pinnacle</td><td class="n">491</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−1,5 %</td><td class="n">−0,25</td><td class="n">+0,43</td><td class="n neg">−5,77 %</td></tr>
+<tr><td>cs2 · RONDAS_HANDICAP · bovada</td><td class="n">477</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−2,1 %</td><td class="n">−0,44</td><td class="n">+0,21</td><td class="n neg">−5,91 %</td></tr>
+<tr><td>sombra · lol_kills_hcp_v1</td><td class="n">399</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−10,3 %</td><td class="n neg">−2,37</td><td class="n">−0,45</td><td class="n">—</td></tr>
+<tr><td>sombra · cards_under_v1</td><td class="n">362</td><td><span class="chip c-w">sin cierre valorable</span></td><td class="n pos">+11,1 %</td><td class="n">2,20</td><td class="n">−1,25</td><td class="n">—</td></tr>
+<tr><td>cs2 · RONDAS · bovada</td><td class="n">306</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−4,3 %</td><td class="n">−0,75</td><td class="n">+0,39</td><td class="n neg">−5,57 %</td></tr>
+<tr><td>lol · KILLS_HANDICAP · bovada</td><td class="n">305</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−3,5 %</td><td class="n">−0,67</td><td class="n">+0,03</td><td class="n neg">−6,41 %</td></tr>
+<tr><td>lol · KILLS_HANDICAP · pinnacle</td><td class="n">292</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−9,4 %</td><td class="n">−1,82</td><td class="n">−0,19</td><td class="n neg">−7,89 %</td></tr>
+<tr><td>lol · KILLS_HANDICAP · cloudbet</td><td class="n">195</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−7,8 %</td><td class="n">−1,22</td><td class="n">−0,66</td><td class="n neg">−9,37 %</td></tr>
+<tr><td>valorant · RONDAS_HANDICAP · pinnacle</td><td class="n">195</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−2,1 %</td><td class="n">−0,19</td><td class="n">−0,08</td><td class="n neg">−5,14 %</td></tr>
+<tr><td>lol · KILLS · bovada</td><td class="n">191</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−2,2 %</td><td class="n">−0,27</td><td class="n">+1,14</td><td class="n neg">−4,73 %</td></tr>
+<tr><td>lol · KILLS_DNB · cloudbet</td><td class="n">187</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−3,3 %</td><td class="n">−0,65</td><td class="n">−0,88</td><td class="n neg">−10,62 %</td></tr>
+<tr><td>dota2 · KILLS_HANDICAP · pinnacle</td><td class="n">185</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−9,6 %</td><td class="n">−1,56</td><td class="n">−0,57</td><td class="n neg">−7,48 %</td></tr>
+<tr><td>cs2 · RONDAS · cloudbet</td><td class="n">177</td><td><span class="chip c-w">en observación</span></td><td class="n neg">−9,6 %</td><td class="n">−0,90</td><td class="n">+4,33</td><td class="n">+0,04 %</td></tr>
+<tr><td>sombra · corners_over_v1</td><td class="n">173</td><td><span class="chip c-w">sin cierre valorable</span></td><td class="n neg">−5,6 %</td><td class="n">−0,81</td><td class="n">−0,96</td><td class="n">—</td></tr>
+<tr><td>dota2 · KILLS · bovada</td><td class="n">163</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−13,4 %</td><td class="n">−1,66</td><td class="n">0,00</td><td class="n neg">−6,45 %</td></tr>
+<tr><td>cs2 · RONDAS_EQUIPO · pinnacle</td><td class="n">142</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−4,8 %</td><td class="n">−0,52</td><td class="n">+1,04</td><td class="n neg">−6,10 %</td></tr>
+<tr><td>dota2 · KILLS_EQUIPO · pinnacle</td><td class="n">137</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−2,6 %</td><td class="n">−0,30</td><td class="n">+0,11</td><td class="n neg">−6,54 %</td></tr>
+<tr><td>dardos · LEGS_HCP · cloudbet</td><td class="n">130</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−43,6 %</td><td class="n neg">−5,84</td><td class="n">−0,35</td><td class="n neg">−7,66 %</td></tr>
+<tr><td>valorant · RONDAS · pinnacle</td><td class="n">128</td><td><span class="chip c-no">cerrar</span></td><td class="n pos">+8,9 %</td><td class="n">0,63</td><td class="n">+0,32</td><td class="n neg">−6,50 %</td></tr>
+<tr><td>dota2 · KILLS · pinnacle</td><td class="n">118</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−25,8 %</td><td class="n neg">−2,60</td><td class="n">−0,25</td><td class="n neg">−6,83 %</td></tr>
+<tr><td>cs2 · HANDICAP · cloudbet</td><td class="n">116</td><td><span class="chip c-w">"invertible" · artefacto</span></td><td class="n neg">−30,0 %</td><td class="n neg">−2,52</td><td class="n">+34,48</td><td class="n">+34,6 %</td></tr>
+<tr><td>dota2 · KILLS_HANDICAP · bovada</td><td class="n">107</td><td><span class="chip c-no">cerrar</span></td><td class="n neg">−18,6 %</td><td class="n">−1,81</td><td class="n">+0,02</td><td class="n neg">−6,74 %</td></tr>
+</table></div>
+<p>Movimientos de la semana: <code>cs2 · RONDAS_HANDICAP · pinnacle</code> sigue bajando, de +6,8 % a +3,3 % (t 0,62); hace dos semanas era +12,4 %. <code>lol_kills_hcp_v1</code> cruzó t −2 (−10,3 % en 399). Dardos hándicap de legs llegó a 100 y entra en la tabla con −43,6 % y t −5,84: la peor familia del sistema, en sombra desde el día uno. Los EV al cierre de esports están entre −4,7 % y −10,6 % en todas las casas: eso es el margen que cobran, y el modelo no lo recupera.</p>
+<h3>El encogimiento, día 18 de 14</h3>
+<p>128 familias medidas fuera de muestra. <b>El modelo aporta en 3, no aporta en 21, muestra corta en 104; <code>c</code> mediano 0.</b> La doble corrida de 14 días terminó el 30-sep y la sonda dice <code>listo: true</code>: 35 familias congeladas, 9.270 picks anotadas desde el 16-sep, 5.325 liquidadas, y <b>1.491 de las 9.270 habrían nacido con la versión encogida</b> (el 16 %). La decisión de qué publicar es de Alexis desde el 30-sep y no está tomada; por orden del 16-sep, el feed sigue con la probabilidad cruda. Cuatro días de retraso no cambian la lectura, que sigue empujando al camino 1 de <code>docs/ENCOGIMIENTO_2026-09-16.md</code>.</p>
+
+<h2 id="futbol">Fútbol</h2>
+<h3>Tarjetas</h3>
+<p>Arriba entero. En una frase: con dinero, 0-3 (tres boletos de un partido) y nueve posiciones buenas sin colocar; en la sombra, +2,7 % en 27; en el feed de clubes, tarjetas under 14-10 (+2,5 %) con la partición de siempre (intermedia +21,9 %, eficiente +1,8 %, blanda 0-2) y tarjetas over 14-13 (−6,5 %). El acumulado del feed en tarjetas under es 584 liquidadas a +10,9 %, y por banda: sin banda 40 a +23,7 %, intermedia 263 a +15,0 %, blanda 50 a +34,5 %, eficiente 231 a −1,0 %. Tarjetas over acumula 203 a −18,4 %. Son los mismos cuatro números desde agosto.</p>
+<h3>El censo de cobertura, segunda semana</h3>
+<p>En ocho días el censo vio 2.725 partidos de 352 competiciones en Cloudbet: <b>89 con mercado de tarjetas, en 8 competiciones</b> (Nations League 36/55, máximo ~19.500; Brasil B 14/18, ~5.100; LaLiga 2 15/15, ~570; Argentina 10/11, ~4.800; amistosos de selecciones 6/36; Liga MX 3/11, ~1.650; MLS 3/3; Brasileirão 2/2, ~6.300). Setenta competiciones femeninas, cero con mercado. Pinnacle: 3.088 partidos de 399 competiciones, 58 con mercado en 5 (NL A 20/20, NL B 17/18, Segunda 16/16, MLS 3/3, Brasil A 2/2), con máximos de 500 a 1.000. La respuesta a "¿hay volumen escondido?" es la misma de hace una semana y ya no hace falta más censo para decirla: no. Las dos casas publican tarjetas en las mismas ocho competiciones y Pinnacle ya no es una opción.</p>
+<h3>Selecciones: la primera ventana completa</h3>
+<p>Desde el 26-sep son ligas del motor de clubes. En nueve días nacieron 301 picks, 130 liquidadas: <b>79-51, +5,4 %</b>. Por familia: córners under 38-11 (+5,8 % a cuota 1,39), tarjetas over 12-14 (−13,4 %), combo under 9-13 (+14,3 %), córners over 7-3 (−8,0 %), tarjetas under 5-3, 1X2 5-3, combo over 3-4. Solo Nations League tiene mercados; CONCACAF y amistosos nacen sin cuota. La semana liquidó 114 de esas 130: córners under 31-11 (+0,4 %), combo under 8-13, tarjetas over 11-12 (−11,3 %), tarjetas under 3-3. Quedan 45 activas para los partidos del 5 al 8 de octubre, y la siguiente ventana es el 9-13 de noviembre. El dinero real sigue vetado por liga: la decisión es de Alexis con 60 liquidadas de tarjetas under, que hoy son 8.</p>
+<h3>Derivadas: nada que abrir, otra semana</h3>
+<div class="tw"><table>
+<tr><th>familia</th><th class="n">liquidadas</th><th class="n">ROI</th><th class="n">CLV recortado</th><th class="n">t</th><th class="n">modelo vs precio</th></tr>
+<tr><td><code>asian_handicap</code></td><td class="n">7.968</td><td class="n neg">−7,98 %</td><td class="n neg">−4,09</td><td class="n neg">−47,2</td><td class="n neg">−8,74 %</td></tr>
+<tr><td><code>team_total</code></td><td class="n">3.621</td><td class="n neg">−7,29 %</td><td class="n neg">−1,34</td><td class="n neg">−11,3</td><td class="n neg">−7,29 %</td></tr>
+<tr><td><code>draw_no_bet</code></td><td class="n">1.003</td><td class="n neg">−11,45 %</td><td class="n neg">−5,85</td><td class="n neg">−15,9</td><td class="n neg">−16,32 %</td></tr>
+<tr><td><code>double_chance</code></td><td class="n">993</td><td class="n neg">−3,93 %</td><td class="n neg">−3,51</td><td class="n neg">−14,9</td><td class="n neg">−3,93 %</td></tr>
+<tr><td><code>btts</code></td><td class="n">761</td><td class="n neg">−3,00 %</td><td class="n neg">−1,70</td><td class="n neg">−8,9</td><td class="n neg">−3,00 %</td></tr>
+<tr><td><code>win_to_nil</code></td><td class="n">354</td><td class="n neg">−7,71 %</td><td class="n neg">−0,97</td><td class="n neg">−3,0</td><td class="n neg">−7,71 %</td></tr>
+<tr><td><code>clean_sheet</code></td><td class="n">312</td><td class="n neg">−16,00 %</td><td class="n neg">−0,15</td><td class="n">−0,4</td><td class="n neg">−16,00 %</td></tr>
+</table></div>
+<p>Las quince de mitad (<code>derivadas_v2</code>) van de 19 a 59 liquidadas con CLV negativo en todas (t entre −1,5 y −6,9). Marcador exacto −53,2 % en 125 y HT/FT −57,8 % en 31. Las dos con ROI positivo (<code>h2_total</code> +13 % en 40, <code>h1_double_chance</code> +9,8 % en 34) siguen con la línea moviéndose en contra.</p>
+<h3>Córners y bandas</h3>
+<p><code>corners_over_v1</code> 3-1 en la semana, −7,71 % acumulado en 240; en el feed, córners under 49-24 a −2,3 % (la cuota media es 1,48: acertar el 67 % no paga) y over 9-3. C3 sigue cerrado por margen. <b>Bandas: 17 eficientes, 19 intermedias, 26 blandas, y ocho cambios esta semana</b>: a eficiente MLS, League One, LaLiga 2 y Nations League; a intermedia Brasileirão, K-League y Brasil B; Liga MX a blanda. Cada cambio mueve la cohorte del dinero real; la lista sigue sin congelarse. El feed del Mundial, congelado, va en 2.673 liquidadas, −0,9 %, con tarjetas 324 a +19,7 % y córners 1.403 a −4,7 %.</p>
+
+<h2 id="esports">Esports</h2>
+<ul class="tight">
+  <li><b>CS2</b> (<code>cs2_rounds_v1</code>): 165 liquidadas, 66-99, −12,6 %; −298 USDT. Acumulado 783 a −0,7 %. Por torneo, arriba: el tercer nivel (STK, CCT, Challenger Sudamérica) pierde y el primero (ESL Pro League, ROG) empata. El monitor completo acumula 3.628 liquidadas, 1.382-1.773, −104 u (−2,9 %), CLV +5,6 %, y sigue bloqueado en G0 por integridad: 10,8 % sin resultado localizable contra un tope del 5 %, con 87 series sin casar en bo3.gg porque <i>el par sí está en la fuente y falla la ventana de tiempo</i>. Es un arreglo de liquidador, no de modelo.</li>
+  <li><b>LoL</b> (<code>lol_kills_hcp_v1</code>): 121 liquidadas, 62-59, −13,8 %; −268 USDT, casi todo en EMEA Masters. Acumulado 404 a −9,25 % y t −2,14: cruzó la línea de descarte de la vara. El cambio M7 del 16-sep no la sacó del rojo.</li>
+  <li><b>Valorant:</b> 542 liquidadas en el monitor, +0,95 u (0,2 %): cero con ruido. Dota 2: 993 liquidadas, −102,8 u (−10,4 %); kills en Pinnacle cruzó t −2,6 (118, −25,8 %).</li>
+  <li><b>Pinnacle cerrado:</b> el canal manual de CS2 en Pinnacle, que Alexis ya había descartado el 27-sep, queda imposible. Las lecturas de precio no cambian.</li>
+</ul>
+
+<h2 id="tenis">Tenis</h2>
+<p>Volvió el 1-oct con el China Open (ATP y WTA) y el Japan Open: 14 eventos con cuota en The Odds API, después de dos semanas a oscuras. Semana: 36 liquidadas, 23-13, <b>+13,0 u</b> (ML 4-2, hándicap de juegos 13-6, totales 6-5). Acumulado 1.114 liquidadas: 547-564, +17,0 u (+1,5 %), <b>CLV −9,4 %</b> (469 con cierre). Por familia: ML 267 · acierto 43,1 % · +23,7 u · CLV −13,5; SPREAD 546 · 54,6 % · +34,5 u · CLV −5,9; TOTAL 301 · 44,5 % · −41,2 u · CLV −0,8. El preregistro de totales sigue en negativo con 301 y no hay nada que leer. Sin segunda fuente de cuotas, el deporte vuelve a apagarse cuando termine Shanghái.</p>
+
+<h2 id="hoops">Baloncesto</h2>
+<p>188 picks en el archivo (agosto), 97-89, +2,2 %; picks apagadas por doctrina desde el 31-ago. Esta semana: cero picks nuevas y cero saques. La NBA empieza la pretemporada esta semana y la liga regular hacia el 20-oct; la cosecha diaria sigue corriendo (último día 5-oct).</p>
+
+<h2 id="amfoot">Fútbol americano</h2>
+<div class="grid2">
+  <div class="box"><h4>College (NCAAF), sombra</h4><p>Semana 5 (saques 28-4): 272 filas, 140-132, +1,0 %; 63 posiciones únicas sin moneyline, 34-29, <b>+4,6 %</b> (hándicap local 11-8, visitante 6-3, totales over 13-13, under 4-5).</p><p>Acumulado únicas sin moneyline: 291, 153-138, +2,7 %, t 0,47. Por semana: −15,6 %, +8,8 %, +30,6 %, −19,0 %, +4,6 %. Por ventaja declarada: &lt; 10 pp +6,1 % (105) · 10-20 pp −0,4 % (96) · ≥ 20 pp +2,1 % (90). Moneyline 13-51 (−52,6 %), cerrado por doctrina.</p></div>
+  <div class="box"><h4>College, dinero real</h4><p>Cerrado. 56 liquidadas, 22-34, <b class="neg">−147,40</b> (−26,3 %, t −2,15). Tulsa–North Texas +1,5 ganó el jueves (+9,20) y fue la última fila del canal.</p><p>El preregistro de totales con ventaja &lt; 10 pp va 57-48, +6,1 %, t 0,64 sobre 105; esta semana 14-15. Se decide con 150, sin dinero.</p></div>
+  <div class="box"><h4>NFL y CFL</h4><p>NFL 143 liquidadas y 22 abiertas, todo en sombra, moneyline cerrado por doctrina; semana 4 con 31 casas y el modelo a ~0,45 puntos del cierre. CFL 153 liquidadas, sin cuotas esta semana.</p></div>
+  <div class="box"><h4>Polymarket v2 en college</h4><p>La regla v2 apostó college en papel contra el CLOB: semana 92 posiciones, 49-43, +31,4 (hándicap local 20-16, visitante 11-8, totales over 15-14, under 3-5). Acumulado 170, 84-86, −284,45. La semana buena no devuelve la mala.</p></div>
+</div>
+
+<h2 id="combate">Combate</h2>
+<p>182 liquidadas, 87-95, +7,1 unidades (+3,9 %), CLV medio −1,0. Semana: 10 combates, 6-4, +1,7 u. Cartelera principal 28, 19-9, +10,0 u; preliminares 154, 68-86, −2,9 u. El filtro preregistrado de favorito ≥ 45 %: con filtro 41, 27-14, +4,9 %, CLV +2,16 (t 1,19); sin filtro 45, 15-30, −11,9 %, CLV −6,82 (t −3,45). Favoritos 23-11 (+2,6 %), perros 19-33 (−8,2 %). 19 picks activas. Sigue en sombra y sigue siendo cero con ruido.</p>
+
+<h2 id="f1">F1 · Dardos · Tenis de mesa</h2>
+<ul class="tight">
+  <li><b>F1:</b> Sepang se corrió el 4-oct; la sonda está en <code>PRE_QUALI</code> de Singapur (11-oct) y The Odds API sigue sin cubrir las cuotas. Registro en sombra: 230 tesis, 108 liquidadas, 109 abiertas; puntos 61 (acierto 44 %, Brier 0,191), podio 32 (37,5 %, Brier 0,196), duelos 15 (73 %). Contra la tasa base del campo el modelo gana en Brier (podio 0,086 vs 0,124; puntos 0,191 vs 0,25) y en duelos (66 % vs 60 % sobre 269), pero sin cuota no hay nada que apostar.</li>
+  <li><b>Dardos:</b> World Grand Prix y ET14 Swiss Darts Trophy en juego, 31 partidos y 34 eventos con cuota (Pinnacle 4, Bovada 15, Cloudbet 15). Hándicap de legs llegó a 130 liquidadas con −43,6 % y t −5,84, y ganador en Cloudbet 85 a −35,7 %: el modelo de dardos no vale contra el precio y queda como referencia. Nada que abrir.</li>
+  <li><b>Tenis de mesa:</b> China Smash en juego (82 partidos, 1-11 oct). Cuotas: 449 eventos, Cloudbet 322 y Bovada 127, <b>Pinnacle cero</b> (la API de invitado ya no lista tenis de mesa). Vara: totales de puntos 67 a −10,4 %, hándicap de puntos por juego 84 a −21,5 % (t −2,11), ganador 73 a −18,7 %. Canal real cerrado en 0,00 desde el 16-sep.</li>
+</ul>
+
+<h2 id="poly">Polymarket y prop firm</h2>
+<h3>Dos libros en sombra</h3>
+<div class="tw"><table>
+<tr><th>libro</th><th class="n">resueltas · semana</th><th class="n">G-P</th><th class="n">costo</th><th class="n">P&amp;L semana</th><th class="n">ROI semana</th><th class="n">acumulado</th></tr>
+<tr><td><code>v1</code> (control, desde el 26-ago)</td><td class="n">0</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n neg">−710,94 · 502 · −5,6 %</td></tr>
+<tr><td><code>v2</code> (regla nueva, desde el 24-sep)</td><td class="n">107</td><td class="n">54-53</td><td class="n">2.750,40</td><td class="n neg">−83,40</td><td class="n neg">−3,0 %</td><td class="n neg">−353,61 · 189 · −6,9 %</td></tr>
+</table></div>
+<p><b>v1 no resolvió nada esta semana</b> y ya no va a resolver gran cosa: sin CS2 (fuera desde el 28-sep) sus señales son fútbol·No a precio bajo, y tiene 345 posiciones abiertas por 1.289 con 0,20 de efectivo. Como control cumplió: −5,6 % en 502, con fútbol·No en +0,2 % (129) y CS2 en −418 entre los dos lados. Hay que leerlo cerrado al 28-sep. <b>v2</b> en su segunda semana: college 92 posiciones a +31,4 (la semana buena del college en sombra, vista desde el CLOB), fútbol·No 5-10 y −114,83, totales under 3-5 y −59. Acumulado por deporte: college 170, 84-86, −284,45; fútbol 18, 6-12, −104,86; Dota 2 1-0, +35,70. Banco vivo 1.644,98. Dos semanas de una regla: nada que concluir, y nada que apunte a que vaya a haber algo.</p>
+<h3>Prop firm</h3>
+<p>Sin señales de modelo (0). El bloque propio de la sonda dice 1.117 señales, 141-150, +2.825,88 en papel, y sigue sin cuadrar con ninguno de los dos libros de sombra; igual que las dos semanas anteriores, no se cita hasta saber qué mide.</p>
+
+<h2 id="costes">Físicas, afiliados, costes y plataforma</h2>
+<div class="kpis">
+  <div class="kpi"><div class="l">Apuestas físicas</div><div class="v pos">+1.110</div><div class="s">6 boletos del 5-sep · 4G/2P · 6.000 apostado · +18,5 % · sin novedad</div></div>
+  <div class="kpi"><div class="l">Afiliados</div><div class="v">38</div><div class="s">registros · 1 referido · 1,90 disponible · sin cambios</div></div>
+  <div class="kpi"><div class="l">Presupuesto LLM</div><div class="v">15,91</div><div class="s">de 20 USD · 0 de pago esta semana (Gemini y Groq gratis) · verificador 3.125 ok / 91 reescritas / 1 descartada</div></div>
+  <div class="kpi"><div class="l">The Odds API</div><div class="v pos">viva</div><div class="s">plan de 5M reiniciado el 1-oct · 4,92M restantes · 83.720 usados en octubre · sin tope</div></div>
+  <div class="kpi"><div class="l">API-Football</div><div class="v pos">viva</div><div class="s">clave sin rotar desde el 15-sep</div></div>
+  <div class="kpi"><div class="l">Plataforma</div><div class="v warn">1.914 MB</div><div class="s">RSS sobre el techo vivo de 1.400 · versión 9b43ec4 · backups diarios 5 · disco 36,5 %</div></div>
+</div>
+<p><b>La memoria ya cuesta datos:</b> la ingesta de Polymarket y Kalshi se salta cuando el proceso pasa de 1.700 MB y lleva <b>185 saltos</b>, los últimos cuatro seguidos esta mañana. Los mercados del Mundial en la pantalla pública pueden estar viejos sin que nada lo diga. Observación de prensa: 215 equipos de clubes y 16 luchadores vigilados. Rotaciones pendientes, en manos de Alexis desde el 15-sep: clave de Render, token de Hetzner, <code>GP_REAL_RELAY_TOKEN</code>, <code>API_FOOTBALL_KEY</code>, <code>GP_EXPORT_KEY</code> y <code>SPORTSBOOK_PROVIDER_API_KEY</code>. Cambios de la semana en producción, registrados en <code>docs/DECISIONES_EJECUTADAS.md</code>: CS2 fuera de los dos libros de Polymarket (28) y canal manual de Pinnacle apagado tras el cierre de la cuenta (2-oct).</p>
+
+<h2 id="feedback">Feedback y sugerencias, en orden</h2>
+<ol class="rec">
+  <li><b>Decidir la caja una vez, hoy.</b> Nueve posiciones buenas murieron esta semana sin fondos y seis más del Brasileirão (miércoles 7) ya están muriendo. O entran 150-200 y tarjetas under corre sola hasta el 20-oct, o se apaga el canal y se deja de mirar el saldo. Lo que no sirve es lo de las tres últimas semanas: encendido, con cero, perdiendo muestra. Y anotar los 74,00 (54,81 + 19,19) con stake y cuota de cada apuesta a mano.</li>
+  <li><b>Regla de reporte, desde hoy:</b> por debajo de 100 liquidadas nada se llama prometedor. Córners under de selecciones fue 25-5 el jueves y 38-11 el domingo; college tuvo tres semanas buenas y devolvió la cuarta; CS2 en Pinnacle pasó de +12,4 % a +3,3 % en dos semanas. Cada vez que el reporte adelanta una señal de 30, la semana siguiente la deshace. La única familia que supera el listón con muestra es tarjetas under en no eficientes, y es la única de la que se habla como tal.</li>
+  <li><b>Arreglar el cierre de hándicap de mapas de CS2 en Cloudbet.</b> La vara dice "1 invertible" por una familia que pierde −30 %. Es un cierre guardado roto (CLV +34 %), y hasta que se arregle el tablero miente en la primera línea. Media tarde de trabajo, antes del 20-oct.</li>
+  <li><b>Congelar la lista de ligas del ejecutor por cuatro semanas.</b> Tercera semana que se propone. Ocho cambios esta semana (Liga MX a blanda, LaLiga 2 y Nations League a eficiente, Brasileirão y Brasil B a intermedia). El 20-oct hay que juzgar una regla, no doce.</li>
+  <li><b>Encogimiento: la decisión del 30-sep lleva cinco días de retraso.</b> La doble corrida está lista: 1.491 de 9.270 picks habrían nacido con la versión encogida. Camino 1 (publicar el precio y quedarse con las desviaciones entre casas) es la lectura literal de <code>c</code> mediano 0; la decisión es de Alexis.</li>
+  <li><b>Memoria: 1.914 MB y la ingesta de Polymarket saltada 185 veces.</b> Ya no es un aviso, es un dato que falta en la pantalla pública. La lectura de picks carga 13,8 MB de export de clubes en cada ciclo y el disco de clubes sigue creciendo con las selecciones. Hay que partir ese export o bajar el techo de retención antes de que un reinicio caiga en una colocación.</li>
+  <li><b>CS2: 10,8 % sin resultado bloquea G0 por un fallo de ventana.</b> 87 series están en bo3.gg con los dos equipos resueltos y no se casan porque la fecha difiere en 24-284 horas. Es el liquidador, no el modelo, y es lo único que impide que CS2 se mida como el resto.</li>
+  <li><b>Leer Polymarket v1 cerrado al 28-sep</b> y no gastar una línea más en él: sin CS2 no entra nada y las 345 abiertas se resolverán solas. v2 se evalúa en noviembre con 100 por deporte y t ≥ 2, como estaba escrito.</li>
+  <li><b>Tenis sigue sin segunda fuente.</b> Volvió porque hay torneo; se irá cuando termine Shanghái. Pinnacle de invitado ya no sirve para tenis de mesa y hay que comprobar si todavía sirve para tenis antes de contar con él.</li>
+  <li><b>Rotar las seis claves pendientes.</b> Llevan desde el 15-sep.</li>
+</ol>
+</main>
+</body>
+</html>

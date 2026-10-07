@@ -38,7 +38,8 @@ function programaGuardado() {
   if (flushTimer.unref) flushTimer.unref();
 }
 
-const num = (x) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
+// null, undefined y '' son 'no hay dato', nunca 0: un Shin ausente que se guardara como 0 pondría el justo en 0
+const num = (x) => { if (x == null || x === '') return null; const n = Number(x); return Number.isFinite(n) ? n : null; };
 const jarr = (x) => { if (Array.isArray(x)) return x; try { const j = JSON.parse(x); return Array.isArray(j) ? j : []; } catch { return []; } };
 
 // Anota (o refresca) un mercado cotizable. `consenso0` es la probabilidad JUSTA del outcome 0 del mercado

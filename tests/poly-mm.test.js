@@ -109,5 +109,11 @@ const tr = (seg, idx, side, price, size) => ({ conditionId: COND, outcomeIndex: 
   assert.strictEqual(MM.justoDe(0.52, { bb: 0.55, ba: 0.57, mid: 0.56 }, cfg).justo, 0.54, 'mezcla a partes iguales');
   assert.strictEqual(MM.justoDe(0.40, { bb: 0.55, ba: 0.57, mid: 0.56 }, cfg).justo, null, 'discrepancia de 16 pp: no se cotiza');
   assert.strictEqual(MM.justoDe(0.40, null, cfg).justo, 0.40, 'sin libro, el consenso manda');
+  // 7) un Shin ausente se guarda como null, no como 0 (el fallo del 7-oct dejó tenis y esports fuera por 'precio')
+  const m2 = { ...mercado(), id: '778', conditionId: '0xdef' };
+  assert.strictEqual(COT.anota({ m: m2, deporte: 'tenis', familia: 'ML', evento: 'A vs B', ko: KO, consenso0: 0.656, shin0: undefined, books: 5 }), true);
+  const c2 = COT.todos().find((c) => c.cond === '0xdef');
+  assert.strictEqual(c2.shin0, null); assert.strictEqual(c2.consenso0, 0.656);
+  assert.strictEqual(MM.porQueNo(c2, cfg, T0), null, 'elegible con el consenso del escáner: ' + MM.porQueNo(c2, cfg, T0));
   console.log('poly-mm: todo correcto (' + TMP + ')');
 })().catch((e) => { console.error(e); process.exit(1); });

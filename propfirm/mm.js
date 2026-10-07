@@ -203,13 +203,15 @@ async function recompensasDe(cond) {
     maker_fee: j ? j.maker_base_fee : null, taker_fee: j ? j.taker_base_fee : null, leido_at: new Date().toISOString() };
 }
 
+// el consenso base de un cotizable: Shin cuando existe y es una probabilidad; si no, el consenso del escáner
+const justoBase = (c) => (c.shin0 > 0 && c.shin0 < 1 ? c.shin0 : c.consenso0);
 // Por qué un mercado del universo no entra en la cotización (null = entra). El orden es el de la regla.
 function porQueNo(c, cfg = CFG(), ahora = Date.now()) {
   if (cfg.deportes_fuera.has(String(c.deporte || '').toLowerCase())) return 'deporte_fuera';
   const h = (Date.parse(c.ko || 0) - ahora) / 3600e3;
   if (!(h > cfg.h_min)) return 'saque_pasado_o_inminente';
   if (h > cfg.h_max) return 'saque_lejano';
-  const justo = c.shin0 != null ? c.shin0 : c.consenso0;
+  const justo = justoBase(c);
   if (!(justo >= cfg.precio_min && justo <= cfg.precio_max)) return 'precio_fuera_de_banda';
   if (c.liquidez != null && c.liquidez < cfg.liq_min) return 'liquidez_baja';
   if ((ahora - Date.parse(c.at || 0)) > cfg.frescura_min * 60e3) return 'consenso_rancio';
@@ -240,7 +242,7 @@ async function barrer({ ahora = Date.now() } = {}) {
     const c = cot[m.cond];
     const ko = Date.parse(m.ko || 0);
     const hRestantes = (ko - ahora) / 3600e3;
-    const justoNuevo = c ? (c.shin0 != null ? c.shin0 : c.consenso0) : m.justo;
+    const justoNuevo = c ? (justoBase(c)) : m.justo;
     // sin cupo de llamadas en esta pasada: la cotización sigue reposando tal cual y se mira en la siguiente
     if (m.cotizacion && toques >= cfg.mercados_max) { out.sin_cupo++; continue; }
     let lista = null;
@@ -287,7 +289,7 @@ async function barrer({ ahora = Date.now() } = {}) {
   for (const c of elegibles) {
     if (st.mercados[c.cond]) continue;
     if (toques >= cfg.mercados_max) { out.sin_cupo++; continue; }
-    const justo = c.shin0 != null ? c.shin0 : c.consenso0;
+    const justo = justoBase(c);
     const m = { cond: c.cond, mid: c.mid, deporte: c.deporte, familia: c.familia, evento: c.evento, competicion: c.competicion || null,
       pregunta: c.pregunta, outs: c.outs, tokens: c.tokens, lado0: c.lado0 || null, ko: c.ko, tick: c.tick || 0.01,
       fee_rate: c.fee_rate, fee_exp: c.fee_exp, fee_rebate: c.fee_rebate,

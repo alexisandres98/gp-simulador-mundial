@@ -527,3 +527,15 @@ job propio cada 5 min (`GP_POLYMM`, `GP_POLYMM_MIN`), sonda `/api/internal/polym
 de seguridad). Test: `node tests/poly-mm.test.js`. Ningún dinero real; y para que lo hubiera haría falta un
 servidor fuera de EE. UU. (Render está geobloqueado para trading), wallet con USDC en Polygon y firma de
 órdenes, que se decide después de la lectura y no antes.
+
+**Misma tarde, primera hora en producción:** 90 mercados cotizables (fútbol 30, tenis 24, CS2 35, Dota 2 2), 83
+cotizando, 7 en pausa por discrepancia entre consenso y libro, cero fills en la primera hora. Al comparar las
+cotizaciones con el libro vivo salió el dato que cambia la regla: en los binarios de partido de fútbol y tenis el
+CLOB ya está a UN céntimo de horquilla (Inter Turku 0,57/0,58, Internacional 0,42/0,43, Remo 0,45/0,46), así que
+una orden a ±2 pp reposa dos céntimos por detrás y solo se llena cuando el precio la atraviesa: selección adversa
+pura. Se añade la segunda regla **`mm_libro`** (pegada al mejor bid y al mejor ask por el lado bueno del justo,
+fichero `poly-mm-libro.json`), que corre en paralelo con la misma caché de trades y libro, y el fill al precio
+exacto pasa de "la mitad" a **prorrata con la cola del nivel** (lo que el libro enseñaba a nuestro precio). Todo
+antes de leer un solo fill, y escrito en el preregistro. Dos fallos corregidos sobre la marcha: un Shin ausente se
+guardaba como 0 (tenis y esports quedaban fuera por "precio") y el cupo de 40 mercados por pasada dejaba fuera a
+50 (`GP_POLYMM_MERCADOS_MAX=120` en Render).

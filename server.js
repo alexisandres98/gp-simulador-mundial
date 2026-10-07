@@ -336,7 +336,7 @@ const STORE_BACKUP_MAX_MB = Number(process.env.GP_BACKUP_MAX_MB || 40);
 // <subdirectorio del disco> → qué ficheros de ese subdirectorio son almacén reescribible
 const STORE_BACKUP_GLOBS = [
   { dir: 'esports', re: /^(picks|closes|props)-[a-z0-9]+\.json$/ },
-  { dir: 'propfirm', re: /^(senales|poly-sombra|poly-sombra-v2|poly-mm|cotizables)\.json$/ },
+  { dir: 'propfirm', re: /^(senales|poly-sombra|poly-sombra-v2|poly-mm|poly-mm-libro|cotizables)\.json$/ },
   { dir: 'nfl', re: /^(picks|closes|shadow|odds)[-.][a-z0-9-]*\.json$|^model-priors\.json$/ },
   { dir: 'amfoot', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
   { dir: 'tennis', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
@@ -17605,8 +17605,8 @@ if (String(process.env.GP_PROPFIRM_SCAN || 'true') !== 'false') {
 if (String(process.env.GP_POLYMM || 'true') !== 'false') {
   const polymmTick = async () => {
     const MM = require('./propfirm/mm');
-    const o = await MM.barrer();
-    const l = await MM.liquidar();
+    const o = await MM.barrerTodos();
+    const l = await MM.liquidarTodos();
     global._polymmLast = { ...o, liquidar: l };
     global._polymmError = null;
   };
@@ -24630,18 +24630,20 @@ async function anotar(pid){
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
       const MM = require('./propfirm/mm');
+      // `&regla=ancho|libro` elige la instancia para reset y libro; sin ella, `ancho`
+      const reglaMm = String(url.searchParams.get('regla') || 'ancho');
       if (req.method === 'POST') {
         const runMm = String(url.searchParams.get('run') || 'sweep');
-        if (runMm === 'reset') return json(res, 200, MM.reset());
-        if (runMm === 'settle') return json(res, 200, await MM.liquidar().catch((e) => ({ error: e.message })));
-        const bar = await MM.barrer().catch((e) => ({ error: e.message }));
-        const liq = await MM.liquidar().catch((e) => ({ error: e.message }));
+        if (runMm === 'reset') return json(res, 200, MM.de(reglaMm).reset());
+        if (runMm === 'settle') return json(res, 200, await MM.liquidarTodos().catch((e) => ({ error: e.message })));
+        const bar = await MM.barrerTodos().catch((e) => ({ error: e.message }));
+        const liq = await MM.liquidarTodos().catch((e) => ({ error: e.message }));
         global._polymmLast = { ...bar, liquidar: liq };
         return json(res, 200, global._polymmLast);
       }
-      if (url.searchParams.get('libro') === '1') return json(res, 200, MM.libro());
+      if (url.searchParams.get('libro') === '1') return json(res, 200, MM.de(reglaMm).libro());
       if (url.searchParams.get('universo') === '1') return json(res, 200, { n: 0, mercados: MM.universo() });
-      return json(res, 200, { ...MM.estado(), enabled: String(process.env.GP_POLYMM || 'true') !== 'false', ultima_automatica: global._polymmLast || null, ultimo_error: global._polymmError || null });
+      return json(res, 200, { ...MM.estadoTodos(), enabled: String(process.env.GP_POLYMM || 'true') !== 'false', ultima_automatica: global._polymmLast || null, ultimo_error: global._polymmError || null });
     }
     if (p === '/api/internal/propfirm') {
       const xk = process.env.GP_EXPORT_KEY || '';

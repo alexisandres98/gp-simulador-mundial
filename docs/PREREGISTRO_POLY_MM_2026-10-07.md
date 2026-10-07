@@ -15,7 +15,22 @@ consenso sharp sin margen en los binarios de partido de Polymarket cobra más ho
 selección adversa.** Si es cierta, es la primera fuente de ingreso del proyecto que no depende de batir al
 mercado. Si es falsa, el markout lo dirá en cuatro semanas.
 
-## 2. La regla, congelada
+## 2. Las dos reglas, congeladas
+
+Corren las dos a la vez, con el mismo universo, los mismos cruces y el mismo libro, cada una con su fichero, su
+banco de 2.000 y su P&L (`mm_ancho` en `poly-mm.json`, `mm_libro` en `poly-mm-libro.json`). La segunda nació a
+la hora de arrancar la primera, y el porqué está medido: en los binarios de partido de fútbol y tenis el libro de
+Polymarket ya está a UN céntimo de horquilla (Inter Turku 0,57/0,58, Internacional 0,42/0,43, Remo 0,45/0,46).
+Una orden a ±2 pp reposa dos céntimos por detrás del mejor precio y solo se llena cuando el precio la atraviesa,
+es decir, cuando el mercado se movió en contra: todo selección adversa y nada de horquilla. Pegarse al libro es lo
+que hacen los makers que ya están ahí, y es lo que hay que medir.
+
+| | `mm_ancho` | `mm_libro` |
+|---|---|---|
+| Cotización | bid = justo − 2 pp − sesgo · ask = justo + 2 pp − sesgo, recortados para no cruzar el libro | bid = mejor bid del CLOB si está por debajo del justo · ask = mejor ask si está por encima; sin libro, no se cotiza |
+| Sesgo por inventario | (inventario / 200) × 2 pp, restado a las dos | con el inventario a más de ±100, se apaga ese lado |
+| Fill al precio exacto | a prorrata: 50 / (50 + lo que el libro enseñaba en ese nivel al cotizar) | igual (y aquí casi siempre hay cola: es el mejor precio) |
+
 
 | parámetro | valor | variable |
 |---|---|---|
@@ -50,7 +65,8 @@ Todo se traduce a coordenadas del outcome 0 (comprar NO a q es vender YES a 1−
 
 - Nuestra **compra** a `bid` se llena cuando un taker **vendió** a precio ≤ bid. Si el cruce fue por debajo
   de nuestro precio, entero (por prioridad de precio nos habrían llenado antes). Si fue **exactamente** a
-  nuestro precio, **la mitad** del tamaño (estábamos en cola con otros).
+  nuestro precio, **a prorrata**: nuestras 50 entre 50 más lo que el libro enseñaba en ese nivel cuando
+  cotizamos (la cola). Con 150 delante, un cruce de 100 nos da 25.
 - La **venta** a `ask`, espejada.
 - Cada lado tiene 50 shares por intervalo; consumidas, no hay más fills hasta la pasada siguiente.
 - El P&L se liquida con la **resolución del propio Polymarket** (gamma), como los dos libros de sombra.
@@ -58,7 +74,7 @@ Todo se traduce a coordenadas del outcome 0 (comprar NO a q es vender YES a 1−
 Sesgos conocidos, todos en contra nuestra: (a) el maker simulado reprecia cada 5 min con un consenso de 10,
 así que mide a un maker **lento**, y el maker real sería más rápido, no más lento; (b) el feed de trades se
 lee con tope de 200 por mercado y pasada, así que en un mercado muy activo se pierden fills, nunca se
-inventan; (c) la mitad al precio exacto es una convención, no una medición de cola.
+inventan; (c) la prorrata supone que la cola no cambió entre pasada y pasada, y no modela prioridad temporal: con 0 en cola nos llena entero, que es generoso.
 
 ## 4. Lo que se mide
 
@@ -76,7 +92,8 @@ que no se ve desde fuera.
 ## 5. La puerta, escrita hoy
 
 - **Lectura:** lunes 3 de noviembre de 2026, con el reporte semanal. Antes no se lee con veredicto.
-- **Muestra mínima para leer un deporte:** 60 mercados resueltos con al menos un fill y 300 fills.
+- **Muestra mínima para leer un deporte y una regla:** 60 mercados resueltos con al menos un fill y 300 fills.
+- Las dos reglas se leen por separado; si una confirma y la otra descarta, manda la que confirma SOLO si su markout también cumple.
 - **Se confirma** un deporte si el P&L realizado SIN recompensas es positivo con t ≥ 2 sobre el ROI por
   mercado (P&L / nocional) Y el markout a 30 min no se come más de la mitad de la horquilla cobrada.
 - **Se descarta** si el markout supera a la horquilla (el maker lento pierde contra quien cruza) o si el P&L

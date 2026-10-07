@@ -54,30 +54,31 @@ const tr = (seg, idx, side, price, size) => ({ conditionId: COND, outcomeIndex: 
   // 2) cruces reales en el intervalo: un taker vende YES a 0,47 (30) → nos llena entero; otro compra NO a 0,53
   //    (= vende YES a 0,47, 20) → completa el bid; otro compra YES EXACTAMENTE a 0,52 (40) → la mitad, 20
   trades = [tr(120, 0, 'SELL', 0.47, 30), tr(150, 1, 'BUY', 0.53, 20), tr(200, 0, 'BUY', 0.52, 40)];
-  o = await MM.barrer({ ahora: T0 + 5 * 60e3 });
+  MM.vaciarCache(); o = await MM.barrer({ ahora: T0 + 5 * 60e3 });
   assert.strictEqual(o.compras, 2, JSON.stringify(o)); assert.strictEqual(o.ventas, 1);
   m = MM.libro().mercados[0];
-  assert.strictEqual(m.q_compras, 50); assert.strictEqual(m.q_ventas, 20);
-  assert.strictEqual(m.s0, 30); assert.strictEqual(m.s1, 0); assert.strictEqual(m.inv0, 30);
-  assert.strictEqual(m.caja, +(-50 * 0.48 - 20 * 0.48 + 20).toFixed(4));
-  assert.strictEqual(m.horquilla_usd, +(50 * 0.02 + 20 * 0.02).toFixed(4));
+  // al precio exacto se llena a prorrata con lo que había en el nivel: en 0,52 no había nada (cola 0) → entero
+  assert.strictEqual(m.q_compras, 50); assert.strictEqual(m.q_ventas, 40);
+  assert.strictEqual(m.s0, 10); assert.strictEqual(m.s1, 0); assert.strictEqual(m.inv0, 10);
+  assert.strictEqual(m.caja, +(-50 * 0.48 - 40 * 0.48 + 40).toFixed(4));
+  assert.strictEqual(m.horquilla_usd, +(50 * 0.02 + 40 * 0.02).toFixed(4));
   assert(m.rebate_potencial > 0 && m.rebate_potencial < 1, 'rebate potencial ' + m.rebate_potencial);
   assert.strictEqual(m.minutos_cotizados, 5); assert.strictEqual(m.minutos_elegibles, 5, 'dentro del perímetro de recompensas (±2 ≤ 3,5; 50 ≥ 50)');
   // los mismos cruces no se vuelven a llenar en la pasada siguiente
-  o = await MM.barrer({ ahora: T0 + 10 * 60e3 });
+  MM.vaciarCache(); o = await MM.barrer({ ahora: T0 + 10 * 60e3 });
   assert.strictEqual(o.fills, 0, 'sin cruces nuevos no hay fills: ' + JSON.stringify(o));
 
   // 3) el consenso se mueve a 0,55: markout a 30 min de cada fill, y la cotización nueva lleva el sesgo del inventario
   COT.anota({ m: mercado(), deporte: 'futbol', familia: 'FUT1X2', evento: 'X vs Y', ko: KO, consenso0: 0.56, shin0: 0.55, books: 12 }); COT.guardar();
   trades = []; libro = { bb: 0.54, ba: 0.56 };   // el libro acompaña al consenso: justo mezclado 0,55
-  o = await MM.barrer({ ahora: T0 + 40 * 60e3 });
+  MM.vaciarCache(); o = await MM.barrer({ ahora: T0 + 40 * 60e3 });
   m = MM.libro().mercados[0];
   assert.strictEqual(m.markout_n, 3);
-  assert.strictEqual(m.markout_usd, +(0.07 * 30 + 0.07 * 20 - 0.03 * 20).toFixed(4));
-  assert.strictEqual(m.cotizacion.bid, 0.52, 'bid con sesgo: floor(0,55−0,02−0,003)'); assert.strictEqual(m.cotizacion.ask, 0.57, 'ask con sesgo: ceil(0,55+0,02−0,003)');
+  assert.strictEqual(m.markout_usd, +(0.07 * 30 + 0.07 * 20 - 0.03 * 40).toFixed(4));
+  assert.strictEqual(m.cotizacion.bid, 0.52, 'bid con sesgo: floor(0,55−0,02−0,001)'); assert.strictEqual(m.cotizacion.ask, 0.57, 'ask con sesgo: ceil(0,55+0,02−0,001)');
 
   // 4) a 10 min del saque se retira; a los 30 min del saque gamma resuelve YES → P&L = caja + s0
-  o = await MM.barrer({ ahora: Date.parse(KO) - 10 * 60e3 });
+  MM.vaciarCache(); o = await MM.barrer({ ahora: Date.parse(KO) - 10 * 60e3 });
   assert.strictEqual(o.retirados, 1, JSON.stringify(o));
   gammaCerrado = { id: MID, closed: true, outcomePrices: '["1","0"]' };
   let l = await MM.liquidar({ ahora: Date.parse(KO) + 20 * 60e3 });
@@ -86,7 +87,7 @@ const tr = (seg, idx, side, price, size) => ({ conditionId: COND, outcomeIndex: 
   assert.strictEqual(l.resueltos, 1, JSON.stringify(l));
   L = MM.libro();
   assert.strictEqual(L.cerrados.length, 1);
-  assert.strictEqual(L.cerrados[0].pnl, +(-50 * 0.48 - 20 * 0.48 + 20 + 30).toFixed(2));
+  assert.strictEqual(L.cerrados[0].pnl, +(-50 * 0.48 - 40 * 0.48 + 40 + 10).toFixed(2));
   assert.strictEqual(L.cerrados[0].tope_recompensa_usd, +(12 * L.cerrados[0].minutos_elegibles / 1440).toFixed(2));
   assert.strictEqual(L.efectivo, +(2000 + L.cerrados[0].pnl).toFixed(2));
   const E = MM.estado();
@@ -115,5 +116,23 @@ const tr = (seg, idx, side, price, size) => ({ conditionId: COND, outcomeIndex: 
   const c2 = COT.todos().find((c) => c.cond === '0xdef');
   assert.strictEqual(c2.shin0, null); assert.strictEqual(c2.consenso0, 0.656);
   assert.strictEqual(MM.porQueNo(c2, cfg, T0), null, 'elegible con el consenso del escáner: ' + MM.porQueNo(c2, cfg, T0));
+  // 8) la regla `libro`: se pega al mejor bid y al mejor ask solo por el lado bueno del justo; sin libro, nada
+  const cfgL = { ...cfg, modo: 'libro' };
+  const lbk = { bb: 0.47, ba: 0.53, mid: 0.5, bids: [{ p: 0.47, s: 150 }], asks: [{ p: 0.53, s: 50 }] };
+  const ql = MM.cotiza({ inv0: 0, tick: 0.01 }, 0.5, 2000, cfgL, Date.now(), lbk);
+  assert.strictEqual(ql.bid, 0.47); assert.strictEqual(ql.ask, 0.53); assert.strictEqual(ql.cola_bid, 150); assert.strictEqual(ql.cola_ask, 50);
+  assert.strictEqual(MM.cotiza({ inv0: 0, tick: 0.01 }, 0.5, 2000, cfgL, Date.now(), null), null, 'sin libro no hay cotización pegada');
+  const ql2 = MM.cotiza({ inv0: 0, tick: 0.01 }, 0.46, 2000, cfgL, Date.now(), lbk);
+  assert.strictEqual(ql2.bid, null, 'el mejor bid 0,47 está por encima del justo 0,46: no se compra'); assert.strictEqual(ql2.ask, 0.53);
+  assert.strictEqual(MM.cotiza({ inv0: 120, tick: 0.01 }, 0.5, 2000, cfgL, Date.now(), lbk).bid, null, 'inventario largo por encima de la mitad del tope: el bid se apaga');
+  // prorrata: 50 nuestras contra 150 en cola → un cruce exacto de 100 nos da 25
+  const mL = { s0: 0, s1: 0, inv0: 0, caja: 0, ultimo_ts: 0, fee_rate: 0.03, fee_exp: 1, fee_rebate: 0.25 };
+  const fL = MM.llena(mL, { ...ql, desde: new Date(T0).toISOString() }, [{ ts: T0 + 1000, precio0: 0.47, lado0: 'SELL', size: 100, precio_bruto: 0.47, idx: 0 }], cfgL, T0 + 60e3);
+  assert.strictEqual(fL.compras, 1); assert.strictEqual(mL.s0, 25); assert.strictEqual(mL.fills[0].exacto, true);
+  // las dos instancias viven en ficheros distintos y comparten el universo
+  const T = MM.estadoTodos();
+  assert.strictEqual(T.ancho.regla, 'mm_ancho'); assert.strictEqual(T.libro.regla, 'mm_libro'); assert.notStrictEqual(MM.de('ancho').FNAME, MM.de('libro').FNAME);
+  MM.vaciarCache(); const oL = await MM.de('libro').barrer({ ahora: T0 });
+  assert.strictEqual(oL.regla, 'mm_libro'); assert(oL.nuevos >= 1, JSON.stringify(oL));
   console.log('poly-mm: todo correcto (' + TMP + ')');
 })().catch((e) => { console.error(e); process.exit(1); });

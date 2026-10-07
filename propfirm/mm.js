@@ -203,6 +203,19 @@ async function recompensasDe(cond) {
     maker_fee: j ? j.maker_base_fee : null, taker_fee: j ? j.taker_base_fee : null, leido_at: new Date().toISOString() };
 }
 
+// Por qué un mercado del universo no entra en la cotización (null = entra). El orden es el de la regla.
+function porQueNo(c, cfg = CFG(), ahora = Date.now()) {
+  if (cfg.deportes_fuera.has(String(c.deporte || '').toLowerCase())) return 'deporte_fuera';
+  const h = (Date.parse(c.ko || 0) - ahora) / 3600e3;
+  if (!(h > cfg.h_min)) return 'saque_pasado_o_inminente';
+  if (h > cfg.h_max) return 'saque_lejano';
+  const justo = c.shin0 != null ? c.shin0 : c.consenso0;
+  if (!(justo >= cfg.precio_min && justo <= cfg.precio_max)) return 'precio_fuera_de_banda';
+  if (c.liquidez != null && c.liquidez < cfg.liq_min) return 'liquidez_baja';
+  if ((ahora - Date.parse(c.at || 0)) > cfg.frescura_min * 60e3) return 'consenso_rancio';
+  return null;
+}
+
 // ── LA PASADA ───────────────────────────────────────────────────────────────────────────────────────────
 async function barrer({ ahora = Date.now() } = {}) {
   const cfg = CFG();
@@ -214,17 +227,11 @@ async function barrer({ ahora = Date.now() } = {}) {
   const efectivo0 = efectivoDe(st);
 
   // 1) los mercados elegibles hoy: ventana de saque, banda de precio, liquidez, consenso fresco, deporte dentro
-  const elegibles = Object.values(cot).filter((c) => {
-    if (cfg.deportes_fuera.has(String(c.deporte || '').toLowerCase())) return false;
-    const ko = Date.parse(c.ko || 0);
-    const h = (ko - ahora) / 3600e3;
-    if (!(h > cfg.h_min && h <= cfg.h_max)) return false;
-    const justo = c.shin0 != null ? c.shin0 : c.consenso0;
-    if (!(justo >= cfg.precio_min && justo <= cfg.precio_max)) return false;
-    if (c.liquidez != null && c.liquidez < cfg.liq_min) return false;
-    return true;
-  }).sort((a, b) => Date.parse(a.ko) - Date.parse(b.ko));
+  const elegibles = Object.values(cot).filter((c) => !porQueNo(c, cfg, ahora)).sort((a, b) => Date.parse(a.ko) - Date.parse(b.ko));
   out.elegibles = elegibles.length;
+  // por qué NO entra el resto: es la diferencia entre "no hay mercados" y "los hay pero no caben en la regla"
+  out.no_elegibles = {};
+  for (const c of Object.values(cot)) { const q = porQueNo(c, cfg, ahora); if (q) out.no_elegibles[q] = (out.no_elegibles[q] || 0) + 1; }
 
   // 2) primero lo que ya estaba cotizando: se llena la cotización vigente con los cruces del intervalo
   let toques = 0;
@@ -413,6 +420,14 @@ function reset() {
   wr(st);
   return { ok: true, banco: st.banco_inicial };
 }
+// el universo cotizable con el motivo por el que cada mercado entra o no (para la revisión del lunes)
+function universo() {
+  const cfg = CFG(), ahora = Date.now();
+  return COT.todos().map((c) => ({ deporte: c.deporte, familia: c.familia, evento: c.evento, pregunta: (c.pregunta || '').slice(0, 70), ko: c.ko,
+    consenso0: c.consenso0, shin0: c.shin0, liquidez: c.liquidez, fee_rate: c.fee_rate, fee_rebate: c.fee_rebate, rewards_min_size: c.rewards_min_size,
+    rewards_max_spread: c.rewards_max_spread, at: c.at, motivo: porQueNo(c, cfg, ahora) || 'elegible' }))
+    .sort((a, b) => String(a.ko).localeCompare(String(b.ko)));
+}
 function libro() { const st = rd(); return { regla: REGLA, desde: st.desde, at: st.at, banco_inicial: st.banco_inicial, efectivo: st.efectivo, mercados: Object.values(st.mercados || {}), cerrados: st.cerrados || [] }; }
 
-module.exports = { barrer, liquidar, estado, reset, libro, cotiza, llena, aplicaFill, justoDe, CFG, DIR, FNAME, REGLA };
+module.exports = { barrer, liquidar, estado, reset, libro, universo, porQueNo, cotiza, llena, aplicaFill, justoDe, CFG, DIR, FNAME, REGLA };

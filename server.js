@@ -24640,6 +24640,7 @@ async function anotar(pid){
         return json(res, 200, global._polymmLast);
       }
       if (url.searchParams.get('libro') === '1') return json(res, 200, MM.libro());
+      if (url.searchParams.get('universo') === '1') return json(res, 200, { n: 0, mercados: MM.universo() });
       return json(res, 200, { ...MM.estado(), enabled: String(process.env.GP_POLYMM || 'true') !== 'false', ultima_automatica: global._polymmLast || null, ultimo_error: global._polymmError || null });
     }
     if (p === '/api/internal/propfirm') {

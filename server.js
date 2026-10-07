@@ -336,7 +336,7 @@ const STORE_BACKUP_MAX_MB = Number(process.env.GP_BACKUP_MAX_MB || 40);
 // <subdirectorio del disco> → qué ficheros de ese subdirectorio son almacén reescribible
 const STORE_BACKUP_GLOBS = [
   { dir: 'esports', re: /^(picks|closes|props)-[a-z0-9]+\.json$/ },
-  { dir: 'propfirm', re: /^(senales|poly-sombra)\.json$/ },
+  { dir: 'propfirm', re: /^(senales|poly-sombra|poly-sombra-v2|poly-mm|cotizables)\.json$/ },
   { dir: 'nfl', re: /^(picks|closes|shadow|odds)[-.][a-z0-9-]*\.json$|^model-priors\.json$/ },
   { dir: 'amfoot', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
   { dir: 'tennis', re: /^(picks|closes|shadow)-[a-z0-9]+\.json$/ },
@@ -17599,6 +17599,20 @@ if (String(process.env.GP_PROPFIRM_SCAN || 'true') !== 'false') {
   setTimeout(() => { propfirmSweep().catch(() => { }); }, 200 * 1000);
   setInterval(() => { propfirmSweep().catch(() => { }); }, 10 * 60 * 1000);
 }
+// MARKET MAKING EN SOMBRA SOBRE POLYMARKET (7-oct, orden de Alexis): cotiza a los dos lados del consenso sharp
+// sobre el universo cotizable que deja el escáner (`propfirm/cotizables.js`) y llena con los cruces reales del
+// venue. Cadencia propia de 5 min (`GP_POLYMM_MIN`), separada del barrido de la firm; `GP_POLYMM=false` la apaga.
+if (String(process.env.GP_POLYMM || 'true') !== 'false') {
+  const polymmTick = async () => {
+    const MM = require('./propfirm/mm');
+    const o = await MM.barrer();
+    const l = await MM.liquidar();
+    global._polymmLast = { ...o, liquidar: l };
+    global._polymmError = null;
+  };
+  setTimeout(() => { polymmTick().catch((e) => { global._polymmError = e.message; }); }, 260 * 1000);
+  setInterval(() => { polymmTick().catch((e) => { global._polymmError = e.message; }); }, Math.max(2, +(process.env.GP_POLYMM_MIN || 5)) * 60 * 1000);
+}
 // perfil de disponibilidad narrado de UN jugador de club (para el perfil cplayer).
 function clubPlayerAvail(tmId, pid) {
   const slot = db.clubObservations[tmId];
@@ -24611,6 +24625,23 @@ async function anotar(pid){
     }
     // Estado y forzado del escáner de la prop firm. GET = estado de la sombra propia; POST = barrer ya
     // (run=scan solo escanea sin correo, para probar; sin run corre el sweep completo con correo).
+    // MARKET MAKING EN SOMBRA (7-oct): estado, libro completo (`&libro=1`), y a demanda POST `&run=sweep|settle|reset`
+    if (p === '/api/internal/polymm') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const MM = require('./propfirm/mm');
+      if (req.method === 'POST') {
+        const runMm = String(url.searchParams.get('run') || 'sweep');
+        if (runMm === 'reset') return json(res, 200, MM.reset());
+        if (runMm === 'settle') return json(res, 200, await MM.liquidar().catch((e) => ({ error: e.message })));
+        const bar = await MM.barrer().catch((e) => ({ error: e.message }));
+        const liq = await MM.liquidar().catch((e) => ({ error: e.message }));
+        global._polymmLast = { ...bar, liquidar: liq };
+        return json(res, 200, global._polymmLast);
+      }
+      if (url.searchParams.get('libro') === '1') return json(res, 200, MM.libro());
+      return json(res, 200, { ...MM.estado(), enabled: String(process.env.GP_POLYMM || 'true') !== 'false', ultima_automatica: global._polymmLast || null, ultimo_error: global._polymmError || null });
+    }
     if (p === '/api/internal/propfirm') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });

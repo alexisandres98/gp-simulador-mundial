@@ -312,6 +312,20 @@ y Dota 2 solo en v2). **CS2 fuera de los dos libros desde el 28-sep** (`GP_POLYS
 apaga el correo de la prop firm. Sonda `/api/internal/propfirm?key=` (`poly_sombra.v2`), export
 `picks-export?poly=2`. Ningún dinero real: la puerta es 100 resueltas y t ≥ 2 por deporte.
 
+## 🟣 MARKET MAKING EN SOMBRA SOBRE POLYMARKET (7-oct-2026, orden de Alexis)
+La primera hipótesis que no depende de batir al mercado: reposar órdenes a los dos lados del consenso sharp sin
+margen y cobrar la horquilla en vez de pagarla. `propfirm/cotizables.js` anota TODO mercado que el escáner de la
+firm empareja con consenso (fútbol 1X2, tenis ML, esports, NFL ML), tenga o no ventaja; `propfirm/mm.js` cotiza
+(justo = consenso mezclado a partes iguales con el medio del libro, ±2 pp, 50 shares por lado, inventario ±200 con sesgo, nunca cruza el libro, pausa si consenso y libro discrepan > 8 pp, ventana 36 h → 15 min, banco simulado 2.000) y llena con
+los **cruces reales** del data-api contra la cotización vigente del intervalo anterior (al precio exacto, la
+mitad). Mide fills, horquilla cobrada, **markout a 30 min** (selección adversa), P&L a la resolución de gamma, y
+publica recompensas de liquidez y rebate del maker como TOPE aparte, nunca en el P&L. Job propio cada 5 min
+(`GP_POLYMM=false` apaga, `GP_POLYMM_MIN`), sonda `/api/internal/polymm?key=` (`&libro=1`, POST
+`&run=sweep|settle|reset`). **Regla congelada y puerta** (3-nov, 60 mercados y 300 fills por deporte, t ≥ 2 sin
+recompensas, markout < horquilla) en `docs/PREREGISTRO_POLY_MM_2026-10-07.md`. No toca señales, libros v1/v2,
+vara ni ejecutor. Ningún dinero real: Render está geobloqueado para trading en Polymarket (sonda `poly_geo`).
+Test: `node tests/poly-mm.test.js`.
+
 ## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
 - **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son
   dos apuestas: si hay siete tarjetas pierden las dos. Las sueltas ganan (+3,85 % ROI), las apiladas pierden

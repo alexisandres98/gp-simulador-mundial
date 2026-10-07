@@ -45,6 +45,10 @@ const PRECIO_MIN = 0.15, PRECIO_MAX = 0.84;      // banda: la firm prohíbe >0,8
 // solo quiere la v2 nace marcada `solo_v2`: la sombra v1 y el correo la ignoran, así la v1 sigue siendo el
 // control congelado que era. Aquí NO se exige la hora: la ventana de 2 h la aplica la sombra al entrar.
 const V2 = require('./v2');
+// EL UNIVERSO COTIZABLE (7-oct): cada mercado emparejado con consenso se anota entero para la sombra de market
+// making, tenga o no ventaja. Salida lateral: no cambia qué señal nace ni qué libro la ve.
+const COT = require('./cotizables');
+const anotaCotizable = (args) => { try { return COT.anota(args); } catch { return false; } };
 function decidir(sBase, { edgeV1, precio, consensoV2 = null } = {}) {
   const v1 = edgeV1 >= EDGE_MIN_PP() && edgeV1 <= 12;
   const ev2 = V2.evaluar({ ...sBase, precio_pm: precio, consenso_shin: consensoV2 }, { precio, exigirHora: false });
@@ -262,6 +266,12 @@ async function escanear({ game = 'cs2' } = {}) {
       const cons = consensoDe(cross, mm.familia, mm.mapa, mm.linea);
       if (!cons) continue;
       out.con_consenso++;
+      {
+        // el lado que ocupa el outcome 0 del mercado, y su probabilidad justa
+        const lado0 = Object.keys(mm.lados).find((l) => mm.lados[l].idx === 0);
+        if (lado0 && cons[lado0] != null) anotaCotizable({ m, deporte: game, familia: mm.familia, evento: `${home} vs ${away}`, ko: ev.start_at,
+          consenso0: cons[lado0], books: cons.books, competicion: ev.competition || null, lado0 });
+      }
       // el parte enseña QUÉ TAN CERCA estuvo cada mercado — el silencio con este dato es una medición,
       // sin él es una incógnita ("¿no hay valor o el consenso no cruzó?")
       for (const lado of (mm.familia === 'TOTAL_MAPAS' ? ['over', 'under'] : ['home', 'away'])) {
@@ -393,6 +403,12 @@ async function escanearFutbol({ dbc, eventos } = {}) {
       }
       if (!resultado) continue;
       out.mercados++; out.con_consenso++;
+      {
+        const yes0 = /^yes$/i.test(String(outs[0]));
+        anotaCotizable({ m, deporte: 'futbol', familia: 'FUT1X2', evento: `${ev.home} vs ${ev.away}`, ko: ev.ko, competicion: ev.league || null,
+          consenso0: yes0 ? cons[resultado] : 1 - cons[resultado], shin0: consShin ? (yes0 ? consShin[resultado] : 1 - consShin[resultado]) : null,
+          books: cons.books, lado0: `${outs[0]}:${resultado}` });
+      }
       const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
       if (liq != null && liq < LIQ_MIN()) continue;
       for (let i = 0; i < 2; i++) {
@@ -479,6 +495,7 @@ async function escanearAmfoot({ lg = 'nfl' } = {}) {
       }
       if (!l0 || !l1 || l0 === l1) continue;
       out.mercados++; out.con_consenso++;
+      anotaCotizable({ m, deporte: lg, familia: 'ML', evento: `${home} vs ${away}`, ko, consenso0: cons[l0], books: cons.books, lado0: l0 });
       const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
       if (liq != null && liq < LIQ_MIN()) continue;
       const lados = { [l0]: precios[0], [l1]: precios[1] };
@@ -562,6 +579,7 @@ async function escanearTenis() {
       const l0 = lado(0), l1 = lado(1);
       if (!l0 || !l1 || l0 === l1) continue;
       out.mercados++;
+      anotaCotizable({ m, deporte: 'tenis', familia: 'ML', evento: `${r.a} vs ${r.b}`, ko: r.commence, consenso0: cons[l0], books: cons.books, competicion: r.tourney || null, lado0: l0 });
       const liq = num(m.liquidityNum != null ? m.liquidityNum : m.liquidity);
       if (liq != null && liq < LIQ_MIN()) continue;
       const precioDe = { [l0]: precios[0], [l1]: precios[1] }, idxDe = { [l0]: 0, [l1]: 1 };

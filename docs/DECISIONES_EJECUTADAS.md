@@ -510,3 +510,20 @@ ganar (Pinnacle no limita ganadores), es rechazo de alta: jurisdicción, KYC o c
 Consecuencias: (1) CS2 manual en Pinnacle descartado; (2) `GP_REAL_CARDS_PINNACLE=0` en Render (desplegado
 12:22 UTC): las picks de tarjetas sin cuota en Cloudbet ya no nacen como fila manual ni salen en el correo.
 El censo y las lecturas de precio de Pinnacle siguen igual. Reabrir = quitar la var.
+
+## 7-oct-2026 — Market making en sombra sobre Polymarket (`mm_v1`)
+
+Alexis, tras el reporte de la semana 41 («no entiendo cómo todavía no hemos conectado con algo que sea por lo
+menos rentable») y un tuit sobre market making en mercados de predicción: «procede, vamos a hacerlo». Es la
+primera hipótesis del proyecto que no depende de batir al mercado: reposar órdenes a los dos lados del consenso
+sharp sin margen y cobrar la horquilla, en vez de pagarla. Regla, universo, simulación de fills (cruces reales
+del data-api contra la cotización vigente del intervalo anterior; la mitad al precio exacto), lo que se mide, lo
+que no suma al P&L (recompensas y rebate, publicados como tope) y la puerta (3-nov, 60 mercados y 300 fills por
+deporte, t ≥ 2 sin recompensas, markout menor que la horquilla) están en `docs/PREREGISTRO_POLY_MM_2026-10-07.md`.
+Código: `propfirm/cotizables.js` (universo cotizable: salida lateral del escáner, no toca señales ni libros),
+`propfirm/mm.js` (cotización, fills, inventario con caja de pares, markout a 30 min, liquidación por gamma),
+job propio cada 5 min (`GP_POLYMM`, `GP_POLYMM_MIN`), sonda `/api/internal/polymm?key=` (`&libro=1`; POST
+`&run=sweep|settle|reset`), ficheros `cotizables.json` y `poly-mm.json` en el disco de la prop firm (con copia
+de seguridad). Test: `node tests/poly-mm.test.js`. Ningún dinero real; y para que lo hubiera haría falta un
+servidor fuera de EE. UU. (Render está geobloqueado para trading), wallet con USDC en Polygon y firma de
+órdenes, que se decide después de la lectura y no antes.

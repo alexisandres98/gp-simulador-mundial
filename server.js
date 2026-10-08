@@ -182,6 +182,28 @@ function clubJsonCicloCerrar() {
   _clubJsonCiclo.on = false; _clubJsonCiclo.m.clear();
   return r;
 }
+// 8-oct (segunda vuelta). El montón seguía subiendo a 2,7 GB cada cuarto de hora con la caché por ciclo: la
+// causa de fondo es que un resultado que NO está en el historial no aparece hasta que el pase diario de las
+// 07:43 reescribe el fichero, y el liquidador (y el total de props del ejecutor en la sombra) lo buscaban
+// cada 10-15 min parseando 5-9 MB por liga para encontrar lo mismo: nada. Dos reglas:
+//  1. Un partido que no ha terminado no puede estar en el historial: hasta KO + 2 h no se abre el fichero.
+//  2. Una búsqueda sin resultado recuerda la VERSIÓN (mtime) del fichero en la que no estaba; mientras el
+//     fichero no cambie no se vuelve a parsear para esa clave. Cuando el pase diario lo reescribe, se busca
+//     otra vez. La semántica no cambia (mismo resultado o null, mismo VOID a las 72 h): solo se ahorra el parse.
+const CLUB_HIST_MIN_DESDE_KO_MS = 2 * 3600e3;
+const _clubHistSinHit = new Map();   // clave de búsqueda → mtime del fichero en el que no se encontró
+function clubHistMtime(name) { try { return fs.statSync(clubDataFile(name)).mtimeMs; } catch { return 0; } }
+// Busca `fn(json)` en el fichero `name`; devuelve lo que `fn` devuelva (null = no está). Lanza si el fichero
+// no se puede leer, como clubDataJson en modo estricto, para que los try/catch de los llamantes sigan igual.
+function clubHistBuscar(name, clave, fn) {
+  const mt = clubHistMtime(name);
+  if (mt > 0 && _clubHistSinHit.get(clave) === mt) return null;
+  const r = fn(clubDataJson(name));
+  if (r == null && mt > 0) { if (_clubHistSinHit.size > 20000) _clubHistSinHit.clear(); _clubHistSinHit.set(clave, mt); }
+  else if (r != null) _clubHistSinHit.delete(clave);
+  return r;
+}
+const clubHistTerminado = (ko) => ko > 0 && Date.now() - ko >= CLUB_HIST_MIN_DESDE_KO_MS;
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------
@@ -9509,8 +9531,6 @@ function settleClubDailyPicks() {
       : p.result_code === 'LOSS' ? -1
         : 0;
   };
-  const phCache = {}; // player-history por liga (archivo grande): una lectura por corrida del settle
-  const phRows = (lg) => { if (phCache[lg] === undefined) { try { phCache[lg] = clubDataJson(`player-history-${lg}.json`).rows || []; } catch { phCache[lg] = []; } } return phCache[lg]; };
   // REPARACIÓN idempotente: las liquidadas ANTES del fix quedaron sin units. Se recalculan desde el
   // resultado y la cuota guardados (no se re-liquida nada: el resultado ya estaba bien).
   let repaired = 0;
@@ -9523,9 +9543,11 @@ function settleClubDailyPicks() {
     if (p.status !== 'ACTIVE') continue;
     if (p.family === 'PLAYER') {
       try {
-        const raw = phRows(p.league);   // 8-oct: una lectura por liga y ciclo, no una por pick
         const ko = +new Date(p.event.kickoff_at || 0);
-        const row = raw.find(r => r.pid === p.pid && Math.abs(+new Date(r.date) - ko) < 4 * 86400e3);
+        if (!clubHistTerminado(ko)) continue;   // 8-oct: el partido no ha terminado → no puede estar en el historial
+        // 8-oct: una lectura por liga y ciclo, y NINGUNA mientras el fichero no cambie desde la última búsqueda vacía
+        const row = clubHistBuscar(`player-history-${p.league}.json`, `ph|${p.pick_id || `${p.league}|${p.pid}|${ko}`}`,
+          (j) => ((j && j.rows) || []).find(r => r.pid === p.pid && Math.abs(+new Date(r.date) - ko) < 4 * 86400e3) || null);
         if (row) {
           const val = p.player_family === 'player_assist' ? (Number(row.assists) || 0) : (Number(row.goals) || 0);
           p.status = 'SETTLED'; p.result_code = val > 0 ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); setUnits(p); settled++;
@@ -9540,9 +9562,10 @@ function settleClubDailyPicks() {
     // (settleClubPropsViaAf, async) para finales recientes que el backfill aún no trae.
     if (p.family === 'CORNERS' || p.family === 'CARDS') {
       try {
-        const ms = clubDataJson(`props-history-${p.league}.json`).matches || [];
         const ko = +new Date(p.event.kickoff_at || 0);
-        const row = ms.find(m2 => ((m2.home.code === p.event.home_team_id && m2.away.code === p.event.away_team_id) || (m2.home.code === p.event.away_team_id && m2.away.code === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+        if (!clubHistTerminado(ko)) continue;   // 8-oct: hasta KO + 2 h no hay nada que buscar en el historial
+        const row = clubHistBuscar(`props-history-${p.league}.json`, `pr|${p.pick_id || `${p.league}|${p.event.home_team_id}|${p.event.away_team_id}|${ko}`}`,
+          (j) => ((j && j.matches) || []).find(m2 => ((m2.home.code === p.event.home_team_id && m2.away.code === p.event.away_team_id) || (m2.home.code === p.event.away_team_id && m2.away.code === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3) || null);
         if (row) {
           const tot = p.family === 'CORNERS'
             ? (Number(row.home.corners) || 0) + (Number(row.away.corners) || 0)
@@ -9556,12 +9579,8 @@ function settleClubDailyPicks() {
           // (stat de equipo) → sigue esperando props-history/AF y VOID honesto a las 72h.
           let done = false;
           if (p.family === 'CARDS') {
-            const near = phRows(p.league).filter(r2 => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3 && (r2.team === p.event.home_team_id || r2.team === p.event.away_team_id));
-            const byMatch = {};
-            near.forEach(r2 => { (byMatch[r2.match] = byMatch[r2.match] || new Set()).add(r2.team); });
-            const mid = Object.keys(byMatch).find(k => byMatch[k].has(p.event.home_team_id) && byMatch[k].has(p.event.away_team_id));
-            if (mid) {
-              const tot2 = near.filter(r2 => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
+            const tot2 = clubHistBuscar(`player-history-${p.league}.json`, `ph|${p.pick_id || `${p.league}|${p.event.home_team_id}|${p.event.away_team_id}|${ko}`}`, (j) => clubCardsDesdePlayerHistory((j && j.rows) || [], p.event, ko));
+            if (tot2 != null) {
               const over2 = tot2 > Number(p.line);
               p.status = 'SETTLED'; p.result_code = ((p.side === 'over') === over2) ? 'WIN' : 'LOSS'; p.settled_at = new Date().toISOString(); setUnits(p); settled++; done = true;
             }
@@ -9606,15 +9625,29 @@ function settleClubDailyPicks() {
 // exactamente el mismo número para liquidar SU línea, que no siempre coincide con la de la pick viva:
 // cuando la señal se re-emite (u10,5 → u11,5) la apuesta ya colocada sigue estando en la línea vieja.
 // Devuelve null mientras no haya dato — quien llama decide si espera o anula por tiempo.
+// Tarjetas de UN partido desde el player-history (TSA): filas de los dos equipos a ±2 días del saque,
+// agrupadas por id de partido; cuenta el que tiene filas de AMBOS. null si no está (el mismo cálculo que
+// usaba el liquidador y clubPropTotal por separado; 8-oct: uno solo para los dos).
+function clubCardsDesdePlayerHistory(rows, ev, ko) {
+  const near = (rows || []).filter((r2) => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3
+    && (r2.team === ev.home_team_id || r2.team === ev.away_team_id));
+  const byMatch = {};
+  near.forEach((r2) => { (byMatch[r2.match] = byMatch[r2.match] || new Set()).add(r2.team); });
+  const mid = Object.keys(byMatch).find((k) => byMatch[k].has(ev.home_team_id) && byMatch[k].has(ev.away_team_id));
+  if (!mid) return null;
+  return near.filter((r2) => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
+}
 function clubPropTotal(league, ev, family) {
   if (family !== 'CORNERS' && family !== 'CARDS') return null;
   const ko = +new Date((ev && ev.kickoff_at) || 0);
   if (!ko) return null;
+  if (!clubHistTerminado(ko)) return null;   // 8-oct: antes de KO + 2 h el total no puede existir; no se abre nada
+  const clave = `${league}|${ev.home_team_id}|${ev.away_team_id}|${ko}`;
   try {
-    const ms = clubDataJson(`props-history-${league}.json`).matches || [];
-    const row = ms.find((m2) => ((m2.home.code === ev.home_team_id && m2.away.code === ev.away_team_id)
-      || (m2.home.code === ev.away_team_id && m2.away.code === ev.home_team_id))
-      && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
+    const row = clubHistBuscar(`props-history-${league}.json`, `pt|${clave}`,
+      (j) => ((j && j.matches) || []).find((m2) => ((m2.home.code === ev.home_team_id && m2.away.code === ev.away_team_id)
+        || (m2.home.code === ev.away_team_id && m2.away.code === ev.home_team_id))
+        && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3) || null);
     if (row) {
       return family === 'CORNERS'
         ? (Number(row.home.corners) || 0) + (Number(row.away.corners) || 0)
@@ -9624,13 +9657,8 @@ function clubPropTotal(league, ev, family) {
   // mismo fallback TSA que usa el liquidador: las tarjetas salen del player-history agrupando por partido
   if (family === 'CARDS') {
     try {
-      const rows = clubDataJson(`player-history-${league}.json`).rows || [];
-      const near = rows.filter((r2) => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3
-        && (r2.team === ev.home_team_id || r2.team === ev.away_team_id));
-      const byMatch = {};
-      near.forEach((r2) => { (byMatch[r2.match] = byMatch[r2.match] || new Set()).add(r2.team); });
-      const mid = Object.keys(byMatch).find((k) => byMatch[k].has(ev.home_team_id) && byMatch[k].has(ev.away_team_id));
-      if (mid) return near.filter((r2) => r2.match === mid).reduce((a, r2) => a + (Number(r2.yc) || 0) + (Number(r2.rc) || 0), 0);
+      const tot = clubHistBuscar(`player-history-${league}.json`, `pt-ph|${clave}`, (j) => clubCardsDesdePlayerHistory((j && j.rows) || [], ev, ko));
+      if (tot != null) return tot;
     } catch { }
   }
   return null;

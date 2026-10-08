@@ -63,13 +63,22 @@ async function hasDepthCols(client) {
   return _depthCols;
 }
 
+// EL UPSERT QUE NUNCA ACTUALIZABA (8-oct-2026). La clave única de la tabla incluye `line` y `team_scope`, y
+// Postgres trata dos NULL como DISTINTOS en un UNIQUE: una cuota 1X2 (team_scope NULL) jamás hacía conflicto
+// con la del barrido anterior, así que cada pasada INSERTABA de nuevo las tres caras de cada casa de cada
+// partido. Con el plan de 5M (≈40 casas, barrido cada 12 min, ~600 partidos) son ~10 millones de filas al
+// día: el loader de clubes llegó a traer 3,27 millones de filas por pasada (1,5-2 GB de montón cada cuarto
+// de hora, 54 reinicios el 8-oct) y las queries morían por statement timeout. Las cuotas sin ámbito ni línea
+// se escriben ahora con 'match' y 0 (lo que ya hacía el 1X2 con la línea) para que el conflicto exista y la
+// fila se ACTUALICE. Los lectores ya leen `coalesce(team_scope,'match')`; la línea de cierre sigue siendo
+// la última observación pre-saque (el evento sale del barrido al arrancar), como en los totales desde siempre.
 async function upsertGoalQuote(q, { client = db } = {}) {
   const depth = await hasDepthCols(client);
   const cols = ['data_provider', 'sportsbook_code', 'external_event_id', 'canonical_event_id', 'market_family', 'period',
     'line', 'side', 'team_scope', 'market_id', 'odds_decimal', 'implied_probability', 'quote_status', 'is_live',
     'provider_update', 'observed_at', 'ingestion_run_id'].concat(depth ? ['max_stake', 'depth_src'] : []);
   const vals = [q.data_provider, q.sportsbook_code, q.external_event_id, q.canonical_event_id || null, q.market_family,
-    q.period || 'regulation_90m', q.line ?? null, q.side, q.team_scope || null, q.market_id || null,
+    q.period || 'regulation_90m', q.line ?? 0, q.side, q.team_scope || 'match', q.market_id || null,
     q.odds_decimal ?? null, q.implied_probability ?? null, q.quote_status || 'open', !!q.is_live,
     q.provider_update || null, q.ingestion_run_id || null].concat(depth ? [q.max_stake ?? null, q.depth_src || null] : []);
   // `observed_at` va como now() literal, así que los $n saltan esa posición

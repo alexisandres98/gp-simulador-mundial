@@ -1070,6 +1070,38 @@ async function censoTarjetasJob() {
   } catch (e) { console.error('[censo-tarjetas]', e.message); return { error: e.message }; }
 }
 setTimeout(() => { censoTarjetasJob(); setInterval(censoTarjetasJob, 60 * 60e3); }, 4 * 60e3);
+
+// PURGA DE LA TABLA DE CUOTAS (8-oct-2026). Hasta hoy cada barrido INSERTABA de nuevo cada cuota 1X2 (ver
+// goal-engine/repository.js: team_scope NULL nunca hacía conflicto en el UNIQUE), ~10 millones de filas al día
+// desde el plan de 5M. Desde hoy se escriben con 'match' y se actualizan; las heredadas con NULL se borran por
+// lotes cortos (cada DELETE cabe en el statement timeout) y solo las de más de 48 h: las de los partidos aún por
+// jugar las reemplaza el barrido siguiente, y la captura de cierres (KO + 30 min) sigue encontrando las suyas.
+// `GP_SBGOAL_PURGE=0` la apaga; `GP_SBGOAL_PURGE_LOTES` lotes por pasada (20.000 filas cada uno).
+async function purgaCuotasJob() {
+  if (String(process.env.GP_SBGOAL_PURGE || '1') === '0') return { skipped: 'off' };
+  const dbc = require('./database/client');
+  if (!dbc.isConfigured()) return { skipped: 'sin DB' };
+  const lotes = Math.max(1, Number(process.env.GP_SBGOAL_PURGE_LOTES) || 30);
+  const t0 = Date.now();
+  let borradas = 0, n = 0, err = null;
+  try {
+    for (n = 0; n < lotes; n++) {
+      const r = await dbc.query(`DELETE FROM sportsbook_goal_quote_current
+         WHERE ctid = ANY(ARRAY(SELECT ctid FROM sportsbook_goal_quote_current
+                                  WHERE team_scope IS NULL AND observed_at < now() - interval '48 hours' LIMIT 20000))`);
+      borradas += r.rowCount || 0;
+      if (!r.rowCount) break;
+      await new Promise((res) => setTimeout(res, 250));
+    }
+  } catch (e) { err = e.message; }
+  let estimadas = null;
+  try { estimadas = Number(((await dbc.query(`SELECT reltuples::bigint n FROM pg_class WHERE relname = 'sportsbook_goal_quote_current'`)).rows[0] || {}).n); } catch { /* sin estimación */ }
+  const out = { borradas, lotes: n, filas_estimadas_tabla: estimadas, ms: Date.now() - t0, error: err };
+  console.log('[sbgoal-purga]', JSON.stringify(out));
+  global._sbgoalPurgaLast = { at: new Date().toISOString(), ...out };
+  return out;
+}
+setTimeout(() => { purgaCuotasJob(); setInterval(purgaCuotasJob, 60 * 60e3); }, 6 * 60e3);
 // la cola diaria de la base (resultados de la temporada + ventanas de Orakel + partidos PC) en un proceso aparte
 let _dtTailRunning = false;
 async function dartsTailJob(once) {
@@ -9967,7 +9999,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
         const ownBook = p.best_book_at_create || p.best_book;
         const ownPin = (byBook, sel) => { const bo = byBook[ownBook], bp = byBook.pinnacle; ownOdds = bo && bo[sel] ? bo[sel].o : null; pinOdds = bp && bp[sel] ? bp[sel].o : null; };
         if (p.family === 'SOLID') {
-          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND observed_at <= $2`, [ceid, cutoff]).catch(() => ({ rows: [] }));
+          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family='match_winner' AND observed_at <= $2 ORDER BY observed_at`, [ceid, cutoff]).catch(() => ({ rows: [] }));
           const byBook = {};
           for (const q of r.rows) { (byBook[q.sportsbook_code] = byBook[q.sportsbook_code] || {})[String(q.side).toLowerCase()] = q; }
           const sel = String(p.selection_code || '').toLowerCase();
@@ -9986,7 +10018,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
           ownPin(byBook, sel);
         } else if (['GOALS', 'CORNERS', 'CARDS'].includes(p.family)) {
           const fam = p.family === 'GOALS' ? 'match_total' : p.family === 'CORNERS' ? 'corners_total' : 'cards_total';
-          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at <= $4`, [ceid, fam, p.line, cutoff]).catch(() => ({ rows: [] }));
+          const r = await dbc.query(`SELECT sportsbook_code, side, odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND line=$3 AND observed_at <= $4 ORDER BY observed_at`, [ceid, fam, p.line, cutoff]).catch(() => ({ rows: [] }));
           const byBook = {};
           for (const q of r.rows) { (byBook[q.sportsbook_code] = byBook[q.sportsbook_code] || {})[String(q.side).toLowerCase()] = q; }
           const side = String(p.side || '').toLowerCase();
@@ -9999,7 +10031,7 @@ async function captureClubPicksClosing({ force = false } = {}) {
           fair = med(fairs); odds = oddsArr.length ? Math.max(...oddsArr) : null;
           ownPin(byBook, side);
         } else if (p.family === 'PLAYER') {
-          const r = await dbc.query(`SELECT odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at <= $4`, [ceid, p.player_family, p.pid, cutoff]).catch(() => ({ rows: [] }));
+          const r = await dbc.query(`SELECT odds_decimal::float o, observed_at FROM sportsbook_goal_quote_current WHERE canonical_event_id=$1 AND market_family=$2 AND team_scope=$3 AND observed_at <= $4 ORDER BY observed_at`, [ceid, p.player_family, p.pid, cutoff]).catch(() => ({ rows: [] }));
           const implied = r.rows.map(q => 1 / q.o);
           fair = med(implied); odds = r.rows.length ? Math.max(...r.rows.map(q => q.o)) : null;
           at = r.rows.length ? r.rows[0].observed_at : null;

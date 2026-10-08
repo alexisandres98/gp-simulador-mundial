@@ -145,35 +145,25 @@ async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.n
   // statement corto cabe en el timeout y un lote caído no mata a los demás; (b) filtro de frescura 24h —
   // el consenso igual descarta cuotas >75min, no hay razón para arrastrar filas de eventos muertos;
   // (c) el error se LOGUEA (la falla de datos tiene que ser visible, no un feed vacío mudo).
-  const rows = [];
-  let qErr = null;
-  for (let i = 0; i < ids.length; i += 80) {
-    const r = await db.query(
-      `SELECT g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
-              g.odds_decimal, g.is_live, g.observed_at, g.max_stake, g.depth_src,
-              m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
-         FROM sportsbook_goal_quote_current g
-         LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
-        WHERE g.data_provider = ANY($1) AND g.canonical_event_id = ANY($2)
-          AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'
-          AND g.observed_at > now() - interval '24 hours'`,
-      [providers, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
-    // NO `rows.push(...r.rows)`: extender un array de decenas de miles de filas como ARGUMENTOS revienta
-    // el límite de la pila ("Maximum call stack size exceeded"). Con el plan de 5M y 55.000 cuotas por
-    // barrido eso empezó a pasar de verdad, el catch de arriba lo tragaba y el escáner de fútbol devolvía
-    // CERO mercados en silencio — arbitraje, middles y price-lag vacíos sin ninguna señal de error.
-    for (const row of r.rows) rows.push(row);
-  }
-  if (qErr) console.error('[clubs-markets] query 1X2/goles falló (parcial=' + rows.length + ' filas):', qErr.message);
+  // 8-oct: LA QUERY QUE TUMBABA LA PLATAFORMA. Traía 3,27 millones de filas por pasada (y aun así moría por
+  // timeout) porque la tabla acumulaba una fila NUEVA por cuota 1X2 y barrido (ver upsertGoalQuote). Tres
+  // cambios, ninguno toca qué mercados salen: (a) DISTINCT ON por (evento, casa, familia, línea, lado)
+  // quedándose con la observación más reciente — que es lo que la tabla "current" siempre quiso ser y lo
+  // único que el consenso usa; (b) frescura 3 h en vez de 24: aguas abajo todo descarta cuotas de más de
+  // 75 min, así que las filas de entre 3 y 24 h solo ocupaban memoria; (c) cada lote se vuelca a `byKey`
+  // al llegar y sus filas crudas se sueltan, en vez de retener los lotes enteros hasta el final.
+  let qErr = null, nRows = 0;
+  const t0 = Date.now();
   const byKey = new Map();
-  for (const row of rows) {
-    const meta = events[row.canonical_event_id]; if (!meta) continue;
+  const absorbe = (row) => {
+    nRows++;
+    const meta = events[row.canonical_event_id]; if (!meta) return;
     const is1x2 = row.market_family === 'match_winner';
     const side = String(row.side || '').toLowerCase();
-    if (is1x2 && !['home', 'draw', 'away'].includes(side)) continue;
-    if (!is1x2 && !['over', 'under'].includes(side)) continue;
+    if (is1x2 && !['home', 'draw', 'away'].includes(side)) return;
+    if (!is1x2 && !['over', 'under'].includes(side)) return;
     const line = is1x2 ? null : Number(row.line);
-    if (!is1x2 && !Number.isFinite(line)) continue;
+    if (!is1x2 && !Number.isFinite(line)) return;
     const key = row.canonical_event_id + '|' + row.market_family + '|' + (line == null ? '' : line);
     if (!byKey.has(key)) {
       byKey.set(key, {
@@ -196,7 +186,28 @@ async function loadClubsMarkets(db, { provider = null, events = {}, now = Date.n
       live: !!row.is_live, is_exchange: isExchange(row.sportsbook_code),
       venue_kind: 'sportsbook',
     });
+  };
+  for (let i = 0; i < ids.length; i += 80) {
+    const r = await db.query(
+      `SELECT DISTINCT ON (g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side)
+              g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side,
+              g.odds_decimal, g.is_live, g.observed_at, g.max_stake, g.depth_src,
+              m.sportsbook_name, m.independence_group, m.operator_group, m.source_role
+         FROM sportsbook_goal_quote_current g
+         LEFT JOIN sportsbook_source_metadata m ON m.sportsbook_code = g.sportsbook_code
+        WHERE g.data_provider = ANY($1) AND g.canonical_event_id = ANY($2)
+          AND g.market_family IN ('match_winner','match_total') AND coalesce(g.quote_status,'open') = 'open'
+          AND g.observed_at > now() - interval '3 hours'
+        ORDER BY g.canonical_event_id, g.sportsbook_code, g.market_family, g.line, g.side, g.observed_at DESC`,
+      [providers, ids.slice(i, i + 80)]).catch((e) => { qErr = e; return { rows: [] }; });
+    // NO `rows.push(...r.rows)`: extender un array de decenas de miles de filas como ARGUMENTOS revienta
+    // el límite de la pila ("Maximum call stack size exceeded"). Con el plan de 5M y 55.000 cuotas por
+    // barrido eso empezó a pasar de verdad, el catch de arriba lo tragaba y el escáner de fútbol devolvía
+    // CERO mercados en silencio — arbitraje, middles y price-lag vacíos sin ninguna señal de error.
+    for (const row of r.rows) absorbe(row);
   }
+  if (qErr) console.error('[clubs-markets] query 1X2/goles falló (parcial=' + nRows + ' filas):', qErr.message);
+  console.log('[clubs-markets] 1X2/goles: eventos ' + ids.length + ' · filas ' + nRows + ' · mercados ' + byKey.size + ' · ' + (Date.now() - t0) + ' ms');
   // 1X2 completo (3 outcomes, ≥2 casas por diseño del consenso); totales igual que la casa (ambos lados, ≥4).
   return [...byKey.values()].filter(m => {
     const sides = new Set(m.quotes.map(q => q.outcome));

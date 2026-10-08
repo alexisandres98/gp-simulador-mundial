@@ -153,21 +153,32 @@ function clubDataFile(name) {
 // QUÉ HACE. Dentro de un ciclo abierto (`clubJsonCicloAbrir`), cada fichero se parsea UNA vez y se sirve de
 // memoria hasta `clubJsonCicloCerrar`, que suelta todo. Fuera de un ciclo, lee sin retener (como antes).
 // `strict` conserva la semántica de los llamadores: un fichero ilegible lanza, y su try/catch decide.
-const _clubJsonCiclo = { on: false, m: new Map(), lecturas: 0, parseos: 0 };
+// Primer ciclo medido en producción (8-oct 23:29): 1.610 lecturas → 54 parseos, pero el montón subió igual a
+// 2,3 GB porque la caché RETENÍA los 54 ficheros a la vez, y los player-history (5-9 MB cada uno, ~8 MB de
+// montón por cada 2,5 MB de disco) son la mitad de eso. Esos no se retienen aquí: el liquidador ya los
+// cachea por liga dentro de su propia corrida (`phRows`), que es el único sitio donde se piden varias veces.
+const _clubJsonCiclo = { on: false, m: new Map(), lecturas: 0, parseos: 0, mb: 0, por_tipo: {} };
+const _clubJsonRetener = (f) => !/player-history-/.test(path.basename(f));
 function clubDataJson(nameOrPath, { strict = true } = {}) {
   const f = String(nameOrPath).includes(path.sep) ? String(nameOrPath) : clubDataFile(nameOrPath);
   _clubJsonCiclo.lecturas++;
   if (_clubJsonCiclo.on && _clubJsonCiclo.m.has(f)) return _clubJsonCiclo.m.get(f);
-  let v = null;
-  try { v = JSON.parse(fs.readFileSync(f, 'utf8')); }
+  let v = null, txt = null;
+  try { txt = fs.readFileSync(f, 'utf8'); v = JSON.parse(txt); }
   catch (e) { if (strict) throw e; v = null; }
   _clubJsonCiclo.parseos++;
-  if (_clubJsonCiclo.on) _clubJsonCiclo.m.set(f, v);
+  if (_clubJsonCiclo.on) {
+    const tipo = (path.basename(f).match(/^([a-z-]+?)-/) || [])[1] || 'otro';
+    _clubJsonCiclo.por_tipo[tipo] = (_clubJsonCiclo.por_tipo[tipo] || 0) + 1;
+    _clubJsonCiclo.mb = +(_clubJsonCiclo.mb + (txt ? txt.length / 1048576 : 0)).toFixed(1);
+    if (_clubJsonRetener(f)) _clubJsonCiclo.m.set(f, v);
+  }
   return v;
 }
-function clubJsonCicloAbrir() { _clubJsonCiclo.on = true; _clubJsonCiclo.m.clear(); _clubJsonCiclo.lecturas = 0; _clubJsonCiclo.parseos = 0; }
+function clubJsonCicloAbrir() { _clubJsonCiclo.on = true; _clubJsonCiclo.m.clear(); _clubJsonCiclo.lecturas = 0; _clubJsonCiclo.parseos = 0; _clubJsonCiclo.mb = 0; _clubJsonCiclo.por_tipo = {}; }
 function clubJsonCicloCerrar() {
-  const r = { lecturas: _clubJsonCiclo.lecturas, parseos: _clubJsonCiclo.parseos, ficheros: _clubJsonCiclo.m.size };
+  const r = { lecturas: _clubJsonCiclo.lecturas, parseos: _clubJsonCiclo.parseos, retenidos: _clubJsonCiclo.m.size, mb_leidos: _clubJsonCiclo.mb, por_tipo: _clubJsonCiclo.por_tipo,
+    heap_mb: Math.round(process.memoryUsage().heapUsed / 1048576) };
   _clubJsonCiclo.on = false; _clubJsonCiclo.m.clear();
   return r;
 }

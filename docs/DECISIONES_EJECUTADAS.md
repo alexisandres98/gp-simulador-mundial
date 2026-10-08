@@ -557,4 +557,13 @@ Arreglo (commit de hoy): `clubDataJson()` con **caché por ciclo** (`clubJsonCic
 trabajo de picks): cada fichero se parsea una vez por pasada y se suelta al terminar; fuera del ciclo lee sin
 retener. Marcas de memoria por paso (`picks-clubes:build|liquidar|precios|cierres…`) para que el log diga en qué
 paso sube si vuelve a pasar. Semántica de errores intacta (`strict`: un fichero ilegible sigue lanzando dentro
-de los try/catch de siempre). Pendiente de verificar en producción: que el montón deje de subir cada 15 min.
+de los try/catch de siempre).
+**Medido en producción (noche):** con la caché por ciclo las lecturas bajaron de 1.610 a 94 parseos por pasada, pero el
+montón seguía picando a **2,3-2,7 GB** cada cuarto de hora: 289 MB de JSON leídos por pasada (51 ficheros de
+jugadores, 43 de props) fabrican gigabytes de basura aunque no se retengan. La causa de fondo no era la caché sino
+QUÉ se buscaba: el liquidador abría el historial para picks de partidos **aún no jugados** (no pueden estar) y, para
+los ya jugados, cada 10-15 min aunque el fichero solo cambia con el pase diario de las 07:43. Segundo arreglo
+(`48b2be2`): `clubHistTerminado()` no abre nada antes de KO + 2 h, y `clubHistBuscar()` recuerda el mtime del fichero
+en el que una búsqueda no encontró nada y no vuelve a parsearlo hasta que cambie — en el liquidador de clubes y en
+`clubPropTotal`, que el ejecutor en la sombra llama en cada barrido. Misma semántica (mismo resultado, mismo VOID a
+las 72 h). Resultado medido tras el deploy: ver la línea `[clubs-picks] disco:` del registro de abajo.

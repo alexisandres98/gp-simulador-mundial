@@ -539,3 +539,22 @@ exacto pasa de "la mitad" a **prorrata con la cola del nivel** (lo que el libro 
 antes de leer un solo fill, y escrito en el preregistro. Dos fallos corregidos sobre la marcha: un Shin ausente se
 guardaba como 0 (tenis y esports quedaban fuera por "precio") y el cupo de 40 mercados por pasada dejaba fuera a
 50 (`GP_POLYMM_MERCADOS_MAX=120` en Render).
+
+## 8-oct-2026 — 54 caídas por memoria en un día: el liquidador de clubes parseaba el historial por cada pick
+
+Desde las 08:08 UTC la plataforma reinició 54 veces (V8 sin montón a 3,6 GB, exit 134, y Render matando el
+contenedor), con 502 para los usuarios durante 1-2 min cada cuarto de hora. El patrón en los logs: cada 15 min
+el montón sube de 1,0 a 2,7-3,4 GB en un minuto y vuelve a bajar («liberado»); de madrugada bajaba, por la
+mañana ya no llegó. El salto coincide con `[clubs-picks]`, el trabajo de picks de clubes (cada 15 min), no con
+el barrido de cuotas que figuraba como «en curso» (el barrido ya había terminado; su etiqueta se queda puesta).
+No tiene que ver con el market making en sombra del 7-oct (corre cada 5 min y sus ficheros son de KB).
+Causa: `settleClubDailyPicks` leía y parseaba `player-history-<liga>.json` (5-9 MB) por CADA pick activa de
+jugador y `props-history-<liga>.json` por CADA pick activa de córners/tarjetas; `clubRefereeIndex` volvía a
+parsear el props-history por CADA pick de córners ya liquidada (vía `clubPropTotal`). Con cientos de picks y
+ficheros que el pase diario de las 07:43 engorda (229 MB de player-history en 59 ligas), cada pasada fabricaba
+gigabytes de basura en un minuto. Medido: 2,5 MB de fichero cuestan 8 MB de montón al parsear.
+Arreglo (commit de hoy): `clubDataJson()` con **caché por ciclo** (`clubJsonCicloAbrir/Cerrar` alrededor del
+trabajo de picks): cada fichero se parsea una vez por pasada y se suelta al terminar; fuera del ciclo lee sin
+retener. Marcas de memoria por paso (`picks-clubes:build|liquidar|precios|cierres…`) para que el log diga en qué
+paso sube si vuelve a pasar. Semántica de errores intacta (`strict`: un fichero ilegible sigue lanzando dentro
+de los try/catch de siempre). Pendiente de verificar en producción: que el montón deje de subir cada 15 min.

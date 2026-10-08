@@ -142,6 +142,35 @@ function clubDataFile(name) {
   try { const d = path.join(CLUB_DATA_DISK, name); if (fs.existsSync(d)) return d; } catch { /* */ }
   return path.join(__dirname, 'data', 'clubs', name);
 }
+// ── LECTURA DEL DISCO DE CLUBES CON CACHÉ POR CICLO (8-oct-2026, 54 caídas por memoria en un día) ──────────
+// QUÉ PASÓ. El trabajo de picks de clubes (cada 15 min) volvía a leer y parsear el `player-history-<liga>.json`
+// (5-9 MB) por CADA pick activa de jugador, el `props-history-<liga>.json` por CADA pick activa de córners o
+// tarjetas, y el índice de árbitros volvía a parsear el props-history por CADA pick de córners ya liquidada.
+// Con cientos de picks y ficheros que el pase diario engorda, cada pasada fabricaba gigabytes de basura en un
+// minuto: el montón subía 1,7 GB (de 1,0 a 2,7) y el 8-oct cruzó los 3,6 GB de V8 —54 reinicios en un día,
+// con la plataforma devolviendo 502 cada cuarto de hora—. La fuga no era retención: era parsear lo mismo
+// trescientas veces por ciclo.
+// QUÉ HACE. Dentro de un ciclo abierto (`clubJsonCicloAbrir`), cada fichero se parsea UNA vez y se sirve de
+// memoria hasta `clubJsonCicloCerrar`, que suelta todo. Fuera de un ciclo, lee sin retener (como antes).
+// `strict` conserva la semántica de los llamadores: un fichero ilegible lanza, y su try/catch decide.
+const _clubJsonCiclo = { on: false, m: new Map(), lecturas: 0, parseos: 0 };
+function clubDataJson(nameOrPath, { strict = true } = {}) {
+  const f = String(nameOrPath).includes(path.sep) ? String(nameOrPath) : clubDataFile(nameOrPath);
+  _clubJsonCiclo.lecturas++;
+  if (_clubJsonCiclo.on && _clubJsonCiclo.m.has(f)) return _clubJsonCiclo.m.get(f);
+  let v = null;
+  try { v = JSON.parse(fs.readFileSync(f, 'utf8')); }
+  catch (e) { if (strict) throw e; v = null; }
+  _clubJsonCiclo.parseos++;
+  if (_clubJsonCiclo.on) _clubJsonCiclo.m.set(f, v);
+  return v;
+}
+function clubJsonCicloAbrir() { _clubJsonCiclo.on = true; _clubJsonCiclo.m.clear(); _clubJsonCiclo.lecturas = 0; _clubJsonCiclo.parseos = 0; }
+function clubJsonCicloCerrar() {
+  const r = { lecturas: _clubJsonCiclo.lecturas, parseos: _clubJsonCiclo.parseos, ficheros: _clubJsonCiclo.m.size };
+  _clubJsonCiclo.on = false; _clubJsonCiclo.m.clear();
+  return r;
+}
 const teamById = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // ---------- persistencia ----------
@@ -6313,7 +6342,7 @@ function clubRefereeIndex({ force = false } = {}) {
   const keyOf = (lg, h, a, d) => lg + '|' + h + '|' + a + '|' + dayOf(d);
   for (const { lg, f } of files) {
     try {
-      const ms = (JSON.parse(fs.readFileSync(f, 'utf8')).matches || []).filter(m => !m.et && m.home && m.away && m.home.corners != null && m.away.corners != null);
+      const ms = (clubDataJson(f).matches || []).filter(m => !m.et && m.home && m.away && m.home.corners != null && m.away.corners != null);
       if (!ms.length) continue;
       const lm = ms.reduce((s, m) => s + Number(m.home.corners) + Number(m.away.corners), 0) / ms.length; // = league.totalCornersMean del fit
       for (const m of ms) REFS.addMatch(idx, { referee: m.referee, total: Number(m.home.corners) + Number(m.away.corners), leagueMean: lm, league: lg, date: dayOf(m.date), key: keyOf(lg, m.home.code, m.away.code, m.date) });
@@ -9470,7 +9499,7 @@ function settleClubDailyPicks() {
         : 0;
   };
   const phCache = {}; // player-history por liga (archivo grande): una lectura por corrida del settle
-  const phRows = (lg) => { if (phCache[lg] === undefined) { try { phCache[lg] = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${lg}.json`), 'utf8')).rows || []; } catch { phCache[lg] = []; } } return phCache[lg]; };
+  const phRows = (lg) => { if (phCache[lg] === undefined) { try { phCache[lg] = clubDataJson(`player-history-${lg}.json`).rows || []; } catch { phCache[lg] = []; } } return phCache[lg]; };
   // REPARACIÓN idempotente: las liquidadas ANTES del fix quedaron sin units. Se recalculan desde el
   // resultado y la cuota guardados (no se re-liquida nada: el resultado ya estaba bien).
   let repaired = 0;
@@ -9483,7 +9512,7 @@ function settleClubDailyPicks() {
     if (p.status !== 'ACTIVE') continue;
     if (p.family === 'PLAYER') {
       try {
-        const raw = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${p.league}.json`), 'utf8')).rows || [];
+        const raw = phRows(p.league);   // 8-oct: una lectura por liga y ciclo, no una por pick
         const ko = +new Date(p.event.kickoff_at || 0);
         const row = raw.find(r => r.pid === p.pid && Math.abs(+new Date(r.date) - ko) < 4 * 86400e3);
         if (row) {
@@ -9500,7 +9529,7 @@ function settleClubDailyPicks() {
     // (settleClubPropsViaAf, async) para finales recientes que el backfill aún no trae.
     if (p.family === 'CORNERS' || p.family === 'CARDS') {
       try {
-        const ms = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${p.league}.json`), 'utf8')).matches || [];
+        const ms = clubDataJson(`props-history-${p.league}.json`).matches || [];
         const ko = +new Date(p.event.kickoff_at || 0);
         const row = ms.find(m2 => ((m2.home.code === p.event.home_team_id && m2.away.code === p.event.away_team_id) || (m2.home.code === p.event.away_team_id && m2.away.code === p.event.home_team_id)) && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
         if (row) {
@@ -9571,7 +9600,7 @@ function clubPropTotal(league, ev, family) {
   const ko = +new Date((ev && ev.kickoff_at) || 0);
   if (!ko) return null;
   try {
-    const ms = JSON.parse(fs.readFileSync(clubDataFile(`props-history-${league}.json`), 'utf8')).matches || [];
+    const ms = clubDataJson(`props-history-${league}.json`).matches || [];
     const row = ms.find((m2) => ((m2.home.code === ev.home_team_id && m2.away.code === ev.away_team_id)
       || (m2.home.code === ev.away_team_id && m2.away.code === ev.home_team_id))
       && Math.abs(+new Date(m2.date) - ko) < 2 * 86400e3);
@@ -9584,7 +9613,7 @@ function clubPropTotal(league, ev, family) {
   // mismo fallback TSA que usa el liquidador: las tarjetas salen del player-history agrupando por partido
   if (family === 'CARDS') {
     try {
-      const rows = JSON.parse(fs.readFileSync(clubDataFile(`player-history-${league}.json`), 'utf8')).rows || [];
+      const rows = clubDataJson(`player-history-${league}.json`).rows || [];
       const near = rows.filter((r2) => Math.abs(+new Date(r2.date) - ko) < 2 * 86400e3
         && (r2.team === ev.home_team_id || r2.team === ev.away_team_id));
       const byMatch = {};
@@ -10662,20 +10691,29 @@ async function evaluateClubDailyPicks() {
   if (!dailyPicksOn() || !clubsShadowOn()) return { skipped: 'off' };
   if (_clubPicksRunning) return { skipped: 'running' };
   _clubPicksRunning = true;
+  // (8-oct) un ciclo de caché del disco de clubes: cada fichero se parsea una vez por pasada, y marcas de
+  // memoria por paso para que el log diga en qué paso sube el montón si vuelve a pasar
+  clubJsonCicloAbrir(); memMark('picks-clubes:build');
   try {
-    const b = await buildClubDailyPicks();
-    const rc = reclassifyClubSegments(); b.reclassified = rc.reclassified;
-    const s = settleClubDailyPicks();
+    const b = await buildClubDailyPicks(); memMark('picks-clubes:reclasificar');
+    const rc = reclassifyClubSegments(); b.reclassified = rc.reclassified; memMark('picks-clubes:liquidar');
+    const s = settleClubDailyPicks(); memMark('picks-clubes:liquidar-props-af');
     const sp = await settleClubPropsViaAf().catch(() => ({ settled: 0 })); // F3.4: córners/tarjetas vía AF stats
+    memMark('picks-clubes:sombra-superseded');
     let sh = { measured: 0 }; try { sh = measureClubSupersededShadow(); } catch { /* solo medición, jamás bloquea */ } // 2-sep: SUPERSEDED a la sombra
+    memMark('picks-clubes:ids-kickoffs');
     const ri = repairClubPickTeamIds();   // ids de equipo mal resueltos por el matcher viejo (caso Grasshopper 25-jul)
     const kf = refreshClubPickKickoffs(); // kickoff autoritativo TSA (picks vs calendario, caso Tigres 24-jul)
+    memMark('picks-clubes:precios');
     const rf = await refreshClubPickPrices().catch(() => ({ refreshed: 0 })); // CLV fix: precio ejecutable en la ventana final
+    memMark('picks-clubes:cierres');
     const cl = await captureClubPicksClosing().catch(() => ({ captured: 0 })); // P2: cierre + CLV (misma matemática del Mundial)
-    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, shadow_superseded: sh, ids: ri, kickoffs: kf, refresh: rf, closing: cl };
+    const disco = clubJsonCicloCerrar(); memMark('picks-clubes:fin');
+    if (disco.parseos) console.log('[clubs-picks] disco:', JSON.stringify(disco));
+    _clubPicksLast = { at: new Date().toISOString(), build: b, settle: s, settle_props: sp, shadow_superseded: sh, ids: ri, kickoffs: kf, refresh: rf, closing: cl, disco };
     if (b.added || s.settled || sp.settled || cl.captured) console.log('[clubs-picks]', JSON.stringify({ added: b.added, settled: s.settled, props_settled: sp.settled, closing: cl.captured, eligible: b.eligible }));
     return _clubPicksLast;
-  } finally { _clubPicksRunning = false; }
+  } finally { _clubPicksRunning = false; if (_clubJsonCiclo.on) clubJsonCicloCerrar(); }
 }
 // Timer del ENVÍO PROGRAMADO (broadcast one-shot): chequea cada 5 min; al vencer, marca done ANTES de disparar
 // (jamás doble masivo) y re-entra por el propio endpoint con la GP_EXPORT_KEY → reusa toda la lógica de envío.

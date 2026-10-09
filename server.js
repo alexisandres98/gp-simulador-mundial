@@ -1076,24 +1076,50 @@ setTimeout(() => { censoTarjetasJob(); setInterval(censoTarjetasJob, 60 * 60e3);
 // desde el plan de 5M. Desde hoy se escriben con 'match' y se actualizan; las heredadas con NULL se borran por
 // lotes cortos (cada DELETE cabe en el statement timeout) y solo las de más de 48 h: las de los partidos aún por
 // jugar las reemplaza el barrido siguiente, y la captura de cierres (KO + 30 min) sigue encontrando las suyas.
-// `GP_SBGOAL_PURGE=0` la apaga; `GP_SBGOAL_PURGE_LOTES` lotes por pasada (20.000 filas cada uno).
+// `GP_SBGOAL_PURGE=0` la apaga; `GP_SBGOAL_PURGE_LOTES` lotes por pasada (5.000 filas cada uno); `GP_SBGOAL_PURGE_MIN` cadencia (20).
 async function purgaCuotasJob() {
   if (String(process.env.GP_SBGOAL_PURGE || '1') === '0') return { skipped: 'off' };
   const dbc = require('./database/client');
   if (!dbc.isConfigured()) return { skipped: 'sin DB' };
-  const lotes = Math.max(1, Number(process.env.GP_SBGOAL_PURGE_LOTES) || 30);
+  const lotes = Math.max(1, Number(process.env.GP_SBGOAL_PURGE_LOTES) || 100);
   const t0 = Date.now();
   let borradas = 0, n = 0, err = null;
-  try {
-    for (n = 0; n < lotes; n++) {
-      const r = await dbc.query(`DELETE FROM sportsbook_goal_quote_current
-         WHERE ctid = ANY(ARRAY(SELECT ctid FROM sportsbook_goal_quote_current
-                                  WHERE team_scope IS NULL AND observed_at < now() - interval '48 hours' LIMIT 20000))`);
-      borradas += r.rowCount || 0;
-      if (!r.rowCount) break;
-      await new Promise((res) => setTimeout(res, 250));
-    }
-  } catch (e) { err = e.message; }
+  // (a) Un índice parcial para que cada lote sea barato: la primera pasada (00:12 UTC) murió por statement
+  //     timeout buscando 20.000 filas NULL en una tabla de 17,7 M sin índice. CONCURRENTLY no bloquea las
+  //     escrituras y no cabe en una transacción, así que va en una conexión propia sin timeout. Un índice que
+  //     quedó INVALID de un intento cortado se tira y se rehace.
+  if (!global._sbgoalIdxOk) {
+    let c = null;
+    try {
+      c = await dbc.getPool().connect();
+      await c.query('SET statement_timeout = 0');
+      const ex = await c.query(`SELECT i.indisvalid FROM pg_class t JOIN pg_index i ON i.indexrelid = t.oid WHERE t.relname = 'sbgoal_null_scope_obs_idx'`);
+      if (ex.rows.length && ex.rows[0].indisvalid === false) await c.query('DROP INDEX CONCURRENTLY IF EXISTS sbgoal_null_scope_obs_idx');
+      if (!ex.rows.length || ex.rows[0].indisvalid === false) {
+        await c.query(`CREATE INDEX CONCURRENTLY IF NOT EXISTS sbgoal_null_scope_obs_idx ON sportsbook_goal_quote_current (observed_at) WHERE team_scope IS NULL`);
+        console.log('[sbgoal-purga] índice parcial creado en', Date.now() - t0, 'ms');
+      }
+      global._sbgoalIdxOk = true;
+    } catch (e) { err = 'indice: ' + e.message; }
+    finally { if (c) { try { await c.query('SET statement_timeout = ' + (Number(require('./database/config').db.statementTimeoutMs) || 15000)); } catch { /* nada */ } c.release(); } }
+  }
+  // (b) lotes de 5.000 por ctid dentro de una transacción con su propio timeout (SET LOCAL no se escapa de ella)
+  if (global._sbgoalIdxOk) {
+    try {
+      for (n = 0; n < lotes; n++) {
+        const k = await dbc.withTransaction(async (c) => {
+          await c.query(`SET LOCAL statement_timeout = '120s'`);
+          const r = await c.query(`DELETE FROM sportsbook_goal_quote_current
+             WHERE ctid = ANY(ARRAY(SELECT ctid FROM sportsbook_goal_quote_current
+                                      WHERE team_scope IS NULL AND observed_at < now() - interval '48 hours' LIMIT 5000))`);
+          return r.rowCount || 0;
+        });
+        borradas += k;
+        if (!k) break;
+        await new Promise((res) => setTimeout(res, 150));
+      }
+    } catch (e) { err = (err ? err + ' · ' : '') + e.message; }
+  }
   let estimadas = null;
   try { estimadas = Number(((await dbc.query(`SELECT reltuples::bigint n FROM pg_class WHERE relname = 'sportsbook_goal_quote_current'`)).rows[0] || {}).n); } catch { /* sin estimación */ }
   const out = { borradas, lotes: n, filas_estimadas_tabla: estimadas, ms: Date.now() - t0, error: err };
@@ -1101,7 +1127,7 @@ async function purgaCuotasJob() {
   global._sbgoalPurgaLast = { at: new Date().toISOString(), ...out };
   return out;
 }
-setTimeout(() => { purgaCuotasJob(); setInterval(purgaCuotasJob, 60 * 60e3); }, 6 * 60e3);
+setTimeout(() => { purgaCuotasJob(); setInterval(purgaCuotasJob, Number(process.env.GP_SBGOAL_PURGE_MIN || 20) * 60e3); }, 6 * 60e3);
 // la cola diaria de la base (resultados de la temporada + ventanas de Orakel + partidos PC) en un proceso aparte
 let _dtTailRunning = false;
 async function dartsTailJob(once) {

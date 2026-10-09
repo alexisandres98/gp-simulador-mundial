@@ -198,6 +198,13 @@ cobra la casa, con muestra suficiente. Ni el ROI ni el CLV a secas valen — ver
   `/api/internal/implicito?key=`. **Ninguna de estas piezas cambia qué picks nacen**; las familias congeladas siguen igual.
   Generador de kills de LoL en sombra: `esports-engine/lol-gen.js` (+ `lol-gen-shadow.js`, `scripts/lol-gen-fit.js`,
   `data/esports/lol/gen-priors.json`), sonda `/api/internal/lol-gen?key=`. No toca `lol.js` ni `lol_kills_hcp_v1`.
+- **La tabla de cuotas `sportsbook_goal_quote_current` (8-oct):** su clave única incluye `team_scope` y `line`, y
+  Postgres trata dos NULL como distintos → una cuota escrita con NULL ahí **nunca hace conflicto y se inserta de
+  nuevo en cada barrido** (así llegó a 3,27 M filas por pasada y 54 reinicios por memoria el 8-oct). Regla: toda
+  cuota se escribe con `team_scope` ('match' si no tiene ámbito) y `line` (0 si no tiene) NO nulos
+  (`goal-engine/repository.js`); los lectores leen `coalesce(team_scope,'match')`; el loader de clubes usa
+  `DISTINCT ON` y 3 h de frescura; la purga horaria (`GP_SBGOAL_PURGE`) borra las filas NULL heredadas de > 48 h.
+  Registro: `docs/DECISIONES_EJECUTADAS.md` (8-oct).
 - **Datos en vivo:** ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) para marcadores; Polymarket gamma + Kalshi para mercados.
 - **Datos contextuales (Fase 4):** API-Football (principal) → ESPN (fallback) → manual (`data/manual/*.json`). Capa **server-side** en `data-providers/` (providers + cache + normalizer); la UI solo consume JSON normalizado vía `/api/match/:id` y `/api/teamdetail/:id`. **API key NUNCA en el frontend** — env `API_FOOTBALL_KEY` (alias aceptado: `VITE_API_FOOTBALL_KEY`). Opcionales: `API_FOOTBALL_HOST` (default `v3.football.api-sports.io`; usar `api-football-v1.p.rapidapi.com` para RapidAPI), `API_FOOTBALL_LEAGUE` (1), `API_FOOTBALL_SEASON` (2026). Sin key, todo cae a ESPN/manual/modelo sin romper.
 
@@ -327,7 +334,13 @@ publica recompensas de liquidez y rebate del maker como TOPE aparte, nunca en el
 `&run=sweep|settle|reset&regla=`). `GP_POLYMM_MERCADOS_MAX=120` en Render. **Regla congelada y puerta** (3-nov, 60 mercados y 300 fills por deporte, t ≥ 2 sin
 recompensas, markout < horquilla) en `docs/PREREGISTRO_POLY_MM_2026-10-07.md`. No toca señales, libros v1/v2,
 vara ni ejecutor. Ningún dinero real: Render está geobloqueado para trading en Polymarket (sonda `poly_geo`).
-Test: `node tests/poly-mm.test.js`.
+Test: `node tests/poly-mm.test.js`. **Enmienda del 9-oct (auditoría, §7 del preregistro):** cada mercado lleva un
+segundo libro **FIFO** (al precio exacto solo se llena lo que sobra tras vaciar la cola; la prorrata es el techo, el
+FIFO el suelo y **la puerta se lee sobre el FIFO**), cada orden viva **reserva colateral** (`sin_colateral` cuando
+no cabe; con 2.000 caben ~40 lados) y el markout se calcula también para retirados y pausados contra el medio del
+libro. Lo acumulado hasta el 8-oct es un techo, no una medida de 2.000 USDC.
+**Arbitraje Cloudbet–Polymarket: NO HAY** (medido 8-oct, 66 mercados, mejor caso −1,9 %, auditado):
+`docs/ARBITRAJE_CLOUDBET_POLYMARKET_2026-10-08.md`. No volver a proponerlo sin una medición nueva.
 
 ## ⚖️ DOCTRINA DEL EJECUTOR REAL (lo aprendido a base de perder dinero)
 - **Una posición por PARTIDO + LADO, sin la línea** (13-sep). Under 4,5 y under 5,5 del mismo partido no son

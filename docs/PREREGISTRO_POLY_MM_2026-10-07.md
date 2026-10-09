@@ -110,7 +110,37 @@ que no se ve desde fuera.
 3. Capital: con 2.000 USDC el techo son decenas de dólares al mes; el ingreso escala con el capital y con la
    velocidad, y los dos cuestan. Eso se decide después de la lectura, no antes.
 
-## 7. Lo que NO cambia
+## 7. Enmienda del 9 de octubre: tres huecos que hacían de la sombra un techo, no una medida
+
+Una auditoría independiente del código (8-oct, catorce agentes, cada hallazgo intentado refutar) encontró tres
+cosas que hacían que el P&L de la sombra fuera un **techo optimista** y no una simulación de 2.000 USDC. Se
+corrigen en el código el 9-oct sin tocar la regla de cotización (§2) ni la puerta (§5); lo medido antes del 9-oct
+se lee con estas tres salvedades.
+
+1. **El CLOB no reparte a prorrata: reparte por precio y después por TIEMPO.** Detrás de 150 shares, un cruce de
+   100 al precio exacto no nos daba 25: nos daba cero, y cada recotización nos devolvía al final de la cola. Desde
+   el 9-oct cada mercado lleva un **segundo libro, FIFO**, con los mismos cruces: al precio exacto solo se llena lo
+   que sobra después de vaciar la cola que había al cotizar. La prorrata se conserva como **techo** y el FIFO es el
+   **suelo**; los dos se publican (`fifo` en cada agregado) y **la puerta del 3-nov se lee sobre el FIFO**. Si solo
+   el techo pasa, no pasa.
+2. **Las órdenes vivas no reservaban colateral.** La comprobación de caja se hacía mercado a mercado contra el
+   mismo efectivo, así que con 120 mercados a dos lados había ~6.000 USDC de órdenes abiertas sobre un banco de
+   2.000; en el CLOB real una orden sin colateral se cancela. Desde el 9-oct cada orden viva reserva `q·bid` (la
+   compra) o `q·(1−ask)` (la venta), el ask se comprueba después de reservar el bid, y lo que no cabe se queda en
+   pausa `sin_colateral`, por orden de saque. Con 2.000 caben unos 40 lados de ~25 USDC. El ROI por mercado no
+   cambia; el P&L absoluto y el nocional sí, y por eso el P&L acumulado hasta el 8-oct **no es el de 2.000 USDC**.
+3. **El markout tenía huecos a favor.** Solo se calculaba para mercados que seguían cotizando con consenso fresco:
+   los fills de los últimos 45 min antes de la retirada —la ventana más tóxica— y los hechos en pausa nunca se
+   medían. Desde el 9-oct todo fill pendiente de más de 30 min se mide contra el medio del libro de ese momento,
+   esté el mercado retirado o en pausa (el libro de Polymarket sigue vivo durante el partido).
+
+Dos cosas más que la auditoría dejó escritas y NO se corrigen con código: la cadencia de 5 min **es** la regla (la
+frase de §3a «un maker rápido haría mejor» no excusa nada: lo que se mide es este maker), y los tres binarios de un
+1X2 se cotizan como independientes aunque su inventario esté correlacionado (`neg_risk` se anota y no se usa); el `t`
+por mercado los trata como independientes y sobreestima la significación en fútbol. Y lo que ninguna sombra mide:
+riesgo de plataforma, de retirada y de resolución disputada.
+
+## 8. Lo que NO cambia
 
 Ni las señales, ni los dos libros de sombra de Polymarket (v1, v2), ni la vara, ni el ejecutor real, ni el feed.
 `propfirm/cotizables.js` es una salida lateral del escaneo; `tests/feed.test.js` y `tests/poly-mm.test.js` lo

@@ -56,6 +56,22 @@ Turquía, Rusia, China, Arabia; ATP Shanghái y WTA Pekín.
    27-sep) y el geobloqueo de Render para operar en Polymarket (sonda `poly_geo`) hacen que la pata de cobertura no
    se pueda poner a tamaño ni desde donde corre el sistema.
 
+## Auditoría independiente (misma noche)
+
+Catorce agentes intentaron refutar la medición: mapeo de la doble oportunidad al complemento correcto (con la
+inversión de equipos), fórmula de la comisión taker (`tasa × p × (1−p)` por share, solo taker, igual que
+`lib/comisiones.js`), cobertura de las dos direcciones (y de las ocho combinaciones a tres vías que el script no
+prueba: mejor caso −2,57 %), emparejamientos sin falsos positivos y aritmética exacta en las 66 filas. **La
+conclusión se sostiene.** Tres salvedades que no la cambian:
+
+- Es **una sola foto** (23:45 UTC, saques entre 0,8 y 30 h después). Un cruce entre casas, si existiera, sería
+  transitorio; para descartarlo en general habría que muestrear cada pocos minutos hasta el saque.
+- En **6 de 66 filas el mejor nivel del CLOB es polvo** (≤ 20 shares): el "mejor caso" de tenis (−1,9 %) es
+  Ugo Carabelli contra 20 shares y un `maxStake` de 34 USD en Cloudbet. En esas filas la distancia maker está medida
+  contra un bid que no existe a tamaño; en el resto la cola es real (cientos o miles de shares).
+- El script no usa el `maxStake` de Cloudbet ni el tope de cuenta: aunque hubiera cruce, la pata de cobertura no
+  cabría a 2.000.
+
 ## Lo que SÍ queda abierto
 
 - El market making en sombra sobre Polymarket **sin cubrir** (`mm_libro`, preregistro del 7-oct) es la única

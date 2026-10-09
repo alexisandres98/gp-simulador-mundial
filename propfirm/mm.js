@@ -103,6 +103,12 @@ function aplicaFill(m, lado, q, precio) {
   if (par > 0) { m.s0 = r4(m.s0 - par); m.s1 = r4(m.s1 - par); m.caja = r4(m.caja + par); }
   m.inv0 = r4((m.s0 || 0) - (m.s1 || 0));
 }
+// EL LIBRO FIFO (8-oct, auditoría): el CLOB empareja por precio y después por TIEMPO de llegada, no a prorrata.
+// Detrás de 150 shares, un cruce de 100 al precio exacto no nos da 25: nos da CERO, y solo nos toca lo que sobra
+// después de vaciar la cola entera. Y cada recotización (cada pasada) nos devuelve al final de la cola. La
+// prorrata se conserva como TECHO; este segundo libro, con los mismos cruces, es el SUELO: al precio exacto solo
+// se llena max(0, cruce − cola). Lleva su propia caja y sus propios shares; no decide la cotización.
+const fifoDe = (m) => (m.fifo = m.fifo || { s0: 0, s1: 0, inv0: 0, caja: 0, n_fills: 0, nocional: 0, q_compras: 0, q_ventas: 0, horquilla_usd: 0 });
 
 // ── EL LIBRO DEL CLOB ───────────────────────────────────────────────────────────────────────────────────
 // Mejor bid, mejor ask y los tamaños por nivel (diez a cada lado) del token del outcome 0.
@@ -156,11 +162,18 @@ function cotiza(m, justo, efectivo, cfg, ahora = Date.now(), libro = null) {
     if (ask - bid < tick - 1e-9) ask = r4(bid + tick);
   }
   const bidOk = bid != null && bid >= cfg.precio_min && (m.inv0 || 0) < cfg.inv_max && efectivo >= q * bid;
-  const askOk = ask != null && ask <= cfg.precio_max && (m.inv0 || 0) > -cfg.inv_max && efectivo >= q * (1 - ask);
+  // el ask se comprueba contra lo que queda DESPUÉS de reservar el bid: las dos órdenes viven a la vez (8-oct)
+  const askOk = ask != null && ask <= cfg.precio_max && (m.inv0 || 0) > -cfg.inv_max && (efectivo - (bidOk ? q * bid : 0)) >= q * (1 - ask);
   if (!bidOk && !askOk) return null;
   return { bid: bidOk ? bid : null, ask: askOk ? ask : null, size: q, justo: r4(justo),
     cola_bid: bidOk && libro ? r2(tamanoEn(libro.bids, bid)) : 0, cola_ask: askOk && libro ? r2(tamanoEn(libro.asks, ask)) : 0,
     bb: libro ? libro.bb : null, ba: libro ? libro.ba : null, desde: new Date(ahora).toISOString() };
+}
+
+// por qué no salió cotización: sin libro (regla `libro`), sin colateral (con caja infinita sí saldría) o sin lado
+function motivoSinCotizacion(m, justo, cfg, ahora, lb) {
+  if (cfg.modo === 'libro' && !lb) return 'sin_libro';
+  return cotiza(m, justo, Infinity, cfg, ahora, lb) ? 'sin_colateral' : 'sin_lado_cotizable';
 }
 
 // ── LOS CRUCES DEL INTERVALO, EN COORDENADAS DEL OUTCOME 0 ──────────────────────────────────────────────
@@ -181,22 +194,41 @@ function llena(m, q, lista, cfg, ahoraMs) {
   const out = { compras: 0, ventas: 0, q_compra: 0, q_venta: 0 };
   if (!q) return out;
   let remBid = q.bid != null ? q.size : 0, remAsk = q.ask != null ? q.size : 0;
+  // FIFO: la cola que hay delante de nosotros en cada lado; un cruce exacto la consume antes de tocarnos
+  let colaBid = q.cola_bid || 0, colaAsk = q.cola_ask || 0, remBidF = remBid, remAskF = remAsk;
   const desde = Date.parse(q.desde || 0);
   const prorrata = (cola) => q.size / (q.size + (cola || 0));
   for (const t of lista) {
     if (!(t.ts > desde) || !(t.ts > (m.ultimo_ts || 0)) || t.ts > ahoraMs + 60e3) continue;
-    if (t.lado0 === 'SELL' && remBid > 0 && t.precio0 <= q.bid + 1e-9) {
+    if (t.lado0 === 'SELL' && (remBid > 0 || remBidF > 0) && t.precio0 <= q.bid + 1e-9) {
       const exacto = Math.abs(t.precio0 - q.bid) < 1e-9;
       const qty = Math.min(remBid, t.size * (exacto ? prorrata(q.cola_bid) : 1));
       if (qty >= 1) { registra(m, 'compra', qty, q.bid, q.justo, t, exacto); remBid -= qty; out.compras++; out.q_compra += qty; }
-    } else if (t.lado0 === 'BUY' && remAsk > 0 && t.precio0 >= q.ask - 1e-9) {
+      let qF = 0;
+      if (exacto) { const sobra = t.size - colaBid; colaBid = Math.max(0, colaBid - t.size); qF = Math.min(remBidF, Math.max(0, sobra)); }
+      else qF = Math.min(remBidF, t.size);
+      if (qF >= 1) { registraFifo(m, 'compra', qF, q.bid, q.justo); remBidF -= qF; }
+    } else if (t.lado0 === 'BUY' && (remAsk > 0 || remAskF > 0) && t.precio0 >= q.ask - 1e-9) {
       const exacto = Math.abs(t.precio0 - q.ask) < 1e-9;
       const qty = Math.min(remAsk, t.size * (exacto ? prorrata(q.cola_ask) : 1));
       if (qty >= 1) { registra(m, 'venta', qty, q.ask, q.justo, t, exacto); remAsk -= qty; out.ventas++; out.q_venta += qty; }
+      let qF = 0;
+      if (exacto) { const sobra = t.size - colaAsk; colaAsk = Math.max(0, colaAsk - t.size); qF = Math.min(remAskF, Math.max(0, sobra)); }
+      else qF = Math.min(remAskF, t.size);
+      if (qF >= 1) { registraFifo(m, 'venta', qF, q.ask, q.justo); remAskF -= qF; }
     }
   }
   if (lista.length) m.ultimo_ts = Math.max(m.ultimo_ts || 0, lista[lista.length - 1].ts);
   return out;
+}
+function registraFifo(m, lado, qty, precio, justo) {
+  const f = fifoDe(m);
+  const q = Math.floor(qty * 100) / 100;
+  aplicaFill(f, lado, q, precio);
+  f.n_fills = (f.n_fills || 0) + 1;
+  f.nocional = r2((f.nocional || 0) + q * precio);
+  f[lado === 'compra' ? 'q_compras' : 'q_ventas'] = r2((f[lado === 'compra' ? 'q_compras' : 'q_ventas'] || 0) + q);
+  f.horquilla_usd = r4((f.horquilla_usd || 0) + q * (lado === 'compra' ? (justo - precio) : (precio - justo)));
 }
 function registra(m, lado, qty, precio, justo, t, exacto) {
   const q = Math.floor(qty * 100) / 100;
@@ -266,9 +298,17 @@ function agrupa(lista, clave) {
     const r = conFill.map((c) => c.pnl / c.nocional);
     const me = r.length ? r.reduce((a, b) => a + b, 0) / r.length : null;
     const sd = r.length > 1 ? Math.sqrt(r.reduce((a, b) => a + (b - me) ** 2, 0) / (r.length - 1)) : null;
+    const pnlF = v.reduce((a, c) => a + (c.fifo_pnl || 0), 0), nocF = v.reduce((a, c) => a + (c.fifo_nocional || 0), 0);
+    const conFillF = v.filter((c) => (c.fifo_nocional || 0) > 0);
+    const rF = conFillF.map((c) => c.fifo_pnl / c.fifo_nocional);
+    const meF = rF.length ? rF.reduce((a, b) => a + b, 0) / rF.length : null;
+    const sdF = rF.length > 1 ? Math.sqrt(rF.reduce((a, b) => a + (b - meF) ** 2, 0) / (rF.length - 1)) : null;
     return { k, mercados: v.length, con_fills: conFill.length, fills: v.reduce((a, c) => a + (c.n_fills || 0), 0),
       nocional: r2(noc), pnl: r2(pnl), roi_pct: noc > 0 ? r2(100 * pnl / noc) : null,
       t: sd && r.length > 1 ? r2(me / (sd / Math.sqrt(r.length))) : null,
+      fifo: { con_fills: conFillF.length, fills: v.reduce((a, c) => a + (c.fifo_n_fills || 0), 0), nocional: r2(nocF), pnl: r2(pnlF),
+        roi_pct: nocF > 0 ? r2(100 * pnlF / nocF) : null, t: sdF && rF.length > 1 ? r2(meF / (sdF / Math.sqrt(rF.length))) : null,
+        horquilla_usd: r2(v.reduce((a, c) => a + (c.fifo_horquilla_usd || 0), 0)) },
       horquilla_usd: r2(v.reduce((a, c) => a + (c.horquilla_usd || 0), 0)), markout_usd: r2(v.reduce((a, c) => a + (c.markout_usd || 0), 0)),
       tope_recompensa_usd: r2(v.reduce((a, c) => a + (c.tope_recompensa_usd || 0), 0)), rebate_potencial: r2(v.reduce((a, c) => a + (c.rebate_potencial || 0), 0)) };
   }).sort((a, b) => b.mercados - a.mercados);
@@ -301,9 +341,33 @@ function crear(nombre, over = {}) {
     out.no_elegibles = {};
     for (const c of Object.values(cot)) { const q = porQueNo(c, cfg, ahora); if (q) out.no_elegibles[q] = (out.no_elegibles[q] || 0) + 1; }
 
+    // COLATERAL (8-oct, auditoría): cada orden viva compromete su colateral (q·bid la compra, q·(1−ask) la venta)
+    // y en el CLOB real las que no lo tienen cubierto se cancelan. Hasta hoy la comprobación se hacía mercado a
+    // mercado contra el mismo efectivo, y con 120 mercados a dos lados había ~6.000 USDC de órdenes vivas sobre
+    // un banco de 2.000. Ahora lo reservado en esta pasada se descuenta del disponible para el siguiente mercado,
+    // por orden de saque (el capital va a los partidos más próximos). Lo que no cabe se queda en pausa `sin_colateral`.
+    let reservado = 0;
+    out.sin_colateral = 0;
+    const reserva = (q) => { if (!q) return; reservado = r4(reservado + (q.bid != null ? q.size * q.bid : 0) + (q.ask != null ? q.size * (1 - q.ask) : 0)); };
+    const disponible = () => r2(efectivoDe(st) - reservado);
+
     // 2) primero lo que ya estaba cotizando: se llena la cotización vigente con los cruces del intervalo
     let toques = 0;
-    for (const m of Object.values(st.mercados)) {
+    const vivosPorSaque = Object.values(st.mercados).sort((a, b) => Date.parse(a.ko || 0) - Date.parse(b.ko || 0));
+    for (const m of vivosPorSaque) {
+      // MARKOUT DE LO RETIRADO Y LO PAUSADO (8-oct, auditoría): los fills de los últimos 45 min antes de la
+      // retirada —la ventana más tóxica— y los hechos en pausa nunca recibían markout, porque solo se calculaba
+      // dentro del bucle de los que seguían cotizando con consenso fresco. Ahora todo fill pendiente de más de
+      // 30 min se mide contra el medio del libro de AHORA, aunque el mercado esté retirado o en pausa; el libro de
+      // Polymarket sigue vivo durante el partido, así que es el precio con la información del campo.
+      if (m.estado !== 'COTIZANDO' && m.estado !== 'RETIRADA') continue;
+      const pendientes = (m.fills || []).some((f) => f.markout_30 == null && ahora - Date.parse(f.at) >= 30 * 60e3);
+      if (pendientes && (m.estado === 'RETIRADA' || !m.cotizacion) && toques < cfg.mercados_max) {
+        toques++;
+        const lb = await cacheado('b:' + m.tokens[0], () => libroDe(m.tokens[0]));
+        await dormir(40);
+        if (lb && lb.mid != null) markouts(m, lb.mid, ahora);
+      }
       if (m.estado !== 'COTIZANDO') continue;
       const c = cot[m.cond];
       const ko = Date.parse(m.ko || 0);
@@ -344,8 +408,10 @@ function crear(nombre, over = {}) {
       markouts(m, justoAhora, ahora);
       m.justo = r4(justoAhora);
       if (jz.justo == null) { m.cotizacion = null; m.motivo = 'discrepancia'; out.discrepantes++; continue; }
-      m.cotizacion = cotiza(m, jz.justo, efectivoDe(st), cfg, ahora, lb);
-      m.motivo = m.cotizacion ? null : (cfg.modo === 'libro' && !lb ? 'sin_libro' : 'sin_lado_cotizable');
+      m.cotizacion = cotiza(m, jz.justo, disponible(), cfg, ahora, lb);
+      m.motivo = m.cotizacion ? null : motivoSinCotizacion(m, jz.justo, cfg, ahora, lb);
+      if (m.motivo === 'sin_colateral') out.sin_colateral++;
+      reserva(m.cotizacion);
       if (m.cotizacion) out.cotizando++;
     }
 
@@ -368,7 +434,12 @@ function crear(nombre, over = {}) {
       const jz = justoDe(justo, lb, cfg);
       m.discrepancia_pp = jz.discrepancia_pp;
       if (jz.justo == null) { m.cotizacion = null; m.motivo = 'discrepancia'; out.discrepantes++; }
-      else { m.justo = r4(jz.justo); m.cotizacion = cotiza(m, jz.justo, efectivoDe(st), cfg, ahora, lb); m.motivo = m.cotizacion ? null : (cfg.modo === 'libro' && !lb ? 'sin_libro' : 'sin_lado_cotizable'); }
+      else {
+        m.justo = r4(jz.justo); m.cotizacion = cotiza(m, jz.justo, disponible(), cfg, ahora, lb);
+        m.motivo = m.cotizacion ? null : motivoSinCotizacion(m, jz.justo, cfg, ahora, lb);
+        if (m.motivo === 'sin_colateral') out.sin_colateral++;
+        reserva(m.cotizacion);
+      }
       st.mercados[c.cond] = m;
       out.nuevos++;
       if (m.cotizacion) out.cotizando++;
@@ -376,6 +447,8 @@ function crear(nombre, over = {}) {
 
     st.pasadas = (st.pasadas || 0) + 1;
     st.efectivo = efectivoDe(st);
+    st.colateral_reservado = r2(reservado);
+    out.colateral_reservado = r2(reservado);
     st.efectivo_antes = efectivo0;
     st.at = new Date(ahora).toISOString();
     st.ultima = out;
@@ -417,6 +490,9 @@ function crear(nombre, over = {}) {
   function cierra(st, m, winIdx, ahora) {
     const pago = winIdx == null ? 0.5 * ((m.s0 || 0) + (m.s1 || 0)) : (winIdx === 0 ? (m.s0 || 0) : (m.s1 || 0));
     m.pnl = r2((m.caja || 0) + pago);
+    const f = fifoDe(m);
+    const pagoF = winIdx == null ? 0.5 * ((f.s0 || 0) + (f.s1 || 0)) : (winIdx === 0 ? (f.s0 || 0) : (f.s1 || 0));
+    f.pnl = r2((f.caja || 0) + pagoF);
     m.ganador_idx = winIdx;
     m.estado = 'RESUELTO';
     m.resuelto_at = new Date(ahora).toISOString();
@@ -425,7 +501,9 @@ function crear(nombre, over = {}) {
       horquilla_usd: m.horquilla_usd || 0, markout_usd: m.markout_usd || 0, markout_n: m.markout_n || 0, pnl: m.pnl, ganador_idx: winIdx,
       minutos_cotizados: m.minutos_cotizados || 0, minutos_elegibles: m.minutos_elegibles || 0,
       tope_recompensa_usd: r2(((m.rewards && m.rewards.tasa_diaria) || 0) * (m.minutos_elegibles || 0) / 1440),
-      rebate_potencial: m.rebate_potencial || 0, resuelto_at: m.resuelto_at });
+      rebate_potencial: m.rebate_potencial || 0, resuelto_at: m.resuelto_at,
+      // el libro FIFO del mismo mercado: suelo de fills frente al techo de la prorrata
+      fifo_n_fills: f.n_fills || 0, fifo_nocional: f.nocional || 0, fifo_pnl: f.pnl, fifo_horquilla_usd: f.horquilla_usd || 0, fifo_inv0_final: f.inv0 || 0 });
   }
 
   // ── EL ESTADO: lo que se revisa cada lunes ──
@@ -443,12 +521,16 @@ function crear(nombre, over = {}) {
         precio: `${cfg.precio_min}-${cfg.precio_max}`, liquidez_min: cfg.liq_min, frescura_min: cfg.frescura_min, mercados_max_por_pasada: cfg.mercados_max,
         peso_libro: cfg.peso_libro, discrepancia_max_pp: cfg.discrepancia_pp, nunca_cruza_el_libro: true, deportes_fuera: [...cfg.deportes_fuera],
         fill: 'cruce real por debajo del bid (o por encima del ask) llena entero; al precio exacto, a prorrata con lo que el libro enseñaba en ese nivel; contra la cotización vigente del intervalo anterior',
+        fifo: 'segundo libro con los mismos cruces: al precio exacto solo se llena lo que sobra tras vaciar la cola (prioridad temporal); es el suelo, la prorrata el techo',
+        colateral: 'cada orden viva reserva q·bid o q·(1−ask) del banco; lo que no cabe queda en pausa sin_colateral (desde el 9-oct)',
         no_cuenta: 'ni recompensas de liquidez ni rebate del maker: se publican como tope aparte' },
       vivos: { mercados: vivos.length, cotizando: vivos.filter((m) => m.estado === 'COTIZANDO' && m.cotizacion).length,
         pausados: vivos.filter((m) => m.estado === 'COTIZANDO' && !m.cotizacion).length, retirados_sin_resolver: vivos.filter((m) => m.estado === 'RETIRADA').length,
         fills: vivos.reduce((a, m) => a + (m.n_fills || 0), 0), nocional: r2(vivos.reduce((a, m) => a + (m.nocional || 0), 0)),
         inventario_abs: r2(vivos.reduce((a, m) => a + Math.abs(m.inv0 || 0), 0)), pnl_marcado_al_justo: marcado,
-        horquilla_usd: r2(vivos.reduce((a, m) => a + (m.horquilla_usd || 0), 0)), markout_usd: r2(vivos.reduce((a, m) => a + (m.markout_usd || 0), 0)) },
+        horquilla_usd: r2(vivos.reduce((a, m) => a + (m.horquilla_usd || 0), 0)), markout_usd: r2(vivos.reduce((a, m) => a + (m.markout_usd || 0), 0)),
+        fifo_fills: vivos.reduce((a, m) => a + ((m.fifo && m.fifo.n_fills) || 0), 0), fifo_nocional: r2(vivos.reduce((a, m) => a + ((m.fifo && m.fifo.nocional) || 0), 0)),
+        colateral_reservado: st.colateral_reservado != null ? st.colateral_reservado : null, sin_colateral: vivos.filter((m) => m.motivo === 'sin_colateral').length },
       cerrados: tot ? { ...tot, k: undefined } : { mercados: 0, fills: 0, pnl: 0 },
       por_deporte: agrupa(cerr, (c) => c.deporte || '?'),
       por_familia: agrupa(cerr, (c) => `${c.deporte || '?'} · ${c.familia || '?'}`),

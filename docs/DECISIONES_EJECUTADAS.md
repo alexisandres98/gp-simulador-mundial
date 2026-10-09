@@ -566,4 +566,37 @@ los ya jugados, cada 10-15 min aunque el fichero solo cambia con el pase diario 
 (`48b2be2`): `clubHistTerminado()` no abre nada antes de KO + 2 h, y `clubHistBuscar()` recuerda el mtime del fichero
 en el que una búsqueda no encontró nada y no vuelve a parsearlo hasta que cambie — en el liquidador de clubes y en
 `clubPropTotal`, que el ejecutor en la sombra llama en cada barrido. Misma semántica (mismo resultado, mismo VOID a
-las 72 h). Resultado medido tras el deploy: ver la línea `[clubs-picks] disco:` del registro de abajo.
+las 72 h). **Medido:** el ciclo siguiente leyó 7,7 MB (1 fichero de jugadores, 43 de props) y aun así el montón picó
+a 2,6 GB. No era el disco.
+**La causa de verdad (23:51 UTC):** `[clubs-markets] query 1X2/goles falló (parcial=3271867 filas)`. El loader de
+mercados de clubes traía **3,27 millones de filas por pasada** de `sportsbook_goal_quote_current`, y aun así moría
+por statement timeout. La tabla no era "current": la clave única incluye `team_scope` y `line`, Postgres trata dos
+NULL como distintos en un UNIQUE, y las cuotas 1X2 se escribían con `team_scope` NULL → el `ON CONFLICT` nunca
+saltaba y **cada barrido insertaba de nuevo las tres caras de cada casa de cada partido** (~10 M filas/día con el
+plan de 5M: 40 casas × 3 × 600 partidos × 120 barridos). De ahí también los «db: reintento por error transitorio …
+canceling statement» de todo el día y el «bloat» que ya se había anotado el 12-ago sin saber de dónde salía.
+Tercer arreglo (`899648c`): `upsertGoalQuote` escribe `'match'` y `0` donde iba NULL (los lectores ya usaban
+`coalesce(team_scope,'match')`; la línea de cierre sigue siendo la última observación pre-saque, como en los
+totales desde siempre); `loadClubsMarkets` con `DISTINCT ON` (evento, casa, familia, línea, lado) y la observación
+más reciente, frescura 3 h en vez de 24 (aguas abajo todo descarta > 75 min), lotes volcados al llegar y una línea
+de log con eventos/filas/mercados/ms; purga horaria por lotes de 20.000 de las filas NULL de más de 48 h
+(`GP_SBGOAL_PURGE`, `GP_SBGOAL_PURGE_LOTES`); `ORDER BY observed_at` en la captura de cierres. Sin reinicios desde
+las 23:12 UTC.
+
+## 9-oct-2026 — Arbitraje Cloudbet–Polymarket medido (no hay) y la sombra de market making deja de ser un techo
+
+**Pregunta de Alexis:** «¿hay algún market making o arbitraje entre Cloudbet y Polymarket que podamos explotar?» y
+«quiero un ejercicio con capital simulado de 2.000 en el market making».
+**Arbitraje:** medido con precios vivos de las dos casas sobre 66 mercados (42 fútbol 1X2, 24 tenis ML) — **cero**
+arbitrajes taker (mejor caso −1,9 %), y una orden maker en Polymarket cubierta en Cloudbet tendría que reposar 1-4 c
+detrás del mejor precio. Polymarket y Cloudbet sin margen se separan 0,4-0,8 pp; Cloudbet cobra 5,9 % de
+sobre-redondeo. Auditado de forma independiente (mapeo de la doble oportunidad, comisión, las dos direcciones,
+emparejamientos, aritmética): se sostiene. Salvedades de la auditoría: es UNA foto 1-30 h antes del saque, y en 6 de
+66 filas el mejor nivel del CLOB es polvo (≤ 20 shares). `docs/ARBITRAJE_CLOUDBET_POLYMARKET_2026-10-08.md`.
+**El ejercicio de 2.000:** ya era lo que corría (dos bancos de 2.000), pero la auditoría del código encontró tres
+huecos que lo hacían un TECHO: fills a prorrata donde el CLOB reparte por tiempo, órdenes vivas sin reservar colateral
+(~6.000 USDC de órdenes sobre un banco de 2.000) y markout sin calcular para los fills previos a la retirada y en
+pausa. Corregidos (libro FIFO paralelo como suelo, reserva de colateral por orden con pausa `sin_colateral`, markout
+contra el medio del libro para retirados y pausados), tests en `tests/poly-mm.test.js` (9-11), enmienda §7 del
+preregistro. **La puerta del 3-nov se lee sobre el FIFO.** Lo acumulado hasta el 8-oct queda como techo, no como
+medida.

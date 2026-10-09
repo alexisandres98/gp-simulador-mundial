@@ -134,5 +134,56 @@ const tr = (seg, idx, side, price, size) => ({ conditionId: COND, outcomeIndex: 
   assert.strictEqual(T.ancho.regla, 'mm_ancho'); assert.strictEqual(T.libro.regla, 'mm_libro'); assert.notStrictEqual(MM.de('ancho').FNAME, MM.de('libro').FNAME);
   MM.vaciarCache(); const oL = await MM.de('libro').barrer({ ahora: T0 });
   assert.strictEqual(oL.regla, 'mm_libro'); assert(oL.nuevos >= 1, JSON.stringify(oL));
+
+  // 9) FIFO (8-oct, auditoría): el CLOB empareja por precio y después por tiempo. Con 150 en cola, un cruce exacto
+  //    de 100 da 25 a prorrata (techo) y CERO en FIFO (suelo). En la pasada siguiente (orden repuesta: 50 nuevas
+  //    y otra vez al final de la cola de 150) un cruce de 200 da 50 a prorrata (min(50, 200/3)) y 50 en FIFO
+  //    (200 − 150 de cola = 50 disponibles).
+  assert(!mL.fifo || mL.fifo.n_fills === 0, 'FIFO: detrás de 150 un cruce de 100 no nos toca');
+  const fL2 = MM.llena(mL, { ...ql, desde: new Date(T0).toISOString() }, [{ ts: T0 + 2000, precio0: 0.47, lado0: 'SELL', size: 200, precio_bruto: 0.47, idx: 0 }], cfgL, T0 + 60e3);
+  assert.strictEqual(fL2.compras, 1); assert.strictEqual(mL.s0, 75, 'prorrata: 25 de la pasada anterior + min(50, 200/3)');
+  assert.strictEqual(mL.fifo.n_fills, 1); assert.strictEqual(mL.fifo.s0, 50, 'FIFO: 200 − 150 de cola = 50 disponibles'); assert.strictEqual(mL.fifo.q_compras, 50);
+  assert.strictEqual(mL.fifo.caja, +(-50 * 0.47).toFixed(4));
+  // un cruce que atraviesa el precio llena entero en los dos libros (prioridad de precio), hasta el tamaño que quede
+  const mT = { s0: 0, s1: 0, inv0: 0, caja: 0, ultimo_ts: 0, fee_rate: 0.03, fee_exp: 1, fee_rebate: 0.25 };
+  MM.llena(mT, { ...ql, desde: new Date(T0).toISOString() }, [{ ts: T0 + 1000, precio0: 0.45, lado0: 'SELL', size: 30, precio_bruto: 0.45, idx: 0 }], cfgL, T0 + 60e3);
+  assert.strictEqual(mT.s0, 30); assert.strictEqual(mT.fifo.s0, 30);
+
+  // 10) colateral (8-oct, auditoría): cada orden viva reserva su colateral y el ask se comprueba después del bid.
+  //     Con un banco de 40 y órdenes de 24,5 por lado, cabe UN lado de UN mercado; los demás quedan sin_colateral.
+  process.env.GP_POLYMM_BANCO = '40';
+  MM.de('libro').reset();
+  libro = { bb: 0.49, ba: 0.51 }; trades = [];
+  for (const [id, cond, ev] of [['781', '0xaaa', 'P vs Q'], ['782', '0xbbb', 'R vs S'], ['783', '0xccc', 'T vs U']]) {
+    assert.strictEqual(COT.anota({ m: { ...mercado(), id, conditionId: cond }, deporte: 'futbol', familia: 'FUT1X2', evento: ev, ko: KO, consenso0: 0.5, shin0: 0.5, books: 10 }), true);
+  }
+  COT.anota({ m: mercado(), deporte: 'futbol', familia: 'FUT1X2', evento: 'X vs Y', ko: new Date(T0 + 50 * 3600e3).toISOString(), consenso0: 0.5, shin0: 0.5, books: 12 });   // fuera de ventana
+  const c2b = COT.todos().find((c) => c.cond === '0xdef'); c2b.ko = new Date(T0 + 50 * 3600e3).toISOString(); COT.guardar();
+  MM.vaciarCache(); const oC = await MM.de('libro').barrer({ ahora: T0 });
+  assert.strictEqual(oC.nuevos, 3, JSON.stringify(oC)); assert.strictEqual(oC.cotizando, 1, JSON.stringify(oC)); assert.strictEqual(oC.sin_colateral, 2);
+  assert.strictEqual(oC.colateral_reservado, 24.5);
+  const LC = MM.de('libro').libro();
+  const conQ = LC.mercados.filter((x) => x.cotizacion);
+  assert.strictEqual(conQ.length, 1); assert.strictEqual(conQ[0].cotizacion.bid, 0.49); assert.strictEqual(conQ[0].cotizacion.ask, null, 'el ask no cabe después de reservar el bid');
+  assert.strictEqual(LC.mercados.filter((x) => x.motivo === 'sin_colateral').length, 2);
+  assert.strictEqual(MM.de('libro').estado().vivos.sin_colateral, 2);
+  const cc = MM.cotiza({ inv0: 0, tick: 0.01 }, 0.5, 30, cfgL, Date.now(), { bb: 0.49, ba: 0.51, mid: 0.5, bids: [{ p: 0.49, s: 100 }], asks: [{ p: 0.51, s: 100 }] });
+  assert.strictEqual(cc.bid, 0.49); assert.strictEqual(cc.ask, null, 'con 30 cabe el bid (24,5) pero no el ask encima');
+
+  // 11) markout de lo retirado (8-oct, auditoría): un fill a 20 min del saque se retira sin markout; a los 25 min
+  //     del saque se mide contra el medio del libro de entonces: mejor bid 0,40 (nivel fijo del mock) y mejor ask
+  //     0,41 → medio 0,405 → (0,405 − 0,49) × 10 = −0,85.
+  const condQ = conQ[0].cond;
+  trades = [{ conditionId: condQ, outcomeIndex: 0, side: 'SELL', price: 0.49, size: 30, timestamp: Math.floor((Date.parse(KO) - 20 * 60e3) / 1000) }];
+  MM.vaciarCache(); const oF = await MM.de('libro').barrer({ ahora: Date.parse(KO) - 19 * 60e3 });
+  assert.strictEqual(oF.compras, 1, JSON.stringify(oF));
+  let mQ = MM.de('libro').libro().mercados.find((x) => x.cond === condQ);
+  assert.strictEqual(mQ.s0, 10, 'prorrata 50/(50+100) de 30'); assert.strictEqual(mQ.fills[0].markout_30, null);
+  trades = []; MM.vaciarCache(); const oR = await MM.de('libro').barrer({ ahora: Date.parse(KO) - 10 * 60e3 });
+  assert.strictEqual(oR.retirados, 3, JSON.stringify(oR));
+  libro = { bb: 0.39, ba: 0.41 }; MM.vaciarCache(); await MM.de('libro').barrer({ ahora: Date.parse(KO) + 25 * 60e3 });
+  mQ = MM.de('libro').libro().mercados.find((x) => x.cond === condQ);
+  assert.strictEqual(mQ.estado, 'RETIRADA'); assert.strictEqual(mQ.markout_n, 1); assert.strictEqual(mQ.markout_usd, -0.85, 'markout contra el medio del libro tras la retirada');
+  delete process.env.GP_POLYMM_BANCO;
   console.log('poly-mm: todo correcto (' + TMP + ')');
 })().catch((e) => { console.error(e); process.exit(1); });

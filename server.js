@@ -8689,6 +8689,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
   if (!Object.keys(qevents).length) return { skipped: 'sin eventos del sweep', published };
   const { consensus, freshQuotes } = require('./market-scanner/scanner');
   const markets = await require('./market-scanner/quotes').loadClubsMarkets(dbc, { events: qevents, now: Date.now() }).catch(() => []);
+  memMark('picks-clubes:1x2-cargado');   // 9-oct: para situar en el log el pico de montón del ciclo
   // 5-ago (reporte Alexis: córners/cards no generaban): NO se puede cortar acá. `markets` son SOLO los
   // mercados 1X2/goles; CORNERS y CARDS se construyen más abajo desde su PROPIA query (corners_total/
   // cards_total del sweep de props, que sí venía trayendo cientos de cuotas). Con un timeout del Postgres
@@ -8780,6 +8781,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
            FROM sportsbook_goal_quote_current
           WHERE canonical_event_id = ANY($1) AND market_family IN ('player_assist','player_goal')
             AND observed_at > now() - interval '12 hours'`, [evIds]).catch(() => ({ rows: [] }));
+      memMark('picks-clubes:props-jugador'); console.log('[clubs-picks] props jugador: eventos ' + evIds.length + ' · filas ' + pq.rows.length);
       const byKey = {};
       for (const r of pq.rows) { (byKey[r.canonical_event_id + '|' + r.market_family + '|' + r.pid] = byKey[r.canonical_event_id + '|' + r.market_family + '|' + r.pid] || []).push(r); }
       const projCache = {};
@@ -8843,6 +8845,7 @@ async function buildClubDailyPicks({ dryRun = false } = {}) {
            FROM sportsbook_goal_quote_current
           WHERE canonical_event_id = ANY($1) AND market_family IN ('corners_total','cards_total')
             AND observed_at > now() - interval '12 hours'`, [evIds2]).catch(() => ({ rows: [] }));
+      memMark('picks-clubes:props-equipo'); console.log('[clubs-picks] props córners/tarjetas: eventos ' + evIds2.length + ' · filas ' + tq.rows.length);
       const byGrp = {};
       for (const r of tq.rows) { (byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] = byGrp[r.canonical_event_id + '|' + r.market_family + '|' + r.line] || []).push(r); }
       const projCache2 = {}, refCache2 = {}; // refCache2: árbitro por evento (solo córners; ver clubRefereeFor)

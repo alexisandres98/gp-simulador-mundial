@@ -582,6 +582,13 @@ más reciente, frescura 3 h en vez de 24 (aguas abajo todo descarta > 75 min), l
 de log con eventos/filas/mercados/ms; purga horaria por lotes de 20.000 de las filas NULL de más de 48 h
 (`GP_SBGOAL_PURGE`, `GP_SBGOAL_PURGE_LOTES`); `ORDER BY observed_at` en la captura de cierres. Sin reinicios desde
 las 23:12 UTC.
+**Medido (00:03-00:25 UTC del 9-oct):** el loader pasó de 3,27 M filas (parcial, con timeout) a **90.686 filas en
+40 s** para 676 eventos y 2.531 mercados; las dos consultas de props traen 33.990 y 14.255 filas. El ciclo de picks
+termina con el montón en **694-986 MB** (antes 2,3-2,7 GB) y la plataforma lleva desde las 23:12 sin reiniciar. La
+primera purga murió por timeout (20.000 filas NULL en 17,7 M sin índice); `749282d` crea un índice parcial
+(`observed_at WHERE team_scope IS NULL`, CONCURRENTLY, 162 s) y borra en lotes de 5.000 dentro de una transacción con
+timeout propio: **500.000 filas en 22 s por pasada, cada 20 min** (`GP_SBGOAL_PURGE_MIN`). A ese ritmo la tabla
+queda limpia en ~12 h; el `DISTINCT ON` del loader irá bajando de los 40 s conforme encoja.
 
 ## 9-oct-2026 — Arbitraje Cloudbet–Polymarket medido (no hay) y la sombra de market making deja de ser un techo
 

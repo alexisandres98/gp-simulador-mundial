@@ -1120,9 +1120,28 @@ async function purgaCuotasJob() {
       }
     } catch (e) { err = (err ? err + ' · ' : '') + e.message; }
   }
-  let estimadas = null;
-  try { estimadas = Number(((await dbc.query(`SELECT reltuples::bigint n FROM pg_class WHERE relname = 'sportsbook_goal_quote_current'`)).rows[0] || {}).n); } catch { /* sin estimación */ }
-  const out = { borradas, lotes: n, filas_estimadas_tabla: estimadas, ms: Date.now() - t0, error: err };
+  // (c) VACUUM (ANALYZE) como mucho cada 3 h: 8 M de filas borradas y las actualizaciones en sitio de cada
+  //     barrido dejan tuplas muertas que el índice sigue recorriendo (el loader oscilaba entre 9 y 100 s a las
+  //     06:00 del 9-oct). Plain VACUUM no bloquea; fuera de transacción y sin timeout en conexión propia.
+  let vacuum = null;
+  if (global._sbgoalIdxOk && (borradas > 0 || !global._sbgoalVacuumAt) && Date.now() - (global._sbgoalVacuumAt || 0) > 3 * 3600e3) {
+    let c = null;
+    const tv = Date.now();
+    try {
+      c = await dbc.getPool().connect();
+      await c.query('SET statement_timeout = 0');
+      await c.query('VACUUM (ANALYZE) sportsbook_goal_quote_current');
+      global._sbgoalVacuumAt = Date.now();
+      vacuum = { ms: Date.now() - tv };
+    } catch (e) { vacuum = { error: e.message, ms: Date.now() - tv }; }
+    finally { if (c) { try { await c.query('SET statement_timeout = ' + (Number(require('./database/config').db.statementTimeoutMs) || 15000)); } catch { /* nada */ } c.release(); } }
+  }
+  let estimadas = null, muertas = null;
+  try {
+    const r = await dbc.query(`SELECT c.reltuples::bigint n, s.n_dead_tup muertas FROM pg_class c LEFT JOIN pg_stat_user_tables s ON s.relname = c.relname WHERE c.relname = 'sportsbook_goal_quote_current'`);
+    estimadas = Number((r.rows[0] || {}).n); muertas = r.rows[0] && r.rows[0].muertas != null ? Number(r.rows[0].muertas) : null;
+  } catch { /* sin estimación */ }
+  const out = { borradas, lotes: n, filas_estimadas_tabla: estimadas, tuplas_muertas: muertas, vacuum, ms: Date.now() - t0, error: err };
   console.log('[sbgoal-purga]', JSON.stringify(out));
   global._sbgoalPurgaLast = { at: new Date().toISOString(), ...out };
   return out;

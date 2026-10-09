@@ -589,6 +589,11 @@ primera purga murió por timeout (20.000 filas NULL en 17,7 M sin índice); `749
 (`observed_at WHERE team_scope IS NULL`, CONCURRENTLY, 162 s) y borra en lotes de 5.000 dentro de una transacción con
 timeout propio: **500.000 filas en 22 s por pasada, cada 20 min** (`GP_SBGOAL_PURGE_MIN`). A ese ritmo la tabla
 queda limpia en ~12 h; el `DISTINCT ON` del loader irá bajando de los 40 s conforme encoja.
+**Revisión de las 06:30 UTC del 9-oct:** cero `server_failed` desde las 23:12; la purga lleva **8,0 M de filas
+borradas** en 19 pasadas y ya solo encuentra 40-50 k por pasada (lo que va cumpliendo 48 h), estimación de la
+tabla 17,7 → 9,4 M; pico de montón máximo en seis horas **1.487 MB**. Lo que queda: el loader oscila entre 9 y
+100 s por las tuplas muertas que dejan los 8 M borrados y las actualizaciones en sitio de cada barrido; se añade
+`VACUUM (ANALYZE)` a la purga (máximo cada 3 h, conexión propia sin timeout) y `tuplas_muertas` al log.
 
 ## 9-oct-2026 — Arbitraje Cloudbet–Polymarket medido (no hay) y la sombra de market making deja de ser un techo
 

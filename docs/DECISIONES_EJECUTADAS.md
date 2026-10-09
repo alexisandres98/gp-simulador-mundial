@@ -594,6 +594,8 @@ borradas** en 19 pasadas y ya solo encuentra 40-50 k por pasada (lo que va cumpl
 tabla 17,7 → 9,4 M; pico de montón máximo en seis horas **1.487 MB**. Lo que queda: el loader oscila entre 9 y
 100 s por las tuplas muertas que dejan los 8 M borrados y las actualizaciones en sitio de cada barrido; se añade
 `VACUUM (ANALYZE)` a la purga (máximo cada 3 h, conexión propia sin timeout) y `tuplas_muertas` al log.
+Desplegado (`9738a93`, 06:33 UTC): primer vacío en 176 s; las dos lecturas siguientes del loader, **6,7 s y 22 s**
+(antes 9-100 s). Sin reinicios.
 
 ## 9-oct-2026 — Arbitraje Cloudbet–Polymarket medido (no hay) y la sombra de market making deja de ser un techo
 

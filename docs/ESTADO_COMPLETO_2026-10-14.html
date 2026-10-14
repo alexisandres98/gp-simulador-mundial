@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qué tenemos, entero</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F7F4; --panel:#FFFFFF; --panel2:#EDF1EE; --ink:#16211C; --ink2:#4A5A53; --mute:#7C8A84; --line:#D5DDD8;
+  --acc:#0E6B61; --acc-soft:#D8ECE8;
+  --pos:#1E7A4B; --pos-soft:#DDF0E4; --neg:#B33A3A; --neg-soft:#F4DEDE; --warn:#A9741A; --warn-soft:#F5EAD3; --nil:#6E7B76; --nil-soft:#E6EAE7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+    --acc:#5FC4B6; --acc-soft:#173430;
+    --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+  --acc:#5FC4B6; --acc-soft:#173430;
+  --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0}
+main{max-width:980px;margin:0 auto;padding-block:28px 80px;padding-inline:20px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:40px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:600;margin-top:56px;padding-top:18px;border-top:2px solid var(--ink)}
+h3{font-size:18px;font-weight:600;margin-top:28px;color:var(--ink)}
+p{max-width:68ch;margin:12px 0;color:var(--ink)}
+p.lead{font-size:17px;color:var(--ink2)}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:10px}
+.meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);margin-top:14px;max-width:76ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:26px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:24px;font-weight:500;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .warn{color:var(--warn)} .mute{color:var(--mute)}
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);font-weight:600;background:var(--panel2)}
+td.n,th.n{text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.sum td{font-weight:600;background:var(--panel2)}
+.chip{display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.04em;padding:2px 7px;border-radius:3px;white-space:nowrap;border:1px solid transparent}
+.c-ok{background:var(--pos-soft);color:var(--pos)} .c-no{background:var(--neg-soft);color:var(--neg)} .c-w{background:var(--warn-soft);color:var(--warn)} .c-0{background:var(--nil-soft);color:var(--nil)}
+.note{background:var(--panel2);border-left:3px solid var(--acc);padding:12px 16px;margin:18px 0;max-width:76ch}
+.note.alert{border-left-color:var(--neg)}
+.note p{margin:6px 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:14px 0}
+.box{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.box h4{margin:0 0 6px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:16px;font-weight:600}
+.box p{font-size:14px;margin:6px 0;color:var(--ink2)}
+ol.rec{padding-left:22px;max-width:76ch} ol.rec li{margin:10px 0}
+ol.rec b{color:var(--ink)}
+ul.tight{max-width:76ch;padding-left:20px} ul.tight li{margin:6px 0}
+.toc{display:flex;flex-wrap:wrap;gap:8px 14px;margin:18px 0 0;font-size:13.5px}
+.toc a{color:var(--acc);text-decoration:none;border-bottom:1px solid var(--line)}
+.toc a:focus,.toc a:hover{border-bottom-color:var(--acc)}
+.tl{list-style:none;padding:0;margin:14px 0;max-width:76ch;border-left:2px solid var(--line)}
+.tl li{padding:6px 0 6px 16px;display:grid;grid-template-columns:120px 1fr;gap:10px}
+.tl time{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);white-space:nowrap}
+small{color:var(--mute)}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em}
+@media (max-width:480px){.tl li{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">GP Simulador · informe de estado completo · 14 de octubre de 2026</div>
+<h1>Qué tenemos, entero</h1>
+<p class="lead">Todo el proyecto en un documento: qué es la plataforma, cada canal de dinero real que existió y cómo acabó, cada deporte y familia con lo que se midió y lo que dio, Polymarket y el market making, cómo se decide (la vara, las puertas, la calibración), la doctrina aprendida a base de perder, la operación y sus incidentes, lo que cuesta, y lo que queda en tu mesa con fechas. Escrito para leerse de arriba abajo en veinte minutos; cada sección empieza con lo esencial en dos líneas.</p>
+<div class="meta">Cifras de producción al 12 de octubre a las 16:11 UTC (últimas sondas leídas; el bloc de claves del entorno se borró el 14-oct y no se pudieron releer). Historia y veredictos reconstruidos de la documentación del repositorio por tres agentes con cita de fichero, y cotejados con lo que yo mismo medí. Todo lo que no está en el repo (lo que pagas de verdad, impuestos, tu tiempo) lo rellenas tú.</div>
+<nav class="toc">
+  <a href="#una">En una página</a><a href="#que">Qué es</a><a href="#dinero">Dinero real</a><a href="#tarjetas">Tarjetas under</a><a href="#deportes">Deporte por deporte</a><a href="#poly">Polymarket</a><a href="#vara">Cómo se decide</a><a href="#doctrina">Doctrina</a><a href="#operacion">Operación</a><a href="#costes">Costes</a><a href="#pendiente">Pendiente y fechas</a><a href="#docs">Documentos</a>
+</nav>
+
+<h2 id="una">En una página</h2>
+<div class="kpis">
+  <div class="kpi"><div class="l">Dinero real · desde el 24-ago</div><div class="v neg">−306,75</div><div class="s">337 liquidadas · 173-164 · 6.762 apostados · ROI −4,5 % · caja 0,01 desde el 4-oct</div></div>
+  <div class="kpi"><div class="l">Familias invertibles</div><div class="v">0</div><div class="s">de 38 en la vara · 10 de 10 en la puerta G0 · la única "invertible" es un cierre roto</div></div>
+  <div class="kpi"><div class="l">Modelo que aporta sobre el precio</div><div class="v">0 de 130</div><div class="s">encogimiento al 12-oct · c mediano 0</div></div>
+  <div class="kpi"><div class="l">Tarjetas under, reglas del ejecutor</div><div class="v pos">+14,8 %</div><div class="s">274 en sombra, t 2,51 · pero agosto +50 % y desde el 31-ago −3 % en 226</div></div>
+  <div class="kpi"><div class="l">Banco simulado</div><div class="v neg">−460</div><div class="s">de 2.000 a 1.539 · 2.619 liquidadas</div></div>
+  <div class="kpi"><div class="l">Polymarket (taker y maker)</div><div class="v neg">todo negativo</div><div class="s">v1 −711 · v2 −447 · market making FIFO −472 (−17 %)</div></div>
+  <div class="kpi"><div class="l">Coste visible</div><div class="v">365-445</div><div class="s">USD al mes · tarjetas under sola necesita 90-140</div></div>
+  <div class="kpi"><div class="l">Plataforma</div><div class="v pos">estable</div><div class="s">0 reinicios por fallo desde el 8-oct · ~980 usuarios registrados · 11 deportes</div></div>
+</div>
+<p><b>Lo que tienes, en diez frases.</b> Una plataforma web multideporte que funciona y que mide todo lo que publica. Un ejecutor de apuestas real sobre Cloudbet que coloca, liquida y concilia solo, y que hoy no coloca nada porque la caja está en 0,01. Dos meses de medición honesta que dicen, con números, que el modelo no le gana al precio en ningún deporte: nueve motores, once deportes, treinta y ocho familias, cero invertibles. Una sola familia con evidencia positiva, tarjetas under, cuya ventaja está entera en agosto y que desde el 31-ago va a −3 %. Una casa que te deja 10-20 por boleto y otra que te cerró la cuenta. Un bot de Polymarket que funciona y no tiene dinero, y tres sombras en Polymarket que pierden, incluida la de market making. Una infraestructura que cuesta 365-445 al mes y de la que tarjetas under necesita 90-140. Unos 980 usuarios registrados y un feed que publica sin veredicto por tu orden del 21-sep. Un cuerpo de doctrina y documentación que impide repetir los errores que costaron dinero. Y tres caminos escritos que solo tú puedes elegir: seguir, modo mínimo o apagar con orden.</p>
+
+<h2 id="que">1. Qué es GP Simulador hoy</h2>
+<p><b>Esencial:</b> nació como simulador del Mundial 2026 (Elo, Poisson, Monte Carlo contra Polymarket y Kalshi) y hoy es una plataforma de picks de once deportes con un ejecutor en sombra y otro real. El Mundial terminó en julio; sus bucles siguen corriendo.</p>
+<div class="grid2">
+  <div class="box"><h4>Lo que ve un usuario</h4><p>App del Mundial (oportunidades, partidos, equipos, bracket, aciertos) y terminal multideporte en <code>/x</code>: fútbol de clubes (más Nations League, CONCACAF NL y amistosos desde el 26-sep), combate, tenis, baloncesto, esports (CS2, LoL, Valorant, Dota 2), fútbol americano (NFL, college, CFL), F1, dardos y tenis de mesa. Páginas SEO: calculadoras, cuotas, guías.</p><p>Planes publicados: Free 0 (inteligencia sin señal accionable), Pro 19 al mes (picks, briefs, lecturas, Boleto GP), Sharp 59 (value, arbitraje, caídas, middles, props). El reparto real depende de <code>GP_PLANS_ENFORCED</code> en Render, que no está en el repo.</p></div>
+  <div class="box"><h4>Usuarios y afiliados</h4><p>982 registrados el 7-sep (la cifra de "340" que repiten varios documentos es de junio). Un afiliado activo con 38 registros, 1 referido convertido y 1,90 USD disponibles, sin cambios en cinco semanas. Alertas por correo (código de login, inicio, gol, resultado), Telegram público.</p><p>Desde el 21-sep el feed publica sin veredicto por tu orden («los clientes pagan por ver picks»): las familias retiradas salen con el chip SIN VEREDICTO. El feed de clubes acumula 4.010 picks, 54,2 % de acierto y −2,2 % de ROI.</p></div>
+  <div class="box"><h4>Stack</h4><p>Node puro, un solo proceso de ~29.800 líneas, frontend sin framework, <code>db.json</code> de 53 MB en disco persistente de Render más Postgres para la capa de cuotas. Hosting en Render Oregón (plan Pro 4 GB), dominio en Namecheap, correo por Resend, un brazo en Hetzner Helsinki que es el único camino para apostar en Cloudbet (desde Oregón la casa responde RESTRICTED).</p></div>
+  <div class="box"><h4>Lo que corre solo</h4><p>Unos 60 trabajos periódicos: marcadores cada 30 s, barridos de cuotas cada 10-12 min, picks de clubes cada 15 min, ejecutor en sombra cada 10, market making cada 5, pase diario de datos a las 07:00 UTC, copias de seguridad cada 6 h, reporte semanal los lunes 08:30 UTC desde esta sesión. Cuatro trabajos (dardos, tenis de mesa, tenis, F1) y los bucles del Mundial no tienen interruptor.</p></div>
+</div>
+
+<h2 id="dinero">2. El dinero real, canal por canal</h2>
+<p><b>Esencial:</b> depositaste unos 2.867 USDT en Cloudbet, retiraste unos 2.560, y la diferencia (−306,75) es lo que el ejecutor perdió en 337 apuestas. Cuatro canales existieron; hoy ninguno tiene dinero.</p>
+<div class="tw"><table>
+<tr><th>canal</th><th>abierto</th><th>regla y stake</th><th class="n">liquidadas</th><th class="n">G-P</th><th class="n">apostado</th><th class="n">P&amp;L</th><th>cierre</th></tr>
+<tr><td>Tarjetas under, Cloudbet</td><td>25-ago (a mano) · 1-sep (API)</td><td>Kelly/4 → plano 40 (2-sep) → plano 30 (7-sep)</td><td class="n">167</td><td class="n">98-69</td><td class="n">5.412,52</td><td class="n neg">−92,42 (−1,7 %)</td><td>encendido, caja 0,01 desde el 4-oct</td></tr>
+<tr><td>CS2 hándicap de rondas, Cloudbet</td><td>26-ago (a mano) · 1-sep (auto)</td><td>plano 5 (el tope de la casa)</td><td class="n">54</td><td class="n">20-34</td><td class="n">489,00</td><td class="n neg">−66,93 (−13,7 %)</td><td>pausado 7-sep, retirado 16-sep (R2)</td></tr>
+<tr><td>Tenis de mesa, total de puntos, Cloudbet</td><td>9-sep</td><td>plano 5</td><td class="n">60</td><td class="n">33-27</td><td class="n">300,00</td><td class="n">0,00</td><td>apagado 16-sep (R1): EV −7,6 % contra margen 4,95 %</td></tr>
+<tr><td>College totales y hándicaps, Cloudbet</td><td>24-sep</td><td>plano 10</td><td class="n">56</td><td class="n">22-34</td><td class="n">560,00</td><td class="n neg">−147,40 (−26,3 %)</td><td>apagado 27-sep por tu orden</td></tr>
+<tr><td>Tarjetas a mano en Pinnacle</td><td>27-sep</td><td>correo "para colocar a mano"</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">0</td><td>Pinnacle te cerró la cuenta el 1-oct; apagado el 2-oct</td></tr>
+<tr><td>Físicas en Gambia (PrimaBet)</td><td>5-sep</td><td>6 boletos de 1.000 GMD</td><td class="n">6</td><td class="n">4-2</td><td class="n">6.000 GMD</td><td class="n pos">+1.110 GMD</td><td>anecdótico, sin repetir</td></tr>
+<tr><td>Polymarket real</td><td>bot probado 13-sep</td><td>—</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">0</td><td>nunca tuvo dinero; Render geobloqueado</td></tr>
+<tr><td>Prop firm (FundingPredicts 10K)</td><td>finales de agosto</td><td>órdenes manuales por correo</td><td class="n">?</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td>abandonada 21-sep; el repo no sabe qué colocaste</td></tr>
+<tr class="sum"><td>Total Cloudbet</td><td></td><td></td><td class="n">337</td><td class="n">173-164</td><td class="n">6.761,52</td><td class="n neg">−306,75 (−4,5 %)</td><td></td></tr>
+</table></div>
+<h3>La línea de tiempo que explica el número</h3>
+<ul class="tl">
+  <li><time>24-ago</time><span>Cuenta de Cloudbet fondeada con 604. Hasta el 31-ago las apuestas se colocan a mano desde los correos del ejecutor (27 de fútbol por 761 USDT, 9 de CS2).</span></li>
+  <li><time>1-sep</time><span>Cloudbet habilita la API desde región permitida; brazo en Helsinki. Primera apuesta automática: Preston–Bristol u4,5, 29 @1,53. Klaus deja escrito: los límites se revisan por actividad, no se suben a petición, no segunda cuenta.</span></li>
+  <li><time>2-sep</time><span>Stake plano 40 por tu orden. Con 40 el dinero en juego subía a 1.500-1.600 y la cuenta tenía 1.290.</span></li>
+  <li><time>4-5 sep</time><span>Incidente de la base vacía (no tocó el libro real); retiros tuyos de 1.485. Veto a la banda eficiente: el 63 % del dinero vivo estaba en Premier, Championship, Bundesliga, Serie A, Ligue 1 y MLS. Doble colocación en la casa (Parma–Monza, Roma–Atalanta). Seis boletos físicos en Gambia.</span></li>
+  <li><time>7-sep</time><span>Semana 31-ago a 7-sep: −198,6. Stake a 30. CS2 pausado (−66,9 sobre 600). Empieza a anotarse la caja.</span></li>
+  <li><time>7-13 sep</time><span>La peor semana: −210,8 sobre 1.380 (96 apuestas, −15,3 %), el 79 % de toda la pérdida. Tres partidos de Brasileirão con dos líneas cada uno: 1 de 8, −199,50. Nace la regla "una posición por partido y lado".</span></li>
+  <li><time>13-sep</time><span><b>La regla del dinero:</b> no se mete más dinero en ningún sitio hasta que una familia cruce el listón. Cuatro líneas de parada por Monte Carlo. Autopsia de las 139 liquidadas.</span></li>
+  <li><time>14-15 sep</time><span>Salen 563,29 sin apuesta que lo explique (retiros tuyos, aclarados el 17 y el 21). Tarjetas pausado durante la auditoría. La parada pasa a bloquear órdenes.</span></li>
+  <li><time>16-sep</time><span>Plan de rentabilidad: tenis de mesa cerrado en 0,00 exacto (R1), CS2 retirado (R2), Polymarket sigue simulado (R4), libro con cadena de hashes (R5).</span></li>
+  <li><time>17-sep</time><span>Depositas 399,99 («Abre, deposité»): tarjetas reabierto a stake 30 con suelo de caja 5. Entre esa tarde y el día siguiente retiras 388,37. Cero colocadas; 49 señales mueren sin fondos.</span></li>
+  <li><time>21-27 sep</time><span>Depósito de 186; conciliación cerrada a cero. Tarjetas: 9 apuestas, 6-3, +48,25. College encendido el 24 a 10 planos con 191 en caja; apagado el 27: −156,60 en cuatro días. Tope de cuenta medido (≈6 % del máximo del mercado, "Max bet $10" en la web), boletos hermanos, canal manual de Pinnacle, censo de tarjetas.</span></li>
+  <li><time>28-sep</time><span>Necaxa–América u3,5 en tres boletos (9,60 + 9,60 + 5,27; el cuarto rechazado): −24,47. Saldo 0,00. Cinco apuestas discrecionales tuyas del 30-sep (54,81) sin anotar.</span></li>
+  <li><time>1-4 oct</time><span>Pinnacle cierra tu cuenta (cláusula 2.1.9, sin motivo; la plataforma nunca la usó). Tulsa–North Texas, la última fila de college, gana +9,20; los 19,19 salen a mano. Saldo 0,01.</span></li>
+  <li><time>5-11 oct</time><span>Nada colocado. 129 señales de tarjetas: 71 descartadas por banda eficiente, 49 caducadas sin fondos (habrían hecho 26-23), 9 sin ventaja.</span></li>
+</ul>
+<div class="note alert"><p><b>Conciliación abierta desde hace tres semanas:</b> depósitos 2.866,91 − retiros 2.486,15 − 306,75 realizado = 74,01 esperado; real 0,01; diferencia −74,00 (54,81 + 19,19). Se cierra anotando los dos movimientos con <code>run=movimiento</code>. Mientras tanto la línea de parada "caja" salta sola.</p></div>
+
+<h2 id="tarjetas">3. Tarjetas under: la única familia que ha ganado algo</h2>
+<p><b>Esencial:</b> gana en sombra (+4,6 % en 648 líneas), gana con las reglas exactas del ejecutor (+14,8 % en 274, t 2,51), pero toda esa ventaja es agosto. Desde el 31-ago, 226 partidos a −3 % con t cerca de cero. En dinero real, −1,7 % en 167. Y aunque ganara, la casa te deja 10-20 por boleto.</p>
+<div class="tw"><table>
+<tr><th>cohorte (sombra, una por partido, fuera de eficientes)</th><th class="n">n</th><th class="n">G-P</th><th class="n">ROI</th><th class="n">t</th></tr>
+<tr class="sum"><td>Acumulado desde el 12-ago</td><td class="n">274</td><td class="n">170-104</td><td class="n pos">+14,8 %</td><td class="n">2,51</td></tr>
+<tr><td>Agosto</td><td class="n">82</td><td class="n">60-22</td><td class="n pos">+50,4 %</td><td class="n">4,17</td></tr>
+<tr><td>Septiembre (desde el 31-ago)</td><td class="n">187</td><td class="n">106-81</td><td class="n">+0,65 %</td><td class="n">−0,17</td></tr>
+<tr><td>Semana 28-sep a 4-oct</td><td class="n">13</td><td class="n">8-5</td><td class="n neg">−10,7 %</td><td class="n">−0,15</td></tr>
+<tr><td>Semana 5-11 oct</td><td class="n">39</td><td class="n">18-21</td><td class="n neg">−20,1 %</td><td class="n">−1,40</td></tr>
+</table></div>
+<div class="grid2">
+  <div class="box"><h4>El modelo</h4><p>Binomial negativa sobre el nivel de liga, amortiguador en cero, sin árbitro servido hasta septiembre. Los challengers del 15-sep dicen que una versión con fuerzas de equipo y árbitro (T2b) predice mejor (t −6,25), y que Cloudbet cuenta la roja como dos tarjetas y nosotros como una: eso quita 2-3 pp al under. El liquidador se corrigió; el modelo no, porque cambia qué picks nacen y la muestra se destruye.</p></div>
+  <div class="box"><h4>Por qué no se puede certificar</h4><p>La vara dice "sin cierre valorable": solo el 17,2 % de los tickets tiene las dos caras del cierre, y sin la contraria no se puede quitar el margen. El CLV recortado es −1,23 % con t −8,5: el cierre se mueve en contra. El preregistro v2 calcula que detectar un 3 % de ROI con esta cadencia tarda siete años.</p></div>
+  <div class="box"><h4>El dinero real, por cohortes</h4><p>Apiladas (dos o más líneas del mismo partido): 61, −16,2 %. Ligas eficientes antes del veto: 42, −3,7 %. Sueltas fuera de eficientes, la regla vigente: 64, +16,2 % (t 1,61). Núcleo limpio desde el 13-sep: 25 apuestas, +160,28; la línea de parada necesita 60 para juzgar. Por EV declarado: las 149 con ventaja van −6,0 % y las 17 de control sin ventaja +24,1 %: la ventaja estimada no ordena los resultados.</p></div>
+  <div class="box"><h4>El techo físico</h4><p>Censo de tres semanas: el mercado de tarjetas existe en 8-12 competiciones de Cloudbet (Nations League, Brasil A y B, Argentina, LaLiga 2, MLS, Liga MX, Serie A, Premier, LaLiga, Ligue 1) y 11 de Pinnacle; cero en 80 competiciones femeninas y 75 divisiones menores. Tope de cuenta ≈ 6 % del máximo del mercado, por boleto. Con 19 picks por semana a 30-40, la esperanza son unos 300 al mes en el mejor caso y el intervalo incluye el cero.</p></div>
+</div>
+<p>La decisión está fechada el 20-oct (cohorte limpia de 100) y el reporte del 12-oct propone leerla el lunes 19 con lo que haya y no abrir caja antes. Lo que ya se puede decir: la ventaja fue de agosto; desde entonces es ruido alrededor de cero.</p>
+
+<h2 id="deportes">4. Deporte por deporte: qué se midió y qué dio</h2>
+<p><b>Esencial:</b> el precio acierta más que el modelo en todos los motores con muestra; la calibración del 16-sep lo mide en 6 de 9 (el modelo se pasa 10-16 pp donde el precio acierta a 0-4). Lo que ganó en algún momento ganó por precio y momento, no por modelo, y devolvió la racha al financiarse.</p>
+<div class="tw"><table>
+<tr><th>deporte · familia</th><th class="n">muestra</th><th class="n">resultado</th><th>veredicto y fecha</th><th>por qué</th></tr>
+<tr><td>Fútbol · 1X2 (SOLID)</td><td class="n">631 en el feed</td><td class="n neg">−6,1 %</td><td>familia de precio (2-sep)</td><td>acierto 35 %, Brier 0,238 contra 0,201 del mercado; el cierre no se mueve hacia el modelo</td></tr>
+<tr><td>Fútbol · goles</td><td class="n">165</td><td class="n neg">−5,5 %</td><td>familia de precio (2-sep)</td><td>el modelo copia al mercado; puerta aprobada en 2 de 47 ligas; margen 3,09 %/lado</td></tr>
+<tr><td>Fútbol · córners</td><td class="n">1.009 feed · 299 sombra</td><td class="n neg">−1,5 % · −5,9 %</td><td>C3 cerrado por margen (16-sep)</td><td>margen 3,95-4,50 %/lado; local y visita correlacionados −0,249; "la casa ya sabe la media de la liga"</td></tr>
+<tr><td>Fútbol · tarjetas under</td><td class="n">648 sombra · 167 real</td><td class="n">+4,6 % · −1,7 %</td><td>sin veredicto formal; decisión 20-oct</td><td>sección 3</td></tr>
+<tr><td>Fútbol · tarjetas over</td><td class="n">138+</td><td class="n neg">−18,7 %</td><td>no (orden 27-sep)</td><td>pierde todas las semanas</td></tr>
+<tr><td>Fútbol · derivadas (hándicap asiático, team total, DNB, doble oportunidad, BTTS)</td><td class="n">10.079 / 4.642 / 1.255 / 1.192 / 993</td><td class="n neg">−8 % / −6 % / −14 % / −1 % / −3 %</td><td>nada que abrir (cada semana)</td><td>CLV negativo con t de −10 a −47</td></tr>
+<tr><td>Fútbol · mitades, HT/FT, 2ª parte</td><td class="n">19-59 por familia</td><td class="n neg">CLV negativo en todas</td><td>C2 cerrado (16-sep)</td><td>el precio ya lleva la condicionalidad del descanso; HT/FT cobra 9-36 % según competición; marcador exacto 28,9 %</td></tr>
+<tr><td>Selecciones (Nations League, CONCACAF, amistosos)</td><td class="n">desde el 26-sep</td><td class="n">—</td><td>Nations League en banda eficiente; dinero vetado por liga</td><td>el Mundial acertó el 66 % de ganadores pero el mercado predijo mejor (Brier 0,455 vs 0,430)</td></tr>
+<tr><td>CS2 · hándicap de rondas</td><td class="n">1.152 sombra · 4.247 monitor</td><td class="n neg">−0,1 % · −3,3 %</td><td>cerrar (16-sep), control sin ingeniería</td><td>EV al cierre −3,5 % (t −6,6); modelo +10 pp descalibrado; la ventaja vivía al precio de Pinnacle (+2,2 % hoy) y Pinnacle no estaba conectada; conversión mapa→ronda rota</td></tr>
+<tr><td>LoL · kills</td><td class="n">515 sombra · 2.395 monitor</td><td class="n neg">−4,4 % · −2,0 %</td><td>cerrar (16-sep)</td><td>EV −7,7 % (t −21); modelo +13 pp; ±600 por semana con suma cero; derechos CC BY-SA, admin-only</td></tr>
+<tr><td>Valorant</td><td class="n">598</td><td class="n neg">−3,8 %</td><td>cerrar; congelado sin fuente de resultados (M11)</td><td>EV −7,6 % (t −14); modelo +13 pp</td></tr>
+<tr><td>Dota 2</td><td class="n">1.093</td><td class="n neg">−11,8 %</td><td>cerrar</td><td>EV −5,3 % (t −4); kills en Pinnacle −29,7 % (t −3,3)</td></tr>
+<tr><td>Props de jugador en Underdog (CS2)</td><td class="n">472 tesis</td><td class="n">"+2,2 %"</td><td>C5 retirada (16-sep)</td><td>la tabla de pagos no se puede verificar sin cuenta; con dos piernas el EV va de −12,7 % a +1,8 % según una constante que no se ve</td></tr>
+<tr><td>Tenis · ganador, hándicap, totales</td><td class="n">1.310</td><td class="n">+3,3 %</td><td>control, no candidato</td><td>CLV medio −9,3 % ("entra tarde en todo"); sin cierre valorable; tasas de saque congeladas desde mayo; sin segunda fuente de cuotas; el liquidador liquidó 268 picks con 0-0 hasta el 2-sep</td></tr>
+<tr><td>Baloncesto (WNBA, NBA)</td><td class="n">188</td><td class="n">+2,2 %</td><td>picks apagadas por doctrina (31-ago)</td><td>único motor calibrado y único con Brier mejor que el precio, pero no bate al cierre (skill −0,008); el histograma de totales en cubos de 5 era un bug</td></tr>
+<tr><td>NFL</td><td class="n">182 sombra</td><td class="n">—</td><td>todo en sombra; moneyline cerrado</td><td>el modelo queda a 10,3 puntos del margen; market-blind por construcción</td></tr>
+<tr><td>College (NCAAF)</td><td class="n">1.341 sombra · 56 real</td><td class="n neg">−26,3 % real</td><td>no vuelve</td><td>se financió sobre el pico de una semana (+30,6 %) y devolvió la racha; cuanta más ventaja declara el modelo, peor</td></tr>
+<tr><td>CFL</td><td class="n">168</td><td class="n">—</td><td>sin veredicto</td><td>modelo reusado de NFL</td></tr>
+<tr><td>Combate (UFC, PFL, boxeo)</td><td class="n">192</td><td class="n">+1,2 %</td><td>familia de precio</td><td>"el mercado sabe cosas que el Elo no"; ningún rasgo bate al cierre en 6.090 peleas; solo el lado del favorito sobrevive en CLV (44, +5 %, por debajo de 100)</td></tr>
+<tr><td>F1</td><td class="n">35 carreras holdout</td><td class="n">—</td><td>sin mercado medible</td><td>tras la clasificación la casilla predice mejor que el modelo; The Odds API no cubre F1</td></tr>
+<tr><td>Dardos</td><td class="n">209 · 133</td><td class="n neg">−36 % · −38 %</td><td>cerrar (12-oct)</td><td>t −5,9 y −4,7: las dos peores familias del sistema; el kernel estaba mal calibrado por censura del leg</td></tr>
+<tr><td>Tenis de mesa</td><td class="n">444 · 60 real</td><td class="n neg">−19,5 % · 0,00</td><td>cerrar (16-sep)</td><td>margen 4,95 %/lado (58 % más que el resto de Cloudbet); la línea no se mueve; EV −7,6 % (t −6,2)</td></tr>
+</table></div>
+
+<h2 id="poly">5. Polymarket: tres sombras, un bot y un arbitraje que no existe</h2>
+<p><b>Esencial:</b> como taker, cruzar el libro cuesta ~4 pp y Polymarket predice mejor que nuestro consenso. Como maker, el lento hereda el inventario perdedor. Entre Cloudbet y Polymarket no hay arbitraje porque son el mismo precio con 5,9 % de sobre-redondeo en medio.</p>
+<div class="tw"><table>
+<tr><th>libro</th><th>desde</th><th class="n">resueltas</th><th class="n">P&amp;L</th><th class="n">ROI</th><th>lectura</th></tr>
+<tr><td>v1 (control, taker)</td><td>26-ago</td><td class="n">502</td><td class="n neg">−710,94</td><td class="n neg">−5,6 %</td><td>longshots inflados; entrar a más de 2 h cuesta −12 %; fútbol·No +0,2 % (C1 no pasa G1, t 0,49)</td></tr>
+<tr><td>v2 (Shin, listón neto 3 pp, ≤ 2 h, taker)</td><td>24-sep</td><td class="n">289</td><td class="n neg">−447,26</td><td class="n neg">−6,3 %</td><td>college 252 a −3,6 %, fútbol 32 a −25,8 %; filtros elegidos mirando la muestra</td></tr>
+<tr><td>Market making, regla libro (maker)</td><td>7-oct</td><td class="n">1.016</td><td class="n neg">−370 · FIFO −472</td><td class="n neg">−5 % · −17 %</td><td>la horquilla cobrada (+173) no paga el inventario que se resuelve perdedor: CS2 −204, Valorant −196 en una semana</td></tr>
+<tr><td>Market making, regla ancha (maker)</td><td>7-oct</td><td class="n">1.016</td><td class="n neg">−114 · FIFO −61</td><td class="n neg">−6 % · −7 %</td><td>a ±2 pp en libros a 1 céntimo solo te llenan cuando el precio te atraviesa</td></tr>
+</table></div>
+<p><b>El bot real existe</b> (13-sep): firma EIP-712 sin dependencias, cuenta de depósito, orden de 4,94 aceptada por la casa y rechazada solo por saldo ("not enough balance"). Faltaba el dinero, no el código; la regla del dinero lo cerró el mismo día. Render está geobloqueado para operar; la máquina de Helsinki que lo haría cuesta 7 al mes y está apagada. <b>Market making:</b> la auditoría del 8-oct encontró tres huecos que hacían del P&amp;L un techo (fills a prorrata donde el CLOB reparte por orden de llegada, órdenes sin colateral, markout sin calcular antes de la retirada); corregidos el 9-oct, la lectura formal es el 3-nov sobre el libro FIFO y hoy ningún deporte se acerca. <b>Arbitraje Cloudbet–Polymarket</b> (8-oct, 66 mercados, auditado): mejor caso −1,9 %, cero filas positivas; una orden maker cubierta en Cloudbet tendría que reposar 1-4 céntimos detrás del mejor precio.</p>
+
+<h2 id="vara">6. Cómo se decide: la vara, las puertas, la calibración, el encogimiento</h2>
+<p><b>Esencial:</b> una familia es invertible cuando le gana al precio después de descontar lo que cobra la casa, con muestra suficiente. Con esa vara, cero familias. Y el encogimiento dice que el modelo no aporta nada sobre el precio en ninguna de las 130 medidas.</p>
+<div class="grid2">
+  <div class="box"><h4>La vara (15-sep)</h4><p>EV ticket a ticket contra la probabilidad sin margen del cierre del mismo contrato en la misma casa, agregado por racimos de evento (con 20 filas por racimo, un t de 4 era un t de 0,9). La vara anterior restaba el margen a la media del CLV y aprobaba esperanzas negativas: CS2 en Pinnacle tenía CLV +1,04 % con t 8,2 y EV real −3,3 %.</p></div>
+  <div class="box"><h4>El margen (16-sep)</h4><p>Se mide emparejando las dos caras del mismo partido. Del 11 al 16-sep estuvo mal (emparejaba el over de un partido con el under de otro: "cero por ciento" en Bovada). Banda real del sistema: 3-5 % por lado. Cloudbet no cobra comisión: cobra sobre-redondeo, que solo paga quien cruza.</p></div>
+  <div class="box"><h4>Las puertas (G0-G4)</h4><p>Secuenciales, en código. Diez familias medidas, las diez en G0 (integridad). Tarjetas no pasa G0 por la captura del cierre. Nada pasa a dinero real sin cruzar G2.</p></div>
+  <div class="box"><h4>Calibración (16-sep)</h4><p>Nueve libros. El modelo se pasa 10-16 pp donde el precio acierta a 0-4 en CS2, LoL, tenis, TT, Valorant y Dota 2; baloncesto calibrado; dardos y NFL con muestra sesgada. "Hoy una tarjeta que dice 60 % acierta el 45 %". No se recalibró nada porque cambia cómo nace cada pick y es tu decisión.</p></div>
+  <div class="box"><h4>Encogimiento (M1)</h4><p>Peso del modelo sobre el precio, por familia, fuera de muestra. Doble corrida del 16 al 30-sep. Al 12-oct: 130 familias, el modelo aporta en 0, no aporta en 26, muestra corta en 104. Si se aplicara, el 16 % de las picks habría nacido. El feed sigue publicando la probabilidad cruda por tu orden del 16-sep; la decisión de qué publicar lleva dos semanas sin tomarse.</p></div>
+  <div class="box"><h4>Reglas de método (auditoría externa, 15-sep)</h4><p>Un precio es una tupla (selección, línea, cuota). Un resultado que no se encuentra es DATA_UNRESOLVED, nunca VOID. 100 apuestas son control de riesgo, no certificación: a cuota 1,91 el intervalo del ROI mide 19 puntos; detectar un 5 % de ROI pide 2.851 apuestas. Registro de experimentos con corrección Benjamini-Hochberg.</p></div>
+</div>
+
+<h2 id="doctrina">7. Doctrina aprendida a base de perder dinero</h2>
+<p><b>Esencial:</b> las reglas que hoy están en código salieron cada una de una pérdida concreta. Son el activo que impide repetirla.</p>
+<ol class="rec">
+  <li><b>Una posición por partido y lado, sin la línea.</b> Under 4,5 y under 5,5 del mismo partido no son dos apuestas. Sueltas +3,85 %; apiladas −17,6 % con dos y −45,8 % con tres. Doce partidos perdieron todas las apiladas a la vez: −847,65.</li>
+  <li><b>Veto de bandas.</b> El dinero real no entra en ligas de banda eficiente. Llegó tarde: −453,43 en Premier, Bundesliga, MLS y Rusia apostadas 5-9 días antes de que el veto las clasificara. Propuesto y sin aprobar: veto por pérdida.</li>
+  <li><b>Esperar no es fallar.</b> Un intento frenado por saldo no gasta reintento; el tope se estira con las horas al saque.</li>
+  <li><b>Tope de cuenta y boletos hermanos.</b> La casa recorta a esta cuenta a ≈6 % del máximo, por boleto; el ejecutor reenvía al tope y completa en boletos (máximo 10). Riesgo escrito: que el desk lo lea como esquivar el límite.</li>
+  <li><b>El resultado lo pone nuestra liquidación; el dinero lo pone la casa.</b> Si no cuadran, discrepancia, no se toca el banco. La primera liquidación real restó el stake dos veces.</li>
+  <li><b>La referencia va por pick y envío y solo se quema con un rechazo explícito.</b> Estrenar referencia sin saber qué pasó es la única forma de apostar dos veces lo mismo (pasó el 5-sep).</li>
+  <li><b>El perímetro va en código, no en variables de entorno.</b></li>
+  <li><b>La ventaja se mide, no se filtra.</b> Las señales sin ventaja se apuestan y se cuentan aparte: hoy las sin ventaja ganan y las con ventaja pierden.</li>
+  <li><b>No trasladar el resultado de una casa a otra.</b> CS2 en Pinnacle +11,6 %, en Cloudbet −8,1 %.</li>
+  <li><b>La liquidación miente si no se comprueba.</b> Tenis liquidaba con 0-0, kills sin voltear, totales en cubos de 5, CS2 atascado una semana con 271 USDT.</li>
+  <li><b>Las rachas se pagan al financiarlas.</b> Tarjetas (agosto +45 %, luego cero), college (+30,6 % la semana antes, −26 % con dinero), CS2 Pinnacle (+12,4 % a +2,2 %), córners de selecciones (25-5 a 38-11). Regla desde el 4-oct: por debajo de 100 liquidadas nada se llama prometedor.</li>
+  <li><b>Un canal que pierde por construcción es una fuga, no un experimento</b> (tenis de mesa). <b>Y un canal encendido con caja cero pierde muestra sin perder dinero</b> (tres semanas de octubre).</li>
+</ol>
+
+<h2 id="operacion">8. Operación: incidentes, memoria, lo que corre</h2>
+<p><b>Esencial:</b> la plataforma está estable desde el 8-oct. Ese día se cayó 54 veces por una tabla de cuotas que llevaba desde agosto insertando 10 millones de filas al día; la causa está corregida, 8 millones de filas purgadas y el ciclo de picks pasó de 2,7 GB a 0,7-1,5.</p>
+<div class="grid2">
+  <div class="box"><h4>8-oct: la caída y la causa</h4><p>Desde las 08:08 UTC, 54 reinicios por memoria con 502 cada cuarto de hora. Primero se arregló el disco de clubes (1.610 parseos por pasada a 94; después 289 MB a 7,7). No bastó: el loader de cuotas traía 3,27 millones de filas por pasada. La clave única de la tabla incluye dos columnas que iban a NULL, y Postgres trata dos NULL como distintos: cada barrido reinsertaba todo. Tres arreglos esa noche, purga con índice parcial, vacío cada 3 h. Cero reinicios por fallo desde las 23:12 de ese día.</p></div>
+  <div class="box"><h4>Lo que queda cojo</h4><p>RSS en 1,8-1,9 GB porque el montón de V8 no se compacta con el tope en 3,6 GB; la ingesta de los mercados del Mundial se salta cuando pasa de 1.700 (355 saltos al 12-oct) y la pantalla pública puede enseñar precios viejos. Propuesta: bajar el tope a 2 GB y subir el techo de ingesta o apagar los bucles del Mundial.</p></div>
+  <div class="box"><h4>Otros incidentes</h4><p>4-sep: base vacía por una escritura no atómica (recuperada; ocho apuestas perdidas en el disco). 14-15 sep: auditoría interna de 36 hallazgos (tarjetas casi no modelaba el total, CLV inflado por construcción, dos liquidadores defectuosos). 19-21 sep: The Odds API muerta por suscripción caducada; nació la puerta de créditos. 1-oct: Pinnacle cierra tu cuenta.</p></div>
+  <div class="box"><h4>Claves por rotar (desde el 15-sep)</h4><p>Render, Hetzner (además perdido: sin él no se actualiza el brazo de Cloudbet), token del relay, API-Football, la llave de exportación de las sondas y The Odds API. Todas pasaron por chat en algún momento. Regla: clave nueva a Render y deploy; nunca por chat.</p></div>
+</div>
+
+<h2 id="costes">9. Costes y los tres caminos</h2>
+<p><b>Esencial:</b> lo visible desde el código cuesta 365-445 USD al mes; tarjetas under necesita 90-140; dos cosas se pagan por nada (14 al mes). Seguir como hoy es gastar 365-445 para esperar de −50 a +350.</p>
+<div class="tw"><table>
+<tr><th>servicio</th><th class="n">USD/mes</th><th>¿lo necesita tarjetas under?</th></tr>
+<tr><td>Render web, plan Pro 4 GB + disco</td><td class="n">86</td><td>cabe en Standard (25) apagando el resto</td></tr>
+<tr><td>Render Postgres, basic + 60 GB de disco</td><td class="n">37</td><td>sí (la pick nace leyendo la tabla de cuotas)</td></tr>
+<tr><td>Render <code>gp-relay-eu</code> (Fráncfort)</td><td class="n">7</td><td><b>no lo usa nada</b> desde el 25-ago</td></tr>
+<tr><td>The Odds API, 5M créditos</td><td class="n">119</td><td><b>no</b> (verificado en código y en los tres días sin clave de septiembre)</td></tr>
+<tr><td>API-Football, Ultra (vence 23-oct)</td><td class="n">29</td><td>sí, con 800 llamadas al día: cabe en Pro (19)</td></tr>
+<tr><td>TheStatsAPI</td><td class="n">50-129</td><td>respaldo: sin él 1 de cada 5 picks queda sin resolver en el libro</td></tr>
+<tr><td>Resend</td><td class="n">20</td><td>el login necesita un proveedor; sin ninguno, el código de acceso se pinta en pantalla</td></tr>
+<tr><td>Anthropic</td><td class="n">2</td><td>no (Gemini y Groq gratis)</td></tr>
+<tr><td>Hetzner brazo de Cloudbet</td><td class="n">7</td><td><b>imprescindible</b></td></tr>
+<tr><td>Hetzner brazo de Polymarket</td><td class="n">7</td><td><b>no</b>, apagado</td></tr>
+<tr class="sum"><td>Total visible · modo mínimo · apagado</td><td class="n">365-445 · 90-140 · 1</td><td></td></tr>
+</table></div>
+<p>Los tres caminos están en <code>docs/COSTES_Y_MODO_MINIMO_2026-10-10.md</code> con la lista exacta de variables y el orden de apagado. En todos: borrar las dos máquinas que no sirven, renovar API-Football en Pro, y nunca quedarse sin proveedor de correo. Si el negocio es la plataforma, los 365-445 se juzgan contra lo que paguen ~980 usuarios, no contra las tarjetas.</p>
+
+<h2 id="pendiente">10. Lo que queda en tu mesa, con fechas</h2>
+<ol class="rec">
+  <li><b>Seguir, modo mínimo o apagar con orden.</b> Es la decisión que manda sobre todas. Cada semana sin decidir son 85-100 USD más por medir lo mismo.</li>
+  <li><b>La caja de tarjetas, una vez:</b> o entran 150-200 y corre sola hasta la lectura, o se apaga el canal y se deja de mirar el saldo. Hoy encendido con 0,01 pierde muestra (49 señales sin fondos la última semana).</li>
+  <li><b>Anotar los 74,00</b> (54,81 del 30-sep y 19,19 del 2-4 oct) para cerrar la conciliación y que la parada deje de saltar.</li>
+  <li><b>Lunes 19 / 20-oct:</b> lectura de tarjetas under. Con lo que hay escrito arriba, la lectura honesta es que la ventaja fue de agosto.</li>
+  <li><b>21-oct:</b> fin del ciclo pagado de The Odds API; cancelar o seguir. <b>23-oct:</b> vence API-Football; renovar en Pro. <b>Hoy:</b> borrar <code>gp-relay-eu</code> y el brazo de Polymarket.</li>
+  <li><b>Encogimiento:</b> con 0 de 130 familias, publicar el precio y quedarse con las desviaciones entre casas es el único camino coherente con los datos. Pendiente desde el 30-sep.</li>
+  <li><b>3-nov:</b> lectura formal del market making sobre FIFO. No hay servidor fuera de EE. UU. que comprar antes.</li>
+  <li><b>Rotar las seis claves</b> y recuperar el token de Hetzner.</li>
+  <li><b>Pendientes técnicos</b> (si se sigue): cierre roto de hándicap de mapas de CS2 en Cloudbet ("1 invertible" falso cuatro semanas), memoria (tope de V8 y techo de ingesta), ruta interna del track de college, congelar la lista de ligas del ejecutor (28 cambios la última semana), baloncesto consumiendo 1.600 créditos al día sin publicar picks, derechos de datos de LoL, tenis, dardos y tenis de mesa en el feed.</li>
+  <li><b>Preregistros sin resultado rellenado:</b> goles tarde, córners con dos casas, combate favorito, WNBA totales y descanso, tenis totales v2, tarjetas v2, dardos. Ninguno cambia la foto.</li>
+</ol>
+<p><b>Calendario:</b> 15-oct la pregunta del plazo (el núcleo debía llegar a 100 y va en 25) · lunes 19 reporte semanal · 20-oct decisión de tarjetas y arranque de la NBA · 21-oct The Odds API · 23-oct API-Football · 25-oct GP de Estados Unidos · 3-nov market making · 9-13 nov ventana FIFA de selecciones.</p>
+
+<h2 id="docs">11. Dónde está cada cosa</h2>
+<ul class="tight">
+  <li><code>CLAUDE.md</code>: la guía de retoma, con la regla del dinero, la vara, la doctrina y cada deporte.</li>
+  <li><code>docs/DECISIONES_EJECUTADAS.md</code>: el registro fechado de cada decisión y cada incidente.</li>
+  <li><code>docs/COSTES_Y_MODO_MINIMO_2026-10-10.md</code>: los números de infraestructura y los tres caminos.</li>
+  <li><code>docs/PLAN_RENTABILIDAD_2026-09-16.md</code>, <code>docs/AUDITORIA_EXTERNA_2026-09-15.md</code>, <code>docs/METRICAS_RECALCULADAS_2026-09.md</code>: el plan, la auditoría y el resultado de "cero invertibles".</li>
+  <li><code>docs/CALIBRACION_2026-09-16.md</code>, <code>docs/ENCOGIMIENTO_2026-09-16.md</code>, <code>docs/AUTOPSIA_MODELOS_2026-09-02.md</code>: por qué el modelo no aporta.</li>
+  <li><code>docs/MARGEN_CLOUDBET_2026-09-16.md</code>, <code>docs/HTFT_CIERRE_2026-09-16.md</code>, <code>docs/POLYMARKET_FUTBOL_NO_2026-09.md</code>, <code>docs/ARBITRAJE_CLOUDBET_POLYMARKET_2026-10-08.md</code>: los cierres de los candidatos.</li>
+  <li><code>docs/PREREGISTRO_POLY_MM_2026-10-07.md</code>: el market making, con la enmienda del 9-oct.</li>
+  <li><code>docs/reportes/semana-37.html</code> a <code>semana-42.html</code>: los seis reportes semanales.</li>
+  <li><code>HANDOFF.md</code>, <code>TODO_NEXT.md</code>, <code>PROJECT_STATE.md</code>: historia larga, pendientes y arquitectura.</li>
+</ul>
+</main>
+</body>
+</html>

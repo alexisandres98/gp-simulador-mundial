@@ -22776,6 +22776,19 @@ const server = http.createServer(async (req, res) => {
           return;
         } catch (e) { return json(res, 400, { ok: false, error: e.message, estado: e.estado || null }); }
       }
+      // Postgres: &pg=tablas (resumen) · &pg=1 (volcado NDJSON gzip de todas las tablas; &tablas=a,b para algunas)
+      if (url.searchParams.get('pg')) {
+        const PGH = require('./lib/hibernacion-pg');
+        if (url.searchParams.get('pg') === 'tablas') { try { return json(res, 200, await PGH.resumen()); } catch (e) { return json(res, 500, { error: e.message }); } }
+        const tablasSolo = String(url.searchParams.get('tablas') || '').split(',').map((s) => s.trim()).filter(Boolean);
+        res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="gp-postgres-${new Date().toISOString().slice(0, 10)}.ndjson.gz"`, 'Cache-Control': 'no-store' });
+        const gz = require('zlib').createGzip({ level: 6 });
+        gz.pipe(res);
+        try { for await (const linea of PGH.volcar({ solo: tablasSolo })) { if (!gz.write(linea)) await new Promise((r) => gz.once('drain', r)); } gz.end(); }
+        catch (e) { console.error('[hibernacion] pg:', e.message); try { gz.write(JSON.stringify({ tipo: 'error', error: e.message }) + '\n'); gz.end(); } catch { } }
+        opsLog('hibernacion_pg', { tablas: tablasSolo });
+        return;
+      }
       if (url.searchParams.get('tar') === '1') {
         if (solo && !(fs.existsSync(path.join(base, solo)) && fs.statSync(path.join(base, solo)).isDirectory())) return json(res, 404, { error: 'carpeta no existe', solo });
         try { flushDb(); } catch { /* que db.json esté al día antes de leerlo */ }

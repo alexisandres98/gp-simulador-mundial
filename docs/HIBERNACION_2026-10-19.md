@@ -258,9 +258,15 @@ curl -X POST --data-binary @disco-clubs.tar.gz -H "Authorization: Bearer $GP_EXP
 (cada tar `&solo=` conserva el prefijo de su carpeta y solo sustituye esa carpeta).
 
 ### 6.3 Postgres
-`pg_restore --no-owner --no-privileges -d "<DATABASE_URL externa nueva>" postgres.dump`. Si se prefiere
-empezar sin el histórico de cuotas: `npm run db:migrate` crea el esquema vacío (las picks de tarjetas tardan
-unas horas en tener cuotas otra vez).
+Lo que hay guardado es el volcado NDJSON de la propia plataforma (`gp-postgres-<fecha>.ndjson.gz`, generado por
+`GET /api/internal/hibernar?pg=1`: todas las tablas de `public`, fila a fila, más las secuencias), porque el
+19-oct ni `pg_dump` desde fuera ni la exportación lógica de Render funcionaron. Se restaura en dos pasos:
+`npm run db:migrate` contra la base nueva (crea el esquema) y después
+`DATABASE_URL=<externa nueva> node scripts/pg-restaurar.js gp-postgres-<fecha>.ndjson.gz` (lotes de 1.000,
+`ON CONFLICT DO NOTHING`, se puede repetir; `--truncar` vacía antes; `--solo a,b` para algunas tablas). Si en el
+futuro hay un `postgres.dump` de `pg_dump`, va con `pg_restore --no-owner --no-privileges`. Si se prefiere
+empezar sin el histórico de cuotas: solo las migraciones (las picks de tarjetas tardan unas horas en tener
+cuotas otra vez).
 
 ### 6.4 Encender
 Quitar `GP_HIBERNADO` del Environment y desplegar: el proceso nuevo lee el `db.json` restaurado. Comprobar

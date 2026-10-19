@@ -319,3 +319,21 @@ deportes solo si la estrategia los pide (costes en `docs/COSTES_Y_MODO_MINIMO_20
 - [ ] quitar `GP_HIBERNADO`, deploy, sondas ok; borrar `.hibernacion-previo-*`
 - [ ] DNS a Render; Pages sin dominio
 - [ ] Whop migrado a v1 antes de vender; OAuth comprobado; rutina de los lunes encendida
+
+## 8. Cómo se hizo de verdad el 19-oct (para quien lo lea después)
+
+- Alexis no quiso pagar deudas ni cancelar a mano: Resend, The Odds API y TheStatsAPI se dejan caer al gratis
+  solos; Hetzner lo mira él en la consola. Render se borró entero desde la API tras tener las copias.
+- Las copias NO fueron a un disco externo ni a Drive (desde el sandbox de Claude no se puede subir nada
+  grande a Drive): fueron **por correo, en partes de 20 MB como adjuntos vía Resend**, al Gmail de Alexis
+  (`scratchpad/hib/enviar-partes.sh` del sandbox; cada correo lleva sha256 de la parte y del total y el
+  comando `cat <fichero>.parte* > <fichero>`). Resend confirmó «delivered» en las 29 partes y Gmail las lista.
+- Postgres: `pg_dump` desde el sandbox no llega (puerto 5432 cerrado) y la exportación lógica de Render
+  devolvió 500, así que se añadió `GET /api/internal/hibernar?pg=1` (volcado NDJSON por ctid con el driver
+  de la plataforma) y `scripts/pg-restaurar.js`, ensayado en un Postgres 16 local: 45 migraciones + 2.274.199
+  filas en 70 tablas, 3 minutos, ninguna fila pendiente (47 duplicados exactos descartados por `ON CONFLICT`).
+- Correo de pausa: 966 enviados, 2 fallidos, 17 suprimidos. Telegram: mensaje 603 fijado.
+- Orden real: deploy → pasada 1 (servicio vivo) → correo → `GP_HIBERNADO=1` + deploy → pasada 2 (al byte) →
+  volcado de Postgres → envío por correo → comprobación en Gmail → borrado de Render (web+disco y base).
+- Al levantar, usar `disco.tar.gz` de la pasada 2 (sha `5cce585a…`) y `gp-postgres-2026-10-19.ndjson.gz`
+  (sha `18337aea…`). Las variables de entorno están en `extras.tar.gz` → `extras/render/env-gp-simulador-mundial.env`.

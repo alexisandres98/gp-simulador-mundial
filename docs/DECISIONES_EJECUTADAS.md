@@ -7,17 +7,25 @@ de la muestra corresponde a qué regla.
 
 ---
 
-## 19-oct-2026 — Hibernación (orden de Alexis: «ponerla a hibernar»)
+## 19-oct-2026 — Hibernación EJECUTADA (orden de Alexis: «ponerla a hibernar», «haz los 8 puntos tú»)
 
-| # | qué | antes | ahora | revertir |
-|---|---|---|---|---|
-| **H1** | Rutina semanal de Claude «Reporte semanal GP Simulador (lunes)» | encendida (08:30 UTC) | **apagada** (`trig_01PM23qE8VEsn2gPNRsPzY5X`, enabled=false) | enabled=true |
-| **H2** | Código de hibernación | — | `lib/hibernacion.js`, `/api/internal/hibernar`, `GP_HIBERNADO`, `scripts/hibernar.js`, `scripts/levantar.js`, página de pausa | no hace falta: sin `GP_HIBERNADO` no cambia nada |
-| **H3** | Cuentas y servicios (Render, Hetzner, Odds API, API-Football, TheStatsAPI, Resend, Whop, DNS) | pagando | **pendiente de las manos de Alexis**, en el orden de `docs/HIBERNACION_2026-10-19.md` §2-4 | §6 del mismo manual |
+| # | qué | resultado |
+|---|---|---|
+| **H1** | Rutina semanal de Claude «Reporte semanal GP Simulador (lunes)» | **apagada** (`trig_01PM23qE8VEsn2gPNRsPzY5X`, enabled=false) |
+| **H2** | Código de hibernación (`lib/hibernacion.js`, `/api/internal/hibernar`, `GP_HIBERNADO`, `scripts/hibernar.js`, `scripts/levantar.js`, `lib/hibernacion-pg.js`, `scripts/pg-restaurar.js`, página de pausa) | desplegado, revisado adversarialmente y usado |
+| **H3** | Correo de pausa a los usuarios (variante `pausa`) | **966 enviados, 2 fallidos de 968** (17 suprimidos por baja previa), 14:20-14:27 UTC |
+| **H4** | Mensaje fijado en @gpsimulador | publicado y fijado (id 603) |
+| **H5** | Exportación del disco `/data` | pasada 1 con el servicio vivo (7.657 ficheros, 2.122,8 MB) y **pasada 2 en pausa, verificada al byte: 7.657/7.657 sha256 iguales**; `disco.tar.gz` 446.728.179 bytes, sha256 `5cce585a8e854de4901c329ab027680b846a1f3fd3c7b39495081c202e7fa141`; `db.json` con **985 usuarios**, 3.271 apuestas de sombra, 9 grants; `real-ledger.json` 2.021 filas |
+| **H6** | Volcado de Postgres (`?pg=1`, 120 tablas, 2.274.248 líneas, 0 errores) | `gp-postgres-2026-10-19.ndjson.gz` 145.488.332 bytes, sha256 `18337aeaf33b5d9712a80e57168c1d0e7f402b6b5b09b2d4875db98568e471f7`; ni `pg_dump` desde fuera (puerto cerrado) ni la exportación lógica de Render (500) funcionaron |
+| **H7** | Ensayo de restauración en un Postgres 16 local con las 45 migraciones + `pg-restaurar.js` | **2.274.199 de 2.274.246 filas insertadas en 70 tablas, ninguna pendiente** (las 47 de diferencia son duplicados exactos que `ON CONFLICT DO NOTHING` descarta); 3 minutos |
+| **H8** | Copias FUERA de Render, en el Gmail de Alexis (de `codigo@gpsimulador.com`, asunto «GP hibernación · …») | disco 22 partes de 20 MB (**entregadas**), Postgres 7 partes (**entregadas**), `extras.tar.gz` (variables de entorno de los dos servicios de Render, conexión de Postgres, 27 sondas, manifiestos, membresías de Whop; 1 parte), manual (1 parte). Cada correo lleva el sha256 de su parte y del fichero entero y el comando para recomponerlo |
+| **H9** | Render | `gp-relay-eu` borrado (14:19 UTC); `GP_HIBERNADO=1` + deploy (pausa visible 14:29); **`gp-simulador-mundial` (con su disco de 5 GB) y `gp-simulador-db` borrados a las 15:3x UTC**: la cuenta queda con 0 servicios, 0 bases, 0 discos. Queda el saldo impagado de octubre, que Alexis decidió no pagar |
+| **H10** | Lo que queda en manos de Alexis | Hetzner (consola: borrar `gp-cb-relay-hel2`, `gp-pm-hel1` e IPs; antes `cat /opt/gp-pm/secreto`), GitHub Pages + DNS para la página de pausa (manual §4.1), Whop (una membresía es su cuenta de prueba, la otra la gestiona él), The Odds API / TheStatsAPI / Resend se dejan caer al gratis sin cancelar, revocar la API key de Render usada hoy |
 
-Motivo medido: cero familias invertibles de 38, modelo sin aporte en 0 de 130, dinero real −306,75, tarjetas
-under −3 % desde el 31-ago, ingresos de usuarios 0, tarjeta rechazando a Render, Resend y Hetzner
-(`docs/reportes/semana-43.html`). Nada se borra sin dos copias verificadas fuera de Render.
+Dónde están los datos a partir de hoy: **en el Gmail de Alexis** (H8) y, mientras viva esta sesión, en el
+sandbox de Claude. Levantar: `docs/HIBERNACION_2026-10-19.md` §6 (disco con `scripts/levantar.js`, base con
+`npm run db:migrate` + `scripts/pg-restaurar.js`).
+
 
 ---
 

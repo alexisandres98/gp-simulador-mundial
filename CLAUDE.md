@@ -5,6 +5,20 @@
 ## Qué es
 **GP Simulador** (también "GP Simulador del Mundial") — plataforma web de *sports intelligence / prediction market scanner* para el Mundial 2026. Simula el torneo 10,000 veces (Elo → Poisson → Monte Carlo), compara sus probabilidades contra mercados en vivo (Polymarket/Kalshi) y muestra oportunidades de valor y arbitraje. Captura usuarios por email durante el Mundial para evolucionar a una plataforma de pago post-Mundial.
 
+## 🛌 HIBERNACIÓN (19-oct-2026, orden de Alexis) — LEER ANTES QUE TODO LO DEMÁS
+Alexis ordenó el 19-oct «ponerla a hibernar»: apagar todo lo que cuesta, **guardar absolutamente todo** y que
+en unos meses sea poner una tarjeta y levantarla donde se dejó. Manual completo, inventario y lista de
+control: **`docs/HIBERNACION_2026-10-19.md`**. Lo que está hecho en código: `lib/hibernacion.js` (tar ustar
+puro, sin deps, del disco `/data` entero, con manifiesto sha256 y restauración por puesta en escena),
+`GET/POST /api/internal/hibernar?key=` (`&tar=1`, `&sha=1`, `&solo=`, `&sin=`, `&restaurar=1`),
+`GP_HIBERNADO=1` (el proceso arranca sin ningún trabajo programado y solo sirve salud, hibernar y la página
+de pausa), `scripts/hibernar.js` (exportador verificado, corre en el ordenador de Alexis) y
+`scripts/levantar.js` (restaurador), `hibernacion/` + `.github/workflows/pagina-de-pausa.yml` (página de
+pausa en GitHub Pages para el dominio), `tests/hibernacion.test.js`. La rutina semanal de Claude está
+**apagada**. Las cuentas y claves son de Alexis: todo lo que requiere sus manos está en el manual, en orden.
+**Si lees esto en el futuro: la plataforma puede estar dormida. Antes de proponer nada, mira §6 del manual
+(«Levantar») y la deuda que espera al despertar (Whop v2, rotación de claves, API-Football).**
+
 ## ✅ EL PLAN DE RENTABILIDAD ESTÁ EJECUTADO ENTERO (16-sep-2026, noche)
 Las seis fases (A→F) del plan están hechas. El resultado, en una línea: **de los cuatro candidatos a
 dinero, tres se cerraron con medición y el cuarto sigue esperando muestra.** Ninguno se cayó por falta de

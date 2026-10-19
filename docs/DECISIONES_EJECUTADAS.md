@@ -7,6 +7,20 @@ de la muestra corresponde a qué regla.
 
 ---
 
+## 19-oct-2026 — Hibernación (orden de Alexis: «ponerla a hibernar»)
+
+| # | qué | antes | ahora | revertir |
+|---|---|---|---|---|
+| **H1** | Rutina semanal de Claude «Reporte semanal GP Simulador (lunes)» | encendida (08:30 UTC) | **apagada** (`trig_01PM23qE8VEsn2gPNRsPzY5X`, enabled=false) | enabled=true |
+| **H2** | Código de hibernación | — | `lib/hibernacion.js`, `/api/internal/hibernar`, `GP_HIBERNADO`, `scripts/hibernar.js`, `scripts/levantar.js`, página de pausa | no hace falta: sin `GP_HIBERNADO` no cambia nada |
+| **H3** | Cuentas y servicios (Render, Hetzner, Odds API, API-Football, TheStatsAPI, Resend, Whop, DNS) | pagando | **pendiente de las manos de Alexis**, en el orden de `docs/HIBERNACION_2026-10-19.md` §2-4 | §6 del mismo manual |
+
+Motivo medido: cero familias invertibles de 38, modelo sin aporte en 0 de 130, dinero real −306,75, tarjetas
+under −3 % desde el 31-ago, ingresos de usuarios 0, tarjeta rechazando a Render, Resend y Hetzner
+(`docs/reportes/semana-43.html`). Nada se borra sin dos copias verificadas fuera de Render.
+
+---
+
 ## 16-sep-2026 — Fase B2 del plan de rentabilidad
 
 Ordenadas en `docs/PLAN_RENTABILIDAD_2026-09-16.md` §1.2 (R1, R2) y §1.1 (M9). El plan autoriza

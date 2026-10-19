@@ -83,6 +83,22 @@ const PORT = process.env.PORT || 3000;
 const N_SIMS = Number(process.env.SIMS || 10000);
 // DB_FILE puede apuntar a un disco persistente montado (p.ej. /data/db.json en Render Starter)
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'db.json');
+// ── MODO HIBERNACIÓN (19-oct-2026, orden de Alexis: «ponerla a hibernar») ───────────────────────────────
+// Con GP_HIBERNADO=1 el proceso arranca SIN TRABAJOS: ningún setInterval y ningún setTimeout de ≥ 5 s
+// llega a correr (las cosechas, barridos, liquidaciones y correos viven ahí); los cortos (el flush de
+// db.json a 200 ms, los timeouts de red) siguen. Y el servidor solo atiende /api/health y las rutas de
+// hibernación; todo lo demás recibe la página de pausa. Sirve para dos cosas: dejar el servicio quieto
+// mientras se saca el disco, y LEVANTARLO después sin que un trabajo escriba encima de lo restaurado
+// antes de tiempo (secuencia en docs/HIBERNACION_2026-10-19.md).
+const GP_HIBERNADO = /^(1|true|on|si|sí)$/i.test(String(process.env.GP_HIBERNADO || ''));
+if (GP_HIBERNADO) {
+  const _setInterval = global.setInterval, _setTimeout = global.setTimeout;
+  const inerte = { ref() { return this; }, unref() { return this; }, hasRef() { return false; }, refresh() { return this; }, [Symbol.toPrimitive]() { return 0; } };
+  global.setInterval = function () { return inerte; };
+  global.setTimeout = function (fn, ms, ...args) { return (Number(ms) || 0) >= 5000 ? inerte : _setTimeout(fn, ms, ...args); };
+  // clearInterval/clearTimeout con `inerte` no hacen nada: Node ignora lo que no es un Timeout suyo.
+  console.log('[hibernacion] GP_HIBERNADO=1: sin trabajos programados; solo /api/health y /api/internal/hibernar');
+}
 // Datos GRANDES de clubes (player-history/results/fotos/af-map ~17MB) NO viven en git (inflaban el clone del
 // deploy a 114MB → builds de 17min). Se sirven del disco persistente <dir(DB_FILE)>/clubs/ si están ahí;
 // fallback al repo (data/clubs/) para dev y para los archivos chicos (ratings.json queda versionado).
@@ -18966,6 +18982,14 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
+    // --- HIBERNACIÓN: con GP_HIBERNADO solo pasan salud, hibernar y la página de pausa ---
+    if (GP_HIBERNADO && p !== '/api/health' && p !== '/api/internal/hibernar') {
+      if (p.startsWith('/api/')) return json(res, 503, { error: 'GP Simulador está en pausa', hibernado: true });
+      let pagina = null;
+      try { pagina = fs.readFileSync(path.join(__dirname, 'hibernacion', 'index.html')); } catch { /* sin página */ }
+      res.writeHead(pagina ? 200 : 503, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return res.end(pagina || '<!doctype html><meta charset="utf-8"><title>GP Simulador</title><p>GP Simulador está en pausa.</p>');
+    }
     // --- SSE ---
     if (p === '/api/stream') {
       res.writeHead(200, {
@@ -22667,6 +22691,46 @@ const server = http.createServer(async (req, res) => {
         destino: (process.env.GP_CLOUDBET_AFF || CLOUDBET_AFF).replace(/af_token=([^&]{6})[^&]*/, 'af_token=$1…') });
     }
     // 15-sep (Fase 0 de la auditoría): copia etiquetada que la rotación no toca. POST con `&etiqueta=`.
+    // ═══ HIBERNACIÓN (19-oct): el disco persistente entero, de ida y de vuelta ═══════════════════════════
+    //   GET  ?key=                       → manifiesto (ruta, bytes, mtime; &sha=1 añade sha256) y uso
+    //   GET  ?key=&tar=1[&sin=backups]   → descarga <base> entero como .tar.gz (stream, sin tope de tamaño)
+    //   GET  ?key=&tar=1&solo=clubs      → solo una carpeta de primer nivel (para bajar por partes)
+    //   POST ?key=&restaurar=1[&salir=1] → cuerpo = el .tar.gz; se desempaqueta en puesta en escena y se
+    //        cambia de golpe (lo anterior queda en .hibernacion-previo-<ts>). Con salir=1 el proceso termina
+    //        al responder para que Render lo arranque leyendo el db.json restaurado (si no, el db en memoria
+    //        lo pisaría en el siguiente guardado). Pensado para correr con GP_HIBERNADO=1.
+    if (p === '/api/internal/hibernar') {
+      const xk = process.env.GP_EXPORT_KEY || '';
+      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const HB = require('./lib/hibernacion');
+      const base = path.dirname(DB_FILE);
+      const excluir = String(url.searchParams.get('sin') || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (req.method === 'POST' && url.searchParams.get('restaurar') === '1') {
+        try { flushDb(); } catch { /* lo que haya */ }
+        try {
+          const r = await HB.restaurar(req, base, { gzip: url.searchParams.get('gzip') !== '0' });
+          opsLog('hibernacion_restaurar', { ficheros: r.ficheros, mb: +(r.bytes / 1048576).toFixed(1), apartados: r.apartados.length });
+          const salir = url.searchParams.get('salir') !== '0';
+          json(res, 200, { ok: true, ...r, hibernado: GP_HIBERNADO, saliendo: salir, nota: salir ? 'el proceso termina ahora para arrancar con el disco restaurado' : 'OJO: el db.json en memoria pisará el restaurado en el próximo guardado; reinicia el servicio' });
+          if (salir) setTimeout(() => process.exit(0), 400);
+          return;
+        } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
+      }
+      if (url.searchParams.get('tar') === '1') {
+        const solo = String(url.searchParams.get('solo') || '').replace(/[^A-Za-z0-9._-]/g, '');
+        let raiz = base;
+        if (solo) { raiz = path.join(base, solo); if (!fs.existsSync(raiz) || !fs.statSync(raiz).isDirectory()) return json(res, 404, { error: 'carpeta no existe', solo }); }
+        try { flushDb(); } catch { /* que db.json esté al día antes de leerlo */ }
+        const nombre = `gp-disco-${solo || 'completo'}-${new Date().toISOString().slice(0, 10)}.tar.gz`;
+        res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="${nombre}"`, 'Cache-Control': 'no-store' });
+        const st = HB.streamTarGz(raiz, { excluir: solo ? [] : excluir });
+        st.on('error', (e) => { console.error('[hibernacion] tar:', e.message); try { res.destroy(e); } catch { } });
+        opsLog('hibernacion_tar', { solo: solo || null, sin: excluir });
+        return st.pipe(res);
+      }
+      const man = await HB.manifiesto(base, { excluir, sha: url.searchParams.get('sha') === '1' });
+      return json(res, 200, { ...man, hibernado: GP_HIBERNADO, db_file: DB_FILE, uso: ['GET &tar=1[&sin=backups][&solo=<carpeta>]', 'POST &restaurar=1 (cuerpo .tar.gz)', 'GET &sha=1'] });
+    }
     if (p === '/api/internal/backup') {
       const xk = process.env.GP_EXPORT_KEY || '';
       if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
@@ -29545,6 +29609,7 @@ async function anotar(pid){
 
 server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
+  if (GP_HIBERNADO) { console.log('[hibernacion] en pausa: no se programa ningún trabajo'); return; }
   fetchMarkets().catch(() => { });
   // Mercados/oportunidades: refresco cada 1 min (antes 5 min)
   setInterval(() => Promise.all([fetchMarkets(true), fetchMatchMarkets(true)])

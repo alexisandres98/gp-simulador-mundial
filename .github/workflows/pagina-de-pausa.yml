@@ -1,0 +1,34 @@
+# Página de pausa de GP Simulador en GitHub Pages (hibernación, 19-oct-2026).
+# Publica SOLO la carpeta hibernacion/ (index.html + CNAME). No toca nada más del repo.
+# Requisito, una sola vez, a mano: Settings → Pages → Source: "GitHub Actions". Después, cada push a main
+# que toque hibernacion/ (o "Run workflow" a mano) vuelve a publicarla.
+# DNS en Namecheap para que gpsimulador.com apunte aquí: A @ → 185.199.108.153, 185.199.109.153,
+# 185.199.110.153, 185.199.111.153 · CNAME www → alexisandres98.github.io. (Al levantar la plataforma se
+# devuelven a Render.)
+name: pagina-de-pausa
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['hibernacion/**']
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: hibernacion
+      - id: deploy
+        uses: actions/deploy-pages@v4

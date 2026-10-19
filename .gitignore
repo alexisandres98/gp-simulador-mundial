@@ -76,3 +76,6 @@ data/propfirm/
 # tenis de mesa: crudo ITTF/WTT fuera del repo (Render: /data/tt-raw)
 /tt-raw/
 data/tt/matches.json
+
+# carpetas de exportación de la hibernación (contienen secretos y GB de datos)
+gp-hibernacion-*/

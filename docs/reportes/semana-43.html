@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cierre Semana 43</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F7F4; --panel:#FFFFFF; --panel2:#EDF1EE; --ink:#16211C; --ink2:#4A5A53; --mute:#7C8A84; --line:#D5DDD8;
+  --acc:#0E6B61; --acc-soft:#D8ECE8;
+  --pos:#1E7A4B; --pos-soft:#DDF0E4; --neg:#B33A3A; --neg-soft:#F4DEDE; --warn:#A9741A; --warn-soft:#F5EAD3; --nil:#6E7B76; --nil-soft:#E6EAE7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+    --acc:#5FC4B6; --acc-soft:#173430;
+    --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1311; --panel:#151C18; --panel2:#1C2521; --ink:#E5EBE7; --ink2:#B4C0BA; --mute:#7F8E87; --line:#2A352F;
+  --acc:#5FC4B6; --acc-soft:#173430;
+  --pos:#6FCF97; --pos-soft:#173A29; --neg:#F08B8B; --neg-soft:#3F2222; --warn:#E3B565; --warn-soft:#3A2F16; --nil:#95A39D; --nil-soft:#232B27;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0}
+main{max-width:980px;margin:0 auto;padding-block:28px 80px;padding-inline:20px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:40px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:600;margin-top:56px;padding-top:18px;border-top:2px solid var(--ink)}
+h3{font-size:18px;font-weight:600;margin-top:28px;color:var(--ink)}
+p{max-width:68ch;margin:12px 0;color:var(--ink)}
+p.lead{font-size:17px;color:var(--ink2)}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:10px}
+.meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);margin-top:14px;max-width:76ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:26px 0 8px}
+.kpi{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:24px;font-weight:500;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.pos{color:var(--pos)} .neg{color:var(--neg)} .warn{color:var(--warn)} .mute{color:var(--mute)}
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--line);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);font-weight:600;background:var(--panel2)}
+td.n,th.n{text-align:right;font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.sum td{font-weight:600;background:var(--panel2)}
+.chip{display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.04em;padding:2px 7px;border-radius:3px;white-space:nowrap;border:1px solid transparent}
+.c-ok{background:var(--pos-soft);color:var(--pos)} .c-no{background:var(--neg-soft);color:var(--neg)} .c-w{background:var(--warn-soft);color:var(--warn)} .c-0{background:var(--nil-soft);color:var(--nil)}
+.note{background:var(--panel2);border-left:3px solid var(--acc);padding:12px 16px;margin:18px 0;max-width:76ch}
+.note.alert{border-left-color:var(--neg)}
+.note p{margin:6px 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:14px 0}
+.box{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+.box h4{margin:0 0 6px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:16px;font-weight:600}
+.box p{font-size:14px;margin:6px 0;color:var(--ink2)}
+ol.rec{padding-left:22px;max-width:76ch} ol.rec li{margin:10px 0}
+ol.rec b{color:var(--ink)}
+ul.tight{max-width:76ch;padding-left:20px} ul.tight li{margin:6px 0}
+.toc{display:flex;flex-wrap:wrap;gap:8px 14px;margin:18px 0 0;font-size:13.5px}
+.toc a{color:var(--acc);text-decoration:none;border-bottom:1px solid var(--line)}
+.toc a:focus,.toc a:hover{border-bottom-color:var(--acc)}
+.tl{list-style:none;padding:0;margin:14px 0;max-width:76ch;border-left:2px solid var(--line)}
+.tl li{padding:6px 0 6px 16px;display:grid;grid-template-columns:120px 1fr;gap:10px}
+.tl time{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);white-space:nowrap}
+small{color:var(--mute)}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em}
+@media (max-width:480px){.tl li{grid-template-columns:1fr}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">GP Simulador · reporte semanal · semana 43 (12 – 18 oct 2026) · semana de decisión</div>
+<h1>Cierre Semana 43</h1>
+<p class="lead">Tercera semana entera sin dinero: la caja de Cloudbet estuvo en 0,00, el ejecutor no colocó nada y el acumulado real sigue en −306,75. La única familia con señal, tarjetas under, la cortó su propia validación continua el lunes 12 por segunda vez: en las últimas 50 liquidadas acertó 27 donde el azar de su liga esperaba 29,9. El banco simulado recuperó 366 en la semana y sigue en −327 desde agosto, con la vara del libro entero diciendo lo mismo que hace un mes: el precio acierta más que el modelo. Y por fuera de los modelos llegó lo que decide de verdad: la tarjeta rechazó a Render, Resend y Hetzner, Render avisa de suspensión, API-Football vence el jueves, Whop apaga el 13 de noviembre la API que usamos, y en sesenta días no hubo una sola venta. Esta semana el reporte termina en una recomendación, no en una lista.</p>
+<div class="meta">Las claves del entorno se borraron el 14-oct con el reinicio del contenedor, así que esta semana NO pude leer las sondas internas de producción. Todas las cifras salen de los correos que la plataforma manda sola al admin (reporte semanal de la sombra del lunes 00:05 UTC, parte y plan diarios del ejecutor real, avisos de validación) y de los correos de los proveedores. Lo que no está en esos correos (desglose por segmento, cohortes de tarjetas, market making, encogimiento, tablero por deporte) no está en este reporte y lo digo donde toca. Vara: la de <code>lib/vara.js</code>. Regla de reporte del 4-oct: por debajo de 100 liquidadas nada se llama prometedor.</div>
+<nav class="toc">
+  <a href="#resumen">Resumen</a><a href="#decision">La decisión</a><a href="#real">Dinero real</a><a href="#tarjetas">Tarjetas under</a><a href="#sombra">Banco simulado</a><a href="#poly">Polymarket</a><a href="#plataforma">Plataforma y proveedores</a><a href="#pasos">Pasos</a><a href="#feedback">Feedback</a>
+</nav>
+
+<h2 id="resumen">Resumen ejecutivo</h2>
+<div class="kpis">
+  <div class="kpi"><div class="l">Dinero real · semana</div><div class="v">0,00</div><div class="s">0 colocadas · caja 0,00 · 40,29 de cashback retirados el 16</div></div>
+  <div class="kpi"><div class="l">Dinero real · desde el 24-ago</div><div class="v neg">−306,75</div><div class="s">355 liquidadas · 173G/164P · ROI −4,41 % · sin cambios</div></div>
+  <div class="kpi"><div class="l">Tarjetas under · validación continua</div><div class="v neg">cortada</div><div class="s">12-oct · últimas 50: 27 aciertos vs 29,9 esperados · p 0,846</div></div>
+  <div class="kpi"><div class="l">Banco simulado · 7 días</div><div class="v pos">+236,20</div><div class="s">369 liquidadas · 181-163 · +3,2 % · cuatro reglas juntas</div></div>
+  <div class="kpi"><div class="l">Banco simulado · desde el 12-ago</div><div class="v neg">−327,34</div><div class="s">de 2.000 a 1.672,66 · 2.983 liquidadas · ROI −0,3 %</div></div>
+  <div class="kpi"><div class="l">Señales perdidas sin fondos · semana</div><div class="v neg">48</div><div class="s">168 acumuladas · 19 esperaban fondos el viernes</div></div>
+  <div class="kpi"><div class="l">Polymarket v1 · acumulado</div><div class="v neg">−710,94</div><div class="s">206-296 · −5,6 % neto de comisión</div></div>
+  <div class="kpi"><div class="l">Ventas en 60 días</div><div class="v neg">0</div><div class="s">retiro total del saldo de Whop: 13,81</div></div>
+</div>
+
+<h2 id="decision">La decisión, con los tres caminos y mi recomendación</h2>
+<p>Alexis pidió esta semana feedback para decidir sobre la plataforma. Los tres caminos son los del documento de costes del 10-oct (<code>docs/COSTES_Y_MODO_MINIMO_2026-10-10.md</code>), con lo que esta semana añade. Y antes de la tabla, una advertencia que me debo a mí mismo: mi borrador de recomendación pasó por un revisor adversarial con el repo delante y me tumbó dos de las seis razones y el orden de los pasos. Lo que sigue ya lleva esas correcciones.</p>
+<div class="tw"><table>
+<tr><th></th><th>A · seguir como hoy</th><th>B · modo mínimo</th><th>C · apagar con orden</th></tr>
+<tr><td>Coste al mes (lista)</td><td class="n">365-445</td><td class="n">90-140</td><td class="n">≈ 1 (dominio)</td></tr>
+<tr><td>Qué compra</td><td>Once deportes, LLM, market making, cierres multi-casa, NFL, tenis, combate</td><td>La web con fútbol de clubes y tarjetas under en sombra, 985 usuarios con login vivo, dominio, Telegram; opción de relanzar sin volver a captar</td><td>Nada en marcha; queda el repo, el volcado de datos, el dominio y el CSV de usuarios</td></tr>
+<tr><td>Ingreso esperado</td><td class="n">−50 a +350 (tarjetas) + usuarios ≈ 0</td><td class="n">−50 a +350, con el lado bajo pesando más</td><td class="n">0</td></tr>
+<tr><td>Trabajo para entrar</td><td>Ninguno, pero Whop hay que migrarlo antes del 13-nov (4-8 h + pruebas) y API-Football renovar el 23</td><td>Variables de entorno que ya existen + una tarde (cuatro trabajos sin interruptor, poda de <code>db.json</code>); API-Football a Pro el 23; Whop puede quedarse en grants a mano</td><td>Un día: exportar todo, cerrar el libro, avisar a usuarios, pagar deudas y borrar máquinas en orden</td></tr>
+<tr><td>Reversible</td><td>sí</td><td>sí, salvo borrar máquinas</td><td>no para la confianza del usuario; sí para el código y los datos</td></tr>
+</table></div>
+
+<h3>Recomiendo C, apagar con orden. Y digo por qué con lo que está medido, no con lo que suena.</h3>
+<ol class="rec">
+  <li><b>No hay ninguna familia invertible con la vara propia del sistema.</b> Cero de 38 en el tablero de la semana pasada; el encogimiento da que el modelo aporta por encima del precio en 0 de 130 familias; dos meses y 2.983 liquidadas en sombra cierran en −0,3 %.</li>
+  <li><b>Tarjetas under, la única con señal, la tiene entera en agosto.</b> Con las reglas exactas del ejecutor: agosto 60-22 (+50 %), y desde el 31 de agosto <b>226 liquidadas a −3 %</b> con t cerca de cero; octubre −10,7 % y −20,1 % en sus dos semanas con partidos. El CLV recortado va −1,23 % con t −8,5 (el cierre se mueve en contra) y la puerta G0 no pasa (solo el 17,2 % de las picks tiene las dos caras del cierre). En dinero real cerró −1,7 % en 167 con la casa recortando a 10-20 por boleto.</li>
+  <li><b>El dinero real cerró en −306,75</b> (−4,5 % sobre 337 decididas; el parte diario dice −4,41 % sobre 355 porque cuenta 18 nulas) y la caja está en 0,00 desde el 4-oct. Esta semana se perdieron otras 48 señales por falta de fondos (168 acumuladas), y no es una decisión tomada: la caja de tarjetas sigue en la lista de pendientes.</li>
+  <li><b>Los ingresos de usuarios son cero.</b> Ninguna venta en Whop en sesenta días; el retiro total del saldo de Whop fue de 13,81 el sábado. Con eso, A no se sostiene por ningún lado.</li>
+  <li><b>La tarjeta está rechazando a todos los proveedores a la vez.</b> Render lleva ocho avisos de impago desde el 4-oct y sus términos dicen que puede suspender sin plazo publicado; Resend cinco cobros fallidos; Hetzner una factura de 11,83 sin cobrar. Seguir o no, esas deudas se pagan igual.</li>
+  <li><b>Lo que viene es trabajo, no medición.</b> Whop apaga el 13-nov la API y el formato de webhook que usamos (cinco sitios en <code>server.js</code>); API-Football vence el 23-oct y si cae al plan gratis el mapa de partidos se vacía en unos cuatro días y no nace ni una pick de tarjetas; The Odds API caduca el 21; seis claves por rotar. Nada de eso cambia la foto de arriba.</li>
+</ol>
+<div class="note">
+  <p><b>Lo que B sí compra, dicho bien y no como hombre de paja.</b> B no es «esperar a que tarjetas llegue a 100 liquidadas limpias»: con la caja en cero el núcleo limpio está en 25 de 100 y no crece, así que esa lectura no llega nunca. B es <b>opcionalidad reversible a 90-140 al mes</b>: mantener vivos 985 usuarios con login, el dominio con su SEO, el canal de Telegram y la medición en sombra a coste cero mientras se decide con calma. Tres meses de B cuestan lo que un mes de A. Entrar en B cuesta menos trabajo que apagar con orden (casi todo son variables de entorno) y permite leer el preregistro del market making el 3-nov con la instrumentación viva. Lo que B no hace es convertir tarjetas under en negocio, y la semana 42 cargó el lado bajo del intervalo. Si Alexis valora esa opción en 100-140 al mes, B es defendible; si no, C.</p>
+  <p><b>Y una cosa que tengo que decir en voz alta:</b> C invierte tres órdenes suyas escritas (21-sep «los clientes pagan por ver picks», 27-sep «enfocar en card under y dejar lo demás acumulando muestra», 7-oct «procede» con el market making y su puerta del 3-nov). Por eso es una recomendación y no una ejecución: no toco nada sin su sí. La lectura FIFO del 3-nov se puede hacer igual fuera de línea sobre los ficheros exportados, y la semana 42 ya adelantó la dirección (−15 % en libro, −7 % en ancho).</p>
+  <p><b>A no tiene caso con estos números.</b> Los argumentos a su favor (la plataforma como producto, la NBA que arranca el 20-oct, acumular cierres para investigar) pesan poco: cero ventas, las picks de baloncesto están apagadas por doctrina y más datos del mismo modelo no cambian un encogimiento de 0 de 130.</p>
+</div>
+
+<h2 id="real">Dinero real en Cloudbet</h2>
+<div class="tw"><table>
+<tr><th></th><th class="n">esta semana</th><th class="n">desde el 24-ago</th></tr>
+<tr><td>Colocadas</td><td class="n">0</td><td class="n">355 liquidadas (337 decididas + 18 nulas)</td></tr>
+<tr><td>G-P</td><td class="n">—</td><td class="n">173-164</td></tr>
+<tr><td>Apostado</td><td class="n">0,00</td><td class="n">6.951,80</td></tr>
+<tr><td>P&amp;L</td><td class="n">0,00</td><td class="n neg">−306,75</td></tr>
+<tr><td>ROI</td><td class="n">—</td><td class="n neg">−4,41 % (−4,5 % sobre decididas)</td></tr>
+<tr><td>Cartera Cloudbet</td><td class="n">0,00</td><td class="n">banco nocional 1.693,25</td></tr>
+<tr><td>Señales perdidas sin fondos</td><td class="n">48 (120 → 168)</td><td class="n">168</td></tr>
+</table></div>
+<p>Tres semanas enteras sin colocar. El único movimiento de caja fue un <b>cashback de 40,29 USDT</b> que Cloudbet abonó el viernes 16 y que Alexis retiró esa misma tarde a su wallet: el ejecutor lo vio como saldo durante media hora («Cloudbet bajo: 40,30 USDT», con 19 apuestas esperando fondos) y volvió a 0,00 sin colocar nada. Hay que anotarlo como movimiento, no como P&amp;L. El deslizamiento medio contra el precio de papel queda en +0,29 % sobre 355. El parte diario lleva toda la semana con el mismo descuadre: <b>BESTIA vs Damajuana, «esperábamos undefined, pagó −5»</b>, una fila vieja de CS2 que la casa liquidó sin que el libro tenga resultado propio; se resuelve a mano antes de congelar el libro. La conciliación de −74,00 (54,81 + 19,19) sigue sin anotar, cuarta semana. El canal manual de Pinnacle sigue cerrado y college apagado; no cambia nada.</p>
+
+<h2 id="tarjetas">Tarjetas under: lo que se sabe esta semana sin la sonda</h2>
+<p><b>El lunes 12 a las 08:15 UTC la validación continua volvió a cortar el segmento del feed</b>, por segunda vez (la primera fue el 29-sep). El test re-corre cada día la misma prueba que validó la familia: ¿las últimas 50 liquidadas aciertan más que el base-rate de su liga para esa línea? Dos días seguidos con p &gt; 0,5 y el segmento sale solo del feed y avisa. Esta vez: n = 50, esperado 29,9, observado 27, p = 0,846. El 29-sep había sido 25 contra 28.</p>
+<p>Hay que leerlo con cuidado, y el revisor me lo hizo notar: <b>es un interruptor del feed, no una medida de ventaja</b>. Con una desviación típica de unos 3,5 aciertos, 27 contra 29,9 es −0,8σ; una familia con +3 pp de ventaja real haría saltar este interruptor con frecuencia, y se rehabilita solo cuando dos días seguidos vuelven a dar p ≤ 0,5. Lo que sí dice es que la selección, en las últimas 50, no está acertando más que el azar de la liga. La evidencia fuerte sigue siendo la cohorte: desde el 31-ago, 226 con las reglas del ejecutor a −3 %, t ≈ 0.</p>
+<p><b>El punto de decisión del 20-oct, tal como estaba definido, no va a llegar.</b> Era «100 liquidadas del núcleo limpio» con dinero; el núcleo está en 25 desde el 13-sep y con la caja en 0 no crece. La lectura que sí existe es la de la sombra, y esa ya la tenemos: lo que gana es agosto. No pude refrescar esta semana la cohorte ejecutable ni el desglose por liga y línea (están en la sonda, no en los correos); con lo que hay no cambia ninguna conclusión de la semana pasada, y lo digo así en vez de rellenarlo.</p>
+<p>Dos avisos técnicos que afectan a esta familia y que salieron al verificar el código esta semana: <b>(1)</b> si API-Football cae al plan gratis el 23-oct, la siembra de partidos (47 ligas cada 3 h) agota las 100 llamadas del día en los tres primeros minutos tras cada arranque, el mapa contra el que Cloudbet empareja se vacía en unos cuatro días y no nace ni una pick de tarjetas ni en sombra ni en real; desde que The Odds API caduca el 21, esa siembra es la única fuente del mapa. <b>(2)</b> El detector de límite de API-Football solo reconoce el error por minuto; el de cupo diario y el de temporada fuera de plan llegan con HTTP 200 y lista vacía, y se leen como «cero partidos». Si se sigue en A o B, API-Football va a Pro (19) el 23, nunca al gratis.</p>
+
+<h2 id="sombra">Banco simulado de $2.000 (cuatro reglas congeladas)</h2>
+<div class="tw"><table>
+<tr><th></th><th class="n">últimos 7 días (al lunes 00:05)</th><th class="n">desde el 12-ago</th></tr>
+<tr><td>Apuestas · liquidadas</td><td class="n">433 · 369 (181-163, 25 nulas)</td><td class="n">3.248 · 2.983 (1.406-1.319, 253 nulas)</td></tr>
+<tr><td>Apostado</td><td class="n">8.603,68</td><td class="n">115.102,51</td></tr>
+<tr><td>P&amp;L</td><td class="n pos">+236,20</td><td class="n neg">−327,34</td></tr>
+<tr><td>ROI</td><td class="n pos">+3,2 %</td><td class="n neg">−0,3 %</td></tr>
+<tr><td>Movimiento de línea</td><td class="n">+0,32 %</td><td class="n">+0,13 %</td></tr>
+<tr><td>Capacidad (ejecutables / señales)</td><td class="n">433 / 543 (79,7 %) · haircut −0,65 %</td><td class="n">3.248 / 3.548 (91,5 %) · haircut −0,44 %</td></tr>
+<tr><td>Banco · abiertas ahora</td><td class="n">1.672,66 · 265</td><td class="n"></td></tr>
+</table></div>
+<p>Serie de los cinco correos de lunes, banco al cierre y P&amp;L de los siete días anteriores: W39 2.297 (−1.100) · W40 1.397 (−1.212) · W41 841 (−635) · W42 1.307 (+296) · W43 1.673 (+236). Cuatro semanas de ±1.000 que suman −327 en dos meses: ruido con cuota 1,8-2,8. El desglose por segmento no viene en el correo y no pude leerlo en la sonda; la semana pasada LoL había devuelto +628 y tarjetas −346, y la mezcla de esta semana es desconocida.</p>
+<p><b>Dos cosas del correo que conviene saber leer, verificadas en el código esta semana.</b> Primera: el «Bankroll» del correo y el «banco» de la sonda son el mismo contador, que solo se mueve al liquidar (las abiertas no restan nada). Por eso el 12-oct el correo de las 00:09 decía 1.306,94 y la sonda de las 16:11 decía 1.539,52: en medio liquidaron en bloque los partidos del fin de semana, cuyos totales de tarjetas y córners llegan con la cosecha diaria. No hay dos cifras distintas, hay una leída a dos horas distintas. Y el +365,72 entre W42 y W43 contra el «+236,2 de 7 días» cuadra porque la ventana de 7 días se filtra por fecha de colocación, no de liquidación. Segunda: el veredicto «CERRAR … t −6,22» del correo <b>es del libro entero</b>, las cuatro reglas juntas (tarjetas, córners, rondas de CS2 y kills de LoL como una sola familia), y lo dominan los esports, que van 10-13 pp descalibrados; no es una lectura de tarjetas. Además la vara del correo lee el cierre de un campo que la sombra no escribe (<code>close_odds</code> en vez de <code>closing</code>), así que el EV queda siempre «sin cierre» y cae a la prueba directa. Es un defecto del correo, no del libro; la sonda sí da la vara por segmento.</p>
+
+<h2 id="poly">Polymarket</h2>
+<p>Lo único que llega por correo es la sombra v1 (prop firm ejecutada directo en el CLOB, banco simulado 2.000): equity 1.258,42 (efectivo 0 + expuesto 1.258,42), <b>P&amp;L −710,94 (−5,6 % neto de comisión)</b>, 206-296, 81 abiertas, slippage medio +1,87 pp, 418 señales que nunca entraron por límite. El libro v2 (−447 la semana pasada) y las dos reglas de market making (FIFO −472, −17 %) no están en ningún correo; su lectura formal sigue siendo el 3-nov y la semana 42 ya adelantó la dirección. El brazo de Polymarket en Hetzner sigue apagado y Render sigue geobloqueado para operar: ningún dinero real, como siempre.</p>
+
+<h2 id="plataforma">Plataforma y proveedores: lo que llegó por correo esta semana</h2>
+<div class="tw"><table>
+<tr><th>proveedor</th><th>qué pasó</th><th>qué significa</th><th>fecha</th></tr>
+<tr><td>Render</td><td>Ocho avisos «Invalid payment info» (4, 6, 8, 10, 12, 14, 16 y 18-oct): saldo impagado, «your services will be suspended if we are unable to charge your card» (web, Postgres y relay)</td><td>Los términos permiten suspender sin plazo publicado y sin preaviso adicional; el usuario es «solely responsible for exporting» antes. La web responde hoy (versión abea745): todavía no ha pasado</td><td><span class="chip c-no">ya</span></td></tr>
+<tr><td>Render</td><td>«Application exited early» el 15-oct 19:20 UTC (un reinicio); health check del relay caído el 14</td><td>Primer reinicio desde el arreglo del 8-oct; sin repetición</td><td>15-oct</td></tr>
+<tr><td>Resend</td><td>Cinco cobros fallidos de ≈ 20 USD (12, 13, 15, 17 y 19-oct)</td><td>Si Resend corta, el login cae al relay de Apps Script (~100 correos/día) al segundo intento; sin relay nadie entra, tampoco el admin. Nunca quitar la clave de Resend sin tener el relay: sin proveedor el código de login sale en pantalla</td><td><span class="chip c-no">ya</span></td></tr>
+<tr><td>Hetzner</td><td>Cargo fallido de la factura de 11,83 USD (16-oct)</td><td>Hetzner bloquea la cuenta hasta cobrar; con la cuenta bloqueada no se borran las máquinas limpiamente</td><td><span class="chip c-no">ya</span></td></tr>
+<tr><td>The Odds API</td><td>Caduca el plan de 5M</td><td>Se apagan consenso 1X2/goles, props de otras casas, baloncesto, combate, NFL, college, tenis, F1; tarjetas sigue con Cloudbet directo mientras viva la siembra de API-Football</td><td>21-oct</td></tr>
+<tr><td>API-Football</td><td>«Your subscription ends in 7 days» (16-oct): Ultra vence y vuelve al gratis</td><td>Con 100 llamadas/día el mapa de partidos se vacía en ~4 días y tarjetas deja de nacer. Si se sigue: Pro (19), no Ultra (29); los jobs piden 1.100-1.300 llamadas/día, no 700-800 como decía el doc de costes</td><td>23-oct</td></tr>
+<tr><td>Whop</td><td>«API v2 shuts down on November 13»: la clave <code>claude</code> llama a v2 y hay un webhook en formato v2 (<code>payment_succeeded</code>)</td><td>Whop sigue cobrando y los enlaces de checkout siguen vendiendo; lo que muere es la sincronización: el comprador nuevo no recibe pro/sharp, quien deja de pagar lo conserva, y quien cancela desde la web pierde acceso pero Whop le sigue cobrando. Migración: cinco sitios, 150-250 líneas, 2-3 variables, 4-8 h más pruebas. Alternativa sin código: grants a mano</td><td>13-nov</td></tr>
+<tr><td>Whop</td><td>Retiro de 13,81 USD a Binance (18-oct); ninguna venta en 60 días</td><td>Ese es el ingreso de la plataforma</td><td>18-oct</td></tr>
+<tr><td>Cloudbet</td><td>Cashback 40,29 USDT abonado y retirado el 16-oct</td><td>Movimiento de caja, no P&amp;L</td><td>16-oct</td></tr>
+</table></div>
+<p>Usuarios registrados: <b>985</b>, sin cambio en la semana. La copia diaria de usuarios por correo (CSV) llegó los siete días; es hoy la única copia fuera de Render, y es solo la tabla de usuarios: sesiones, grants, picks y la sombra viven en <code>db.json</code>, el libro real en <code>real-ledger.json</code>, y los libros de esports, Polymarket, NFL, tenis, dardos y tenis de mesa, el disco de clubes (229 MB) y la base cruda de LoL (97.588 partidas) solo existen en el disco de Render y en Postgres. Sin acceso a las sondas no pude medir memoria ni ingesta esta semana.</p>
+
+<h2 id="pasos">Los pasos, en el orden correcto</h2>
+<h3>Hoy, decida lo que decida (ninguno depende de pagar)</h3>
+<ol class="rec">
+  <li><b>Leer las claves en Render → Environment</b> (<code>GP_EXPORT_KEY</code>, <code>DATABASE_URL</code> y las demás) y dejarlas en el bloc del entorno, nunca por chat ni en el repo. Sin eso no hay sondas ni exportación de libros.</li>
+  <li><b>Exportar fuera de Render, hoy:</b> <code>db.json</code> entero por <code>/api/admin/backup</code> (sesión de admin; desde la consola del navegador con el token, la ruta no acepta la URL a pelo), el libro real y los libros de sombra, Polymarket y market making por <code>picks-export</code>, el disco de clubes por <code>clubs-data</code>, la base cruda de LoL, y un <code>pg_dump</code> de Postgres. Comprobar que el <code>db.json</code> abre y tiene los usuarios. Suspendido el servicio, ninguna ruta responde.</li>
+  <li><b>Pagar Render y Resend</b> (es deuda, y Resend está en el camino crítico: sin correo no hay login de admin ni broadcast). Hetzner también, porque bloquea la cuenta.</li>
+  <li><b>Cerrar el libro real antes de congelarlo:</b> anotar los 74,00 (54,81 + 19,19) y el cashback de 40,29 como movimientos, resolver la fila BESTIA–Damajuana.</li>
+  <li><b>Cancelar The Odds API antes del 21</b>, se siga o no: con la tarjeta fallando caerá sola, pero cancelar evita reclamaciones.</li>
+</ol>
+<h3>Si C (apagar con orden)</h3>
+<ol class="rec">
+  <li>Listar membresías activas en Whop y cancelarlas o reembolsar prorrata según lo prometido en <code>public/legal.html</code> (cancelación al fin del ciclo, reembolso 24 h, precio founder de por vida); pagar los 1,90 pendientes del afiliado.</li>
+  <li>Aviso a los 985 usuarios por <code>/api/admin/broadcast</code> con fecha de cierre y qué pasa con sus datos; último mensaje en @gpsimulador; dejar <code>soporte@gpsimulador.com</code> operativo unos meses.</li>
+  <li>Decidir por escrito qué datos personales se conservan (para un relanzamiento) y cuáles se borran.</li>
+  <li>Dejar caducar API-Football el 23; borrar <code>gp-relay-eu</code>, los dos Hetzner y, tras verificar el volcado, el servicio web y Postgres de Render. Conservar dominio y repo.</li>
+</ol>
+<h3>Si B (modo mínimo)</h3>
+<ol class="rec">
+  <li>Variables de entorno de la §6 del documento de costes (apagan esports, NFL, baloncesto, tenis, combate, dardos, TT, LLM de pago, market making); una tarde para los cuatro trabajos sin interruptor y la poda de <code>db.json</code>.</li>
+  <li>Render Pro → Standard, borrar relay y Hetzner de Polymarket, API-Football a Pro el 23, Resend o relay comprobado, Anthropic apagado. Objetivo 90-140 al mes.</li>
+  <li>Whop en grants a mano (no migrar) y la lectura del market making el 3-nov con la instrumentación viva.</li>
+  <li>Fecha de revisión escrita, para que B no se convierta en A por inercia.</li>
+</ol>
+
+<h2 id="feedback">Feedback y sugerencias, en orden</h2>
+<ol class="rec">
+  <li><b>La decisión es C salvo que la opcionalidad de B valga para ti 100-140 al mes.</b> Con cero familias invertibles, tarjetas en −3 % desde el 31-ago, cero ventas y la tarjeta rechazando a tres proveedores, seguir como hoy no tiene caso. Y es tu decisión porque invierte tres órdenes tuyas.</li>
+  <li><b>Exportar hoy, antes de cualquier otra cosa.</b> Render puede suspender cualquier día y el volcado no depende del pago. Lo único que ya está fuera es el CSV de usuarios de cada mañana.</li>
+  <li><b>No dejar caer API-Football al gratis si se sigue:</b> es apagar tarjetas en cuatro días sin haberlo decidido. Pro, 19.</li>
+  <li><b>Whop:</b> si C, cancelar membresías y reembolsar; si B, grants a mano; solo si A, migrar (4-8 h). Y comprobar en <code>/api/admin/grants</code> si la cancelación por API lleva fallando desde antes: el id guardado puede ser el del pago y no el de la membresía.</li>
+  <li><b>El correo semanal de la sombra miente dos veces por construcción:</b> el veredicto es del libro agregado y la vara lee un campo de cierre que la sombra no escribe. Si se sigue, son dos líneas; si no, basta saberlo al leer los correos viejos.</li>
+  <li><b>Detector de límite de API-Football:</b> reconocer el cupo diario y la temporada fuera de plan (llegan como lista vacía con HTTP 200). Bug latente anotado; si se apaga, da igual.</li>
+  <li><b>Libro real:</b> anotar 74,00 y 40,29, resolver BESTIA–Damajuana. El libro que queda como testigo de dos meses tiene que cuadrar con la casa.</li>
+  <li><b>Claves:</b> leerlas del dashboard y dejarlas en el bloc; rotarlas si se sigue (seis pendientes). Sin ellas esta semana el reporte salió de los correos y no de las sondas, y se nota.</li>
+</ol>
+</main>
+</body>
+</html>

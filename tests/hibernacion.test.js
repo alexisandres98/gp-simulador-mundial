@@ -80,10 +80,42 @@ async function main() {
   const r2 = await H.desempaquetar(Readable.from([malo]), dest2);
   ok(r2.saltados.length === 1 && r2.ficheros === 1 && !fs.existsSync(path.join(raiz, 'fuera.txt')) && fs.readFileSync(path.join(dest2, 'bien.txt'), 'utf8') === 'bien', 'entrada con .. saltada, la buena restaurada');
 
-  console.log('5. tar corrupto');
+  console.log('5. tar corrupto, truncado y pax');
   let err = null;
   try { await H.desempaquetar(Readable.from([Buffer.from('esto no es un tar'.repeat(40))]), path.join(raiz, 'corrupto')); } catch (e) { err = e; }
   ok(err && /inválida/.test(err.message), 'rechaza un tar corrupto con error claro');
+  err = null;
+  const trunc = Buffer.concat([H.cabecera({ name: 'a.txt', size: 2000, mtime: 0, type: '0' }), Buffer.alloc(600, 65)]);
+  try { await H.desempaquetar(Readable.from([trunc]), path.join(raiz, 'trunc')); } catch (e) { err = e; }
+  ok(err && /truncado|cortada/.test(err.message), 'rechaza un tar cortado a mitad de fichero');
+  err = null;
+  const pax = Buffer.concat([H.cabecera({ name: 'PaxHeaders/x', size: 0, mtime: 0, type: 'x' }), Buffer.alloc(1024, 0)]);
+  try { await H.desempaquetar(Readable.from([pax]), path.join(raiz, 'pax')); } catch (e) { err = e; }
+  ok(err && /pax/.test(err.message), 'rechaza cabeceras pax con mensaje claro');
+  err = null;
+  try { H.cabecera({ name: 'x', size: 8 ** 11, mtime: 0, type: '0' }); } catch (e) { err = e; }
+  ok(err && /desbordado/.test(err.message), 'un tamaño que no cabe en el campo no se recorta en silencio');
+
+  console.log('6. tar por partes (&solo=) conserva el prefijo de la carpeta');
+  const tgzSolo = path.join(raiz, 'solo-clubs.tar.gz');
+  await new Promise((res, rej) => H.streamTarGz(base, { solo: 'clubs' }).pipe(fs.createWriteStream(tgzSolo)).on('finish', res).on('error', rej));
+  const dest3 = path.join(raiz, 'solo'); fs.mkdirSync(dest3);
+  const r3 = await H.restaurar(fs.createReadStream(tgzSolo), dest3);
+  ok(r3.restaurados.length === 1 && r3.restaurados[0] === 'clubs' && fs.existsSync(path.join(dest3, 'clubs', 'results-premier.json')) && !fs.existsSync(path.join(dest3, 'db.json')), 'solo clubs/ viaja, y aterriza dentro de clubs/');
+  const manSolo = await H.manifiesto(base, { solo: 'clubs' });
+  ok(manSolo.ficheros === 3 && Object.keys(manSolo.por_carpeta).join() === 'clubs', 'manifiesto con solo=clubs');
+
+  console.log('7. restauración que falla a mitad se deshace');
+  const dest4 = path.join(raiz, 'rollback'); fs.mkdirSync(dest4);
+  fs.writeFileSync(path.join(dest4, 'db.json'), '{"viejo":true}');
+  fs.writeFileSync(path.join(dest4, 'real-ledger.json'), 'viejo');
+  fs.writeFileSync(path.join(dest4, 'clubs'), 'soy un fichero, no una carpeta');
+  err = null;
+  // el gancho de test hace fallar el cambio al llegar a 'real-ledger.json' (db.json y backups ya movidos)
+  try { await H.restaurar(fs.createReadStream(tgz), dest4, { _fallarEn: 'real-ledger.json' }); } catch (e) { err = e; }
+  ok(err && err.estado && /deshecho/.test(err.message), 'error con estado y deshacer: ' + (err && err.message.slice(0, 80)));
+  ok(fs.readFileSync(path.join(dest4, 'db.json'), 'utf8') === '{"viejo":true}' && fs.readFileSync(path.join(dest4, 'real-ledger.json'), 'utf8') === 'viejo' && fs.readFileSync(path.join(dest4, 'clubs'), 'utf8').startsWith('soy un fichero'), 'el disco queda exactamente como estaba');
+  ok(!fs.readdirSync(dest4).some((n) => n.startsWith('.hibernacion-previo')), 'sin carpeta previo huérfana');
 
   fs.rmSync(raiz, { recursive: true, force: true });
   console.log(fallos ? `\n${fallos} FALLOS` : '\nTODO OK');

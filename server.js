@@ -340,8 +340,12 @@ function liberarEspacio() {
   }
   return null;
 }
+// Tras una restauración de hibernación el db en memoria es el VIEJO: se congela para que ningún guardado
+// (save, SIGTERM, apagado coordinado) pise el db.json recién restaurado hasta el siguiente arranque.
+let DB_CONGELADA = false;
 function flushDb() {
   saveTimer = null;
+  if (DB_CONGELADA) return;
   const tmp = DB_FILE + '.tmp';
   const intentar = () => { fs.writeFileSync(tmp, JSON.stringify(db, null, 1)); fs.renameSync(tmp, DB_FILE); };
   try { intentar(); return; }
@@ -2836,6 +2840,48 @@ Estimaciones de un modelo estadístico, no consejo financiero. Apostá con respo
 // CIERRE CONSUMADO (31-ago, orden de Alexis): el correo de DESPUÉS del cierre — la ventana ya venció y
 // esto cuenta qué quedó en cada plan. Mismo estilo personal anti-Promociones que el aviso del 28-ago.
 // SIN línea de baja al final (orden explícita: este envío no la lleva).
+// PAUSA / HIBERNACIÓN (19-oct-2026): el aviso a los usuarios. Texto en docs/hibernacion/AVISOS.md §1.
+// Se manda con POST /api/admin/broadcast {variant:'pausa'} (antes {variant:'pausa', count:true} para ver a cuántos).
+function pausaEmail(lang) {
+  const en = lang === 'en';
+  const text = en ? `Hi,
+
+I'm writing because you have an account on GP Simulador and you deserve to hear it first-hand: as of today the platform goes on pause. For four months we published probabilities, opportunities and picks for the World Cup and eleven sports, and measured every one of them against the market. That measurement is the most valuable thing we take with us, and also the reason to stop now: we want to come back with something better, not with more of the same.
+
+What changes for you:
+- The site will show a pause notice instead of the platform.
+- Your account and preferences are kept. When we return you will log in with the same email.
+- If you had an active paid plan, we will write to you separately to close it at no further cost.
+- We will not email you in the meantime, except the day we come back.
+
+If you want to follow along, the Telegram channel stays open: https://t.me/gpsimulador. For anything else, soporte@gpsimulador.com.
+
+Thank you for having been here. Truly.
+
+Alexis · GP Simulador
+
+The probabilities we published were estimates from a statistical model, not financial advice.` : `Hola,
+
+Te escribo porque tienes cuenta en GP Simulador y mereces saberlo de primera mano: a partir de hoy la plataforma entra en pausa. Durante cuatro meses publicamos probabilidades, oportunidades y picks para el Mundial y para once deportes, y medimos cada una contra el mercado. Esa medición es lo más valioso que nos llevamos, y también la razón de parar ahora: queremos volver con algo mejor, no con más de lo mismo.
+
+Qué cambia para ti:
+- La web mostrará un aviso de pausa en lugar de la plataforma.
+- Tu cuenta y tus preferencias quedan guardadas. Cuando volvamos entrarás con el mismo correo.
+- Si tenías un plan de pago activo, te escribimos aparte para cerrarlo sin que pagues nada más.
+- No vamos a mandarte correos mientras tanto, salvo el día que volvamos.
+
+Si quieres seguir el hilo, el canal de Telegram sigue abierto: https://t.me/gpsimulador. Y para cualquier cosa, soporte@gpsimulador.com.
+
+Gracias por haber estado. De verdad.
+
+Alexis · GP Simulador
+
+Las probabilidades que publicamos eran estimaciones de un modelo estadístico, no consejo financiero.`;
+  const subject = en ? 'GP Simulador is taking a pause' : 'GP Simulador se toma una pausa';
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">` +
+    text.split('\n\n').map(x => '<p style="margin:0 0 14px">' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</p>').join('') + `</div>`;
+  return { subject, text, html };
+}
 function sportsClosedEmail(lang) {
   const en = lang === 'en';
   if (en) {
@@ -18982,8 +19028,11 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
-    // --- HIBERNACIÓN: con GP_HIBERNADO solo pasan salud, hibernar y la página de pausa ---
-    if (GP_HIBERNADO && p !== '/api/health' && p !== '/api/internal/hibernar') {
+    // --- HIBERNACIÓN: con GP_HIBERNADO pasan salud, hibernar, las sondas internas con clave, la copia y el
+    // correo de admin (lo que el exportador y el aviso de pausa necesitan); todo lo demás, la página de pausa ---
+    if (GP_HIBERNADO && p !== '/api/health' && p !== '/api/internal/hibernar'
+      && !(p.startsWith('/api/internal/') && process.env.GP_EXPORT_KEY && url.searchParams.get('key') === process.env.GP_EXPORT_KEY)
+      && p !== '/api/admin/backup' && p !== '/api/admin/broadcast' && !p.startsWith('/api/auth/') && p !== '/api/me') {
       if (p.startsWith('/api/')) return json(res, 503, { error: 'GP Simulador está en pausa', hibernado: true });
       let pagina = null;
       try { pagina = fs.readFileSync(path.join(__dirname, 'hibernacion', 'index.html')); } catch { /* sin página */ }
@@ -22701,35 +22750,50 @@ const server = http.createServer(async (req, res) => {
     //        lo pisaría en el siguiente guardado). Pensado para correr con GP_HIBERNADO=1.
     if (p === '/api/internal/hibernar') {
       const xk = process.env.GP_EXPORT_KEY || '';
-      if (!xk || url.searchParams.get('key') !== xk) return json(res, 404, { error: 'No encontrado' });
+      const auth = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      if (!xk || (url.searchParams.get('key') !== xk && auth !== xk)) return json(res, 404, { error: 'No encontrado' });
       const HB = require('./lib/hibernacion');
       const base = path.dirname(DB_FILE);
       const excluir = String(url.searchParams.get('sin') || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const solo = String(url.searchParams.get('solo') || '').replace(/[^A-Za-z0-9._-]/g, '');
       if (req.method === 'POST' && url.searchParams.get('restaurar') === '1') {
-        try { flushDb(); } catch { /* lo que haya */ }
+        // Solo en pausa (o con &forzar=1): fuera de pausa un trabajo puede recrear una carpeta a mitad del
+        // cambio y dejar el disco partido. Y el db en memoria queda CONGELADO tras restaurar: ningún save(),
+        // ningún SIGTERM vuelve a escribir db.json; el deploy que quita GP_HIBERNADO arranca con el restaurado.
+        if (!GP_HIBERNADO && url.searchParams.get('forzar') !== '1') return json(res, 400, { ok: false, error: 'la restauración exige GP_HIBERNADO=1 (o &forzar=1 bajo tu responsabilidad)' });
+        const libres = (() => { try { const s = fs.statfsSync(base); return s.bavail * s.bsize; } catch { return null; } })();
+        const pide = Number(url.searchParams.get('bytes') || 0);
+        if (libres != null && pide > 0 && libres < pide * 1.05) return json(res, 507, { ok: false, error: `sin espacio: libres ${(libres / 1048576).toFixed(0)} MB, hacen falta ${(pide / 1048576).toFixed(0)} MB (restaura sobre un disco vacío de ≥ 2× el tamaño)` });
+        try { if (saveTimer) clearTimeout(saveTimer); saveTimer = null; flushDb(); } catch { /* lo que haya */ }
         try {
           const r = await HB.restaurar(req, base, { gzip: url.searchParams.get('gzip') !== '0' });
+          DB_CONGELADA = true;
           opsLog('hibernacion_restaurar', { ficheros: r.ficheros, mb: +(r.bytes / 1048576).toFixed(1), apartados: r.apartados.length });
-          const salir = url.searchParams.get('salir') !== '0';
-          json(res, 200, { ok: true, ...r, hibernado: GP_HIBERNADO, saliendo: salir, nota: salir ? 'el proceso termina ahora para arrancar con el disco restaurado' : 'OJO: el db.json en memoria pisará el restaurado en el próximo guardado; reinicia el servicio' });
-          if (salir) setTimeout(() => process.exit(0), 400);
+          const salir = url.searchParams.get('salir') === '1';
+          const cuerpo = JSON.stringify({ ok: true, ...r, hibernado: GP_HIBERNADO, db_congelada: true, saliendo: salir, nota: salir ? 'el proceso termina ahora (código 1) para que la plataforma lo reinicie con el disco restaurado' : 'db.json en memoria congelado: el siguiente deploy (quitar GP_HIBERNADO) arranca con el disco restaurado' });
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end(cuerpo, () => { if (salir) server.close(() => process.exit(1)); });
           return;
-        } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
+        } catch (e) { return json(res, 400, { ok: false, error: e.message, estado: e.estado || null }); }
       }
       if (url.searchParams.get('tar') === '1') {
-        const solo = String(url.searchParams.get('solo') || '').replace(/[^A-Za-z0-9._-]/g, '');
-        let raiz = base;
-        if (solo) { raiz = path.join(base, solo); if (!fs.existsSync(raiz) || !fs.statSync(raiz).isDirectory()) return json(res, 404, { error: 'carpeta no existe', solo }); }
+        if (solo && !(fs.existsSync(path.join(base, solo)) && fs.statSync(path.join(base, solo)).isDirectory())) return json(res, 404, { error: 'carpeta no existe', solo });
         try { flushDb(); } catch { /* que db.json esté al día antes de leerlo */ }
         const nombre = `gp-disco-${solo || 'completo'}-${new Date().toISOString().slice(0, 10)}.tar.gz`;
         res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="${nombre}"`, 'Cache-Control': 'no-store' });
-        const st = HB.streamTarGz(raiz, { excluir: solo ? [] : excluir });
+        // con &solo= el tar CONSERVA el prefijo de la carpeta (clubs/…), así que se restaura en su sitio
+        const st = HB.streamTarGz(base, { excluir: solo ? [] : excluir, solo: solo || null });
         st.on('error', (e) => { console.error('[hibernacion] tar:', e.message); try { res.destroy(e); } catch { } });
         opsLog('hibernacion_tar', { solo: solo || null, sin: excluir });
         return st.pipe(res);
       }
-      const man = await HB.manifiesto(base, { excluir, sha: url.searchParams.get('sha') === '1' });
-      return json(res, 200, { ...man, hibernado: GP_HIBERNADO, db_file: DB_FILE, uso: ['GET &tar=1[&sin=backups][&solo=<carpeta>]', 'POST &restaurar=1 (cuerpo .tar.gz)', 'GET &sha=1'] });
+      // manifiesto: con &sha=1 tarda minutos en un disco grande; se responde en streaming (espacios cada
+      // ~10 s mientras se hashea, JSON válido al final) para que ni el proxy ni el cliente corten.
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      let ultimo = Date.now();
+      const latido = () => { if (Date.now() - ultimo > 10000) { ultimo = Date.now(); try { res.write(' '); } catch { /* cerrado */ } } };
+      const man = await HB.manifiesto(base, { excluir, solo: solo || null, sha: url.searchParams.get('sha') === '1', onProgreso: latido });
+      return res.end(JSON.stringify({ ...man, hibernado: GP_HIBERNADO, db_file: DB_FILE, uso: ['GET &tar=1[&sin=backups][&solo=<carpeta>]', 'POST &restaurar=1[&bytes=<del manifiesto>][&salir=1] (cuerpo .tar.gz; exige GP_HIBERNADO)', 'GET &sha=1'] }));
     }
     if (p === '/api/internal/backup') {
       const xk = process.env.GP_EXPORT_KEY || '';
@@ -28169,6 +28233,10 @@ async function anotar(pid){
                                               // free trial Sharp (27-jul): idioma FIJO, estilo personal
                                               : (variant === 'trial_es') ? () => ({ ...trialEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
                                                 : (variant === 'trial_en') ? () => ({ ...trialEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
+                                                  // pausa / hibernación (19-oct): cada usuario en SU idioma, estilo personal, sin línea de baja
+                                                  : (variant === 'pausa') ? (em) => ({ ...pausaEmail(userLang(em)), from: REENGAGE_FROM, noListUnsub: true })
+                                                    : (variant === 'pausa_es') ? () => ({ ...pausaEmail('es'), from: REENGAGE_FROM, noListUnsub: true })
+                                                      : (variant === 'pausa_en') ? () => ({ ...pausaEmail('en'), from: REENGAGE_FROM, noListUnsub: true })
                                                   : (em) => broadcastEmail(link, userLang(em));
       // SEPARACIÓN TRANSACCIONAL/MARKETING (10-jul): los masivos degradaron la entrega de los OTP (mismo
       // dominio remitente → Resend/Gmail encolaban los códigos 60-96s). Con BROADCAST_FROM seteado (subdominio
@@ -29607,6 +29675,9 @@ async function anotar(pid){
   }
 });
 
+// En pausa, la subida del disco restaurado (1-2 GB desde una conexión doméstica) tarda más que los 5 min de
+// requestTimeout que Node pone por defecto a toda petición; fuera de pausa se deja el defecto.
+if (GP_HIBERNADO) { server.requestTimeout = 0; server.headersTimeout = 60000; }
 server.listen(PORT, () => {
   console.log(`⚽ Simulador Mundial 2026 → http://localhost:${PORT}`);
   if (GP_HIBERNADO) { console.log('[hibernacion] en pausa: no se programa ningún trabajo'); return; }

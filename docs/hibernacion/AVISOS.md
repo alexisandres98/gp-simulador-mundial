@@ -3,7 +3,13 @@
 Tres textos para el día que se duerma la plataforma. Son borradores de Alexis para que los mande él: nada de
 esto sale solo. Producto siempre «GP Simulador».
 
-## 1. Correo a los usuarios (`/api/admin/broadcast`, con sesión de admin; mandarlo antes de bajar Resend a Free)
+## 1. Correo a los usuarios
+
+Está en código como variante del broadcast (`pausa`: cada usuario en su idioma, `pausa_es` / `pausa_en`
+fijos; función `pausaEmail` en `server.js`). Se manda con `POST /api/admin/broadcast?key=<GP_EXPORT_KEY>`
+y cuerpo `{"variant":"pausa"}`; antes, `{"variant":"pausa","count":true}` dice a cuántos llegaría y
+`{"variant":"pausa","test":true}` lo manda solo al admin. Con Resend en Pro (Free solo deja 100 al día),
+y ANTES de poner `GP_HIBERNADO=1` si se quiere que los usuarios lo lean con la web todavía viva.
 
 **Asunto:** GP Simulador se toma una pausa
 

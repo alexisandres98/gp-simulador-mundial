@@ -11,8 +11,10 @@ en unos meses sea poner una tarjeta y levantarla donde se dejó. Manual completo
 control: **`docs/HIBERNACION_2026-10-19.md`**. Lo que está hecho en código: `lib/hibernacion.js` (tar ustar
 puro, sin deps, del disco `/data` entero, con manifiesto sha256 y restauración por puesta en escena),
 `GET/POST /api/internal/hibernar?key=` (`&tar=1`, `&sha=1`, `&solo=`, `&sin=`, `&restaurar=1`),
-`GP_HIBERNADO=1` (el proceso arranca sin ningún trabajo programado y solo sirve salud, hibernar y la página
-de pausa), `scripts/hibernar.js` (exportador verificado, corre en el ordenador de Alexis) y
+`GP_HIBERNADO=1` (el proceso arranca sin ningún trabajo programado y solo sirve salud, hibernar, las sondas
+internas con clave, la copia y el broadcast de admin, y la página de pausa para todo lo demás; la
+restauración EXIGE este modo y congela el db en memoria), `scripts/hibernar.js` (exportador verificado,
+corre en el ordenador de Alexis) y
 `scripts/levantar.js` (restaurador), `hibernacion/` + `.github/workflows/pagina-de-pausa.yml` (página de
 pausa en GitHub Pages para el dominio), `tests/hibernacion.test.js`. La rutina semanal de Claude está
 **apagada**. Las cuentas y claves son de Alexis: todo lo que requiere sus manos está en el manual, en orden.
